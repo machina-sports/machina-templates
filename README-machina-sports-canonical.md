@@ -51,7 +51,10 @@ the complete runtime receipt ship under `data/`.
 
 ## Opt-in Phase 1 evidence contract
 
-Version 0.3.0 adds `canonical-observation/1.2`, profile 1.3,
+Version 0.4.0 preserves the 0.3.0 public surface and adds the internal,
+provider-neutral trust prerequisites for separately attested output collection
+contracts, closed source-shape validation, and selector enums. Version 0.3.0
+added `canonical-observation/1.2`, profile 1.3,
 envelope 1.1, and the separate longitudinal contract without rebinding the three
 legacy public version constants. Existing adapters and legacy serializers remain
 on `/1.1` unless a caller explicitly uses the successor execution path.

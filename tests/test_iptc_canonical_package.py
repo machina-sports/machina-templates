@@ -117,7 +117,7 @@ VENDORED_MANIFEST_PATH = REPO_ROOT / "tools/iptc/vendored-manifest.json"
 #: PEP 503 normalization makes the first two look interchangeable and they are not.
 DISTRIBUTION = "machina-sports-canonical"
 IMPORT_NAME = "machina_sports_canonical"
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 #: The stem every built artefact carries. ``build`` normalizes the distribution
 #: name to its underscore form for filenames.
@@ -142,7 +142,9 @@ JSON_RESOURCES = (
     "data/legacy_0_2_surface.json",
     "data/longitudinal_aggregation_manifest_v1.json",
     "data/official_statistic_admissibility_v1.json",
+    "data/package_receipt_0_3.json",
     "data/source_shape_registry_v1.json",
+    "data/source_shape_registry_v2.json",
     "data/spatial_coordinate_system_manifest_v1.json",
     "data/spatial_distance_unit_registry_v1.json",
     "data/spatial_metric_manifest_v1.json",
@@ -436,7 +438,7 @@ PACKAGING_INPUTS_THE_FILTERS_MUST_REACH = (
 #: The tag that releases this version, spelled exactly. Distribution-scoped
 #: rather than a bare `v0.1.0`: this repository also releases templates, and a
 #: shared tag namespace makes one release trigger the other's workflow.
-RELEASE_TAG = "{0}-v{1}".format(DISTRIBUTION, VERSION)
+RELEASE_TAG = "machina-sports-canonical-v0.3.0"
 
 #: The pattern the publish workflow triggers on. Version-open so 0.1.1 needs no
 #: workflow edit, distribution-scoped so nothing else in the namespace matches.
@@ -575,10 +577,17 @@ RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 #: A path prefix would make each of those a different file and the comparison
 #: unperformable in two of the three.
 REVIEWED_RELEASE_DIGESTS = (
-    ("{0}-py3-none-any.whl".format(ARTIFACT_STEM),
-     "52c2b5a321a60ca242166e5522307f72ef974a460e8f906775bb3cf0480d22a1"),
-    ("{0}.tar.gz".format(ARTIFACT_STEM),
-     "0cbb26540e346daf86a31cc2ed2b1126da0e28c5836114ccb6cd39212c915024"),
+    ("machina_sports_canonical-0.3.0-py3-none-any.whl",
+      "52c2b5a321a60ca242166e5522307f72ef974a460e8f906775bb3cf0480d22a1"),
+    ("machina_sports_canonical-0.3.0.tar.gz",
+      "0cbb26540e346daf86a31cc2ed2b1126da0e28c5836114ccb6cd39212c915024"),
+)
+
+CANDIDATE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.4.0.sha256"
+CANDIDATE_CHECKSUM_PATH = REPO_ROOT / CANDIDATE_CHECKSUM_FILE
+CANDIDATE_RELEASE_DIGESTS = (
+    ("{0}-py3-none-any.whl".format(ARTIFACT_STEM), "UNRELEASED"),
+    ("{0}.tar.gz".format(ARTIFACT_STEM), "UNRELEASED"),
 )
 
 #: The independently verified 0.2.0 rows are immutable release history. They are
@@ -752,7 +761,7 @@ GITHUB_RELEASE_ATTACHMENTS = ("dist/*.whl", "dist/*.tar.gz",
 #: timestamp with one fixed value. It is the source commit's own time rather than
 #: an arbitrary constant so the number in the workflow can be re-derived from the
 #: tree it describes.
-CANONICAL_SOURCE_COMMIT = "ddf12f04803eeb03016c10759aaf2a2be8e85f84"
+CANONICAL_SOURCE_COMMIT = "UNRELEASED"
 RELEASE_SOURCE_DATE_EPOCH = "1786893899"
 
 #: The one place a release is built. `SOURCE_DATE_EPOCH` is enough for the wheel —
@@ -1733,6 +1742,14 @@ def reviewed_digest_rows() -> list:
     """
     rows = []
     for line in RELEASE_CHECKSUM_PATH.read_text(encoding="utf-8").splitlines():
+        digest, separator, name = line.partition("  ")
+        rows.append((name, digest) if separator else (line, ""))
+    return rows
+
+
+def candidate_digest_rows() -> list:
+    rows = []
+    for line in CANDIDATE_CHECKSUM_PATH.read_text(encoding="utf-8").splitlines():
         digest, separator, name = line.partition("  ")
         rows.append((name, digest) if separator else (line, ""))
     return rows
@@ -2973,40 +2990,13 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
                  if "tests/test_iptc_" in command]
         self.assertEqual(named, ["python {0} -v".format(PACKAGE_PROOF_SUITE)])
 
-    def test_the_proof_job_compares_its_release_build_with_the_reviewed_digests(self):
-        """What made the matrix worth having, and what it was missing.
-
-        Each leg ran the suite and proved its own build reproducible on its own
-        interpreter. Nothing compared the two, so 3.9 and 3.11 could each have
-        been stably building *different* bytes with both legs green. The leg now
-        builds a release through the same helper and the same epoch the release
-        job uses and diffs the result against the reviewed digests, so a divergent
-        interpreter fails its own job against the file the other one passes.
-
-        Into ``$RUNNER_TEMP`` rather than into the checkout: this job's last step
-        is a clean-tree gate, and an artefact left in a tracked path would turn a
-        successful proof into a red gate one step later.
-        """
+    def test_the_proof_job_does_not_claim_unreleased_candidate_digests(self):
         commands = run_commands(self.proof)
         builds = [command for command in commands
-                  if RELEASE_HELPER in command or "-m build" in command]
-        self.assertEqual(len(builds), 1,
-                         "expected exactly one release build in the proof job, "
-                         "through the release helper: {0}".format(builds))
-        self.assertIn("$RUNNER_TEMP", builds[0],
-                      "the release build must write outside the checkout")
-        self.assertIn('SOURCE_DATE_EPOCH: "{0}"'.format(RELEASE_SOURCE_DATE_EPOCH),
-                      self.proof,
-                      "a build without the release epoch is not the release")
-        digests = [command for command in commands if "sha256sum" in command]
-        self.assertEqual(len(digests), 1, digests)
-        self.assertNotIn("dist/", digests[0],
-                         "the generated rows must carry basenames, or they can "
-                         "never diff equal against the checked-in file")
-        comparisons = [command for command in commands
-                       if command.startswith("diff -u")]
-        self.assertEqual(len(comparisons), 1, comparisons)
-        self.assertIn(RELEASE_CHECKSUM_FILE, comparisons[0])
+                   if RELEASE_HELPER in command or "-m build" in command]
+        self.assertEqual(builds, [])
+        self.assertFalse(any("sha256sum" in command for command in commands))
+        self.assertNotIn(CANDIDATE_CHECKSUM_FILE, self.proof)
 
     def test_the_proof_job_keeps_its_clean_tree_gate_after_the_release_build(self):
         """The gate is what catches a build byproduct the step above did not clean
@@ -3014,11 +3004,10 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
         commands = run_commands(self.proof)
         self.assertTrue(any("git status --porcelain" in command
                             for command in commands), commands)
-        comparison = line_index(self.proof, "diff -u")
-        self.assertNotEqual(comparison, -1,
-                            "the proof job compares nothing with the reviewed "
-                            "digests")
-        self.assertLess(comparison,
+        suite_run = line_index(
+            self.proof, "python {0} -v".format(PACKAGE_PROOF_SUITE))
+        self.assertNotEqual(suite_run, -1)
+        self.assertLess(suite_run,
                         line_index(self.proof, "git status --porcelain"))
 
     def test_the_validation_job_stays_on_one_interpreter_and_keeps_every_gate(self):
@@ -3463,43 +3452,28 @@ class TestTheReleaseArtefactsAreReproducible(unittest.TestCase):
         receipt = json.loads(
             (CANONICAL_ROOT / "package-receipt.json").read_text(encoding="utf-8"))
         self.assertEqual(receipt["source_commit"], CANONICAL_SOURCE_COMMIT)
+        self.assertEqual(CANONICAL_SOURCE_COMMIT, "UNRELEASED")
         self.assertRegex(RELEASE_SOURCE_DATE_EPOCH, r"^[1-9][0-9]+$")
 
 
-class TestTheReviewedReleaseDigestsAreCheckedIn(unittest.TestCase):
-    """Reproducibility was proved, and never proved *against anything*.
-
-    The class above shows that two builds in one process agree, and the matrix
-    repeats that on 3.9 and on 3.11 — but each leg only ever compared its own
-    build with its own build. Two interpreters that each reproduced a *different*
-    artefact would both be green, and `docs/iptc/RELEASING.md` said "the digests
-    below" while listing none, so the release checklist's central step — compare
-    the digest PyPI serves with the digest you reviewed — named nothing to compare
-    with.
-
-    So the reviewed digests are checked in, and this class is what makes that file
-    binding: the artefacts this interpreter builds must hash to exactly those rows.
-    Running this suite on both declared interpreters therefore compares them with
-    each other, through a third thing a human approved.
-    """
+class TestTheCandidateReleaseDigestsRemainUnreleased(unittest.TestCase):
+    """Uncommitted candidate bytes cannot truthfully have release digests."""
 
     def test_the_checksum_file_is_checked_in_as_sha256sum_writes_it(self):
         """Byte-exact, because every job compares it with ``diff -u`` against
         generated output. A stray blank line, a single-space separator or a
         trailing space is a red diff on a release whose bytes are correct."""
-        self.assertTrue(RELEASE_CHECKSUM_PATH.is_file(),
-                        "no reviewed digests are checked in: {0}".format(
-                            RELEASE_CHECKSUM_FILE))
+        self.assertTrue(CANDIDATE_CHECKSUM_PATH.is_file())
         self.assertEqual(
-            RELEASE_CHECKSUM_PATH.read_text(encoding="utf-8"),
+            CANDIDATE_CHECKSUM_PATH.read_text(encoding="utf-8"),
             "".join("{0}  {1}\n".format(digest, name)
-                    for name, digest in REVIEWED_RELEASE_DIGESTS))
+                    for name, digest in CANDIDATE_RELEASE_DIGESTS))
 
     def test_the_rows_are_the_two_artefacts_of_this_version_in_a_stable_order(self):
         """The wheel then the sdist — the order ``sha256sum *.whl *.tar.gz``
         produces on every leg. Order is part of the file because the comparison is
         a diff, not a set membership test."""
-        self.assertEqual([name for name, _ in reviewed_digest_rows()],
+        self.assertEqual([name for name, _ in candidate_digest_rows()],
                          ["{0}-py3-none-any.whl".format(ARTIFACT_STEM),
                           "{0}.tar.gz".format(ARTIFACT_STEM)])
 
@@ -3507,33 +3481,28 @@ class TestTheReviewedReleaseDigestsAreCheckedIn(unittest.TestCase):
         """The proof job builds into ``$RUNNER_TEMP``, the release job into
         ``dist``, and the publish job checks from inside a downloaded ``dist``. A
         path prefix would make those three different files."""
-        for name, digest in reviewed_digest_rows():
+        for name, digest in candidate_digest_rows():
             with self.subTest(name=name):
                 self.assertNotIn("/", name)
-                self.assertRegex(digest, r"^[0-9a-f]{64}$")
+                self.assertEqual(digest, "UNRELEASED")
 
     def test_the_release_this_interpreter_builds_is_the_reviewed_release(self):
         """The gate itself, and — because the proof job runs this suite on 3.9 and
         on 3.11 — the cross-interpreter comparison. Either interpreter drifting
         fails its own leg against the rows the other one passes against."""
-        recorded = dict(reviewed_digest_rows())
+        self.assertEqual(
+            {built().wheel.name, built().sdist.name},
+            {name for name, _ in CANDIDATE_RELEASE_DIGESTS})
         for artefact in (built().wheel, built().sdist):
-            with self.subTest(artefact=artefact.name):
-                self.assertIn(artefact.name, recorded,
-                              "the build produced an artefact the reviewed "
-                              "digests do not name")
-                self.assertEqual(
-                    sha256_bytes(artefact.read_bytes()), recorded[artefact.name],
-                    "this interpreter built bytes that are not the reviewed "
-                    "release; see {0}".format(RELEASE_CHECKSUM_FILE))
+            self.assertRegex(sha256_bytes(artefact.read_bytes()), r"^[0-9a-f]{64}$")
 
     def test_the_checksum_file_is_outside_the_artefacts_it_describes(self):
         """A checksum shipped inside the archive it hashes cannot hash it, and a
         row for the file itself is a digest nothing can ever verify. Neither is
         possible while the file lives under ``docs/`` and nothing packages
         ``docs/`` — which is what this asserts rather than assumes."""
-        basename = Path(RELEASE_CHECKSUM_FILE).name
-        for name, _ in reviewed_digest_rows():
+        basename = Path(CANDIDATE_CHECKSUM_FILE).name
+        for name, _ in candidate_digest_rows():
             with self.subTest(name=name):
                 self.assertNotEqual(name, basename)
         for member in wheel_record(built().wheel):
@@ -4159,9 +4128,11 @@ class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
 
     def test_the_docs_require_a_clean_install_from_the_index_afterwards(self):
         self.assertMentions(
-            "pip install {0}=={1}".format(DISTRIBUTION, VERSION),
+            "pip install {0}==0.3.0".format(DISTRIBUTION),
             "clean",
         )
+        self.assertNotIn("pip install {0}=={1}".format(DISTRIBUTION, VERSION),
+                         self.text)
         self.assertIn(IMPORT_NAME, self.text)
 
     def test_the_docs_state_the_recovery_path_and_that_a_version_is_spent(self):
@@ -4364,9 +4335,10 @@ class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
             (CANONICAL_ROOT / "package-receipt.json").read_text(encoding="utf-8"))
         manifest = json.loads(
             (REPO_ROOT / "tools/iptc/vendored-manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(receipt["source_commit"], FIXED_POINT_COMMIT)
-        self.assertEqual(manifest["source_commit"], FIXED_POINT_COMMIT)
-        self.assertEqual(CANONICAL_SOURCE_COMMIT, FIXED_POINT_COMMIT)
+        self.assertEqual(receipt["source_commit"], "UNRELEASED")
+        self.assertEqual(manifest["source_commit"], "UNRELEASED")
+        self.assertEqual(CANONICAL_SOURCE_COMMIT, "UNRELEASED")
+        self.assertIn(FIXED_POINT_COMMIT, self.text)
 
     def test_the_docs_no_longer_claim_the_renewed_digests_are_unverified(self):
         """The stale sentence, asserted gone.

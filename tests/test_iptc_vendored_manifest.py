@@ -135,7 +135,7 @@ CONSUMER_KEY_ORDER = (
 
 #: The commit whose canonical bytes this manifest pins. A17 records the runtime
 #: as it stands and changes none of it.
-SOURCE_COMMIT = "ddf12f04803eeb03016c10759aaf2a2be8e85f84"
+SOURCE_COMMIT = "UNRELEASED"
 
 
 def manifest():
@@ -447,8 +447,8 @@ class TestTheManifestNamesItsSubjectAndItsSource(unittest.TestCase):
     def test_the_source_commit_is_the_commit_this_task_pins(self):
         self.assertEqual(self.manifest["source_commit"], SOURCE_COMMIT)
 
-    def test_the_source_commit_is_a_full_git_commit(self):
-        self.assertRegex(self.manifest["source_commit"], r"^[0-9a-f]{40}$")
+    def test_the_uncommitted_candidate_does_not_fabricate_a_source_commit(self):
+        self.assertEqual(self.manifest["source_commit"], "UNRELEASED")
 
 
 class TestTheManifestIsCopyableIntoTheConsumer(unittest.TestCase):

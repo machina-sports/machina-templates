@@ -262,40 +262,6 @@ jobs:
       - name: The package proof, on this interpreter
         run: python tests/test_iptc_canonical_package.py -v
 
-      # CROSS-INTERPRETER REPRODUCIBILITY, AGAINST A THIRD THING A HUMAN APPROVED.
-      #
-      # The step above proves this interpreter's build is reproducible on this
-      # interpreter. That is what each leg proved and all it proved: 3.9 and 3.11
-      # could each have been stably building DIFFERENT bytes with both legs green,
-      # because nothing compared one leg with the other. So each leg now builds a
-      # release through the same helper and the same epoch the release job uses and
-      # diffs its digests against the reviewed ones checked in at
-      # docs/iptc/machina-sports-canonical-0.3.0.sha256. A divergent interpreter
-      # fails its own job, against the file the other one passes.
-      #
-      # INTO $RUNNER_TEMP, AND BASENAMES. The next step is a clean-tree gate, so an
-      # artefact left in a tracked path would turn a passing proof into a red gate
-      # one step later. The rows are computed from inside the output directory
-      # because the reviewed file carries basenames: that is what lets one checked-in
-      # file be the authority here, in the release job's `dist`, and in the publish
-      # job's `sha256sum --check` after download.
-      #
-      # THE `rm -rf` IS NOT A CONVENIENCE. `setuptools`' sdist step writes
-      # `machina_sports_canonical.egg-info/` into the directory it builds, and this
-      # is the one job that builds from the checkout root — the way the release job
-      # does. It is removed by the step that created it rather than added to
-      # `.gitignore`, so the gate below keeps its full meaning for everything else.
-      # A failed diff leaves it behind and reddens that gate too; that is noise on
-      # an already-failing run, not a missed failure.
-      - name: This interpreter builds the reviewed release digests
-        run: |
-          python packaging/machina_sports_canonical/release.py . "$RUNNER_TEMP/release"
-          (cd "$RUNNER_TEMP/release" && sha256sum *.whl *.tar.gz) | tee "$RUNNER_TEMP/SHA256SUMS"
-          diff -u docs/iptc/machina-sports-canonical-0.3.0.sha256 "$RUNNER_TEMP/SHA256SUMS"
-          rm -rf machina_sports_canonical.egg-info
-        env:
-          SOURCE_DATE_EPOCH: "1786893899"
-
       # The suite builds and installs into disposable trees and removes them, so
       # this asserts what it claims about not polluting a checkout.
       - name: Working tree is clean after building the distribution

@@ -38,7 +38,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machina-sports-canonical"
-version = "0.3.0"
+version = "0.4.0"
 description = "Canonical Machina Sports Schema runtime: provider-neutral observations, IPTC Sport Schema 1.1 serialization, and the shared JSON-LD context."
 readme = "README-machina-sports-canonical.md"
 requires-python = ">=3.9"
@@ -81,7 +81,9 @@ machina_sports_canonical = [
     "data/legacy_0_2_surface.json",
     "data/longitudinal_aggregation_manifest_v1.json",
     "data/official_statistic_admissibility_v1.json",
+    "data/package_receipt_0_3.json",
     "data/source_shape_registry_v1.json",
+    "data/source_shape_registry_v2.json",
     "data/spatial_coordinate_system_manifest_v1.json",
     "data/spatial_distance_unit_registry_v1.json",
     "data/spatial_metric_manifest_v1.json",
