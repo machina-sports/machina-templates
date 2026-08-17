@@ -51,9 +51,14 @@ the complete runtime receipt ship under `data/`.
 
 ## Opt-in Phase 1 evidence contract
 
-Version 0.4.0 preserves the 0.3.0 public surface and adds the internal,
-provider-neutral trust prerequisites for separately attested output collection
-contracts, closed source-shape validation, and selector enums. Version 0.3.0
+Version 0.4.1 adds nine synthetic-replay owner registrations for the approved
+Sports Skills Arena operations, accepts only exact 0.4.0/0.4.1 owner identity,
+and adds closed root-fixture dispatch for the approved mixed-representation
+longitudinal shapes. Their descriptions explicitly limit non-evidenced spatial,
+coverage, authority, and longitudinal semantics to synthetic replay. Version
+0.4.0 preserves the 0.3.0 public surface and adds the
+internal, provider-neutral trust prerequisites for separately attested output
+collection contracts, closed source-shape validation, and selector enums. Version 0.3.0
 added `canonical-observation/1.2`, profile 1.3,
 envelope 1.1, and the separate longitudinal contract without rebinding the three
 legacy public version constants. Existing adapters and legacy serializers remain
@@ -70,9 +75,9 @@ generation commands.
 These bytes are not authored in this distribution. They are published from
 `machina-templates` at `tools/iptc/canonical`, unmodified. `package-receipt.json`
 ships inside the package and records the distribution version, source path, and
-complete SHA-256 runtime/data manifest. The 0.4.0 release metadata pins the
+complete SHA-256 runtime/data manifest. The 0.4.1 release metadata pins the
 reviewed owner source commit
-`a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671`:
+`bf96c8d84b308e2e23d7dd7ec8942e2da82f6c14`:
 
 ```python
 import json, pathlib, machina_sports_canonical
@@ -81,9 +86,13 @@ receipt = json.loads(
     .read_text(encoding="utf-8"))
 ```
 
-The same complete file hashes gate the source tree in the originating repository, so an
-installed file that disagrees with the receipt is a build that transformed
-something it had no business transforming.
+The complete file hashes gate the packaged runtime and data in the originating
+repository. The release review receipt's `reviewed_source_tree` identifies the
+canonical implementation tree before generated fixed-point metadata is re-pinned;
+it does not identify the complete fixed-point tree. Rebuilding that fixed-point
+checkout and matching the reviewed archive hashes supplies the artifact
+association, so an installed file that disagrees with the package receipt is a
+build that transformed something it had no business transforming.
 
 `export_official_terms`, the generator that produces
 `official-property-names.json`, stays in the originating repository: it needs the

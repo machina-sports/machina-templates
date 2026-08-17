@@ -3,21 +3,25 @@ Repository of templates and connectors for Machina Sports - a platform for creat
 
 ## Canonical Package Review Provenance
 
-The durable review authority for `machina-sports-canonical` 0.4.0 is
-`docs/iptc/machina-sports-canonical-0.4.0.review-source.json`, not the continued
+The durable review authority for `machina-sports-canonical` 0.4.1 is
+`docs/iptc/machina-sports-canonical-0.4.1.review-source.json`, not the continued
 reachability of a pre-squash Git object. The closed `machina-reviewed-source/1`
-receipt binds approval reference
-`canonical-provider-attestation-prerequisites-v1`, source commit
-`a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671`, reviewed tree
-`6102c846860a05aa42932dbbad81541d25f64d7c`, and epoch `1786951696` to these
-reviewed artefacts:
+receipt records approval reference
+`provider-attested-sports-skills-operations-v1`, source commit
+`bf96c8d84b308e2e23d7dd7ec8942e2da82f6c14`, reviewed tree
+`86467e4958194c5d975e12e363f8f07caeedb024`, and epoch `1786991693` alongside
+these reviewed artefacts:
 
-- `machina_sports_canonical-0.4.0-py3-none-any.whl`: `7f9befa7ba89b7d8370d0120558573885fb5966e9c6f9d05f8937c4a4c92d1a4`
-- `machina_sports_canonical-0.4.0.tar.gz`: `0b4b9ef47d5475124ed87b2e0b184952a4c10bc02619a03c33da8f794247f3ae`
+- `machina_sports_canonical-0.4.1-py3-none-any.whl`: `cd454eb8411b5639af7313c713276bfa4a0dc72aab037b66ba451bc3e0f090bd`
+- `machina_sports_canonical-0.4.1.tar.gz`: `c5e1053620fe8f8e7b6dd5f4a07f4672cec3c80305dc8d88c8cffc71380e28f0`
 
 The source commit remains package provenance even if squash merge and branch
-deletion make it unreachable as a Git object. The review receipt is excluded from
-both distribution artefacts, whose checksum gates remain unchanged.
+deletion make it unreachable as a Git object. `reviewed_source_tree` identifies
+the canonical implementation tree before generated fixed-point metadata is
+re-pinned; it does not identify the complete fixed-point tree. The review receipt
+is excluded from both distribution artefacts. Rebuilding the fixed-point checkout
+and matching the recorded archive hashes, rather than the receipt alone,
+establishes the source-to-artifact association.
 
 ## Repository Structure
 
