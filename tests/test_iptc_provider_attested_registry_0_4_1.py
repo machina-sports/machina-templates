@@ -413,6 +413,34 @@ class TestProviderAttestedOwnerRegistry(unittest.TestCase):
             )
         self.assertEqual(imported, [])
 
+    def test_discriminated_fixture_manifest_substitution_refuses_before_adapter_import(self):
+        imported = []
+        operation = "arena_soccer_longitudinal"
+        package = package_for_operation(operation, fixture_ids=[
+            "soccer-date-range-string", "soccer-substituted"])
+
+        class Loader:
+            def load_static(self, package_ref, operation_request):
+                return successor._load_0_4_closure(
+                    package_ref=package, request=operation_request)
+
+            def import_adapter(self, trust):
+                imported.append(True)
+                raise AssertionError("adapter import must remain at zero")
+
+        with self.assertRaisesRegex(
+                successor.CanonicalContractError,
+                "^fixture-manifest-disagreement$"):
+            successor.execute_adapter_operation(
+                package_ref={},
+                request_bytes=successor.canonical_json_bytes(
+                    request_for_operation(operation)),
+                operation_arguments_bytes=
+                    b'{"fixture_id":"soccer-date-range-string"}',
+                trusted_loader=Loader(),
+            )
+        self.assertEqual(imported, [])
+
     def test_representative_event_artifacts_reach_runtime_statistic_spatial_and_coverage_bindings(self):
         for operation in ("arena_soccer_event", "arena_nfl_event", "arena_nba_event"):
             fixture_id = FIXTURES[operation][0]

@@ -2,7 +2,7 @@
   "consumer": "machina-sports/sports-skills",
   "source_repository": "machina-sports/machina-templates",
   "source_path": "tools/iptc/canonical",
-  "source_commit": "2f4807103a460f4ac4b8892d9afbf3c1b31b2bc5",
+  "source_commit": "0165557eb459740071963de3cf7a0669bd4dd721",
   "profile": "machina-iptc-profile/1.3",
   "schema_version": "canonical-observation/1.2",
   "machina_schema_version": "machina-sports-schema/1.1",
@@ -29,7 +29,7 @@
     "data/official_statistic_admissibility_v1.json": "abd12e312ecb0bb00969735d50502572abcbbf027828b24909fa602bb6f38947",
     "data/package_receipt_0_3.json": "9b536e6b1949fe1ae2aecbafccccebac21a205436f9f849c55130d0d605a1171",
     "data/source_shape_registry_v1.json": "3b4bc5cf04af3cfa15a9f2544202bdfeb0402a75277e15aa086c0de887319c42",
-    "data/source_shape_registry_v2.json": "65ab1cc61bcb7d6fdf60e7c1d3cf986e4ef14ffd9021c83812b13615b37443e7",
+    "data/source_shape_registry_v2.json": "48ff7f5c3e459f2d887886b794e1623d11db661ee3cd40eb297c34b8c27e49b3",
     "data/spatial_coordinate_system_manifest_v1.json": "033b83ec072c37165c776f23cf520c68f96bb94d66c5dbd3e677919f36d4500d",
     "data/spatial_distance_unit_registry_v1.json": "d348eb9df54a4149db5cfb25b8244e717b53a9f4197167d459a1b05f2b82f962",
     "data/spatial_metric_manifest_v1.json": "217b6805654cc44b61704c8fc7ca681daf5592cf4e7dc60c5cd49ca00f76ac07",
@@ -37,7 +37,7 @@
     "data/statistic_derivation_manifest_v1.json": "e20fd77c50a78dc0e89a96024dc07c5b39f703cd0cfe2e800a350d69507de115",
     "data/statistic_unit_registry_v1.json": "a94880a5eb16068e4d61e2b1830b8f477cee4d52f67e8ab1f5f76094c6ece2a7",
     "data/successor_provenance_schema_v1.json": "5d2eecf82d31825465cdebe0a95b2f861a844edc25f8037fafe7825d4186f868",
-    "data/trusted_loader_manifest_v1.json": "bc423bfb273b26a1104b1e1c9c80c6e7d495549ba2219cb59dfc97bcd846686f",
+    "data/trusted_loader_manifest_v1.json": "57a96e45c9e5e4f2780fa24a5d2178e3dd3490109a4f048a74947aa85ce5093d",
     "data/zone_scheme_manifest_v1.json": "92bfc6e4cde4ae6783f4d312ab184d0d6bdb4a0be24078f24e0e2c714b2d255b",
     "ids.py": "06910976674e3b4747e0bd5f2b71ba92c6214b54bf76fb604f7920d1893781f4",
     "observation.py": "7b17faced2130dac88436bcc15b87795dec5d66eefb35757187787ee6b5e4b0d",
@@ -45,7 +45,7 @@
     "rights.py": "7177ff0bf7899c77b99f14a5a39c21919d2d7bc2d539757c8f2e8376f317739e",
     "serialize.py": "b7e16c94b3557e3d6b80fcb3a61ab8f76f98cf1185d58950dbcbfe2cfba10d4f",
     "shared-context.json": "50a437a694057037bc1b9580772b37671a5af62802df5e652e8e59d11759b695",
-    "successor.py": "64978022a078b3f21241d1de4d090a8cc60fc7e8a59458673f862e8df1909f01",
+    "successor.py": "12ed12b30b8a5890313e557ce6fce489d6f57a9ab46c20e9d8dd997402eab1e6",
     "vocab.py": "2782eada455637f23edc3cf4bc751fb500fc987c84725c55a230f46e683ecbdd"
   }
 }

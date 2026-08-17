@@ -178,7 +178,7 @@ The release is built once, by
 environment:
 
 ```sh
-SOURCE_DATE_EPOCH=1786979771 \
+SOURCE_DATE_EPOCH=1786983984 \
   python packaging/machina_sports_canonical/release.py . dist
 sha256sum dist/*.whl dist/*.tar.gz
 ```
@@ -186,8 +186,8 @@ sha256sum dist/*.whl dist/*.tar.gz
 `docs/iptc/machina-sports-canonical-0.4.1.review-source.json` is the durable review
 receipt for these values. It records schema `machina-reviewed-source/1`, approval
 reference `provider-attested-sports-skills-operations-v1`, source commit
-`2f4807103a460f4ac4b8892d9afbf3c1b31b2bc5`, reviewed tree
-`bbce8dca0d4a5791ca6611b2aa71d8da0c1a107e`, and integer epoch `1786979771`.
+`0165557eb459740071963de3cf7a0669bd4dd721`, reviewed tree
+`bfddaab8c9ac4d9ab335af085dadfdfb8c50525d`, and integer epoch `1786983984`.
 The commit ID remains in `tools/iptc/canonical/package-receipt.json` as package
 provenance, but release verification does not require that commit to remain a
 reachable Git object after a squash merge or branch deletion. The checked receipt,
@@ -226,8 +226,8 @@ diffs against:
 
 | Artefact | SHA-256 |
 |---|---|
-| `machina_sports_canonical-0.4.1-py3-none-any.whl` | `703757842523667fdaffc7411a4fe0bd832d6c2dc55bf859675c88bbac250917` |
-| `machina_sports_canonical-0.4.1.tar.gz` | `9792b012051d8d606a80d7cf65a54fb557c1742757c17595670f4765b191f267` |
+| `machina_sports_canonical-0.4.1-py3-none-any.whl` | `e8c65a4f22136075bd8414743de25ea83470b737a780c814a4137ff91850c1b5` |
+| `machina_sports_canonical-0.4.1.tar.gz` | `caa7b6aa4c7e6f5f77ec483d2fa58d4abae8c558599252b387a254c23c4aa95b` |
 
 These rows are the **0.4.1 release candidate**, produced from the reviewed 0.4
 owner source commit and its re-pinned generated receipts. They are recorded so
