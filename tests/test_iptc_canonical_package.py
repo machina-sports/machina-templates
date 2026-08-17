@@ -448,6 +448,24 @@ RELEASE_TAG_GLOB = "{0}-v*".format(DISTRIBUTION)
 PUBLISH_WORKFLOW_PATH = (REPO_ROOT
                          / ".github/workflows/publish-machina-sports-canonical.yml")
 RELEASE_DOCS_PATH = REPO_ROOT / "docs/iptc/RELEASING.md"
+ROOT_README_PATH = REPO_ROOT / "README.md"
+REVIEW_RECEIPT_FILE = \
+    "docs/iptc/machina-sports-canonical-0.4.0.review-source.json"
+REVIEW_RECEIPT_PATH = REPO_ROOT / REVIEW_RECEIPT_FILE
+REVIEW_RECEIPT_SCHEMA = "machina-reviewed-source/1"
+REVIEW_RECEIPT_KEYS = {
+    "approved_design",
+    "distribution",
+    "reviewed_source_commit",
+    "reviewed_source_tree",
+    "schema_version",
+    "sdist_filename",
+    "sdist_sha256",
+    "source_date_epoch",
+    "version",
+    "wheel_filename",
+    "wheel_sha256",
+}
 
 #: What still stops this release now that the license decision is made, each stated
 #: as its own sentence in `docs/iptc/RELEASING.md`.
@@ -765,7 +783,9 @@ GITHUB_RELEASE_ATTACHMENTS = ("dist/*.whl", "dist/*.tar.gz",
 #: an arbitrary constant so the number in the workflow can be re-derived from the
 #: tree it describes.
 CANONICAL_SOURCE_COMMIT = "a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671"
+CANONICAL_SOURCE_TREE = "6102c846860a05aa42932dbbad81541d25f64d7c"
 RELEASE_SOURCE_DATE_EPOCH = "1786951696"
+APPROVED_DESIGN = "Design Log #035"
 
 #: The one place a release is built. `SOURCE_DATE_EPOCH` is enough for the wheel —
 #: `wheel` stamps every zip entry with it — and this backend's sdist ignores it
@@ -1748,6 +1768,53 @@ def reviewed_digest_rows() -> list:
         digest, separator, name = line.partition("  ")
         rows.append((name, digest) if separator else (line, ""))
     return rows
+
+
+def review_receipt() -> dict:
+    """The checked review receipt, rejecting duplicate JSON object keys."""
+    def closed_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate review receipt key: {0}".format(key))
+            result[key] = value
+        return result
+
+    return json.loads(REVIEW_RECEIPT_PATH.read_text(encoding="utf-8"),
+                      object_pairs_hook=closed_object)
+
+
+def expected_review_receipt() -> dict:
+    return {
+        "approved_design": APPROVED_DESIGN,
+        "distribution": DISTRIBUTION,
+        "reviewed_source_commit": CANONICAL_SOURCE_COMMIT,
+        "reviewed_source_tree": CANONICAL_SOURCE_TREE,
+        "schema_version": REVIEW_RECEIPT_SCHEMA,
+        "sdist_filename": REVIEWED_RELEASE_DIGESTS[1][0],
+        "sdist_sha256": REVIEWED_RELEASE_DIGESTS[1][1],
+        "source_date_epoch": int(RELEASE_SOURCE_DATE_EPOCH),
+        "version": VERSION,
+        "wheel_filename": REVIEWED_RELEASE_DIGESTS[0][0],
+        "wheel_sha256": REVIEWED_RELEASE_DIGESTS[0][1],
+    }
+
+
+def assert_review_receipt(testcase: unittest.TestCase, receipt: dict) -> None:
+    """Apply the closed receipt contract to an in-memory object."""
+    testcase.assertEqual(set(receipt), REVIEW_RECEIPT_KEYS)
+    for key in REVIEW_RECEIPT_KEYS - {"source_date_epoch"}:
+        testcase.assertIs(type(receipt[key]), str, key)
+    testcase.assertIs(type(receipt["source_date_epoch"]), int)
+    testcase.assertRegex(receipt["reviewed_source_commit"], r"^[0-9a-f]{40}$")
+    testcase.assertRegex(receipt["reviewed_source_tree"], r"^[0-9a-f]{40}$")
+    testcase.assertRegex(receipt["wheel_filename"],
+                         r"^[A-Za-z0-9_.-]+-py3-none-any\.whl$")
+    testcase.assertRegex(receipt["sdist_filename"],
+                         r"^[A-Za-z0-9_.-]+\.tar\.gz$")
+    testcase.assertRegex(receipt["wheel_sha256"], r"^[0-9a-f]{64}$")
+    testcase.assertRegex(receipt["sdist_sha256"], r"^[0-9a-f]{64}$")
+    testcase.assertEqual(receipt, expected_review_receipt())
 
 
 def line_index(block: str, needle: str) -> int:
@@ -2932,18 +2999,6 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
                       "no dedicated job proves the installed wheel's canonical "
                       "contracts: {0}".format(sorted(self.jobs)))
 
-    def test_source_provenance_jobs_fetch_the_complete_git_history(self):
-        checkout_with_history = re.compile(
-            r"(?m)^      - uses: actions/checkout@[^\n]+\n"
-            r"        with:\n"
-            r"(?:          [^\n]+\n)*?"
-            r"          fetch-depth: 0$")
-        for name in (VALIDATION_JOB, PACKAGE_PROOF_JOB):
-            block = self.jobs[name]
-            with self.subTest(job=name):
-                self.assertEqual(block.count("uses: actions/checkout@"), 1)
-                self.assertRegex(block, checkout_with_history)
-
     def test_the_installed_conformance_job_is_python_3_11_without_a_matrix(self):
         self.assertIn('python-version: "3.11"', self.installed)
         self.assertEqual(matrix_python_versions(self.installed), [])
@@ -3470,11 +3525,107 @@ class TestTheReleaseArtefactsAreReproducible(unittest.TestCase):
         self.assertEqual(receipt["source_commit"], CANONICAL_SOURCE_COMMIT)
         self.assertEqual(CANONICAL_SOURCE_COMMIT, FIXED_POINT_COMMIT)
         self.assertRegex(RELEASE_SOURCE_DATE_EPOCH, r"^[1-9][0-9]+$")
-        found = subprocess.run(
-            ["git", "show", "-s", "--format=%ct", CANONICAL_SOURCE_COMMIT],
-            cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=120)
-        self.assertEqual(found.returncode, 0, found.stderr)
-        self.assertEqual(found.stdout.strip(), RELEASE_SOURCE_DATE_EPOCH)
+
+
+class TestTheCheckedReviewReceipt(unittest.TestCase):
+    """Durable review evidence that survives a squash merge and branch deletion."""
+
+    def setUp(self):
+        self.assertTrue(REVIEW_RECEIPT_PATH.is_file(), REVIEW_RECEIPT_PATH)
+        self.receipt = review_receipt()
+
+    def test_the_receipt_is_closed_typed_exact_and_canonical_json(self):
+        assert_review_receipt(self, self.receipt)
+        canonical = json.dumps(self.receipt, indent=2, sort_keys=True) + "\n"
+        self.assertEqual(REVIEW_RECEIPT_PATH.read_text(encoding="utf-8"), canonical)
+
+    def test_the_contract_rejects_missing_extra_mistyped_malformed_and_changed_values(self):
+        mutations = []
+        missing = dict(self.receipt)
+        missing.pop("reviewed_source_tree")
+        mutations.append(("missing key", missing))
+        extra = dict(self.receipt, note="not a closed field")
+        mutations.append(("extra key", extra))
+        for label, key, value in (
+                ("epoch string", "source_date_epoch", RELEASE_SOURCE_DATE_EPOCH),
+                ("boolean epoch", "source_date_epoch", True),
+                ("short commit", "reviewed_source_commit", "a57ffcf"),
+                ("uppercase tree", "reviewed_source_tree",
+                 CANONICAL_SOURCE_TREE.upper()),
+                ("bad wheel name", "wheel_filename", "canonical.whl"),
+                ("short digest", "sdist_sha256", "0b4b9ef"),
+                ("different design", "approved_design", "Design Log #034"),
+                ("different version", "version", "0.4.1")):
+            changed = dict(self.receipt)
+            changed[key] = value
+            mutations.append((label, changed))
+        for label, mutated in mutations:
+            with self.subTest(mutation=label):
+                with self.assertRaises(AssertionError):
+                    assert_review_receipt(self, mutated)
+
+    def test_the_receipt_agrees_with_every_release_authority(self):
+        package_receipt = json.loads(
+            (CANONICAL_ROOT / "package-receipt.json").read_text(encoding="utf-8"))
+        manifest = json.loads(VENDORED_MANIFEST_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(package_receipt["distribution_version"],
+                         self.receipt["version"])
+        self.assertEqual(package_receipt["source_commit"],
+                         self.receipt["reviewed_source_commit"])
+        self.assertEqual(manifest["source_commit"],
+                         self.receipt["reviewed_source_commit"])
+        self.assertEqual(
+            reviewed_digest_rows(),
+            [(self.receipt["wheel_filename"], self.receipt["wheel_sha256"]),
+             (self.receipt["sdist_filename"], self.receipt["sdist_sha256"])])
+        self.assertEqual(self.receipt["version"], VERSION)
+
+    def test_the_receipt_epoch_is_the_release_helper_and_workflow_epoch(self):
+        epoch = str(self.receipt["source_date_epoch"])
+        self.assertEqual(
+            release_helper().source_date_epoch({"SOURCE_DATE_EPOCH": epoch}),
+            self.receipt["source_date_epoch"])
+        proof = workflow_jobs()[PACKAGE_PROOF_JOB]
+        build_job = workflow_jobs(publish_workflow_text())[RELEASE_BUILD_JOB]
+        for name, block in ((PACKAGE_PROOF_JOB, proof),
+                            (RELEASE_BUILD_JOB, build_job)):
+            with self.subTest(job=name):
+                self.assertIn('SOURCE_DATE_EPOCH: "{0}"'.format(epoch), block)
+                self.assertIn(RELEASE_CHECKSUM_FILE, block)
+
+    def test_release_docs_and_repository_readme_anchor_provenance_to_the_receipt(self):
+        required = (
+            REVIEW_RECEIPT_FILE,
+            self.receipt["reviewed_source_commit"],
+            self.receipt["reviewed_source_tree"],
+            str(self.receipt["source_date_epoch"]),
+            self.receipt["approved_design"],
+            self.receipt["wheel_filename"],
+            self.receipt["wheel_sha256"],
+            self.receipt["sdist_filename"],
+            self.receipt["sdist_sha256"],
+        )
+        for path in (RELEASE_DOCS_PATH, ROOT_README_PATH):
+            text = path.read_text(encoding="utf-8")
+            with self.subTest(path=path):
+                for value in required:
+                    self.assertIn(value, text)
+                self.assertNotIn("re-derivable with `git log", text)
+
+    def test_the_review_receipt_is_not_a_wheel_or_sdist_input(self):
+        self.assertNotIn("docs", PACKAGING_INPUTS)
+        basename = REVIEW_RECEIPT_PATH.name
+        for member in wheel_record(built().wheel):
+            with self.subTest(artefact="wheel", member=member):
+                self.assertNotIn(basename, member)
+        for member in tar_members(built().sdist):
+            with self.subTest(artefact="sdist", member=member.name):
+                self.assertNotIn(basename, member.name)
+
+    def test_release_tests_do_not_resolve_the_reviewed_commit_as_a_git_object(self):
+        source = Path(__file__).read_text(encoding="utf-8")
+        self.assertNotIn('["git", ' + '"show"', source)
+        self.assertNotIn("cat" + "-file", source)
 
 
 class TestTheReviewedReleaseDigestsAreTheAuthority(unittest.TestCase):

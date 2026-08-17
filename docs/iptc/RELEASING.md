@@ -80,7 +80,7 @@ evidence a reader can re-check, not by assertion:
 | A reviewer-gated `pypi` environment exists | The repository's `pypi` environment carries a **required reviewer** rule and a deployment-branch policy. Re-check with `gh api repos/<owner>/<repo>/environments/pypi`. |
 | The trusted publisher is registered and works | Workflow run **`31743535579`** — `publish-machina-sports-canonical.yml`, tag `machina-sports-canonical-v0.1.0`, head `48d4168162fc84b48931b82971738b9359298dde` — **completed successfully**. An upload cannot succeed unless the environment resolved and PyPI accepted the OIDC exchange, so that run is proof of the whole path. |
 | The 0.2.0 digests are independently verified | **CLOSED HISTORY.** Rebuilt from a clean `git archive` export of `455561632fc0f0f389109e5417c32798a02538c0`, in isolated trees, on Python **3.9.6** and **3.11.14**, at `SOURCE_DATE_EPOCH=1786716463`. Both interpreters reproduced the checked-in rows and each other. See the historical verification record below. |
-| The 0.4.0 owner source is reviewed | **CLOSED.** Release metadata pins the exact reviewed source commit `a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671`, whose committer epoch is `1786951696`. |
+| The 0.4.0 owner source is reviewed | **CLOSED.** `docs/iptc/machina-sports-canonical-0.4.0.review-source.json` preserves the exact reviewed source commit, tree, release epoch, approved design and artefact hashes independently of Git object reachability after a squash merge. |
 
 **A closed prerequisite is not an open door.** All four rows say the *standing
 setup* is in place and that the bytes are reproducible. None of them approves this
@@ -183,11 +183,15 @@ SOURCE_DATE_EPOCH=1786951696 \
 sha256sum dist/*.whl dist/*.tar.gz
 ```
 
-`1786951696` is the committer timestamp of `a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671`,
-the canonical source commit recorded in `tools/iptc/canonical/package-receipt.json`
-— re-derivable with `git log -1 --format=%ct <commit>`, not an arbitrary constant.
-It moves with that commit every time the canonical source changes. This release
-uses the reviewed 0.4 owner source commit, so the epoch and digests follow it.
+`docs/iptc/machina-sports-canonical-0.4.0.review-source.json` is the durable review
+receipt for these values. It records schema `machina-reviewed-source/1`, approved
+design `Design Log #035`, source commit
+`a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671`, reviewed tree
+`6102c846860a05aa42932dbbad81541d25f64d7c`, and integer epoch `1786951696`.
+The commit ID remains in `tools/iptc/canonical/package-receipt.json` as package
+provenance, but release verification does not require that commit to remain a
+reachable Git object after a squash merge or branch deletion. The checked receipt,
+not repository history, closes the reviewed source-to-artefact association.
 The values
 `1786893899`, `1786716463` and `1786398569` survive below in historical records,
 which describe builds of *those* bytes and must not be restamped.
@@ -229,6 +233,9 @@ These rows are the **0.4.0 release candidate**, produced from the reviewed 0.4
 owner source commit and its re-pinned generated receipts. They are recorded so
 every automated comparison has an authority to diff against. Preparing this
 fixed point does not tag, publish, deploy, merge, push, or approve an environment.
+The review receipt named above repeats both exact filenames and hashes and binds
+them to the reviewed source tree and `Design Log #035`; it is deliberately outside
+the wheel and sdist inputs, so recording the review does not alter either artefact.
 
 Older records follow it and are kept as history rather than rewritten: the 0.3.0
 rows, the 0.2.0 rows and their superseded predecessor, the 0.1.0 renewed rows, and
