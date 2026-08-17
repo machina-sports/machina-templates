@@ -2932,6 +2932,18 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
                       "no dedicated job proves the installed wheel's canonical "
                       "contracts: {0}".format(sorted(self.jobs)))
 
+    def test_source_provenance_jobs_fetch_the_complete_git_history(self):
+        checkout_with_history = re.compile(
+            r"(?m)^      - uses: actions/checkout@[^\n]+\n"
+            r"        with:\n"
+            r"(?:          [^\n]+\n)*?"
+            r"          fetch-depth: 0$")
+        for name in (VALIDATION_JOB, PACKAGE_PROOF_JOB):
+            block = self.jobs[name]
+            with self.subTest(job=name):
+                self.assertEqual(block.count("uses: actions/checkout@"), 1)
+                self.assertRegex(block, checkout_with_history)
+
     def test_the_installed_conformance_job_is_python_3_11_without_a_matrix(self):
         self.assertIn('python-version: "3.11"', self.installed)
         self.assertEqual(matrix_python_versions(self.installed), [])
