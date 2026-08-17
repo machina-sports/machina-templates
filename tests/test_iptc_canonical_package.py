@@ -117,7 +117,7 @@ VENDORED_MANIFEST_PATH = REPO_ROOT / "tools/iptc/vendored-manifest.json"
 #: PEP 503 normalization makes the first two look interchangeable and they are not.
 DISTRIBUTION = "machina-sports-canonical"
 IMPORT_NAME = "machina_sports_canonical"
-VERSION = "0.4.0"
+VERSION = "0.4.1"
 
 #: The stem every built artefact carries. ``build`` normalizes the distribution
 #: name to its underscore form for filenames.
@@ -438,7 +438,7 @@ PACKAGING_INPUTS_THE_FILTERS_MUST_REACH = (
 #: The tag that releases this version, spelled exactly. Distribution-scoped
 #: rather than a bare `v0.1.0`: this repository also releases templates, and a
 #: shared tag namespace makes one release trigger the other's workflow.
-RELEASE_TAG = "machina-sports-canonical-v0.4.0"
+RELEASE_TAG = "machina-sports-canonical-v0.4.1"
 
 #: The pattern the publish workflow triggers on. Version-open so 0.1.1 needs no
 #: workflow edit, distribution-scoped so nothing else in the namespace matches.
@@ -450,7 +450,7 @@ PUBLISH_WORKFLOW_PATH = (REPO_ROOT
 RELEASE_DOCS_PATH = REPO_ROOT / "docs/iptc/RELEASING.md"
 ROOT_README_PATH = REPO_ROOT / "README.md"
 REVIEW_RECEIPT_FILE = \
-    "docs/iptc/machina-sports-canonical-0.4.0.review-source.json"
+    "docs/iptc/machina-sports-canonical-0.4.1.review-source.json"
 REVIEW_RECEIPT_PATH = REPO_ROOT / REVIEW_RECEIPT_FILE
 REVIEW_RECEIPT_SCHEMA = "machina-reviewed-source/1"
 REVIEW_RECEIPT_KEYS = {
@@ -581,7 +581,7 @@ RELEASE_DIGEST_FILE = "SHA256SUMS"
 #: published digest with the reviewed one" named no artefact to compare against.
 #: One checked-in file makes cross-interpreter reproducibility falsifiable: a leg
 #: whose bytes differ fails against the same rows every other leg passes against.
-RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.4.0.sha256"
+RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.4.1.sha256"
 RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 
 #: Exactly the rows that file carries, in exactly that order: the wheel, then the
@@ -595,10 +595,10 @@ RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 #: A path prefix would make each of those a different file and the comparison
 #: unperformable in two of the three.
 REVIEWED_RELEASE_DIGESTS = (
-    ("machina_sports_canonical-0.4.0-py3-none-any.whl",
-      "7f9befa7ba89b7d8370d0120558573885fb5966e9c6f9d05f8937c4a4c92d1a4"),
-    ("machina_sports_canonical-0.4.0.tar.gz",
-      "0b4b9ef47d5475124ed87b2e0b184952a4c10bc02619a03c33da8f794247f3ae"),
+    ("machina_sports_canonical-0.4.1-py3-none-any.whl",
+      "97eedc7311b8c407755468e1cc1f41aedcdb8f6e4744a79694fdc98ac1cafb48"),
+    ("machina_sports_canonical-0.4.1.tar.gz",
+      "91732cc875b81b4fe4f37aa576d2c27d8bb6a5d10e0d8288a19d802be6d18112"),
 )
 
 HISTORICAL_0_3_CHECKSUM_FILE = \
@@ -612,7 +612,7 @@ HISTORICAL_0_3_RELEASE_DIGESTS = (
 )
 
 #: The independently verified 0.2.0 rows are immutable release history. They are
-#: deliberately not derived from ``ARTIFACT_STEM``, which now names 0.4.0.
+#: deliberately not derived from ``ARTIFACT_STEM``, which now names 0.4.1.
 HISTORICAL_0_2_RELEASE_DIGESTS = (
     ("machina_sports_canonical-0.2.0-py3-none-any.whl",
      "de6bd5cf6425157cb969ecf483ce103de2e1ad37666b10d37ea9763d34d69e31"),
@@ -785,7 +785,7 @@ GITHUB_RELEASE_ATTACHMENTS = ("dist/*.whl", "dist/*.tar.gz",
 CANONICAL_SOURCE_COMMIT = "a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671"
 CANONICAL_SOURCE_TREE = "6102c846860a05aa42932dbbad81541d25f64d7c"
 RELEASE_SOURCE_DATE_EPOCH = "1786951696"
-APPROVAL_REFERENCE = "canonical-provider-attestation-prerequisites-v1"
+APPROVAL_REFERENCE = "provider-attested-sports-skills-operations-v1"
 
 #: The one place a release is built. `SOURCE_DATE_EPOCH` is enough for the wheel —
 #: `wheel` stamps every zip entry with it — and this backend's sdist ignores it
@@ -3556,7 +3556,7 @@ class TestTheCheckedReviewReceipt(unittest.TestCase):
                 ("short digest", "sdist_sha256", "0b4b9ef"),
                 ("different approval reference", "approval_ref",
                  "canonical-provider-attestation-prerequisites-v2"),
-                ("different version", "version", "0.4.1")):
+                ("different version", "version", "0.4.2")):
             changed = dict(self.receipt)
             changed[key] = value
             mutations.append((label, changed))
@@ -3780,7 +3780,7 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
         self.assertTrue(
             fnmatch.fnmatch(RELEASE_TAG, RELEASE_TAG_GLOB),
             "{0} does not match {1}".format(RELEASE_TAG, RELEASE_TAG_GLOB))
-        self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.4.0")
+        self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.4.1")
 
     def test_the_workflow_scopes_each_write_permission_to_the_job_that_needs_it(self):
         """``id-token: write`` on the workflow would hand the upload identity to
@@ -4303,13 +4303,13 @@ class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
 
     def test_the_docs_require_a_clean_install_from_the_index_afterwards(self):
         self.assertMentions(
-            "pip install {0}==0.4.0".format(DISTRIBUTION),
+            "pip install {0}==0.4.1".format(DISTRIBUTION),
             "clean",
         )
         self.assertIn(IMPORT_NAME, self.text)
 
     def test_the_docs_state_the_recovery_path_and_that_a_version_is_spent(self):
-        """A bad 0.4.0 cannot be replaced; deleting it does not free the version.
+        """A bad 0.4.1 cannot be replaced; deleting it does not free the version.
         A document that omits that invites exactly the wrong recovery."""
         self.assertMentions("yank", "0.4.1", "cannot")
 
@@ -4568,7 +4568,7 @@ class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
     def test_the_docs_do_not_present_the_superseded_digests_as_current(self):
         """Two digest pairs in one document is a reading hazard. The reviewed file
         is named as the authority, and the superseded rows must not be the ones
-        the active 0.4.0 checksum authority is said to hold."""
+        the active 0.4.1 checksum authority is said to hold."""
         current = {digest for _, digest in REVIEWED_RELEASE_DIGESTS}
         stale = {digest for _, digest in SUPERSEDED_RELEASE_DIGESTS}
         self.assertEqual(current & stale, set(),

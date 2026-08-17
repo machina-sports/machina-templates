@@ -47,7 +47,7 @@ on:
 
 # Distribution-scoped tags, not a bare `v*`: this repository also releases
 # templates, and a shared tag namespace would make one release fire the other's
-# workflow. `0.4.0` releases under exactly `machina-sports-canonical-v0.4.0`.
+# workflow. `0.4.1` releases under exactly `machina-sports-canonical-v0.4.1`.
 
 # Read-only by default, so the OIDC identity below is an addition to a read-only
 # workflow rather than a narrowing of a permissive one. `id-token: write` at this
@@ -93,7 +93,7 @@ jobs:
           SOURCE_DATE_EPOCH: "1786951696"
 
       # Fails, printing the filename it expected, when the tag names a version the
-      # build did not produce. A `-v0.4.0` tag on a tree that still declares 0.3.0
+      # build did not produce. A `-v0.4.1` tag on a tree that still declares 0.4.0
       # would otherwise publish 0.3.0 and burn the wrong version number.
       # `GITHUB_REF_NAME` as an environment variable rather than a `${{ }}`
       # expression, so a tag name cannot be interpolated into this shell.
@@ -107,7 +107,7 @@ jobs:
       # with digests they had seen somewhere else — and if this job produced
       # different bytes, nothing in the run said so. The rows are now diffed
       # against the reviewed digests checked in at
-      # docs/iptc/machina-sports-canonical-0.4.0.sha256, in the job that built
+      # docs/iptc/machina-sports-canonical-0.4.1.sha256, in the job that built
       # them and before the artefact is uploaded, so a release whose bytes are not
       # the approved bytes never reaches the approval gate at all.
       #
@@ -120,7 +120,7 @@ jobs:
       - name: The digests are the reviewed ones
         run: |
           (cd dist && sha256sum *.whl *.tar.gz) | tee SHA256SUMS
-          diff -u docs/iptc/machina-sports-canonical-0.4.0.sha256 SHA256SUMS
+          diff -u docs/iptc/machina-sports-canonical-0.4.1.sha256 SHA256SUMS
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:

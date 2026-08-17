@@ -74,6 +74,10 @@
       "group": "canonical"
     },
     {
+      "path": "tests/test_iptc_provider_attested_registry_0_4_1.py",
+      "group": "canonical"
+    },
+    {
       "path": "tests/test_iptc_source_ref_credentials.py",
       "group": "canonical"
     },

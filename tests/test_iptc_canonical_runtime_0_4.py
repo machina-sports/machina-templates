@@ -212,23 +212,23 @@ class TestFrozenOwner030Compatibility(unittest.TestCase):
         self.assertEqual(value["operation_contracts"], [])
         self.assertNotIn("output_collection_contracts", value)
 
-    def test_registry_v2_is_empty_and_contains_no_provider_records(self):
+    def test_registry_v2_has_the_separately_reviewed_data_only_records(self):
         path = REPO_ROOT / "tools/iptc/canonical/data/source_shape_registry_v2.json"
         value = json.loads(path.read_bytes())
         self.assertEqual(set(value), {
             "schema_version", "registry_id", "registry_version", "shapes",
             "operation_contracts", "output_collection_contracts"})
         self.assertEqual(value["registry_version"], "2")
-        self.assertEqual(value["shapes"], [])
-        self.assertEqual(value["operation_contracts"], [])
-        self.assertEqual(value["output_collection_contracts"], [])
-        for operation in (
+        operations = {
             "arena_soccer_event", "arena_nfl_event", "arena_nba_event",
             "arena_soccer_longitudinal", "arena_nfl_longitudinal",
             "arena_nba_longitudinal", "arena_soccer_refusal_event",
             "arena_nfl_refusal_event", "arena_nba_refusal_event",
-        ):
-            self.assertNotIn(operation.encode("ascii"), path.read_bytes())
+        }
+        for key in ("shapes", "operation_contracts",
+                    "output_collection_contracts"):
+            self.assertEqual(len(value[key]), 9)
+            self.assertEqual({item["operation"] for item in value[key]}, operations)
 
     def test_legacy_fixture_bytes_are_frozen(self):
         root = REPO_ROOT / "tools/iptc/fixtures/corrected"

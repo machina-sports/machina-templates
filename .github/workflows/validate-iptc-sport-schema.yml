@@ -31,7 +31,7 @@ name: Validate IPTC Sport Schema
 # restated as separate entries: an overlapping glob is one more thing to keep in
 # step with a directory move. `tests/test_iptc_test_manifest.py` asserts that each
 # of those concrete inputs is in fact reached — including
-# `docs/iptc/machina-sports-canonical-0.4.0.sha256`, the reviewed release digests
+# `docs/iptc/machina-sports-canonical-0.4.1.sha256`, the reviewed release digests
 # both the package-proof job and the release job diff against, which is under
 # `docs/iptc/**` and is therefore asserted rather than restated.
 #
@@ -271,7 +271,7 @@ jobs:
         run: |
           python packaging/machina_sports_canonical/release.py . "$RUNNER_TEMP/release"
           (cd "$RUNNER_TEMP/release" && sha256sum *.whl *.tar.gz) | tee "$RUNNER_TEMP/SHA256SUMS"
-          diff -u docs/iptc/machina-sports-canonical-0.4.0.sha256 "$RUNNER_TEMP/SHA256SUMS"
+          diff -u docs/iptc/machina-sports-canonical-0.4.1.sha256 "$RUNNER_TEMP/SHA256SUMS"
           rm -rf machina_sports_canonical.egg-info
         env:
           SOURCE_DATE_EPOCH: "1786951696"

@@ -3,7 +3,7 @@
   "owner_package": {
     "name": "machina-sports-canonical",
     "version": "0.4.0",
-    "release_digest": "sha256:766840301aa092f6b6767fd8a27e3b637def4d1a9974488bd852a1d9d4d5bc94"
+    "release_digest": "sha256:3ad5e958cec2927816431a71d4ca6f99d5016803301373e13595fc38414826b3"
   },
   "runtime_files": [
     {
@@ -148,8 +148,8 @@
     },
     {
       "relative_path": "data/source_shape_registry_v2.json",
-      "byte_length": 191,
-      "sha256": "sha256:b24d55cdb30aea33748e0139fcd48e75eb8c16ca106523fce3a22389a560a372",
+      "byte_length": 80489,
+      "sha256": "sha256:44e9039769d0145e2f94460c5433d64512be7e6bd7c19bca6d3b24eea2ff6315",
       "executable_module": false
     },
     {
@@ -350,5 +350,5 @@
       "source_file_sha256": "sha256:dd9b6dbebdea732c880c538f6c895eae58f94b0842bba676e717507c2478a5c5"
     }
   ],
-  "aggregate_runtime_digest": "sha256:766840301aa092f6b6767fd8a27e3b637def4d1a9974488bd852a1d9d4d5bc94"
+  "aggregate_runtime_digest": "sha256:3ad5e958cec2927816431a71d4ca6f99d5016803301373e13595fc38414826b3"
 }
