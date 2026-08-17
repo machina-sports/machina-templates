@@ -1,0 +1,852 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/actions": {
+      "get": {
+        "operationId": "ActionsController_getActions",
+        "parameters": [
+          {
+            "name": "fightId",
+            "required": false,
+            "in": "query",
+            "description": "Fight Id (legacy number or UUID string)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fightNewId",
+            "required": false,
+            "in": "query",
+            "description": "Fight New Id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "round",
+            "required": false,
+            "in": "query",
+            "description": "Round",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "stance",
+            "required": false,
+            "in": "query",
+            "description": "Stance",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "standing",
+                "ground",
+                "fence"
+              ]
+            }
+          },
+          {
+            "name": "domain",
+            "required": false,
+            "in": "query",
+            "description": "Domain",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0: being dominated",
+                "1: dominating",
+                "2: neutral domain"
+              ]
+            }
+          },
+          {
+            "name": "name",
+            "required": false,
+            "in": "query",
+            "description": "Name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "authorId",
+            "required": false,
+            "in": "query",
+            "description": "Author Id (legacy number or UUID string)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetId",
+            "required": false,
+            "in": "query",
+            "description": "Target Id (legacy number or UUID string)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "authorNewId",
+            "required": false,
+            "in": "query",
+            "description": "Author New Id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetNewId",
+            "required": false,
+            "in": "query",
+            "description": "Target New Id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "corner",
+            "required": false,
+            "in": "query",
+            "description": "Corner",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "red",
+                "blue"
+              ]
+            }
+          },
+          {
+            "name": "eventId",
+            "required": false,
+            "in": "query",
+            "description": "Event legacy Id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "boutId",
+            "required": false,
+            "in": "query",
+            "description": "ONE fight id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "per_page",
+            "required": false,
+            "in": "header",
+            "description": "Number of records per page",
+            "schema": {
+              "default": "10",
+              "example": "10",
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "header",
+            "description": "Page number",
+            "schema": {
+              "default": "1",
+              "example": "1",
+              "type": "string"
+            }
+          },
+          {
+            "name": "timestamp",
+            "required": false,
+            "in": "header",
+            "description": "Sort actions by timestamp",
+            "schema": {
+              "default": "desc",
+              "example": "desc",
+              "type": "string"
+            }
+          },
+          {
+            "name": "roundTime",
+            "required": false,
+            "in": "header",
+            "description": "Sort actions by round time",
+            "schema": {
+              "default": "desc",
+              "example": "desc",
+              "type": "string"
+            }
+          },
+          {
+            "name": "round",
+            "required": false,
+            "in": "header",
+            "description": "Sort actions by round",
+            "schema": {
+              "default": "desc",
+              "example": "desc",
+              "type": "string"
+            }
+          },
+          {
+            "name": "authorization",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Get all actions"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all actions",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/fighters/{id}": {
+      "get": {
+        "operationId": "FightersController_getFighterStats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fighter stats retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FighterStatsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fighter id or legacyId"
+          },
+          "404": {
+            "description": "Fighter records not found"
+          },
+          "503": {
+            "description": "Unable to retrieve all fighter data. Service temporarily unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get fighter stats (as author) from legacyId or newId",
+        "tags": [
+          "Fighters"
+        ]
+      }
+    },
+    "/fighters/{id}/career": {
+      "get": {
+        "operationId": "FightersController_getCareerSummary",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Career summary for a fighter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FighterCareerDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fighter id or legacyId"
+          },
+          "404": {
+            "description": "Fighter records not found"
+          },
+          "503": {
+            "description": "Unable to retrieve all fighter data. Service temporarily unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get career summary for a fighter (formatted with percentages and averages) from legacyId or newId",
+        "tags": [
+          "Fighters"
+        ]
+      }
+    },
+    "/fights/{id}": {
+      "get": {
+        "operationId": "FightsController_getFight",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fight outcome retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FightDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fight id or legacyId"
+          },
+          "404": {
+            "description": "Fight records not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the outcome of a fight from legacyId or newId",
+        "tags": [
+          "Fights"
+        ]
+      }
+    },
+    "/fights/{id}/totals": {
+      "get": {
+        "operationId": "FightsController_getFightTotals",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fight total statistics retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoundOutcomeDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fight id or legacyId"
+          },
+          "404": {
+            "description": "Fight records not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get fight total statistics from legacyId or newId",
+        "tags": [
+          "Fights"
+        ]
+      }
+    },
+    "/fights/{id}/rounds": {
+      "get": {
+        "operationId": "FightsController_getFightRounds",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fight rounds statistics retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FightRoundDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fight id or legacyId"
+          },
+          "404": {
+            "description": "Fight records not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all rounds of a fight from legacyId or newId",
+        "tags": [
+          "Fights"
+        ]
+      }
+    },
+    "/fights/{id}/rounds/{roundNumber}": {
+      "get": {
+        "operationId": "FightsController_getFightRound",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roundNumber",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fight round statistics retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FightRoundDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fight id or legacyId or round number"
+          },
+          "404": {
+            "description": "Fight records not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a specific round of a fight from legacyId or newId",
+        "tags": [
+          "Fights"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Mike Goldberg v2 API",
+    "description": "API to consult actions and history of fights and fighters",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [
+    {
+      "url": "https://mike-goldberg-v2.fightanalytics.cc"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "MergePropagationDto": {
+        "type": "object",
+        "properties": {
+          "primaryFighterId": {
+            "type": "string",
+            "description": "UUID of the primary (surviving) fighter",
+            "example": "7417138e-f0d2-4111-94e9-c7f847839c32"
+          },
+          "primaryFighterLegacyId": {
+            "type": "number",
+            "description": "Legacy ID of the primary fighter (if available)",
+            "example": 123
+          },
+          "secondaryFighterIds": {
+            "description": "UUIDs of the merged (absorbed) fighters (any RFC UUID version)",
+            "example": [
+              "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "secondaryFighterLegacyIds": {
+            "description": "Legacy IDs of the merged fighters (only those that had one)",
+            "example": [
+              456,
+              789
+            ],
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "primaryFighterId",
+          "secondaryFighterIds"
+        ]
+      },
+      "MergePropagationResponseDto": {
+        "type": "object",
+        "properties": {
+          "updatedAuthorNewIdCount": {
+            "type": "number",
+            "description": "Number of actions updated for authorNewId"
+          },
+          "updatedTargetNewIdCount": {
+            "type": "number",
+            "description": "Number of actions updated for targetNewId"
+          },
+          "updatedAuthorIdCount": {
+            "type": "number",
+            "description": "Number of actions updated for authorId (legacy)"
+          },
+          "updatedTargetIdCount": {
+            "type": "number",
+            "description": "Number of actions updated for targetId (legacy)"
+          },
+          "clearedCacheEntries": {
+            "type": "number",
+            "description": "Number of cache entries cleared"
+          }
+        },
+        "required": [
+          "updatedAuthorNewIdCount",
+          "updatedTargetNewIdCount",
+          "updatedAuthorIdCount",
+          "updatedTargetIdCount",
+          "clearedCacheEntries"
+        ]
+      },
+      "StanceStatsDto": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "default": 0
+          },
+          "totalStrikes": {
+            "type": "number",
+            "default": 0
+          },
+          "significantStrikes": {
+            "type": "number",
+            "default": 0
+          },
+          "significantStrikesHead": {
+            "type": "number",
+            "default": 0
+          },
+          "significantStrikesBody": {
+            "type": "number",
+            "default": 0
+          },
+          "significantStrikesLegs": {
+            "type": "number",
+            "default": 0
+          },
+          "takedowns": {
+            "type": "number",
+            "default": 0
+          },
+          "takedownAttempts": {
+            "type": "number",
+            "default": 0
+          },
+          "takedownsDefended": {
+            "type": "number",
+            "default": 0
+          },
+          "submissionAttempts": {
+            "type": "number",
+            "default": 0
+          },
+          "knockdowns": {
+            "type": "number",
+            "default": 0
+          },
+          "elapsedControlTime": {
+            "type": "number",
+            "default": 0
+          },
+          "nearFalls": {
+            "type": "number",
+            "default": 0
+          },
+          "exposures": {
+            "type": "number",
+            "default": 0
+          },
+          "falls": {
+            "type": "number",
+            "default": 0
+          },
+          "pinnings": {
+            "type": "number",
+            "default": 0
+          },
+          "roles": {
+            "type": "number",
+            "default": 0
+          },
+          "reversals": {
+            "type": "number",
+            "default": 0
+          },
+          "turnovers": {
+            "type": "number",
+            "default": 0
+          },
+          "counterattacks": {
+            "type": "number",
+            "default": 0
+          },
+          "outOfBounds": {
+            "type": "number",
+            "default": 0
+          },
+          "escapes": {
+            "type": "number",
+            "default": 0
+          },
+          "stallings": {
+            "type": "number",
+            "default": 0
+          },
+          "passivities": {
+            "type": "number",
+            "default": 0
+          },
+          "advantages": {
+            "type": "number",
+            "default": 0
+          },
+          "transitions": {
+            "type": "number",
+            "default": 0
+          },
+          "stallsPassivities": {
+            "type": "number",
+            "default": 0
+          },
+          "cautions": {
+            "type": "number",
+            "default": 0
+          },
+          "technicalViolations": {
+            "type": "number",
+            "default": 0
+          },
+          "backtakes": {
+            "type": "number",
+            "default": 0
+          },
+          "pointsDeduction": {
+            "type": "number",
+            "default": 0
+          }
+        },
+        "required": [
+          "score",
+          "totalStrikes",
+          "significantStrikes",
+          "significantStrikesHead",
+          "significantStrikesBody",
+          "significantStrikesLegs",
+          "takedowns",
+          "takedownAttempts",
+          "takedownsDefended",
+          "submissionAttempts",
+          "knockdowns",
+          "elapsedControlTime",
+          "nearFalls",
+          "exposures",
+          "falls",
+          "pinnings",
+          "roles",
+          "reversals",
+          "turnovers",
+          "counterattacks",
+          "outOfBounds",
+          "escapes",
+          "stallings",
+          "passivities",
+          "advantages",
+          "transitions",
+          "stallsPassivities",
+          "cautions",
+          "technicalViolations",
+          "backtakes",
+          "pointsDeduction"
+        ]
+      },
+      "FighterStatsDto": {
+        "type": "object",
+        "properties": {
+          "wins": {
+            "type": "number",
+            "default": 0
+          },
+          "draws": {
+            "type": "number",
+            "default": 0
+          },
+          "losses": {
+            "type": "number",
+            "default": 0
+          },
+          "score": {
+            "type": "number",
+            "default": 0
+          },
+          "elapsedFightTime": {
+            "type": "number",
+            "default": 0
+          },
+          "totalRounds": {
+            "type": "number",
+            "default": 0
+          },
+          "standing": {
+            "$ref": "#/components/schemas/StanceStatsDto"
+          },
+          "ground": {
+            "$ref": "#/components/schemas/StanceStatsDto"
+          },
+          "fence": {
+            "$ref": "#/components/schemas/StanceStatsDto"
+          },
+          "riding": {
+            "$ref": "#/components/schemas/StanceStatsDto"
+          }
+        },
+        "required": [
+          "wins",
+          "draws",
+          "losses",
+          "score",
+          "elapsedFightTime",
+          "totalRounds",
+          "standing",
+          "ground",
+          "fence",
+          "riding"
+        ]
+      },
+      "FighterCareerDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "FightDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RoundOutcomeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "FightRoundDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SwapFightersDto": {
+        "type": "object",
+        "properties": {
+          "redCornerId": {
+            "type": "number",
+            "description": "Red corner fighter ID"
+          },
+          "blueCornerId": {
+            "type": "number",
+            "description": "Blue corner fighter ID"
+          },
+          "winnerName": {
+            "type": "string",
+            "description": "Winner name after swap"
+          }
+        },
+        "required": [
+          "redCornerId",
+          "blueCornerId",
+          "winnerName"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+connector:
+  name: "fight-analytics-certified"
+  description: "Credential-safe Fight Analytics connector contract smoke test"
+  filename: "fight-analytics-certified.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Certified smoke"
+      value: "run_certified_smoke"

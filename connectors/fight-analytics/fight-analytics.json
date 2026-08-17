@@ -7,6 +7,15 @@
         "summary": "List promotions",
         "parameters": [
           {
+            "name": "legacyId",
+            "required": false,
+            "in": "query",
+            "description": "Promotion legacy id (API v1)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "name",
             "required": false,
             "in": "query",
@@ -1141,6 +1150,15 @@
         "summary": "List events",
         "parameters": [
           {
+            "name": "legacyId",
+            "required": false,
+            "in": "query",
+            "description": "Event legacy id (API v1)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "name",
             "required": false,
             "in": "query",
@@ -1488,6 +1506,16 @@
             }
           },
           {
+            "name": "oneEventId",
+            "required": false,
+            "in": "query",
+            "description": "ONE event id, or several separated by comma",
+            "schema": {
+              "example": "123f22e0af4c70c60b054551,123f22e0af4c70c60b054552",
+              "type": "string"
+            }
+          },
+          {
             "name": "per_page",
             "required": false,
             "in": "header",
@@ -1583,6 +1611,15 @@
         "operationId": "listFighters",
         "summary": "List fighters",
         "parameters": [
+          {
+            "name": "legacyId",
+            "required": false,
+            "in": "query",
+            "description": "Fighter legacy id (API v1)",
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "firstName",
             "required": false,
@@ -2047,6 +2084,15 @@
         "summary": "List fights",
         "parameters": [
           {
+            "name": "legacyId",
+            "required": false,
+            "in": "query",
+            "description": "Fight legacy id (API v1)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "eventId",
             "required": false,
             "in": "query",
@@ -2167,6 +2213,16 @@
             }
           },
           {
+            "name": "oneFightId",
+            "required": false,
+            "in": "query",
+            "description": "ONE fight id, or several separated by comma",
+            "schema": {
+              "example": "123f22e0af4c70c60b054551,123f22e0af4c70c60b054552",
+              "type": "string"
+            }
+          },
+          {
             "name": "per_page",
             "required": false,
             "in": "header",
@@ -2256,6 +2312,99 @@
           }
         ]
       }
+    },
+    "/one/events": {
+      "get": {
+        "operationId": "listOneEvents",
+        "summary": "List events available on the ONE API",
+        "parameters": [
+          {
+            "name": "skip",
+            "required": false,
+            "in": "query",
+            "description": "How many events to skip",
+            "schema": {
+              "default": "0",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "How many events to return (1-100)",
+            "schema": {
+              "default": "10",
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "description": "Which slice of the ONE calendar to list",
+            "schema": {
+              "default": "upcoming",
+              "enum": [
+                "upcoming",
+                "past",
+                "live"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ONE"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "x-certification": {
+          "status": "unverified-forbidden",
+          "failureCode": "SCOPE_FORBIDDEN"
+        }
+      }
+    },
+    "/one/events/{oneEventId}": {
+      "get": {
+        "operationId": "getOneEvent",
+        "summary": "Fetch a ONE event with every bout of every card, flattened",
+        "parameters": [
+          {
+            "name": "oneEventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ONE"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "x-certification": {
+          "status": "unverified",
+          "failureCode": "SCOPE_UNVERIFIED"
+        }
+      }
     }
   },
   "info": {
@@ -2267,7 +2416,7 @@
   "tags": [],
   "servers": [
     {
-      "url": "https://fight-api-v2.herokuapp.com"
+      "url": "https://api.fightanalytics.cc"
     }
   ],
   "components": {
@@ -2571,10 +2720,7 @@
           },
           "syncError": {
             "type": "string",
-            "example": null,
             "description": "Promotion sync error",
-            "default": null,
-            "nullable": true,
             "readOnly": true
           }
         },
@@ -2607,17 +2753,20 @@
           "createdBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who created this record"
+            "description": "Email of user who created this record",
+            "nullable": true
           },
           "updatedBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who last updated this record"
+            "description": "Email of user who last updated this record",
+            "nullable": true
           },
           "deletedBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who deleted this record"
+            "description": "Email of user who deleted this record",
+            "nullable": true
           },
           "id": {
             "type": "string",
@@ -2627,9 +2776,7 @@
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Promotion legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Promotion legacy id"
           },
           "name": {
             "type": "string",
@@ -2639,7 +2786,8 @@
           "label": {
             "type": "string",
             "example": "UFC",
-            "description": "Promotion label"
+            "description": "Promotion label",
+            "nullable": true
           },
           "enclosure": {
             "type": "string",
@@ -2953,7 +3101,8 @@
           "nextPage": {
             "type": "number",
             "example": 2,
-            "description": "Next page"
+            "description": "Next page",
+            "nullable": true
           },
           "prevPage": {
             "type": "number",
@@ -3295,18 +3444,13 @@
           },
           "syncError": {
             "type": "string",
-            "example": null,
             "description": "Promotion sync error",
-            "default": null,
-            "nullable": true,
             "readOnly": true
           },
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Promotion legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Promotion legacy id"
           }
         }
       },
@@ -3597,10 +3741,7 @@
           },
           "syncError": {
             "type": "string",
-            "example": null,
             "description": "Venue sync error",
-            "default": null,
-            "nullable": true,
             "readOnly": true
           }
         },
@@ -3633,7 +3774,8 @@
           "createdBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who created this record"
+            "description": "Email of user who created this record",
+            "nullable": true
           },
           "updatedBy": {
             "type": "string",
@@ -3643,7 +3785,8 @@
           "deletedBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who deleted this record"
+            "description": "Email of user who deleted this record",
+            "nullable": true
           },
           "id": {
             "type": "string",
@@ -3928,9 +4071,7 @@
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Venue legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Venue legacy id"
           },
           "syncError": {
             "type": "string",
@@ -4267,18 +4408,13 @@
           },
           "syncError": {
             "type": "string",
-            "example": null,
             "description": "Venue sync error",
-            "default": null,
-            "nullable": true,
             "readOnly": true
           },
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Venue legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Venue legacy id"
           }
         }
       },
@@ -4569,10 +4705,7 @@
           },
           "syncError": {
             "type": "string",
-            "example": null,
             "description": "Team sync error",
-            "default": null,
-            "nullable": true,
             "readOnly": true
           }
         },
@@ -4615,7 +4748,8 @@
           "deletedBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who deleted this record"
+            "description": "Email of user who deleted this record",
+            "nullable": true
           },
           "id": {
             "type": "string",
@@ -4900,9 +5034,7 @@
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Team legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Team legacy id"
           },
           "syncError": {
             "type": "string",
@@ -5239,18 +5371,13 @@
           },
           "syncError": {
             "type": "string",
-            "example": null,
             "description": "Team sync error",
-            "default": null,
-            "nullable": true,
             "readOnly": true
           },
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Team legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Team legacy id"
           }
         }
       },
@@ -5284,9 +5411,9 @@
           },
           "date": {
             "type": "string",
-            "format": "date",
             "example": "2022-11-12",
-            "description": "Event date"
+            "description": "Event date",
+            "format": "date"
           },
           "country": {
             "type": "string",
@@ -5562,10 +5689,7 @@
           },
           "syncError": {
             "type": "string",
-            "example": null,
             "description": "Event sync error",
-            "default": null,
-            "nullable": true,
             "readOnly": true
           }
         },
@@ -5610,7 +5734,8 @@
           "deletedBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who deleted this record"
+            "description": "Email of user who deleted this record",
+            "nullable": true
           },
           "id": {
             "type": "string",
@@ -5910,9 +6035,7 @@
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Event legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Event legacy id"
           },
           "oneEventId": {
             "type": "string",
@@ -6002,7 +6125,8 @@
           "deletedBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who deleted this record"
+            "description": "Email of user who deleted this record",
+            "nullable": true
           },
           "id": {
             "type": "string",
@@ -6302,9 +6426,7 @@
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Event legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Event legacy id"
           },
           "oneEventId": {
             "type": "string",
@@ -6386,9 +6508,9 @@
           },
           "date": {
             "type": "string",
-            "format": "date",
             "example": "2022-11-12",
-            "description": "Event date"
+            "description": "Event date",
+            "format": "date"
           },
           "country": {
             "type": "string",
@@ -6664,18 +6786,13 @@
           },
           "syncError": {
             "type": "string",
-            "example": null,
             "description": "Event sync error",
-            "default": null,
-            "nullable": true,
             "readOnly": true
           },
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Event legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Event legacy id"
           }
         }
       },
@@ -7112,10 +7229,7 @@
           },
           "syncError": {
             "type": "string",
-            "example": null,
             "description": "Fighter sync error",
-            "default": null,
-            "nullable": true,
             "readOnly": true
           }
         },
@@ -7146,7 +7260,8 @@
           "createdBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who created this record"
+            "description": "Email of user who created this record",
+            "nullable": true
           },
           "updatedBy": {
             "type": "string",
@@ -7156,7 +7271,8 @@
           "deletedBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who deleted this record"
+            "description": "Email of user who deleted this record",
+            "nullable": true
           },
           "id": {
             "type": "string",
@@ -7176,7 +7292,8 @@
           "nickname": {
             "type": "string",
             "example": "Spider",
-            "description": "Fighter nickname"
+            "description": "Fighter nickname",
+            "nullable": true
           },
           "sport": {
             "type": "string",
@@ -7195,32 +7312,38 @@
           "pictures": {
             "type": "string",
             "example": "http://photo.com.br/andersonsilva",
-            "description": "Fighter pictures link"
+            "description": "Fighter pictures link",
+            "nullable": true
           },
           "profileImageUrl": {
             "type": "string",
             "example": "https://example.r2.dev/fighters/profile/fighter-123.jpg",
-            "description": "Fighter profile image URL (Cloudflare R2)"
+            "description": "Fighter profile image URL (Cloudflare R2)",
+            "nullable": true
           },
           "fullBodyImageUrl": {
             "type": "string",
             "example": "https://example.r2.dev/fighters/fullbody/fighter-123-fullbody.jpg",
-            "description": "Fighter full body image URL (Cloudflare R2)"
+            "description": "Fighter full body image URL (Cloudflare R2)",
+            "nullable": true
           },
           "dateOfBirth": {
             "type": "string",
             "example": "1997-12-01",
-            "description": "Fighter date of birth"
+            "description": "Fighter date of birth",
+            "nullable": true
           },
           "yearOfBirth": {
             "type": "number",
             "example": 1997,
-            "description": "Fighter year of birth"
+            "description": "Fighter year of birth",
+            "nullable": true
           },
           "age": {
             "type": "number",
             "example": 20,
-            "description": "Fighter age"
+            "description": "Fighter age",
+            "nullable": true
           },
           "height": {
             "type": "number",
@@ -7230,7 +7353,8 @@
           "weight": {
             "type": "number",
             "example": 140,
-            "description": "Fighter weight"
+            "description": "Fighter weight",
+            "nullable": true
           },
           "wins": {
             "type": "number",
@@ -7563,7 +7687,8 @@
               "SUPER_HEAVY_WEIGHT",
               "WELTER_WEIGHT",
               "STRAW_WEIGHT"
-            ]
+            ],
+            "nullable": true
           },
           "gender": {
             "type": "string",
@@ -7591,9 +7716,7 @@
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Event legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Event legacy id"
           },
           "syncError": {
             "type": "string",
@@ -8281,9 +8404,9 @@
             "description": "Total fights that had their corner reassigned",
             "example": 5
           },
-          "migratedCartelsCount": {
+          "discardedCartelsCount": {
             "type": "number",
-            "description": "Total cartels migrated to the primary fighter",
+            "description": "Total secondary fighter cartels discarded (soft-deleted) during the merge",
             "example": 3
           }
         },
@@ -8291,7 +8414,7 @@
           "primaryFighter",
           "mergedCount",
           "updatedFightsCount",
-          "migratedCartelsCount"
+          "discardedCartelsCount"
         ]
       },
       "GetOneFighterDto": {
@@ -8326,7 +8449,8 @@
           "deletedBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who deleted this record"
+            "description": "Email of user who deleted this record",
+            "nullable": true
           },
           "id": {
             "type": "string",
@@ -8365,17 +8489,20 @@
           "pictures": {
             "type": "string",
             "example": "http://photo.com.br/andersonsilva",
-            "description": "Fighter pictures link"
+            "description": "Fighter pictures link",
+            "nullable": true
           },
           "profileImageUrl": {
             "type": "string",
             "example": "https://example.r2.dev/fighters/profile/fighter-123.jpg",
-            "description": "Fighter profile image URL (Cloudflare R2)"
+            "description": "Fighter profile image URL (Cloudflare R2)",
+            "nullable": true
           },
           "fullBodyImageUrl": {
             "type": "string",
             "example": "https://example.r2.dev/fighters/fullbody/fighter-123-fullbody.jpg",
-            "description": "Fighter full body image URL (Cloudflare R2)"
+            "description": "Fighter full body image URL (Cloudflare R2)",
+            "nullable": true
           },
           "dateOfBirth": {
             "type": "string",
@@ -8385,7 +8512,8 @@
           "yearOfBirth": {
             "type": "number",
             "example": 1997,
-            "description": "Fighter year of birth"
+            "description": "Fighter year of birth",
+            "nullable": true
           },
           "age": {
             "type": "number",
@@ -8754,16 +8882,12 @@
           "promotionId": {
             "type": "string",
             "example": "7417138e-f0d2-4111-94e9-c7f847839c32",
-            "description": "Fighter promotion id",
-            "default": null,
-            "nullable": true
+            "description": "Fighter promotion id"
           },
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Event legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Event legacy id"
           },
           "syncError": {
             "type": "string",
@@ -9220,18 +9344,13 @@
           },
           "syncError": {
             "type": "string",
-            "example": null,
             "description": "Fighter sync error",
-            "default": null,
-            "nullable": true,
             "readOnly": true
           },
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Fighter legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Fighter legacy id"
           }
         }
       },
@@ -9451,10 +9570,7 @@
           },
           "syncError": {
             "type": "string",
-            "example": null,
             "description": "Fight sync error",
-            "default": null,
-            "nullable": true,
             "readOnly": true
           }
         },
@@ -9499,7 +9615,8 @@
           "deletedBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who deleted this record"
+            "description": "Email of user who deleted this record",
+            "nullable": true
           },
           "id": {
             "type": "string",
@@ -9534,7 +9651,8 @@
           "roundTime": {
             "type": "number",
             "example": 5,
-            "description": "Fight round time"
+            "description": "Fight round time",
+            "nullable": true
           },
           "sport": {
             "type": "string",
@@ -9575,7 +9693,8 @@
               "SUPER_HEAVY_WEIGHT",
               "WELTER_WEIGHT",
               "STRAW_WEIGHT"
-            ]
+            ],
+            "nullable": true
           },
           "winner": {
             "type": "string",
@@ -9592,7 +9711,8 @@
           "finishedAtRound": {
             "type": "number",
             "example": 3,
-            "description": "Fight finished at round"
+            "description": "Fight finished at round",
+            "nullable": true
           },
           "result": {
             "type": "string",
@@ -9624,9 +9744,7 @@
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Fight legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Fight legacy id"
           },
           "oneFightId": {
             "type": "string",
@@ -9719,7 +9837,8 @@
           "deletedBy": {
             "type": "string",
             "example": "user@example.com",
-            "description": "Email of user who deleted this record"
+            "description": "Email of user who deleted this record",
+            "nullable": true
           },
           "id": {
             "type": "string",
@@ -9754,7 +9873,8 @@
           "roundTime": {
             "type": "number",
             "example": 5,
-            "description": "Fight round time"
+            "description": "Fight round time",
+            "nullable": true
           },
           "sport": {
             "type": "string",
@@ -9795,7 +9915,8 @@
               "SUPER_HEAVY_WEIGHT",
               "WELTER_WEIGHT",
               "STRAW_WEIGHT"
-            ]
+            ],
+            "nullable": true
           },
           "winner": {
             "type": "string",
@@ -9812,7 +9933,8 @@
           "finishedAtRound": {
             "type": "number",
             "example": 3,
-            "description": "Fight finished at round"
+            "description": "Fight finished at round",
+            "nullable": true
           },
           "result": {
             "type": "string",
@@ -9844,9 +9966,7 @@
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Fight legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Fight legacy id"
           },
           "oneFightId": {
             "type": "string",
@@ -10042,18 +10162,13 @@
           },
           "syncError": {
             "type": "string",
-            "example": null,
             "description": "Fight sync error",
-            "default": null,
-            "nullable": true,
             "readOnly": true
           },
           "legacyId": {
             "type": "number",
             "example": 10,
-            "description": "Fight legacy id",
-            "default": null,
-            "nullable": true
+            "description": "Fight legacy id"
           }
         }
       },
@@ -10141,6 +10256,264 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "ImportOneEventsDto": {
+        "type": "object",
+        "properties": {
+          "oneEventIds": {
+            "description": "ONE event ids to import",
+            "example": [
+              "123f22e0af4c70c60b054551"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "oneEventIds"
+        ]
+      },
+      "ImportResultDto": {
+        "type": "object",
+        "properties": {
+          "oneId": {
+            "type": "string",
+            "description": "ONE id of the imported record"
+          },
+          "status": {
+            "type": "string",
+            "description": "`created` and `restored` wrote to the database, `skipped` means it already existed, `failed` means nothing was written",
+            "enum": [
+              "created",
+              "restored",
+              "skipped",
+              "failed"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "description": "Local id of the record, absent only when the import failed"
+          },
+          "synced": {
+            "type": "boolean",
+            "description": "Whether the record reached the legacy API"
+          },
+          "syncError": {
+            "type": "string",
+            "description": "Why the legacy sync failed, when it did"
+          },
+          "error": {
+            "type": "string",
+            "description": "Why the import failed, when it did"
+          },
+          "warnings": {
+            "description": "Non blocking issues, e.g. an unmapped sport or a country we had to guess",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "oneId",
+          "status"
+        ]
+      },
+      "PreviewOneFightsDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Local event id the fights belong to"
+          },
+          "oneEventId": {
+            "type": "string",
+            "description": "ONE event id to read the card from"
+          },
+          "oneFightIds": {
+            "description": "Restrict the preview to these bouts. Defaults to all of them.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "eventId",
+          "oneEventId"
+        ]
+      },
+      "FighterDraftDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName"
+        ]
+      },
+      "FighterResolutionDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "`matched` found exactly one fighter, `will-create` found none, `ambiguous` needs the operator to pick",
+            "enum": [
+              "matched",
+              "will-create",
+              "ambiguous",
+              "error"
+            ]
+          },
+          "fighterId": {
+            "type": "string"
+          },
+          "candidates": {
+            "description": "Candidates to choose from when the status is `ambiguous`",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DuplicateFighterItemDto"
+            }
+          },
+          "draft": {
+            "description": "What would be created when the status is `will-create`",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FighterDraftDto"
+              }
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "BoutResolutionDto": {
+        "type": "object",
+        "properties": {
+          "oneFightId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "card": {
+            "type": "string"
+          },
+          "order": {
+            "type": "number",
+            "description": "Order the fight would get, main event highest"
+          },
+          "alreadyImported": {
+            "type": "boolean",
+            "description": "Whether this bout is already in the database"
+          },
+          "fightId": {
+            "type": "string",
+            "description": "Local fight id, when already imported"
+          },
+          "red": {
+            "$ref": "#/components/schemas/FighterResolutionDto"
+          },
+          "blue": {
+            "$ref": "#/components/schemas/FighterResolutionDto"
+          },
+          "sport": {
+            "type": "string"
+          },
+          "weightClass": {
+            "type": "string"
+          },
+          "warnings": {
+            "description": "Non blocking issues found while reading the bout",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "error": {
+            "type": "string",
+            "description": "Set when the bout cannot be imported at all"
+          }
+        },
+        "required": [
+          "oneFightId",
+          "title",
+          "order",
+          "alreadyImported",
+          "sport"
+        ]
+      },
+      "ImportOneBoutDto": {
+        "type": "object",
+        "properties": {
+          "oneFightId": {
+            "type": "string",
+            "description": "ONE bout id"
+          },
+          "redCornerId": {
+            "type": "string",
+            "description": "Red corner fighter id. Required only when the preview reported the athlete as ambiguous."
+          },
+          "blueCornerId": {
+            "type": "string",
+            "description": "Blue corner fighter id. Required only when the preview reported the athlete as ambiguous."
+          },
+          "createRedCorner": {
+            "type": "boolean",
+            "description": "Create a new fighter for the red corner instead of reusing a candidate. Lets the operator reject every suggestion of an ambiguous match."
+          },
+          "createBlueCorner": {
+            "type": "boolean",
+            "description": "Same as createRedCorner, for the blue corner."
+          },
+          "order": {
+            "type": "number",
+            "description": "Fight order. Defaults to the position on the ONE card, main event highest."
+          }
+        },
+        "required": [
+          "oneFightId"
+        ]
+      },
+      "ImportOneFightsDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Local event id the fights belong to"
+          },
+          "oneEventId": {
+            "type": "string",
+            "description": "ONE event id to read the card from"
+          },
+          "bouts": {
+            "description": "Bouts to import",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportOneBoutDto"
+            }
+          }
+        },
+        "required": [
+          "eventId",
+          "oneEventId",
+          "bouts"
         ]
       }
     }

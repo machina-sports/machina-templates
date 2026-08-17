@@ -1,0 +1,26 @@
+workflow:
+  name: "fight-analytics-certified-smoke"
+  title: "Fight Analytics Certified Smoke"
+  description: "Exercises the authenticated Fight Analytics connector contract and returns sanitized receipts only."
+  context-variables:
+    debugger:
+      enabled: false
+    fight-analytics-certified:
+      username: "$TEMP_CONTEXT_VARIABLE_FIGHT_ANALYTICS_USERNAME"
+      password: "$TEMP_CONTEXT_VARIABLE_FIGHT_ANALYTICS_PASSWORD"
+  inputs: {}
+  outputs:
+    operations: "$.get('operations', [])"
+    workflow-status: "'executed' if len($.get('operations', [])) == 24 and not [item for item in $.get('operations', []) if item.get('failureCode') not in (None, 'SCOPE_FORBIDDEN', 'SCOPE_UNVERIFIED')] else 'failed'"
+  tasks:
+    - type: "connector"
+      name: "run-certified-smoke"
+      description: "Authenticate in memory and emit only sanitized operation receipts."
+      connector:
+        name: "fight-analytics-certified"
+        command: "run_certified_smoke"
+      inputs:
+        username: "$.get('username')"
+        password: "$.get('password')"
+      outputs:
+        operations: "$.get('operations', [])"
