@@ -1,13 +1,13 @@
 {
   "approval_ref": "provider-attested-sports-skills-operations-v1",
   "distribution": "machina-sports-canonical",
-  "reviewed_source_commit": "120d5ccfd6d3c6d1e068d3424bc1ce116bbdd545",
-  "reviewed_source_tree": "de99f537514af24cc240a67ca587bd6e274468fe",
+  "reviewed_source_commit": "bf96c8d84b308e2e23d7dd7ec8942e2da82f6c14",
+  "reviewed_source_tree": "86467e4958194c5d975e12e363f8f07caeedb024",
   "schema_version": "machina-reviewed-source/1",
   "sdist_filename": "machina_sports_canonical-0.4.1.tar.gz",
-  "sdist_sha256": "8d74ba917b33c6f10feea22b9cf41ac13d3ae6afce9e894b2ea7cb5390532221",
-  "source_date_epoch": 1786988387,
+  "sdist_sha256": "c5e1053620fe8f8e7b6dd5f4a07f4672cec3c80305dc8d88c8cffc71380e28f0",
+  "source_date_epoch": 1786991693,
   "version": "0.4.1",
   "wheel_filename": "machina_sports_canonical-0.4.1-py3-none-any.whl",
-  "wheel_sha256": "ceea3427bd68db3c3639422ba7aedd3a090bd5c8b78b5beefb8fbe8ab0d65e69"
+  "wheel_sha256": "cd454eb8411b5639af7313c713276bfa4a0dc72aab037b66ba451bc3e0f090bd"
 }

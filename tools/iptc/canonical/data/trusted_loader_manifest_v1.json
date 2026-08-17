@@ -3,7 +3,7 @@
   "owner_package": {
     "name": "machina-sports-canonical",
     "version": "0.4.1",
-    "release_digest": "sha256:f8a86927c3cec3d2a1549c68628bab598528d308f05a1802db06a13bbb11cd3a"
+    "release_digest": "sha256:96d1817fc0ba4357029860b73b5a2dddcc3738a80240a73cd443c7a30bf25e5b"
   },
   "runtime_files": [
     {
@@ -86,8 +86,8 @@
     },
     {
       "relative_path": "successor.py",
-      "byte_length": 202701,
-      "sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b",
+      "byte_length": 202999,
+      "sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576",
       "executable_module": true
     },
     {
@@ -217,138 +217,138 @@
     {
       "symbol": "_IdentityResolutionProvider",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_load_source_artifact",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_build_statistic_fact",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_build_period_descriptor",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_build_rolling_event_anchor",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_validate_identity_occurrence",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_derive_provider_scoped_entity_id",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_derive_operational_resource_id",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_derive_operational_id_ledger",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_normalize_spatial_evidence",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_derive_spatial_distance",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_derive_spatial_zone",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_build_canonical_spatial_evidence",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_build_coverage_evidence",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_expand_managed_collection_patterns",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_build_successor_provenance",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_build_successor_envelope",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_project_successor_graph",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_validate_successor_envelope",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_validate_successor_envelope_bytes",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_validate_longitudinal_envelope_bytes",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_statistic_projection_disposition",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_load_0_3_compatibility_closure",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_load_0_4_closure",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_validate_source_shape_schema",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "_validate_source_artifact_shape",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     },
     {
       "symbol": "execute_adapter_operation",
       "defining_module_path": "successor.py",
-      "source_file_sha256": "sha256:ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b"
+      "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     }
   ],
-  "aggregate_runtime_digest": "sha256:f8a86927c3cec3d2a1549c68628bab598528d308f05a1802db06a13bbb11cd3a"
+  "aggregate_runtime_digest": "sha256:96d1817fc0ba4357029860b73b5a2dddcc3738a80240a73cd443c7a30bf25e5b"
 }

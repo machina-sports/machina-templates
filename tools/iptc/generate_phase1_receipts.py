@@ -17,7 +17,7 @@ PACKAGE_RECEIPT = PACKAGE / "package-receipt.json"
 LEGACY_RECEIPT = DATA / "legacy_0_2_surface.json"
 DISTRIBUTION_VERSION = "0.4.1"
 RUNTIME_CONTRACT_VERSION = "0.4.1"
-SOURCE_COMMIT = "120d5ccfd6d3c6d1e068d3424bc1ce116bbdd545"
+SOURCE_COMMIT = "bf96c8d84b308e2e23d7dd7ec8942e2da82f6c14"
 
 PRIVATE_SYMBOLS = (
     "_IdentityResolutionProvider", "_load_source_artifact", "_build_statistic_fact",

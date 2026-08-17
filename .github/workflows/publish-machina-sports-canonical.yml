@@ -90,7 +90,7 @@ jobs:
       - name: Build the release artefacts reproducibly
         run: python packaging/machina_sports_canonical/release.py . dist
         env:
-          SOURCE_DATE_EPOCH: "1786988387"
+          SOURCE_DATE_EPOCH: "1786991693"
 
       # Fails, printing the filename it expected, when the tag names a version the
       # build did not produce. A `-v0.4.1` tag on a tree that still declares 0.4.0
