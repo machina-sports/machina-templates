@@ -2,7 +2,7 @@
   "consumer": "machina-sports/sports-skills",
   "source_repository": "machina-sports/machina-templates",
   "source_path": "tools/iptc/canonical",
-  "source_commit": "UNRELEASED",
+  "source_commit": "a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671",
   "profile": "machina-iptc-profile/1.3",
   "schema_version": "canonical-observation/1.2",
   "machina_schema_version": "machina-sports-schema/1.1",

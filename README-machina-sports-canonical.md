@@ -70,9 +70,9 @@ generation commands.
 These bytes are not authored in this distribution. They are published from
 `machina-templates` at `tools/iptc/canonical`, unmodified. `package-receipt.json`
 ships inside the package and records the distribution version, source path, and
-complete SHA-256 runtime/data manifest. The 0.3.0 release metadata pins the
+complete SHA-256 runtime/data manifest. The 0.4.0 release metadata pins the
 reviewed owner source commit
-`ddf12f04803eeb03016c10759aaf2a2be8e85f84`:
+`a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671`:
 
 ```python
 import json, pathlib, machina_sports_canonical

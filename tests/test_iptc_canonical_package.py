@@ -438,7 +438,7 @@ PACKAGING_INPUTS_THE_FILTERS_MUST_REACH = (
 #: The tag that releases this version, spelled exactly. Distribution-scoped
 #: rather than a bare `v0.1.0`: this repository also releases templates, and a
 #: shared tag namespace makes one release trigger the other's workflow.
-RELEASE_TAG = "machina-sports-canonical-v0.3.0"
+RELEASE_TAG = "machina-sports-canonical-v0.4.0"
 
 #: The pattern the publish workflow triggers on. Version-open so 0.1.1 needs no
 #: workflow edit, distribution-scoped so nothing else in the namespace matches.
@@ -563,7 +563,7 @@ RELEASE_DIGEST_FILE = "SHA256SUMS"
 #: published digest with the reviewed one" named no artefact to compare against.
 #: One checked-in file makes cross-interpreter reproducibility falsifiable: a leg
 #: whose bytes differ fails against the same rows every other leg passes against.
-RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.3.0.sha256"
+RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.4.0.sha256"
 RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 
 #: Exactly the rows that file carries, in exactly that order: the wheel, then the
@@ -577,21 +577,24 @@ RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 #: A path prefix would make each of those a different file and the comparison
 #: unperformable in two of the three.
 REVIEWED_RELEASE_DIGESTS = (
-    ("machina_sports_canonical-0.3.0-py3-none-any.whl",
-      "52c2b5a321a60ca242166e5522307f72ef974a460e8f906775bb3cf0480d22a1"),
-    ("machina_sports_canonical-0.3.0.tar.gz",
-      "0cbb26540e346daf86a31cc2ed2b1126da0e28c5836114ccb6cd39212c915024"),
+    ("machina_sports_canonical-0.4.0-py3-none-any.whl",
+      "7f9befa7ba89b7d8370d0120558573885fb5966e9c6f9d05f8937c4a4c92d1a4"),
+    ("machina_sports_canonical-0.4.0.tar.gz",
+      "0b4b9ef47d5475124ed87b2e0b184952a4c10bc02619a03c33da8f794247f3ae"),
 )
 
-CANDIDATE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.4.0.sha256"
-CANDIDATE_CHECKSUM_PATH = REPO_ROOT / CANDIDATE_CHECKSUM_FILE
-CANDIDATE_RELEASE_DIGESTS = (
-    ("{0}-py3-none-any.whl".format(ARTIFACT_STEM), "UNRELEASED"),
-    ("{0}.tar.gz".format(ARTIFACT_STEM), "UNRELEASED"),
+HISTORICAL_0_3_CHECKSUM_FILE = \
+    "docs/iptc/machina-sports-canonical-0.3.0.sha256"
+HISTORICAL_0_3_CHECKSUM_PATH = REPO_ROOT / HISTORICAL_0_3_CHECKSUM_FILE
+HISTORICAL_0_3_RELEASE_DIGESTS = (
+    ("machina_sports_canonical-0.3.0-py3-none-any.whl",
+     "52c2b5a321a60ca242166e5522307f72ef974a460e8f906775bb3cf0480d22a1"),
+    ("machina_sports_canonical-0.3.0.tar.gz",
+     "0cbb26540e346daf86a31cc2ed2b1126da0e28c5836114ccb6cd39212c915024"),
 )
 
 #: The independently verified 0.2.0 rows are immutable release history. They are
-#: deliberately not derived from ``ARTIFACT_STEM``, which now names 0.3.0.
+#: deliberately not derived from ``ARTIFACT_STEM``, which now names 0.4.0.
 HISTORICAL_0_2_RELEASE_DIGESTS = (
     ("machina_sports_canonical-0.2.0-py3-none-any.whl",
      "de6bd5cf6425157cb969ecf483ce103de2e1ad37666b10d37ea9763d34d69e31"),
@@ -723,7 +726,7 @@ FIXED_POINT_SEQUENCE_PHRASES = (
 #: Asserted in the release document as well as in the receipt, because a releaser
 #: reconstructing a build reads the document and must not have to open a JSON file
 #: to discover which two values the build depends on.
-FIXED_POINT_COMMIT = "ddf12f04803eeb03016c10759aaf2a2be8e85f84"
+FIXED_POINT_COMMIT = "a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671"
 
 #: The immutable source pin and epoch for the historical 0.2.0 fixed point.
 HISTORICAL_0_2_FIXED_POINT_COMMIT = \
@@ -761,8 +764,8 @@ GITHUB_RELEASE_ATTACHMENTS = ("dist/*.whl", "dist/*.tar.gz",
 #: timestamp with one fixed value. It is the source commit's own time rather than
 #: an arbitrary constant so the number in the workflow can be re-derived from the
 #: tree it describes.
-CANONICAL_SOURCE_COMMIT = "UNRELEASED"
-RELEASE_SOURCE_DATE_EPOCH = "1786893899"
+CANONICAL_SOURCE_COMMIT = "a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671"
+RELEASE_SOURCE_DATE_EPOCH = "1786951696"
 
 #: The one place a release is built. `SOURCE_DATE_EPOCH` is enough for the wheel —
 #: `wheel` stamps every zip entry with it — and this backend's sdist ignores it
@@ -1742,14 +1745,6 @@ def reviewed_digest_rows() -> list:
     """
     rows = []
     for line in RELEASE_CHECKSUM_PATH.read_text(encoding="utf-8").splitlines():
-        digest, separator, name = line.partition("  ")
-        rows.append((name, digest) if separator else (line, ""))
-    return rows
-
-
-def candidate_digest_rows() -> list:
-    rows = []
-    for line in CANDIDATE_CHECKSUM_PATH.read_text(encoding="utf-8").splitlines():
         digest, separator, name = line.partition("  ")
         rows.append((name, digest) if separator else (line, ""))
     return rows
@@ -2990,13 +2985,23 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
                  if "tests/test_iptc_" in command]
         self.assertEqual(named, ["python {0} -v".format(PACKAGE_PROOF_SUITE)])
 
-    def test_the_proof_job_does_not_claim_unreleased_candidate_digests(self):
+    def test_the_proof_job_builds_and_checks_this_interpreters_release_digests(self):
         commands = run_commands(self.proof)
         builds = [command for command in commands
                    if RELEASE_HELPER in command or "-m build" in command]
-        self.assertEqual(builds, [])
-        self.assertFalse(any("sha256sum" in command for command in commands))
-        self.assertNotIn(CANDIDATE_CHECKSUM_FILE, self.proof)
+        self.assertEqual(
+            builds,
+            ['python {0} . "$RUNNER_TEMP/release"'.format(RELEASE_HELPER)])
+        digests = [command for command in commands if "sha256sum" in command]
+        self.assertEqual(len(digests), 1, digests)
+        self.assertIn("*.whl *.tar.gz", digests[0])
+        comparisons = [command for command in commands
+                       if command.startswith("diff -u")]
+        self.assertEqual(len(comparisons), 1, comparisons)
+        self.assertIn(RELEASE_CHECKSUM_FILE, comparisons[0])
+        self.assertIn('SOURCE_DATE_EPOCH: "{0}"'.format(
+            RELEASE_SOURCE_DATE_EPOCH), self.proof)
+        self.assertIn("rm -rf machina_sports_canonical.egg-info", commands)
 
     def test_the_proof_job_keeps_its_clean_tree_gate_after_the_release_build(self):
         """The gate is what catches a build byproduct the step above did not clean
@@ -3004,11 +3009,10 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
         commands = run_commands(self.proof)
         self.assertTrue(any("git status --porcelain" in command
                             for command in commands), commands)
-        suite_run = line_index(
-            self.proof, "python {0} -v".format(PACKAGE_PROOF_SUITE))
-        self.assertNotEqual(suite_run, -1)
-        self.assertLess(suite_run,
-                        line_index(self.proof, "git status --porcelain"))
+        release_build = line_index(self.proof, RELEASE_HELPER)
+        self.assertNotEqual(release_build, -1)
+        self.assertLess(release_build,
+                         line_index(self.proof, "git status --porcelain"))
 
     def test_the_validation_job_stays_on_one_interpreter_and_keeps_every_gate(self):
         """The matrix is additive. If proving two more interpreters cost the pin
@@ -3452,28 +3456,33 @@ class TestTheReleaseArtefactsAreReproducible(unittest.TestCase):
         receipt = json.loads(
             (CANONICAL_ROOT / "package-receipt.json").read_text(encoding="utf-8"))
         self.assertEqual(receipt["source_commit"], CANONICAL_SOURCE_COMMIT)
-        self.assertEqual(CANONICAL_SOURCE_COMMIT, "UNRELEASED")
+        self.assertEqual(CANONICAL_SOURCE_COMMIT, FIXED_POINT_COMMIT)
         self.assertRegex(RELEASE_SOURCE_DATE_EPOCH, r"^[1-9][0-9]+$")
+        found = subprocess.run(
+            ["git", "show", "-s", "--format=%ct", CANONICAL_SOURCE_COMMIT],
+            cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=120)
+        self.assertEqual(found.returncode, 0, found.stderr)
+        self.assertEqual(found.stdout.strip(), RELEASE_SOURCE_DATE_EPOCH)
 
 
-class TestTheCandidateReleaseDigestsRemainUnreleased(unittest.TestCase):
-    """Uncommitted candidate bytes cannot truthfully have release digests."""
+class TestTheReviewedReleaseDigestsAreTheAuthority(unittest.TestCase):
+    """The fixed-point release bytes have one checked-in authority."""
 
     def test_the_checksum_file_is_checked_in_as_sha256sum_writes_it(self):
         """Byte-exact, because every job compares it with ``diff -u`` against
         generated output. A stray blank line, a single-space separator or a
         trailing space is a red diff on a release whose bytes are correct."""
-        self.assertTrue(CANDIDATE_CHECKSUM_PATH.is_file())
+        self.assertTrue(RELEASE_CHECKSUM_PATH.is_file())
         self.assertEqual(
-            CANDIDATE_CHECKSUM_PATH.read_text(encoding="utf-8"),
+            RELEASE_CHECKSUM_PATH.read_text(encoding="utf-8"),
             "".join("{0}  {1}\n".format(digest, name)
-                    for name, digest in CANDIDATE_RELEASE_DIGESTS))
+                    for name, digest in REVIEWED_RELEASE_DIGESTS))
 
     def test_the_rows_are_the_two_artefacts_of_this_version_in_a_stable_order(self):
         """The wheel then the sdist — the order ``sha256sum *.whl *.tar.gz``
         produces on every leg. Order is part of the file because the comparison is
         a diff, not a set membership test."""
-        self.assertEqual([name for name, _ in candidate_digest_rows()],
+        self.assertEqual([name for name, _ in reviewed_digest_rows()],
                          ["{0}-py3-none-any.whl".format(ARTIFACT_STEM),
                           "{0}.tar.gz".format(ARTIFACT_STEM)])
 
@@ -3481,10 +3490,10 @@ class TestTheCandidateReleaseDigestsRemainUnreleased(unittest.TestCase):
         """The proof job builds into ``$RUNNER_TEMP``, the release job into
         ``dist``, and the publish job checks from inside a downloaded ``dist``. A
         path prefix would make those three different files."""
-        for name, digest in candidate_digest_rows():
+        for name, digest in reviewed_digest_rows():
             with self.subTest(name=name):
                 self.assertNotIn("/", name)
-                self.assertEqual(digest, "UNRELEASED")
+                self.assertRegex(digest, r"^[0-9a-f]{64}$")
 
     def test_the_release_this_interpreter_builds_is_the_reviewed_release(self):
         """The gate itself, and — because the proof job runs this suite on 3.9 and
@@ -3492,17 +3501,19 @@ class TestTheCandidateReleaseDigestsRemainUnreleased(unittest.TestCase):
         fails its own leg against the rows the other one passes against."""
         self.assertEqual(
             {built().wheel.name, built().sdist.name},
-            {name for name, _ in CANDIDATE_RELEASE_DIGESTS})
-        for artefact in (built().wheel, built().sdist):
-            self.assertRegex(sha256_bytes(artefact.read_bytes()), r"^[0-9a-f]{64}$")
+            {name for name, _ in REVIEWED_RELEASE_DIGESTS})
+        actual = {artefact.name: sha256_bytes(artefact.read_bytes())
+                  for artefact in (built().wheel, built().sdist)}
+        expected = dict(REVIEWED_RELEASE_DIGESTS)
+        self.assertEqual(actual, expected)
 
     def test_the_checksum_file_is_outside_the_artefacts_it_describes(self):
         """A checksum shipped inside the archive it hashes cannot hash it, and a
         row for the file itself is a digest nothing can ever verify. Neither is
         possible while the file lives under ``docs/`` and nothing packages
         ``docs/`` — which is what this asserts rather than assumes."""
-        basename = Path(CANDIDATE_CHECKSUM_FILE).name
-        for name, _ in candidate_digest_rows():
+        basename = Path(RELEASE_CHECKSUM_FILE).name
+        for name, _ in reviewed_digest_rows():
             with self.subTest(name=name):
                 self.assertNotEqual(name, basename)
         for member in wheel_record(built().wheel):
@@ -3605,7 +3616,7 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
         self.assertTrue(
             fnmatch.fnmatch(RELEASE_TAG, RELEASE_TAG_GLOB),
             "{0} does not match {1}".format(RELEASE_TAG, RELEASE_TAG_GLOB))
-        self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.3.0")
+        self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.4.0")
 
     def test_the_workflow_scopes_each_write_permission_to_the_job_that_needs_it(self):
         """``id-token: write`` on the workflow would hand the upload identity to
@@ -4128,17 +4139,15 @@ class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
 
     def test_the_docs_require_a_clean_install_from_the_index_afterwards(self):
         self.assertMentions(
-            "pip install {0}==0.3.0".format(DISTRIBUTION),
+            "pip install {0}==0.4.0".format(DISTRIBUTION),
             "clean",
         )
-        self.assertNotIn("pip install {0}=={1}".format(DISTRIBUTION, VERSION),
-                         self.text)
         self.assertIn(IMPORT_NAME, self.text)
 
     def test_the_docs_state_the_recovery_path_and_that_a_version_is_spent(self):
-        """A bad 0.3.0 cannot be replaced; deleting it does not free the version.
+        """A bad 0.4.0 cannot be replaced; deleting it does not free the version.
         A document that omits that invites exactly the wrong recovery."""
-        self.assertMentions("yank", "0.3.1", "cannot")
+        self.assertMentions("yank", "0.4.1", "cannot")
 
     def test_the_docs_record_the_reviewed_digests_and_name_the_file_that_holds_them(self):
         """The document said "the digests below" and listed none.
@@ -4223,6 +4232,18 @@ class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
             with self.subTest(interpreter=version):
                 self.assertIn(version, self.text)
         for name, digest in HISTORICAL_RELEASE_DIGESTS:
+            with self.subTest(artefact=name):
+                self.assertIn(name, self.text)
+                self.assertIn(digest, self.text)
+
+    def test_the_docs_and_checksum_preserve_0_3_0_as_history(self):
+        """Finalizing 0.4 must not rewrite the preceding release evidence."""
+        self.assertIn(HISTORICAL_0_3_CHECKSUM_FILE, self.text)
+        expected = "".join("{0}  {1}\n".format(digest, name)
+                           for name, digest in HISTORICAL_0_3_RELEASE_DIGESTS)
+        self.assertEqual(
+            HISTORICAL_0_3_CHECKSUM_PATH.read_text(encoding="utf-8"), expected)
+        for name, digest in HISTORICAL_0_3_RELEASE_DIGESTS:
             with self.subTest(artefact=name):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
@@ -4335,9 +4356,9 @@ class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
             (CANONICAL_ROOT / "package-receipt.json").read_text(encoding="utf-8"))
         manifest = json.loads(
             (REPO_ROOT / "tools/iptc/vendored-manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(receipt["source_commit"], "UNRELEASED")
-        self.assertEqual(manifest["source_commit"], "UNRELEASED")
-        self.assertEqual(CANONICAL_SOURCE_COMMIT, "UNRELEASED")
+        self.assertEqual(receipt["source_commit"], FIXED_POINT_COMMIT)
+        self.assertEqual(manifest["source_commit"], FIXED_POINT_COMMIT)
+        self.assertEqual(CANONICAL_SOURCE_COMMIT, FIXED_POINT_COMMIT)
         self.assertIn(FIXED_POINT_COMMIT, self.text)
 
     def test_the_docs_no_longer_claim_the_renewed_digests_are_unverified(self):
@@ -4383,7 +4404,7 @@ class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
     def test_the_docs_do_not_present_the_superseded_digests_as_current(self):
         """Two digest pairs in one document is a reading hazard. The reviewed file
         is named as the authority, and the superseded rows must not be the ones
-        the active 0.3.0 checksum authority is said to hold."""
+        the active 0.4.0 checksum authority is said to hold."""
         current = {digest for _, digest in REVIEWED_RELEASE_DIGESTS}
         stale = {digest for _, digest in SUPERSEDED_RELEASE_DIGESTS}
         self.assertEqual(current & stale, set(),

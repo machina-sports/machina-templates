@@ -32,7 +32,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 IMPORT_NAME = "machina_sports_canonical"
 ARTIFACT_STEM = "machina_sports_canonical-0.4.0"
 RELEASE_HELPER = "packaging/machina_sports_canonical/release.py"
-RELEASE_SOURCE_DATE_EPOCH = "1786893899"
+RELEASE_CHECKSUM_PATH = (REPO_ROOT / "docs/iptc/"
+                         "machina-sports-canonical-0.4.0.sha256")
+RELEASE_SOURCE_DATE_EPOCH = "1786951696"
 
 # The same closed staging set as the package proof.  Building a disposable copy
 # avoids setuptools writing egg-info into the checkout.
@@ -499,12 +501,17 @@ class TestInstalledCanonicalConformance(unittest.TestCase):
         artifacts = sorted(list(outdir.glob("*.whl"))
                            + list(outdir.glob("*.tar.gz")))
         actual = {path.name: sha256(path) for path in artifacts}
+        expected = reviewed_digests()
         expected_names = {
             "{0}-py3-none-any.whl".format(ARTIFACT_STEM),
             "{0}.tar.gz".format(ARTIFACT_STEM),
         }
         if set(actual) != expected_names:
             raise AssertionError("candidate build artifact set is invalid: {0!r}".format(actual))
+        if actual != expected:
+            raise AssertionError(
+                "reviewed build digests differ:\nactual={0!r}\nexpected={1!r}".format(
+                    actual, expected))
         wheel_name = "{0}-py3-none-any.whl".format(ARTIFACT_STEM)
         wheel = outdir / wheel_name
 
