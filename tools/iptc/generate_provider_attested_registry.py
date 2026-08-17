@@ -326,6 +326,162 @@ def longitudinal_schema(operation, config):
     }
 
 
+def source_shape_ref(config):
+    return {
+        "source_shape_id": config["shape_id"],
+        "source_shape_version": "1",
+    }
+
+
+def statistic_binding_templates(operation, config):
+    if operation in STATISTICS:
+        statistic = STATISTICS[operation]
+        unit = statistic["unit"]
+        if unit["kind"] == "unit":
+            unit_disposition = {
+                "kind": "unit",
+                "unit": {
+                    "registry_id": "machina-statistic-units",
+                    "registry_version": 1,
+                    "unit_id": unit["unit_id"],
+                },
+            }
+        else:
+            unit_disposition = {"kind": "no_unit"}
+        return [{
+            "canonical_statistic_pointer_pattern":
+                "/observation/participants/{participant_index}/statistics/"
+                "{statistic_index}",
+            "source_representation": statistic["representation"],
+            "source_value_pointer_template":
+                "/event/participants/{participant_index}/statistics/"
+                "{statistic_index}/value",
+            "statistic_kind": "official",
+            "statistic_name": statistic["name"],
+            "statistic_scope": "event",
+            "unit_disposition": unit_disposition,
+            "value_kind": "integer",
+        }]
+    if config["family"] != "longitudinal":
+        return []
+    representation = "json-string-canonical-integer/1" \
+        if config["sport"] == "soccer" else "json-number-exact-integer/1"
+    name = {
+        "soccer": "spsocstat:cornerKicks",
+        "american-football": "spamfstat:rushesAttempts",
+        "basketball": "spbkbstat:minutesPlayed",
+    }[config["sport"]]
+    common = {
+        "source_representation": representation,
+        "statistic_kind": "official",
+        "statistic_name": name,
+        "unit_disposition": {"kind": "no_unit"},
+        "value_kind": "integer",
+    }
+    return [dict(common, **{
+        "canonical_statistic_pointer_pattern":
+            "/records/{record_index}/statistics/{statistic_index}",
+        "source_value_pointer_template":
+            "/records/{record_index}/statistics/{statistic_index}/value",
+        "statistic_scope": "period",
+    }), dict(common, **{
+        "canonical_statistic_pointer_pattern": "/aggregates/{statistic_index}",
+        "source_value_pointer_template": "/aggregates/{statistic_index}/value",
+        "statistic_scope": "season" if config["sport"] != "basketball" else "career",
+    })]
+
+
+def spatial_binding_templates(operation, config):
+    representation = SPATIAL_REPRESENTATIONS.get(operation)
+    if representation is None:
+        return []
+    templates = [{
+        "binding_id": config["shape_id"] + "-source-position",
+        "binding_version": "1",
+        "interpretation": {
+            "coordinate_system_ref": {"id": "normalized-pitch", "version": "1"},
+        },
+        "semantic_kind": "source_position_coordinates",
+        "x_pointer_template": "/event/actions/{action_index}/spatial/x",
+        "x_source_representation": representation,
+        "y_pointer_template": "/event/actions/{action_index}/spatial/y",
+        "y_source_representation": representation,
+    }]
+    if config["family"] == "soccer-refusal":
+        return templates
+    unit_id = "yard" if config["sport"] == "american-football" else "metre"
+    templates.extend(({
+        "binding_id": config["shape_id"] + "-source-distance",
+        "binding_version": "1",
+        "interpretation": {"unit": {
+            "registry_id": "machina-statistic-units",
+            "registry_version": 1,
+            "unit_id": unit_id,
+        }},
+        "semantic_kind": "source_reported_distance",
+        "source_representation": representation,
+        "value_pointer_template": "/event/actions/{action_index}/spatial/distance",
+    }, {
+        "binding_id": config["shape_id"] + "-provider-zone",
+        "binding_version": "1",
+        "interpretation": {
+            "allowed_source_values": ["synthetic-zone"],
+            "kind": "closed_vocabulary",
+            "scheme_ref": {"id": "synthetic-zone", "version": "1"},
+        },
+        "semantic_kind": "provider_native_zone",
+        "value_pointer_template": "/event/actions/{action_index}/spatial/zone",
+    }))
+    return templates
+
+
+def longitudinal_binding_templates(operation, config):
+    if config["family"] != "longitudinal":
+        return []
+    grouped = {}
+    for fixture_id, representation in SEQUENCE_REPRESENTATIONS[operation].items():
+        grouped.setdefault(representation, []).append(fixture_id)
+    templates = []
+    for representation in sorted(grouped):
+        suffix = "number" if representation.startswith("json-number") else "string"
+        templates.append({
+            "binding_id": config["shape_id"] + "-period-" + suffix,
+            "binding_version": "1",
+            "boundary_pointer_template":
+                "/records/{record_index}/period/boundary",
+            "fixture_ids": sorted(grouped[representation]),
+            "interpretation": {
+                "scheme_values": ["period"],
+                "sequence_numeric_parser": {
+                    "source_representation": representation,
+                },
+            },
+            "scheme_pointer_template": "/records/{record_index}/period/scheme",
+            "semantic_kind": "longitudinal_period",
+            "sequence_pointer_template": "/records/{record_index}/period/sequence",
+            "value_pointer_template": "/records/{record_index}/period/value",
+        })
+    if operation == "arena_nfl_longitudinal":
+        templates.append({
+            "binding_id": config["shape_id"] + "-rolling-anchor",
+            "binding_version": "1",
+            "event_source_pointer_template": "/scope/anchor/source_record_id",
+            "interpretation": {"source_record_kind": "provider-record-id"},
+            "provider_id_pointer_template": "/scope/anchor/provider_id",
+            "provider_namespace_pointer_template":
+                "/scope/anchor/provider_namespace",
+            "resolution_method_pointer_template":
+                "/scope/anchor/resolution_method",
+            "semantic_kind": "rolling_event_anchor",
+        })
+    return templates
+
+
+def semantic_binding_templates(operation, config):
+    return spatial_binding_templates(operation, config) + \
+        longitudinal_binding_templates(operation, config)
+
+
 def nfl_refusal_schema(config):
     return object_shape({
         "contains_provider_data": boolean(False),
@@ -368,22 +524,27 @@ def statistic_evidence(operation):
 
 
 def spatial_evidence(operation):
-    return {
+    evidence = {
         "canonical_occurrence_pattern": "/observation/actions/{action_index}",
         "description": (
             "Coordinates, distance, zones, and spatial coverage are "
             "synthetic-replay-only parser evidence and do not attest provider "
             "transport coordinates."
         ),
-        "distance_pointer_template": "/event/actions/{action_index}/spatial/distance",
         "evidence_class": "validated_spatial_evidence_and_disposition",
-        "period_ref_pointer_template": "/event/actions/{action_index}/period_ref",
         "source_representation": SPATIAL_REPRESENTATIONS[operation],
-        "team_id_pointer_template": "/event/actions/{action_index}/team_id",
         "x_pointer_template": "/event/actions/{action_index}/spatial/x",
         "y_pointer_template": "/event/actions/{action_index}/spatial/y",
-        "zone_pointer_template": "/event/actions/{action_index}/spatial/zone",
     }
+    if operation != "arena_soccer_refusal_event":
+        evidence.update({
+            "distance_pointer_template":
+                "/event/actions/{action_index}/spatial/distance",
+            "period_ref_pointer_template": "/event/actions/{action_index}/period_ref",
+            "team_id_pointer_template": "/event/actions/{action_index}/team_id",
+            "zone_pointer_template": "/event/actions/{action_index}/spatial/zone",
+        })
+    return evidence
 
 
 def event_period_evidence():
@@ -566,9 +727,15 @@ def generate_registry():
             "operation": operation,
             "output_kind": config["output_kind"],
             "provider_namespace": PROVIDER,
+            "safe_absence_probe_templates": [],
             "schema_version": "machina-source-shape/1",
+            "semantic_binding_templates": semantic_binding_templates(
+                operation, config),
             "source_shape_id": config["shape_id"],
+            "source_shape_ref": source_shape_ref(config),
             "source_shape_version": "1",
+            "statistic_source_binding_templates": statistic_binding_templates(
+                operation, config),
         }
         source_ref = {
             "source_shape_digest": record_digest(shape),
@@ -614,7 +781,7 @@ def generate_registry():
 
 
 def generate():
-    OUTPUT.write_bytes(canonical_bytes(generate_registry()) + b"\n")
+    OUTPUT.write_bytes(canonical_bytes(generate_registry()))
 
 
 if __name__ == "__main__":

@@ -82,6 +82,16 @@ def one_record_package(*, schema=None, allowed_values=None, embedded_promises=Fa
         "media_type": "application/json",
         "artifact_schema": schema,
     }
+    if owner_version == "0.4.1":
+        source_shape.update({
+            "safe_absence_probe_templates": [],
+            "semantic_binding_templates": [],
+            "source_shape_ref": {
+                "source_shape_id": "fixture-shape",
+                "source_shape_version": "1",
+            },
+            "statistic_source_binding_templates": [],
+        })
     source_ref = {
         "source_shape_id": "fixture-shape",
         "source_shape_version": "1",
@@ -95,7 +105,7 @@ def one_record_package(*, schema=None, allowed_values=None, embedded_promises=Fa
         "operation": "fixture_operation",
         "output_kind": "event",
         "source_shape_ref": source_ref,
-        "promised_collections": [{
+        "promised_collections": [] if owner_version == "0.4.1" else [{
             "pointer_pattern": "/observation/participants"
         }],
     }
@@ -494,6 +504,24 @@ class TestClosedSourceShapeGrammar(unittest.TestCase):
                     "^invalid-source-shape-schema$"):
                 successor._validate_source_shape_schema(candidate)
 
+    def test_malformed_discriminator_branch_members_are_bounded(self):
+        malformed = []
+        for members in ([], "not-an-object", 7, None):
+            branch = self.fixture_branch("fixture-a")
+            branch["shape"]["members"] = members
+            malformed.append({"kind": "fixture-discriminated", "branches": [branch]})
+        malformed.extend((
+            {"kind": "fixture-discriminated", "branches": [None]},
+            {"kind": "fixture-discriminated", "branches": [{
+                "fixture_id": "fixture-a", "shape": None,
+            }]},
+        ))
+        for schema in malformed:
+            with self.subTest(schema=schema), self.assertRaisesRegex(
+                    successor.CanonicalContractError,
+                    "^invalid-source-shape-schema$"):
+                successor._validate_source_shape_schema(schema)
+
     def test_fixture_discriminator_requires_complete_approved_branch_set(self):
         fixture_ids = ["fixture-a", "fixture-b"]
         schemas = {
@@ -504,7 +532,7 @@ class TestClosedSourceShapeGrammar(unittest.TestCase):
         for label, schema in schemas.items():
             package = one_record_package(
                 schema=schema, fixture_ids=fixture_ids,
-                allowed_values=fixture_ids)
+                allowed_values=fixture_ids, owner_version="0.4.1")
             with self.subTest(label=label), self.assertRaisesRegex(
                     successor.CanonicalContractError,
                     "^fixture-manifest-disagreement$"):
@@ -664,6 +692,52 @@ class TestClosedSelectorArguments(unittest.TestCase):
                                     "^operation-argument-value-not-allowed$"):
             successor._validate_operation_arguments(
                 b'{"fixture_id":"provider-value-must-not-leak"}', trust)
+
+    def test_ordinary_owner_schema_enum_must_equal_argument_and_manifest_enums(self):
+        schema = object_schema({"fixture_id": {
+            "kind": "string", "allowed_values": ["substituted-fixture"]
+        }}, ["fixture_id"])
+        package = one_record_package(
+            schema=schema,
+            fixture_ids=["approved-fixture"],
+            allowed_values=["approved-fixture"],
+            owner_version="0.4.1",
+        )
+        with self.assertRaisesRegex(
+                successor.CanonicalContractError,
+                "^fixture-manifest-disagreement$"):
+            successor._load_0_4_closure(package_ref=package, request=request())
+
+    def test_fixture_substitution_refuses_before_adapter_import(self):
+        package = one_record_package(
+            schema=object_schema({"fixture_id": {
+                "kind": "string", "allowed_values": ["substituted-fixture"]
+            }}, ["fixture_id"]),
+            fixture_ids=["approved-fixture"],
+            allowed_values=["approved-fixture"],
+            owner_version="0.4.1",
+        )
+        imported = []
+
+        class Loader:
+            def load_static(self, package_ref, operation_request):
+                return successor._load_0_4_closure(
+                    package_ref=package, request=operation_request)
+
+            def import_adapter(self, trust):
+                imported.append(True)
+                raise AssertionError("adapter import must remain at zero")
+
+        with self.assertRaisesRegex(
+                successor.CanonicalContractError,
+                "^fixture-manifest-disagreement$"):
+            successor.execute_adapter_operation(
+                package_ref={},
+                request_bytes=successor.canonical_json_bytes(request()),
+                operation_arguments_bytes=b'{"fixture_id":"approved-fixture"}',
+                trusted_loader=Loader(),
+            )
+        self.assertEqual(imported, [])
 
     def test_strict_secret_unknown_type_enum_precedence(self):
         cases = (

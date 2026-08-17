@@ -138,6 +138,104 @@ def by_operation(records):
     return {record["operation"]: record for record in records}
 
 
+def argument_schema(fixture_ids):
+    return {
+        "fields": [{
+            "allowed_values": fixture_ids,
+            "canonical_lexical_rule": "exact-operation-fixture-enum/1",
+            "name": "fixture_id",
+            "provider_parameter_name": "fixture_id",
+            "required": True,
+            "semantic_class": "selector",
+            "value_kind": "string",
+        }],
+        "secret_fields": "forbidden",
+        "unknown_fields": "forbidden",
+    }
+
+
+def package_for_operation(operation, *, registry_bytes=None, fixture_ids=None,
+                          schema_fixture_ids=None):
+    value = registry()
+    shapes = by_operation(value["shapes"])
+    operations = by_operation(value["operation_contracts"])
+    outputs = by_operation(value["output_collection_contracts"])
+    shape = shapes[operation]
+    contract = operations[operation]
+    output = outputs[operation]
+    approved = list(FIXTURES[operation] if fixture_ids is None else fixture_ids)
+    schema = argument_schema(approved)
+    manifest_ids = list(approved)
+    if schema_fixture_ids is not None:
+        artifact_schema = shape["artifact_schema"]
+        if artifact_schema["kind"] == "fixture-discriminated":
+            raise AssertionError("ordinary-root substitution helper only")
+        artifact_schema["members"]["fixture_id"]["allowed_values"] = \
+            list(schema_fixture_ids)
+        source_ref = contract["source_shape_ref"]
+        source_ref["source_shape_digest"] = digest(shape)
+        output["source_shape_ref"] = source_ref
+        contract["output_collection_contract_ref"][
+            "output_collection_contract_digest"] = digest(output)
+        registry_bytes = successor.canonical_json_bytes(value)
+    fixture_manifest = {"fixture_ids": manifest_ids}
+    return {
+        "owner_package": {
+            "name": "machina-sports-canonical", "version": "0.4.1"},
+        "registry_bytes": REGISTRY_PATH.read_bytes() if registry_bytes is None
+            else registry_bytes,
+        "package_link": {
+            "provider_namespace": PROVIDER,
+            "operation": operation,
+            "output_kind": OUTPUT_KINDS[operation],
+            "source_shape_ref": contract["source_shape_ref"],
+            "source_shape_digest": digest(shape),
+            "operation_contract_digest": digest(contract),
+            "output_collection_contract_digest": digest(output),
+            "operation_argument_schema_digest": digest(schema),
+            "fixture_manifest_digest": digest(fixture_manifest),
+        },
+        "fixture_manifest": fixture_manifest,
+        "closure_values": {
+            "argument_schema": schema,
+            "descriptor": {
+                "schema_version": "machina-adapter-descriptor/1",
+                "provider_namespace": PROVIDER,
+                "operation": operation,
+                "capabilities": [],
+                "module_entrypoint": "synthetic-fixture",
+            },
+            "package_release": {
+                "name": "machina-sports-canonical",
+                "version": "0.4.1",
+                "package_artifact_digest": "sha256:" + "2" * 64,
+                "release_id": "machina-sports-canonical-v0.4.1",
+                "release_digest": "sha256:" + "3" * 64,
+            },
+            "rights_profile": {
+                "profile_id": "synthetic", "profile_version": "1",
+                "provider_namespace": PROVIDER, "operation": operation,
+                "data_class": "synthetic-provider-data-free-replay",
+                "prototype_only": True, "commercial_use": False,
+                "allowed_consumer_tiers": ["prototype"],
+                "rights_profile_digest": "sha256:" + "1" * 64,
+            },
+        },
+    }
+
+
+def request_for_operation(operation):
+    return {
+        "requested_provider": PROVIDER,
+        "requested_operation": operation,
+        "output_kind": OUTPUT_KINDS[operation],
+        "output_mode": "operational_only",
+        "consumer_tier": "prototype",
+        "requires": [],
+        "optional": [],
+    }
+
+
 def longitudinal_fixture(operation, fixture_id, sequence):
     sport = SPORTS[operation]
     statistic_value = "1" if sport == "soccer" else 1
@@ -156,13 +254,58 @@ def longitudinal_fixture(operation, fixture_id, sequence):
         "fixture_id": fixture_id,
         "identity": [],
         "records": [{
-            "period": {"scheme": "period", "sequence": sequence, "value": "1"},
+            "period": {
+                "scheme": "period", "sequence": sequence, "value": "period-1"},
             "semantics": "period_delta",
             "statistics": [{"field_id": "stat", "value": statistic_value}],
         }],
         "scope": {"kind": "season"},
         "sport": sport,
         "subject": {"entity_type": "team", "provider_id": "synthetic-team"},
+        "synthetic": True,
+    }
+
+
+def event_fixture(operation, fixture_id):
+    sport = SPORTS[operation]
+    number_source = sport != "soccer"
+    scalar = 1 if number_source else "1"
+    coverage_tuple = {
+        "cursor": "", "page_cap": 1, "request_limit": 1,
+        "total": 1, "truncated": False,
+    }
+    return {
+        "contains_provider_data": False,
+        "coverage": {
+            "actions": coverage_tuple,
+            "participant_statistics": [coverage_tuple],
+            "participants": coverage_tuple,
+        },
+        "event": {
+            "actions": [{
+                "id": "action-1",
+                "spatial": {"distance": scalar, "x": scalar, "y": scalar,
+                            "zone": "synthetic-zone"},
+                "team_id": "team-1",
+            }],
+            "competition_id": "competition-1",
+            "id": "event-1",
+            "participants": [{
+                "id": "team-1", "kind": "team",
+                "statistics": [{"field_id": "stat", "value": scalar}],
+            }],
+            "periods": [{
+                "event_provider_id": "event-1",
+                "event_provider_namespace": PROVIDER,
+                "event_resolution_method": "provider_native",
+                "scheme": "period", "sequence": scalar, "value": "period-1",
+            }],
+            "start": {"state": "exact", "value": "2026-08-17T12:00:00Z"},
+            "status": "complete",
+        },
+        "fixture_id": fixture_id,
+        "identity": [],
+        "sport": sport,
         "synthetic": True,
     }
 
@@ -202,6 +345,208 @@ class TestProviderAttestedOwnerRegistry(unittest.TestCase):
                 self.assertEqual(
                     output_ref["output_collection_contract_digest"], digest(output)
                 )
+
+    def test_packaged_registry_bytes_are_newline_free_canonical_and_loadable(self):
+        raw = REGISTRY_PATH.read_bytes()
+        self.assertEqual(raw, successor.canonical_json_bytes(json.loads(raw)))
+        for operation in sorted(FIXTURES):
+            with self.subTest(operation=operation):
+                trust = successor._load_0_4_closure(
+                    package_ref=package_for_operation(operation),
+                    request=request_for_operation(operation),
+                )
+                self.assertEqual(trust.descriptor["operation"], operation)
+                self.assertEqual(trust.package_release["version"], "0.4.1")
+
+    def test_all_source_shapes_own_closed_executable_binding_inventories(self):
+        expected_members = {
+            "artifact_schema", "media_type", "operation", "output_kind",
+            "provider_namespace", "safe_absence_probe_templates",
+            "schema_version", "semantic_binding_templates", "source_shape_id",
+            "source_shape_ref", "source_shape_version",
+            "statistic_source_binding_templates",
+        }
+        for operation, shape in self.shapes.items():
+            with self.subTest(operation=operation):
+                self.assertEqual(set(shape), expected_members)
+                self.assertEqual(shape["source_shape_ref"], {
+                    "source_shape_id": shape["source_shape_id"],
+                    "source_shape_version": shape["source_shape_version"],
+                })
+                self.assertIsInstance(shape["statistic_source_binding_templates"], list)
+                self.assertIsInstance(shape["semantic_binding_templates"], list)
+                self.assertIsInstance(shape["safe_absence_probe_templates"], list)
+
+    def test_fixture_manifest_argument_and_owner_enums_agree_for_all_nine(self):
+        for operation, fixture_ids in FIXTURES.items():
+            with self.subTest(operation=operation):
+                trust = successor._load_0_4_closure(
+                    package_ref=package_for_operation(operation),
+                    request=request_for_operation(operation),
+                )
+                allowed = trust.argument_schema["fields"][0]["allowed_values"]
+                self.assertEqual(list(allowed), fixture_ids)
+
+    def test_ordinary_owner_schema_substitution_refuses_before_adapter_import(self):
+        imported = []
+        package = package_for_operation(
+            "arena_nba_event", schema_fixture_ids=["substituted-fixture"])
+
+        class Loader:
+            def load_static(self, package_ref, operation_request):
+                return successor._load_0_4_closure(
+                    package_ref=package, request=operation_request)
+
+            def import_adapter(self, trust):
+                imported.append(True)
+                raise AssertionError("adapter import must remain at zero")
+
+        with self.assertRaisesRegex(
+                successor.CanonicalContractError,
+                "^fixture-manifest-disagreement$"):
+            successor.execute_adapter_operation(
+                package_ref={},
+                request_bytes=successor.canonical_json_bytes(
+                    request_for_operation("arena_nba_event")),
+                operation_arguments_bytes=b'{"fixture_id":"nba-exact-authoritative"}',
+                trusted_loader=Loader(),
+            )
+        self.assertEqual(imported, [])
+
+    def test_representative_event_artifacts_reach_runtime_statistic_spatial_and_coverage_bindings(self):
+        for operation in ("arena_soccer_event", "arena_nfl_event", "arena_nba_event"):
+            fixture_id = FIXTURES[operation][0]
+            trust = successor._load_0_4_closure(
+                package_ref=package_for_operation(operation),
+                request=request_for_operation(operation),
+            )
+            source = event_fixture(operation, fixture_id)
+            raw = json.dumps(source, sort_keys=True, separators=(",", ":")).encode()
+            artifact = successor._load_source_artifact(raw, trust)
+            statistic_template = trust.source_shape[
+                "statistic_source_binding_templates"][0]
+            parsed = successor._reparse_source_artifact(artifact, trust)
+            source_value = successor.resolve_json_pointer(
+                parsed,
+                statistic_template["source_value_pointer_template"]
+                .replace("{participant_index}", "0")
+                .replace("{statistic_index}", "0"),
+            )
+            lexical = successor._parse_statistic_source(
+                source_value, statistic_template["source_representation"],
+                statistic_template["value_kind"])
+            self.assertEqual(lexical, "1")
+
+            spatial = next(
+                item for item in trust.source_shape["semantic_binding_templates"]
+                if item["semantic_kind"] == "source_position_coordinates")
+            x_pointer = spatial["x_pointer_template"].replace("{action_index}", "0")
+            self.assertEqual(
+                successor._parse_spatial_source(
+                    successor.resolve_json_pointer(parsed, x_pointer),
+                    spatial["x_source_representation"]),
+                "1" if SPORTS[operation] == "soccer" else "1.0",
+            )
+            promise = trust.output_collection_contract["promised_collections"][0]
+            for field in promise["source_fields"].values():
+                pointer = field["value_pointer_templates"][0]
+                self.assertIsNotNone(successor.resolve_json_pointer(parsed, pointer))
+
+    def test_all_longitudinal_artifacts_reach_period_and_anchor_bindings(self):
+        cases = (
+            ("arena_soccer_longitudinal", "soccer-date-range-string", "1"),
+            ("arena_soccer_longitudinal", "soccer-season-number", 1),
+            ("arena_nfl_longitudinal", "nfl-rolling-anchor-number", 1),
+            ("arena_nfl_longitudinal", "nfl-season-string", "1"),
+            ("arena_nba_longitudinal", "nba-career-string", "1"),
+        )
+        for operation, fixture_id, sequence in cases:
+            trust = successor._load_0_4_closure(
+                package_ref=package_for_operation(operation),
+                request=request_for_operation(operation),
+            )
+            source = longitudinal_fixture(operation, fixture_id, sequence)
+            if fixture_id == "nfl-rolling-anchor-number":
+                source["scope"]["anchor"] = {
+                    "provider_id": "event-1", "provider_namespace": PROVIDER,
+                    "resolution_method": "provider_native",
+                    "source_record_id": "event-1",
+                }
+            raw = json.dumps(source, sort_keys=True, separators=(",", ":")).encode()
+            artifact = successor._load_source_artifact(raw, trust)
+            period = next(
+                item for item in trust.source_shape["semantic_binding_templates"]
+                if item["semantic_kind"] == "longitudinal_period" and
+                fixture_id in item["fixture_ids"])
+            handle = successor._load_source_value_handle(
+                artifact, period, {"record_index": 0}, trust)
+            built = successor._build_period_descriptor(
+                handle, record_ref="/records/0", loaded_trust=trust)
+            self.assertEqual(built["period"]["sequence"], 1)
+            if fixture_id == "nfl-rolling-anchor-number":
+                anchor = next(
+                    item for item in trust.source_shape["semantic_binding_templates"]
+                    if item["semantic_kind"] == "rolling_event_anchor")
+                anchor_handle = successor._load_source_value_handle(
+                    artifact, anchor, {}, trust)
+                built_anchor = successor._build_rolling_event_anchor(
+                    anchor_handle, anchor_ref="/scope/anchor", loaded_trust=trust)
+                self.assertEqual(built_anchor["provider"]["id"], "event-1")
+
+    def test_refusal_shapes_expose_only_assigned_runtime_binding_paths(self):
+        expected = {
+            "arena_soccer_refusal_event": {
+                "statistics": 0, "semantics": {"source_position_coordinates"}},
+            "arena_nfl_refusal_event": {"statistics": 0, "semantics": set()},
+            "arena_nba_refusal_event": {"statistics": 0, "semantics": set()},
+        }
+        for operation, limits in expected.items():
+            shape = self.shapes[operation]
+            semantic_kinds = {
+                item["semantic_kind"] for item in shape["semantic_binding_templates"]}
+            with self.subTest(operation=operation):
+                self.assertEqual(
+                    len(shape["statistic_source_binding_templates"]),
+                    limits["statistics"])
+                self.assertEqual(semantic_kinds, limits["semantics"])
+
+    def test_binding_records_are_closed_digest_bound_and_coherent_pre_import(self):
+        package = package_for_operation("arena_soccer_event")
+        value = json.loads(package["registry_bytes"])
+        shape = by_operation(value["shapes"])["arena_soccer_event"]
+        shape["semantic_binding_templates"][0]["extension"] = True
+        contract = by_operation(value["operation_contracts"])["arena_soccer_event"]
+        output = by_operation(value["output_collection_contracts"])["arena_soccer_event"]
+        contract["source_shape_ref"]["source_shape_digest"] = digest(shape)
+        output["source_shape_ref"] = contract["source_shape_ref"]
+        contract["output_collection_contract_ref"][
+            "output_collection_contract_digest"] = digest(output)
+        package["registry_bytes"] = successor.canonical_json_bytes(value)
+        package["package_link"]["source_shape_ref"] = contract["source_shape_ref"]
+        package["package_link"]["source_shape_digest"] = digest(shape)
+        package["package_link"]["operation_contract_digest"] = digest(contract)
+        package["package_link"]["output_collection_contract_digest"] = digest(output)
+        imported = []
+
+        class Loader:
+            def load_static(self, package_ref, operation_request):
+                return successor._load_0_4_closure(
+                    package_ref=package, request=operation_request)
+
+            def import_adapter(self, trust):
+                imported.append(True)
+
+        with self.assertRaisesRegex(
+                successor.CanonicalContractError,
+                "^invalid-source-shape-record$"):
+            successor.execute_adapter_operation(
+                package_ref={},
+                request_bytes=successor.canonical_json_bytes(
+                    request_for_operation("arena_soccer_event")),
+                operation_arguments_bytes=b'{"fixture_id":"soccer-exact-authoritative"}',
+                trusted_loader=Loader(),
+            )
+        self.assertEqual(imported, [])
 
     def test_fixture_enums_literals_and_root_field_families_are_exact(self):
         for operation, fixture_ids in FIXTURES.items():
@@ -413,6 +758,12 @@ class TestProviderAttestedOwnerRegistry(unittest.TestCase):
         )
         self.assertEqual(SOURCE_REGISTRY_PATH.read_bytes(), before)
         self.assertEqual(REGISTRY_PATH.read_bytes(), before)
+
+    def test_trusted_loader_manifest_truthfully_owns_0_4_1(self):
+        manifest = json.loads((
+            CANONICAL_ROOT / "data/trusted_loader_manifest_v1.json"
+        ).read_bytes())
+        self.assertEqual(manifest["owner_package"]["version"], "0.4.1")
 
 
 if __name__ == "__main__":

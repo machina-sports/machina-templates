@@ -713,10 +713,13 @@ def _validate_source_shape_schema(schema: Mapping[str, Any]) -> None:
                     raise ValueError
                 fixture_id = branch["fixture_id"]
                 branch_shape = branch["shape"]
+                branch_members = branch_shape.get("members") \
+                    if isinstance(branch_shape, Mapping) else None
                 if not isinstance(branch_shape, Mapping) or \
                         branch_shape.get("kind") != "object" or \
+                        not isinstance(branch_members, Mapping) or \
                         "fixture_id" not in branch_shape.get("required", ()) or \
-                        branch_shape.get("members", {}).get("fixture_id") != {
+                        branch_members.get("fixture_id") != {
                             "kind": "string", "allowed_values": [fixture_id]}:
                     raise ValueError
                 fixture_ids.append(fixture_id)
@@ -771,7 +774,7 @@ def _validate_source_shape_schema(schema: Mapping[str, Any]) -> None:
         validate_node(schema, allow_fixture_discriminator=True)
         if schema.get("kind") not in ("object", "fixture-discriminated"):
             raise ValueError
-    except (KeyError, TypeError, ValueError):
+    except (AttributeError, KeyError, TypeError, ValueError):
         raise CanonicalContractError("invalid-source-shape-schema") from None
 
 
@@ -861,6 +864,352 @@ def _validate_operation_argument_schema(schema, fixture_ids=None):
         raise CanonicalContractError("fixture-manifest-disagreement")
 
 
+def _pointer_template_variables(pointer):
+    validate_json_pointer(pointer)
+    return tuple(re.findall(r"\{([A-Za-z][A-Za-z0-9._-]*)\}", pointer))
+
+
+def _validate_source_shape_binding_templates(shape):
+    """Validate the exact executable binding inventories added in owner 0.4.1."""
+    try:
+        source_ref = shape["source_shape_ref"]
+        if not isinstance(source_ref, Mapping) or set(source_ref) != {
+                "source_shape_id", "source_shape_version"} or source_ref != {
+                    "source_shape_id": shape["source_shape_id"],
+                    "source_shape_version": shape["source_shape_version"]}:
+            raise ValueError
+        statistics = shape["statistic_source_binding_templates"]
+        semantics = shape["semantic_binding_templates"]
+        absence = shape["safe_absence_probe_templates"]
+        if not all(isinstance(items, list) for items in (
+                statistics, semantics, absence)):
+            raise ValueError
+
+        statistic_required = {
+            "canonical_statistic_pointer_pattern", "source_value_pointer_template",
+            "source_representation", "statistic_kind", "statistic_name",
+            "statistic_scope", "unit_disposition", "value_kind",
+        }
+        statistic_patterns = set()
+        for template in statistics:
+            if not isinstance(template, Mapping) or set(template) != statistic_required:
+                raise ValueError
+            canonical = template["canonical_statistic_pointer_pattern"]
+            source = template["source_value_pointer_template"]
+            variables = _pointer_template_variables(canonical)
+            if variables != _pointer_template_variables(source) or \
+                    canonical in statistic_patterns or \
+                    template["statistic_kind"] not in ("official", "provider_native") or \
+                    template["statistic_scope"] not in _STATISTIC_SCOPES or \
+                    template["value_kind"] not in (
+                        "integer", "decimal", "boolean", "duration", "text") or \
+                    type(template["statistic_name"]) is not str or \
+                    type(template["source_representation"]) is not str:
+                raise ValueError
+            statistic_patterns.add(canonical)
+            disposition = template["unit_disposition"]
+            if disposition == {"kind": "no_unit"}:
+                pass
+            elif not isinstance(disposition, Mapping) or set(disposition) != {
+                    "kind", "unit"} or disposition.get("kind") != "unit" or \
+                    not isinstance(disposition.get("unit"), Mapping) or \
+                    set(disposition["unit"]) != {
+                        "registry_id", "registry_version", "unit_id"} or \
+                    disposition["unit"].get("registry_id") != \
+                    "machina-statistic-units" or \
+                    disposition["unit"].get("registry_version") != 1 or \
+                    type(disposition["unit"].get("unit_id")) is not str:
+                raise ValueError
+
+        semantic_keys = set()
+        for template in semantics:
+            if not isinstance(template, Mapping):
+                raise ValueError
+            common = {"binding_id", "binding_version", "interpretation",
+                      "semantic_kind"}
+            kind = template.get("semantic_kind")
+            variants = {
+                "source_position_coordinates": {
+                    "x_pointer_template", "x_source_representation",
+                    "y_pointer_template", "y_source_representation"},
+                "source_reported_distance": {
+                    "source_representation", "value_pointer_template"},
+                "provider_native_zone": {"value_pointer_template"},
+                "longitudinal_period": {
+                    "boundary_pointer_template", "fixture_ids",
+                    "scheme_pointer_template", "sequence_pointer_template",
+                    "value_pointer_template"},
+                "rolling_event_anchor": {
+                    "event_source_pointer_template", "provider_id_pointer_template",
+                    "provider_namespace_pointer_template",
+                    "resolution_method_pointer_template"},
+            }
+            if kind not in variants or set(template) != common | variants[kind] or \
+                    type(template.get("binding_id")) is not str or \
+                    _TOKEN_RE.fullmatch(template["binding_id"]) is None or \
+                    type(template.get("binding_version")) is not str or \
+                    not template["binding_version"] or \
+                    not isinstance(template.get("interpretation"), Mapping):
+                raise ValueError
+            key = (template["binding_id"], template["binding_version"], kind)
+            if key in semantic_keys:
+                raise ValueError
+            semantic_keys.add(key)
+            pointer_fields = variants[kind] - {
+                "fixture_ids", "x_source_representation",
+                "y_source_representation", "source_representation"}
+            variable_sets = {
+                _pointer_template_variables(template[field]) for field in pointer_fields}
+            expected_variables = () if kind == "rolling_event_anchor" else \
+                ("record_index",) if kind == "longitudinal_period" else \
+                ("action_index",)
+            if variable_sets != {expected_variables}:
+                raise ValueError
+            interpretation = template["interpretation"]
+            if kind == "source_position_coordinates":
+                if set(interpretation) != {"coordinate_system_ref"} or \
+                        not isinstance(interpretation["coordinate_system_ref"], Mapping) or \
+                        set(interpretation["coordinate_system_ref"]) != {"id", "version"}:
+                    raise ValueError
+            elif kind == "source_reported_distance":
+                if set(interpretation) != {"unit"} or \
+                        not isinstance(interpretation["unit"], Mapping) or \
+                        set(interpretation["unit"]) != {
+                            "registry_id", "registry_version", "unit_id"}:
+                    raise ValueError
+            elif kind == "provider_native_zone":
+                if set(interpretation) != {
+                        "allowed_source_values", "kind", "scheme_ref"} or \
+                        interpretation.get("kind") != "closed_vocabulary" or \
+                        not isinstance(interpretation.get("allowed_source_values"), list) or \
+                        not interpretation["allowed_source_values"] or \
+                        interpretation["allowed_source_values"] != sorted(set(
+                            interpretation["allowed_source_values"])) or \
+                        not isinstance(interpretation.get("scheme_ref"), Mapping) or \
+                        set(interpretation["scheme_ref"]) != {"id", "version"}:
+                    raise ValueError
+            elif kind == "longitudinal_period":
+                fixture_ids = template["fixture_ids"]
+                parser = interpretation.get("sequence_numeric_parser")
+                if not isinstance(fixture_ids, list) or not fixture_ids or \
+                        fixture_ids != sorted(set(fixture_ids)) or \
+                        set(interpretation) != {
+                            "scheme_values", "sequence_numeric_parser"} or \
+                        not isinstance(interpretation["scheme_values"], list) or \
+                        not interpretation["scheme_values"] or \
+                        interpretation["scheme_values"] != sorted(set(
+                            interpretation["scheme_values"])) or \
+                        not isinstance(parser, Mapping) or set(parser) != {
+                            "source_representation"} or parser[
+                                "source_representation"] not in (
+                                    "json-number-exact-non-negative-integer/1",
+                                    "json-string-canonical-non-negative-integer/1"):
+                    raise ValueError
+            elif set(interpretation) != {"source_record_kind"} or \
+                    interpretation.get("source_record_kind") != "provider-record-id":
+                raise ValueError
+
+        for probe in absence:
+            if not isinstance(probe, Mapping) or set(probe) != {
+                    "pointer_template", "probe"} or probe.get("probe") not in (
+                        "shape_not_exposed", "not_applicable_by_shape"):
+                raise ValueError
+            _pointer_template_variables(probe["pointer_template"])
+    except (AttributeError, KeyError, TypeError, ValueError):
+        raise CanonicalContractError("invalid-source-shape-record") from None
+
+
+def _fixture_ids_from_artifact_schema(schema):
+    try:
+        if schema.get("kind") == "fixture-discriminated":
+            fixture_ids = [branch["fixture_id"] for branch in schema["branches"]]
+        elif schema.get("kind") == "object":
+            fixture = schema["members"]["fixture_id"]
+            if not isinstance(fixture, Mapping) or set(fixture) != {
+                    "kind", "allowed_values"} or fixture.get("kind") != "string":
+                raise ValueError
+            fixture_ids = fixture["allowed_values"]
+        else:
+            raise ValueError
+        if not isinstance(fixture_ids, list) or not fixture_ids or \
+                any(type(item) is not str for item in fixture_ids) or \
+                fixture_ids != sorted(fixture_ids) or \
+                len(fixture_ids) != len(set(fixture_ids)):
+            raise ValueError
+        return fixture_ids
+    except (AttributeError, KeyError, TypeError, ValueError):
+        raise CanonicalContractError("invalid-source-shape-schema") from None
+
+
+def _validate_output_collection_templates(output):
+    try:
+        expected_members = {
+            "description", "pointer_pattern", "source_base_pointer_template",
+            "source_fields"}
+        source_members = {
+            "cursor": "cursor", "page_cap": "page_cap",
+            "request_limit": "request_limit", "total": "total",
+            "truncation": "truncated",
+        }
+        patterns = set()
+        for promise in output["promised_collections"]:
+            if not isinstance(promise, Mapping) or set(promise) != expected_members or \
+                    type(promise.get("description")) is not str:
+                raise ValueError
+            pattern = promise["pointer_pattern"]
+            base = promise["source_base_pointer_template"]
+            variables = _pointer_template_variables(pattern)
+            if variables != _pointer_template_variables(base) or pattern in patterns or \
+                    not isinstance(promise.get("source_fields"), Mapping) or \
+                    set(promise["source_fields"]) != set(source_members):
+                raise ValueError
+            patterns.add(pattern)
+            for name, member in source_members.items():
+                contract = promise["source_fields"][name]
+                if not isinstance(contract, Mapping) or contract != {
+                        "state": "value",
+                        "value_pointer_templates": [base + "/" + member]}:
+                    raise ValueError
+    except (AttributeError, KeyError, TypeError, ValueError):
+        raise CanonicalContractError("invalid-output-collection-contract") from None
+
+
+def _source_template_exists(artifact_schema, pointer, fixture_ids=None):
+    parts = _pointer_parts(pointer)
+    if artifact_schema.get("kind") == "fixture-discriminated":
+        branches = artifact_schema["branches"]
+        selected = [branch for branch in branches if fixture_ids is None or
+                    branch["fixture_id"] in fixture_ids]
+        if not selected or fixture_ids is not None and \
+                sorted(branch["fixture_id"] for branch in selected) != \
+                sorted(fixture_ids):
+            return False
+        return all(_source_template_exists(branch["shape"], pointer)
+                   for branch in selected)
+    node = artifact_schema
+    for part in parts:
+        if node.get("kind") == "object" and part in node.get("members", {}):
+            node = node["members"][part]
+        elif node.get("kind") == "array" and re.fullmatch(
+                r"\{[A-Za-z][A-Za-z0-9._-]*\}", part):
+            node = node["items"]
+        else:
+            return False
+    return True
+
+
+def _validate_owner_binding_coherence(shape, operation, output):
+    """Bind operation evidence and collection pointers to executable shape paths."""
+    try:
+        schema = shape["artifact_schema"]
+        statistics = shape["statistic_source_binding_templates"]
+        semantics = shape["semantic_binding_templates"]
+        for template in statistics:
+            if not _source_template_exists(
+                    schema, template["source_value_pointer_template"]):
+                raise ValueError
+        for template in semantics:
+            fixture_ids = template.get("fixture_ids")
+            for field in (
+                    "x_pointer_template", "y_pointer_template",
+                    "value_pointer_template", "scheme_pointer_template",
+                    "sequence_pointer_template", "boundary_pointer_template",
+                    "provider_namespace_pointer_template",
+                    "provider_id_pointer_template",
+                    "resolution_method_pointer_template",
+                    "event_source_pointer_template"):
+                if field in template and not _source_template_exists(
+                        schema, template[field], fixture_ids):
+                    raise ValueError
+        for promise in output["promised_collections"]:
+            if not _source_template_exists(
+                    schema, promise["source_base_pointer_template"]):
+                raise ValueError
+            for contract in promise["source_fields"].values():
+                for pointer in contract["value_pointer_templates"]:
+                    if not _source_template_exists(schema, pointer):
+                        raise ValueError
+
+        statistic_evidence_classes = {
+            "validated_statistic_source_and_disposition",
+            "longitudinal_record_statistic_source",
+            "longitudinal_aggregate_statistic_source",
+        }
+        for evidence in operation["promised_non_collection_evidence"]:
+            evidence_class = evidence.get("evidence_class")
+            if evidence_class in statistic_evidence_classes:
+                matches = [template for template in statistics if
+                           template["canonical_statistic_pointer_pattern"] ==
+                           evidence["canonical_occurrence_pattern"] and
+                           template["source_value_pointer_template"] ==
+                           evidence["source_value_pointer_template"] and
+                           template["statistic_name"] == evidence["statistic_name"]]
+                if len(matches) != 1:
+                    raise ValueError
+            elif evidence_class == "validated_spatial_evidence_and_disposition":
+                matches = [template for template in semantics if
+                           template["semantic_kind"] ==
+                           "source_position_coordinates" and
+                           template["x_pointer_template"] ==
+                           evidence["x_pointer_template"] and
+                           template["y_pointer_template"] ==
+                           evidence["y_pointer_template"] and
+                           template["x_source_representation"] ==
+                           evidence["source_representation"] and
+                           template["y_source_representation"] ==
+                           evidence["source_representation"]]
+                if len(matches) != 1:
+                    raise ValueError
+                optional_semantics = {
+                    "distance_pointer_template": "source_reported_distance",
+                    "zone_pointer_template": "provider_native_zone",
+                }
+                for field, semantic_kind in optional_semantics.items():
+                    if field in evidence and len([template for template in semantics
+                            if template["semantic_kind"] == semantic_kind and
+                            template["value_pointer_template"] == evidence[field]]) != 1:
+                        raise ValueError
+            elif evidence_class == "longitudinal_period_source":
+                templates = [template for template in semantics if
+                             template["semantic_kind"] == "longitudinal_period" and
+                             all(template[field] == evidence[field] for field in (
+                                 "scheme_pointer_template", "value_pointer_template",
+                                 "sequence_pointer_template",
+                                 "boundary_pointer_template"))]
+                represented = {}
+                for template in templates:
+                    representation = template["interpretation"][
+                        "sequence_numeric_parser"]["source_representation"]
+                    represented.update((fixture_id, representation)
+                                       for fixture_id in template["fixture_ids"])
+                if represented != evidence["fixture_sequence_representations"]:
+                    raise ValueError
+            elif evidence_class == "rolling_event_anchor_source":
+                fields = {
+                    "provider_id_pointer_template": "provider_id_pointer_template",
+                    "provider_namespace_pointer_template":
+                        "provider_namespace_pointer_template",
+                    "resolution_method_pointer_template":
+                        "resolution_method_pointer_template",
+                    "source_record_id_pointer_template":
+                        "event_source_pointer_template",
+                }
+                matches = [template for template in semantics if
+                           template["semantic_kind"] == "rolling_event_anchor" and
+                           all(template[target] == evidence[source]
+                               for source, target in fields.items())]
+                if len(matches) != 1:
+                    raise ValueError
+            else:
+                pointer_fields = [value for key, value in evidence.items()
+                                  if key.endswith("_pointer_template")]
+                if any(not _source_template_exists(schema, pointer)
+                       for pointer in pointer_fields):
+                    raise ValueError
+    except (AttributeError, KeyError, TypeError, ValueError):
+        raise CanonicalContractError("owner-binding-coherence-mismatch") from None
+
+
 def _load_0_4_closure(
     *, package_ref: Mapping[str, Any], request: Mapping[str, Any]
 ) -> LoadedCanonicalTrustClosureV1:
@@ -892,11 +1241,21 @@ def _load_0_4_closure(
         required = {"schema_version", "source_shape_id", "source_shape_version",
                     "provider_namespace", "operation", "output_kind", "media_type",
                     "artifact_schema"}
+        if owner_package["version"] == "0.4.1":
+            required |= {
+                "safe_absence_probe_templates", "semantic_binding_templates",
+                "source_shape_ref", "statistic_source_binding_templates",
+            }
         if not isinstance(shape, Mapping) or set(shape) != required or \
                 shape.get("schema_version") != "machina-source-shape/1" or \
-                shape.get("media_type") != "application/json":
+                shape.get("media_type") != "application/json" or any(
+                    type(shape.get(name)) is not str for name in (
+                        "source_shape_id", "source_shape_version",
+                        "provider_namespace", "operation", "output_kind")):
             raise CanonicalContractError("invalid-source-shape-record")
         _validate_source_shape_schema(shape["artifact_schema"])
+        if owner_package["version"] == "0.4.1":
+            _validate_source_shape_binding_templates(shape)
         key = (shape["source_shape_id"], shape["source_shape_version"])
         if key in shape_keys:
             raise CanonicalContractError("duplicate-source-shape-record")
@@ -911,13 +1270,19 @@ def _load_0_4_closure(
     for output in outputs:
         if not isinstance(output, Mapping) or set(output) != output_required or \
                 output.get("schema_version") != "machina-output-collection-contract/1" or \
-                not isinstance(output.get("promised_collections"), list):
+                not isinstance(output.get("promised_collections"), list) or any(
+                    type(output.get(name)) is not str for name in (
+                        "output_collection_contract_id",
+                        "output_collection_contract_version", "provider_namespace",
+                        "operation", "output_kind")):
             raise CanonicalContractError("invalid-output-collection-contract")
         patterns = output["promised_collections"]
-        if any(not isinstance(item, Mapping) or "pointer_pattern" not in item
-               for item in patterns) or len({item["pointer_pattern"] for item in patterns}) != \
-                len(patterns):
+        if any(not isinstance(item, Mapping) or
+               type(item.get("pointer_pattern")) is not str for item in patterns) or \
+                len({item["pointer_pattern"] for item in patterns}) != len(patterns):
             raise CanonicalContractError("invalid-output-collection-contract")
+        if owner_package["version"] == "0.4.1":
+            _validate_output_collection_templates(output)
         key = (output["output_collection_contract_id"],
                output["output_collection_contract_version"])
         if key in output_keys:
@@ -935,7 +1300,9 @@ def _load_0_4_closure(
     resolved = []
     for operation in operations:
         if not isinstance(operation, Mapping) or set(operation) != operation_required or \
-                operation.get("schema_version") != "machina-operation-contract/1":
+                operation.get("schema_version") != "machina-operation-contract/1" or \
+                any(type(operation.get(name)) is not str for name in (
+                    "provider_namespace", "operation", "output_kind")):
             raise CanonicalContractError("invalid-operation-contract")
         operation_key = (operation.get("provider_namespace"), operation.get("operation"))
         if operation_key in operation_keys:
@@ -964,10 +1331,16 @@ def _load_0_4_closure(
         coherence = (operation["provider_namespace"], operation["operation"],
                      operation["output_kind"])
         if coherence != (shape["provider_namespace"], shape["operation"],
-                         shape["output_kind"]) or coherence != (
-                             output["provider_namespace"], output["operation"],
-                             output["output_kind"]) or output["source_shape_ref"] != source_ref:
+                          shape["output_kind"]) or coherence != (
+                              output["provider_namespace"], output["operation"],
+                              output["output_kind"]) or output["source_shape_ref"] != source_ref:
             raise CanonicalContractError("owner-record-coherence-mismatch")
+        if owner_package["version"] == "0.4.1" and shape["source_shape_ref"] != {
+                "source_shape_id": source_ref["source_shape_id"],
+                "source_shape_version": source_ref["source_shape_version"]}:
+            raise CanonicalContractError("owner-record-coherence-mismatch")
+        if owner_package["version"] == "0.4.1":
+            _validate_owner_binding_coherence(shape, operation, output)
         used_shapes.add(shape_key)
         used_outputs.add(output_key)
         resolved.append((operation, shape, output))
@@ -1004,12 +1377,16 @@ def _load_0_4_closure(
     if not isinstance(fixture_manifest, Mapping) or \
             link.get("fixture_manifest_digest") != _record_digest(fixture_manifest):
         raise CanonicalContractError("fixture-manifest-disagreement")
+    fixture_ids = fixture_manifest.get("fixture_ids")
+    if not isinstance(fixture_ids, list) or not fixture_ids or \
+            any(type(item) is not str for item in fixture_ids) or \
+            fixture_ids != sorted(fixture_ids) or \
+            len(fixture_ids) != len(set(fixture_ids)):
+        raise CanonicalContractError("fixture-manifest-disagreement")
     _validate_operation_argument_schema(
-        argument_schema, fixture_manifest.get("fixture_ids"))
-    artifact_schema = shape["artifact_schema"]
-    if artifact_schema.get("kind") == "fixture-discriminated" and \
-            [branch["fixture_id"] for branch in artifact_schema["branches"]] != \
-            fixture_manifest.get("fixture_ids"):
+        argument_schema, fixture_ids)
+    if owner_package["version"] == "0.4.1" and \
+            _fixture_ids_from_artifact_schema(shape["artifact_schema"]) != fixture_ids:
         raise CanonicalContractError("fixture-manifest-disagreement")
 
     loaded_values = dict(values)
@@ -2314,10 +2691,17 @@ def _load_source_value_handle(artifact, template, bindings, trust_closure):
         "resolution_method_pointer_template": "resolution_method",
         "event_source_pointer_template": "event_source",
     }
+    parsed = _reparse_source_artifact(artifact, trust)
     expanded = {}
     for field, name in pointer_fields.items():
         if field in template:
-            expanded[name] = _instantiate_template(template[field], bindings)
+            pointer = _instantiate_template(template[field], bindings)
+            if field == "boundary_pointer_template":
+                try:
+                    resolve_json_pointer(parsed, pointer)
+                except ValueError:
+                    continue
+            expanded[name] = pointer
     if semantic_kind == "longitudinal_period":
         required = {"scheme", "value", "sequence"}
     elif semantic_kind == "rolling_event_anchor":
@@ -2326,7 +2710,6 @@ def _load_source_value_handle(artifact, template, bindings, trust_closure):
         raise CanonicalContractError("unsupported-source-value-handle-semantic-kind")
     if not required.issubset(expanded):
         raise CanonicalContractError("source-value-handle-template-incomplete")
-    _reparse_source_artifact(artifact, trust)
     return LoadedSourceValueHandleV1(
         _HANDLE_SEAL, artifact, semantic_kind, template, dict(bindings), expanded, trust)
 
