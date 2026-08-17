@@ -100,14 +100,14 @@ def successor_fixture(successor, promise_collections=True, promise_actions=False
                     "capabilities": [], "module_entrypoint": "fixture"},
         rights_profile=rights,
         source_shape={"media_type": "application/json", "source_shape_ref": {}},
-        operation_contract={
+        operation_contract={"promised_non_collection_evidence": []},
+        output_collection_contract={
             "promised_collections": ([
                 {"pointer_pattern": "/observation/participants"},
                 {"pointer_pattern": "/observation/participants/{participant_index}/statistics"},
             ] if promise_collections else []) + ([
                 {"pointer_pattern": "/observation/actions"}
             ] if promise_actions else []),
-            "promised_non_collection_evidence": [],
         },
     )
     artifact = successor._load_source_artifact(
@@ -206,10 +206,11 @@ def longitudinal_fixture(successor):
                     "capabilities": [], "module_entrypoint": "fixture"},
         rights_profile=rights,
         source_shape={"media_type": "application/json", "source_shape_ref": {}},
-        operation_contract={"promised_collections": [
+        operation_contract={"promised_non_collection_evidence": []},
+        output_collection_contract={"promised_collections": [
             {"pointer_pattern": "/records"}, {"pointer_pattern": "/aggregates"},
             {"pointer_pattern": "/records/{record_index}/statistics"},
-        ], "promised_non_collection_evidence": []},
+        ]},
     )
     artifact = successor._load_source_artifact(
         b'{"identity":"declared","totals":[0,0],"truncated":false}', trust)

@@ -117,7 +117,7 @@ VENDORED_MANIFEST_PATH = REPO_ROOT / "tools/iptc/vendored-manifest.json"
 #: PEP 503 normalization makes the first two look interchangeable and they are not.
 DISTRIBUTION = "machina-sports-canonical"
 IMPORT_NAME = "machina_sports_canonical"
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 #: The stem every built artefact carries. ``build`` normalizes the distribution
 #: name to its underscore form for filenames.
@@ -142,7 +142,9 @@ JSON_RESOURCES = (
     "data/legacy_0_2_surface.json",
     "data/longitudinal_aggregation_manifest_v1.json",
     "data/official_statistic_admissibility_v1.json",
+    "data/package_receipt_0_3.json",
     "data/source_shape_registry_v1.json",
+    "data/source_shape_registry_v2.json",
     "data/spatial_coordinate_system_manifest_v1.json",
     "data/spatial_distance_unit_registry_v1.json",
     "data/spatial_metric_manifest_v1.json",
@@ -436,7 +438,7 @@ PACKAGING_INPUTS_THE_FILTERS_MUST_REACH = (
 #: The tag that releases this version, spelled exactly. Distribution-scoped
 #: rather than a bare `v0.1.0`: this repository also releases templates, and a
 #: shared tag namespace makes one release trigger the other's workflow.
-RELEASE_TAG = "{0}-v{1}".format(DISTRIBUTION, VERSION)
+RELEASE_TAG = "machina-sports-canonical-v0.4.0"
 
 #: The pattern the publish workflow triggers on. Version-open so 0.1.1 needs no
 #: workflow edit, distribution-scoped so nothing else in the namespace matches.
@@ -446,6 +448,24 @@ RELEASE_TAG_GLOB = "{0}-v*".format(DISTRIBUTION)
 PUBLISH_WORKFLOW_PATH = (REPO_ROOT
                          / ".github/workflows/publish-machina-sports-canonical.yml")
 RELEASE_DOCS_PATH = REPO_ROOT / "docs/iptc/RELEASING.md"
+ROOT_README_PATH = REPO_ROOT / "README.md"
+REVIEW_RECEIPT_FILE = \
+    "docs/iptc/machina-sports-canonical-0.4.0.review-source.json"
+REVIEW_RECEIPT_PATH = REPO_ROOT / REVIEW_RECEIPT_FILE
+REVIEW_RECEIPT_SCHEMA = "machina-reviewed-source/1"
+REVIEW_RECEIPT_KEYS = {
+    "approval_ref",
+    "distribution",
+    "reviewed_source_commit",
+    "reviewed_source_tree",
+    "schema_version",
+    "sdist_filename",
+    "sdist_sha256",
+    "source_date_epoch",
+    "version",
+    "wheel_filename",
+    "wheel_sha256",
+}
 
 #: What still stops this release now that the license decision is made, each stated
 #: as its own sentence in `docs/iptc/RELEASING.md`.
@@ -561,7 +581,7 @@ RELEASE_DIGEST_FILE = "SHA256SUMS"
 #: published digest with the reviewed one" named no artefact to compare against.
 #: One checked-in file makes cross-interpreter reproducibility falsifiable: a leg
 #: whose bytes differ fails against the same rows every other leg passes against.
-RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.3.0.sha256"
+RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.4.0.sha256"
 RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 
 #: Exactly the rows that file carries, in exactly that order: the wheel, then the
@@ -575,14 +595,24 @@ RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 #: A path prefix would make each of those a different file and the comparison
 #: unperformable in two of the three.
 REVIEWED_RELEASE_DIGESTS = (
-    ("{0}-py3-none-any.whl".format(ARTIFACT_STEM),
+    ("machina_sports_canonical-0.4.0-py3-none-any.whl",
+      "7f9befa7ba89b7d8370d0120558573885fb5966e9c6f9d05f8937c4a4c92d1a4"),
+    ("machina_sports_canonical-0.4.0.tar.gz",
+      "0b4b9ef47d5475124ed87b2e0b184952a4c10bc02619a03c33da8f794247f3ae"),
+)
+
+HISTORICAL_0_3_CHECKSUM_FILE = \
+    "docs/iptc/machina-sports-canonical-0.3.0.sha256"
+HISTORICAL_0_3_CHECKSUM_PATH = REPO_ROOT / HISTORICAL_0_3_CHECKSUM_FILE
+HISTORICAL_0_3_RELEASE_DIGESTS = (
+    ("machina_sports_canonical-0.3.0-py3-none-any.whl",
      "52c2b5a321a60ca242166e5522307f72ef974a460e8f906775bb3cf0480d22a1"),
-    ("{0}.tar.gz".format(ARTIFACT_STEM),
+    ("machina_sports_canonical-0.3.0.tar.gz",
      "0cbb26540e346daf86a31cc2ed2b1126da0e28c5836114ccb6cd39212c915024"),
 )
 
 #: The independently verified 0.2.0 rows are immutable release history. They are
-#: deliberately not derived from ``ARTIFACT_STEM``, which now names 0.3.0.
+#: deliberately not derived from ``ARTIFACT_STEM``, which now names 0.4.0.
 HISTORICAL_0_2_RELEASE_DIGESTS = (
     ("machina_sports_canonical-0.2.0-py3-none-any.whl",
      "de6bd5cf6425157cb969ecf483ce103de2e1ad37666b10d37ea9763d34d69e31"),
@@ -714,7 +744,7 @@ FIXED_POINT_SEQUENCE_PHRASES = (
 #: Asserted in the release document as well as in the receipt, because a releaser
 #: reconstructing a build reads the document and must not have to open a JSON file
 #: to discover which two values the build depends on.
-FIXED_POINT_COMMIT = "ddf12f04803eeb03016c10759aaf2a2be8e85f84"
+FIXED_POINT_COMMIT = "a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671"
 
 #: The immutable source pin and epoch for the historical 0.2.0 fixed point.
 HISTORICAL_0_2_FIXED_POINT_COMMIT = \
@@ -752,8 +782,10 @@ GITHUB_RELEASE_ATTACHMENTS = ("dist/*.whl", "dist/*.tar.gz",
 #: timestamp with one fixed value. It is the source commit's own time rather than
 #: an arbitrary constant so the number in the workflow can be re-derived from the
 #: tree it describes.
-CANONICAL_SOURCE_COMMIT = "ddf12f04803eeb03016c10759aaf2a2be8e85f84"
-RELEASE_SOURCE_DATE_EPOCH = "1786893899"
+CANONICAL_SOURCE_COMMIT = "a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671"
+CANONICAL_SOURCE_TREE = "6102c846860a05aa42932dbbad81541d25f64d7c"
+RELEASE_SOURCE_DATE_EPOCH = "1786951696"
+APPROVAL_REFERENCE = "canonical-provider-attestation-prerequisites-v1"
 
 #: The one place a release is built. `SOURCE_DATE_EPOCH` is enough for the wheel —
 #: `wheel` stamps every zip entry with it — and this backend's sdist ignores it
@@ -1736,6 +1768,53 @@ def reviewed_digest_rows() -> list:
         digest, separator, name = line.partition("  ")
         rows.append((name, digest) if separator else (line, ""))
     return rows
+
+
+def review_receipt() -> dict:
+    """The checked review receipt, rejecting duplicate JSON object keys."""
+    def closed_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate review receipt key: {0}".format(key))
+            result[key] = value
+        return result
+
+    return json.loads(REVIEW_RECEIPT_PATH.read_text(encoding="utf-8"),
+                      object_pairs_hook=closed_object)
+
+
+def expected_review_receipt() -> dict:
+    return {
+        "approval_ref": APPROVAL_REFERENCE,
+        "distribution": DISTRIBUTION,
+        "reviewed_source_commit": CANONICAL_SOURCE_COMMIT,
+        "reviewed_source_tree": CANONICAL_SOURCE_TREE,
+        "schema_version": REVIEW_RECEIPT_SCHEMA,
+        "sdist_filename": REVIEWED_RELEASE_DIGESTS[1][0],
+        "sdist_sha256": REVIEWED_RELEASE_DIGESTS[1][1],
+        "source_date_epoch": int(RELEASE_SOURCE_DATE_EPOCH),
+        "version": VERSION,
+        "wheel_filename": REVIEWED_RELEASE_DIGESTS[0][0],
+        "wheel_sha256": REVIEWED_RELEASE_DIGESTS[0][1],
+    }
+
+
+def assert_review_receipt(testcase: unittest.TestCase, receipt: dict) -> None:
+    """Apply the closed receipt contract to an in-memory object."""
+    testcase.assertEqual(set(receipt), REVIEW_RECEIPT_KEYS)
+    for key in REVIEW_RECEIPT_KEYS - {"source_date_epoch"}:
+        testcase.assertIs(type(receipt[key]), str, key)
+    testcase.assertIs(type(receipt["source_date_epoch"]), int)
+    testcase.assertRegex(receipt["reviewed_source_commit"], r"^[0-9a-f]{40}$")
+    testcase.assertRegex(receipt["reviewed_source_tree"], r"^[0-9a-f]{40}$")
+    testcase.assertRegex(receipt["wheel_filename"],
+                         r"^[A-Za-z0-9_.-]+-py3-none-any\.whl$")
+    testcase.assertRegex(receipt["sdist_filename"],
+                         r"^[A-Za-z0-9_.-]+\.tar\.gz$")
+    testcase.assertRegex(receipt["wheel_sha256"], r"^[0-9a-f]{64}$")
+    testcase.assertRegex(receipt["sdist_sha256"], r"^[0-9a-f]{64}$")
+    testcase.assertEqual(receipt, expected_review_receipt())
 
 
 def line_index(block: str, needle: str) -> int:
@@ -2973,40 +3052,23 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
                  if "tests/test_iptc_" in command]
         self.assertEqual(named, ["python {0} -v".format(PACKAGE_PROOF_SUITE)])
 
-    def test_the_proof_job_compares_its_release_build_with_the_reviewed_digests(self):
-        """What made the matrix worth having, and what it was missing.
-
-        Each leg ran the suite and proved its own build reproducible on its own
-        interpreter. Nothing compared the two, so 3.9 and 3.11 could each have
-        been stably building *different* bytes with both legs green. The leg now
-        builds a release through the same helper and the same epoch the release
-        job uses and diffs the result against the reviewed digests, so a divergent
-        interpreter fails its own job against the file the other one passes.
-
-        Into ``$RUNNER_TEMP`` rather than into the checkout: this job's last step
-        is a clean-tree gate, and an artefact left in a tracked path would turn a
-        successful proof into a red gate one step later.
-        """
+    def test_the_proof_job_builds_and_checks_this_interpreters_release_digests(self):
         commands = run_commands(self.proof)
         builds = [command for command in commands
-                  if RELEASE_HELPER in command or "-m build" in command]
-        self.assertEqual(len(builds), 1,
-                         "expected exactly one release build in the proof job, "
-                         "through the release helper: {0}".format(builds))
-        self.assertIn("$RUNNER_TEMP", builds[0],
-                      "the release build must write outside the checkout")
-        self.assertIn('SOURCE_DATE_EPOCH: "{0}"'.format(RELEASE_SOURCE_DATE_EPOCH),
-                      self.proof,
-                      "a build without the release epoch is not the release")
+                   if RELEASE_HELPER in command or "-m build" in command]
+        self.assertEqual(
+            builds,
+            ['python {0} . "$RUNNER_TEMP/release"'.format(RELEASE_HELPER)])
         digests = [command for command in commands if "sha256sum" in command]
         self.assertEqual(len(digests), 1, digests)
-        self.assertNotIn("dist/", digests[0],
-                         "the generated rows must carry basenames, or they can "
-                         "never diff equal against the checked-in file")
+        self.assertIn("*.whl *.tar.gz", digests[0])
         comparisons = [command for command in commands
                        if command.startswith("diff -u")]
         self.assertEqual(len(comparisons), 1, comparisons)
         self.assertIn(RELEASE_CHECKSUM_FILE, comparisons[0])
+        self.assertIn('SOURCE_DATE_EPOCH: "{0}"'.format(
+            RELEASE_SOURCE_DATE_EPOCH), self.proof)
+        self.assertIn("rm -rf machina_sports_canonical.egg-info", commands)
 
     def test_the_proof_job_keeps_its_clean_tree_gate_after_the_release_build(self):
         """The gate is what catches a build byproduct the step above did not clean
@@ -3014,12 +3076,10 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
         commands = run_commands(self.proof)
         self.assertTrue(any("git status --porcelain" in command
                             for command in commands), commands)
-        comparison = line_index(self.proof, "diff -u")
-        self.assertNotEqual(comparison, -1,
-                            "the proof job compares nothing with the reviewed "
-                            "digests")
-        self.assertLess(comparison,
-                        line_index(self.proof, "git status --porcelain"))
+        release_build = line_index(self.proof, RELEASE_HELPER)
+        self.assertNotEqual(release_build, -1)
+        self.assertLess(release_build,
+                         line_index(self.proof, "git status --porcelain"))
 
     def test_the_validation_job_stays_on_one_interpreter_and_keeps_every_gate(self):
         """The matrix is additive. If proving two more interpreters cost the pin
@@ -3463,33 +3523,120 @@ class TestTheReleaseArtefactsAreReproducible(unittest.TestCase):
         receipt = json.loads(
             (CANONICAL_ROOT / "package-receipt.json").read_text(encoding="utf-8"))
         self.assertEqual(receipt["source_commit"], CANONICAL_SOURCE_COMMIT)
+        self.assertEqual(CANONICAL_SOURCE_COMMIT, FIXED_POINT_COMMIT)
         self.assertRegex(RELEASE_SOURCE_DATE_EPOCH, r"^[1-9][0-9]+$")
 
 
-class TestTheReviewedReleaseDigestsAreCheckedIn(unittest.TestCase):
-    """Reproducibility was proved, and never proved *against anything*.
+class TestTheCheckedReviewReceipt(unittest.TestCase):
+    """Durable review evidence that survives a squash merge and branch deletion."""
 
-    The class above shows that two builds in one process agree, and the matrix
-    repeats that on 3.9 and on 3.11 — but each leg only ever compared its own
-    build with its own build. Two interpreters that each reproduced a *different*
-    artefact would both be green, and `docs/iptc/RELEASING.md` said "the digests
-    below" while listing none, so the release checklist's central step — compare
-    the digest PyPI serves with the digest you reviewed — named nothing to compare
-    with.
+    def setUp(self):
+        self.assertTrue(REVIEW_RECEIPT_PATH.is_file(), REVIEW_RECEIPT_PATH)
+        self.receipt = review_receipt()
 
-    So the reviewed digests are checked in, and this class is what makes that file
-    binding: the artefacts this interpreter builds must hash to exactly those rows.
-    Running this suite on both declared interpreters therefore compares them with
-    each other, through a third thing a human approved.
-    """
+    def test_the_receipt_is_closed_typed_exact_and_canonical_json(self):
+        assert_review_receipt(self, self.receipt)
+        canonical = json.dumps(self.receipt, indent=2, sort_keys=True) + "\n"
+        self.assertEqual(REVIEW_RECEIPT_PATH.read_text(encoding="utf-8"), canonical)
+
+    def test_the_contract_rejects_missing_extra_mistyped_malformed_and_changed_values(self):
+        mutations = []
+        missing = dict(self.receipt)
+        missing.pop("reviewed_source_tree")
+        mutations.append(("missing key", missing))
+        extra = dict(self.receipt, note="not a closed field")
+        mutations.append(("extra key", extra))
+        for label, key, value in (
+                ("epoch string", "source_date_epoch", RELEASE_SOURCE_DATE_EPOCH),
+                ("boolean epoch", "source_date_epoch", True),
+                ("short commit", "reviewed_source_commit", "a57ffcf"),
+                ("uppercase tree", "reviewed_source_tree",
+                 CANONICAL_SOURCE_TREE.upper()),
+                ("bad wheel name", "wheel_filename", "canonical.whl"),
+                ("short digest", "sdist_sha256", "0b4b9ef"),
+                ("different approval reference", "approval_ref",
+                 "canonical-provider-attestation-prerequisites-v2"),
+                ("different version", "version", "0.4.1")):
+            changed = dict(self.receipt)
+            changed[key] = value
+            mutations.append((label, changed))
+        for label, mutated in mutations:
+            with self.subTest(mutation=label):
+                with self.assertRaises(AssertionError):
+                    assert_review_receipt(self, mutated)
+
+    def test_the_receipt_agrees_with_every_release_authority(self):
+        package_receipt = json.loads(
+            (CANONICAL_ROOT / "package-receipt.json").read_text(encoding="utf-8"))
+        manifest = json.loads(VENDORED_MANIFEST_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(package_receipt["distribution_version"],
+                         self.receipt["version"])
+        self.assertEqual(package_receipt["source_commit"],
+                         self.receipt["reviewed_source_commit"])
+        self.assertEqual(manifest["source_commit"],
+                         self.receipt["reviewed_source_commit"])
+        self.assertEqual(
+            reviewed_digest_rows(),
+            [(self.receipt["wheel_filename"], self.receipt["wheel_sha256"]),
+             (self.receipt["sdist_filename"], self.receipt["sdist_sha256"])])
+        self.assertEqual(self.receipt["version"], VERSION)
+
+    def test_the_receipt_epoch_is_the_release_helper_and_workflow_epoch(self):
+        epoch = str(self.receipt["source_date_epoch"])
+        self.assertEqual(
+            release_helper().source_date_epoch({"SOURCE_DATE_EPOCH": epoch}),
+            self.receipt["source_date_epoch"])
+        proof = workflow_jobs()[PACKAGE_PROOF_JOB]
+        build_job = workflow_jobs(publish_workflow_text())[RELEASE_BUILD_JOB]
+        for name, block in ((PACKAGE_PROOF_JOB, proof),
+                            (RELEASE_BUILD_JOB, build_job)):
+            with self.subTest(job=name):
+                self.assertIn('SOURCE_DATE_EPOCH: "{0}"'.format(epoch), block)
+                self.assertIn(RELEASE_CHECKSUM_FILE, block)
+
+    def test_release_docs_and_repository_readme_anchor_provenance_to_the_receipt(self):
+        required = (
+            REVIEW_RECEIPT_FILE,
+            self.receipt["reviewed_source_commit"],
+            self.receipt["reviewed_source_tree"],
+            str(self.receipt["source_date_epoch"]),
+            self.receipt["approval_ref"],
+            self.receipt["wheel_filename"],
+            self.receipt["wheel_sha256"],
+            self.receipt["sdist_filename"],
+            self.receipt["sdist_sha256"],
+        )
+        for path in (RELEASE_DOCS_PATH, ROOT_README_PATH):
+            text = path.read_text(encoding="utf-8")
+            with self.subTest(path=path):
+                for value in required:
+                    self.assertIn(value, text)
+                self.assertNotIn("re-derivable with `git log", text)
+
+    def test_the_review_receipt_is_not_a_wheel_or_sdist_input(self):
+        self.assertNotIn("docs", PACKAGING_INPUTS)
+        basename = REVIEW_RECEIPT_PATH.name
+        for member in wheel_record(built().wheel):
+            with self.subTest(artefact="wheel", member=member):
+                self.assertNotIn(basename, member)
+        for member in tar_members(built().sdist):
+            with self.subTest(artefact="sdist", member=member.name):
+                self.assertNotIn(basename, member.name)
+
+    def test_release_tests_do_not_resolve_the_reviewed_commit_as_a_git_object(self):
+        source = Path(__file__).read_text(encoding="utf-8")
+        self.assertNotIn('["git", ' + '"show"', source)
+        self.assertNotIn("cat" + "-file", source)
+
+
+class TestTheReviewedReleaseDigestsAreTheAuthority(unittest.TestCase):
+    """The fixed-point release bytes have one checked-in authority."""
 
     def test_the_checksum_file_is_checked_in_as_sha256sum_writes_it(self):
         """Byte-exact, because every job compares it with ``diff -u`` against
         generated output. A stray blank line, a single-space separator or a
         trailing space is a red diff on a release whose bytes are correct."""
-        self.assertTrue(RELEASE_CHECKSUM_PATH.is_file(),
-                        "no reviewed digests are checked in: {0}".format(
-                            RELEASE_CHECKSUM_FILE))
+        self.assertTrue(RELEASE_CHECKSUM_PATH.is_file())
         self.assertEqual(
             RELEASE_CHECKSUM_PATH.read_text(encoding="utf-8"),
             "".join("{0}  {1}\n".format(digest, name)
@@ -3516,16 +3663,13 @@ class TestTheReviewedReleaseDigestsAreCheckedIn(unittest.TestCase):
         """The gate itself, and — because the proof job runs this suite on 3.9 and
         on 3.11 — the cross-interpreter comparison. Either interpreter drifting
         fails its own leg against the rows the other one passes against."""
-        recorded = dict(reviewed_digest_rows())
-        for artefact in (built().wheel, built().sdist):
-            with self.subTest(artefact=artefact.name):
-                self.assertIn(artefact.name, recorded,
-                              "the build produced an artefact the reviewed "
-                              "digests do not name")
-                self.assertEqual(
-                    sha256_bytes(artefact.read_bytes()), recorded[artefact.name],
-                    "this interpreter built bytes that are not the reviewed "
-                    "release; see {0}".format(RELEASE_CHECKSUM_FILE))
+        self.assertEqual(
+            {built().wheel.name, built().sdist.name},
+            {name for name, _ in REVIEWED_RELEASE_DIGESTS})
+        actual = {artefact.name: sha256_bytes(artefact.read_bytes())
+                  for artefact in (built().wheel, built().sdist)}
+        expected = dict(REVIEWED_RELEASE_DIGESTS)
+        self.assertEqual(actual, expected)
 
     def test_the_checksum_file_is_outside_the_artefacts_it_describes(self):
         """A checksum shipped inside the archive it hashes cannot hash it, and a
@@ -3636,7 +3780,7 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
         self.assertTrue(
             fnmatch.fnmatch(RELEASE_TAG, RELEASE_TAG_GLOB),
             "{0} does not match {1}".format(RELEASE_TAG, RELEASE_TAG_GLOB))
-        self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.3.0")
+        self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.4.0")
 
     def test_the_workflow_scopes_each_write_permission_to_the_job_that_needs_it(self):
         """``id-token: write`` on the workflow would hand the upload identity to
@@ -4159,15 +4303,15 @@ class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
 
     def test_the_docs_require_a_clean_install_from_the_index_afterwards(self):
         self.assertMentions(
-            "pip install {0}=={1}".format(DISTRIBUTION, VERSION),
+            "pip install {0}==0.4.0".format(DISTRIBUTION),
             "clean",
         )
         self.assertIn(IMPORT_NAME, self.text)
 
     def test_the_docs_state_the_recovery_path_and_that_a_version_is_spent(self):
-        """A bad 0.3.0 cannot be replaced; deleting it does not free the version.
+        """A bad 0.4.0 cannot be replaced; deleting it does not free the version.
         A document that omits that invites exactly the wrong recovery."""
-        self.assertMentions("yank", "0.3.1", "cannot")
+        self.assertMentions("yank", "0.4.1", "cannot")
 
     def test_the_docs_record_the_reviewed_digests_and_name_the_file_that_holds_them(self):
         """The document said "the digests below" and listed none.
@@ -4252,6 +4396,18 @@ class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
             with self.subTest(interpreter=version):
                 self.assertIn(version, self.text)
         for name, digest in HISTORICAL_RELEASE_DIGESTS:
+            with self.subTest(artefact=name):
+                self.assertIn(name, self.text)
+                self.assertIn(digest, self.text)
+
+    def test_the_docs_and_checksum_preserve_0_3_0_as_history(self):
+        """Finalizing 0.4 must not rewrite the preceding release evidence."""
+        self.assertIn(HISTORICAL_0_3_CHECKSUM_FILE, self.text)
+        expected = "".join("{0}  {1}\n".format(digest, name)
+                           for name, digest in HISTORICAL_0_3_RELEASE_DIGESTS)
+        self.assertEqual(
+            HISTORICAL_0_3_CHECKSUM_PATH.read_text(encoding="utf-8"), expected)
+        for name, digest in HISTORICAL_0_3_RELEASE_DIGESTS:
             with self.subTest(artefact=name):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
@@ -4367,6 +4523,7 @@ class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
         self.assertEqual(receipt["source_commit"], FIXED_POINT_COMMIT)
         self.assertEqual(manifest["source_commit"], FIXED_POINT_COMMIT)
         self.assertEqual(CANONICAL_SOURCE_COMMIT, FIXED_POINT_COMMIT)
+        self.assertIn(FIXED_POINT_COMMIT, self.text)
 
     def test_the_docs_no_longer_claim_the_renewed_digests_are_unverified(self):
         """The stale sentence, asserted gone.
@@ -4411,7 +4568,7 @@ class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
     def test_the_docs_do_not_present_the_superseded_digests_as_current(self):
         """Two digest pairs in one document is a reading hazard. The reviewed file
         is named as the authority, and the superseded rows must not be the ones
-        the active 0.3.0 checksum authority is said to hold."""
+        the active 0.4.0 checksum authority is said to hold."""
         current = {digest for _, digest in REVIEWED_RELEASE_DIGESTS}
         stale = {digest for _, digest in SUPERSEDED_RELEASE_DIGESTS}
         self.assertEqual(current & stale, set(),

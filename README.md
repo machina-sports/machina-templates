@@ -1,6 +1,24 @@
 # Machina Templates
 Repository of templates and connectors for Machina Sports - a platform for creating AI-powered sports content workflows.
 
+## Canonical Package Review Provenance
+
+The durable review authority for `machina-sports-canonical` 0.4.0 is
+`docs/iptc/machina-sports-canonical-0.4.0.review-source.json`, not the continued
+reachability of a pre-squash Git object. The closed `machina-reviewed-source/1`
+receipt binds approval reference
+`canonical-provider-attestation-prerequisites-v1`, source commit
+`a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671`, reviewed tree
+`6102c846860a05aa42932dbbad81541d25f64d7c`, and epoch `1786951696` to these
+reviewed artefacts:
+
+- `machina_sports_canonical-0.4.0-py3-none-any.whl`: `7f9befa7ba89b7d8370d0120558573885fb5966e9c6f9d05f8937c4a4c92d1a4`
+- `machina_sports_canonical-0.4.0.tar.gz`: `0b4b9ef47d5475124ed87b2e0b184952a4c10bc02619a03c33da8f794247f3ae`
+
+The source commit remains package provenance even if squash merge and branch
+deletion make it unreachable as a Git object. The review receipt is excluded from
+both distribution artefacts, whose checksum gates remain unchanged.
+
 ## Repository Structure
 
 This repository is organized into two main directories:
@@ -353,4 +371,3 @@ To contribute to this repository:
 2. Ensure all environment variables use the `$MACHINA_CONTEXT_VARIABLE_` prefix
 3. Document your templates and connectors thoroughly
 4. Test your workflows before submitting
-

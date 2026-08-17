@@ -80,7 +80,7 @@ evidence a reader can re-check, not by assertion:
 | A reviewer-gated `pypi` environment exists | The repository's `pypi` environment carries a **required reviewer** rule and a deployment-branch policy. Re-check with `gh api repos/<owner>/<repo>/environments/pypi`. |
 | The trusted publisher is registered and works | Workflow run **`31743535579`** — `publish-machina-sports-canonical.yml`, tag `machina-sports-canonical-v0.1.0`, head `48d4168162fc84b48931b82971738b9359298dde` — **completed successfully**. An upload cannot succeed unless the environment resolved and PyPI accepted the OIDC exchange, so that run is proof of the whole path. |
 | The 0.2.0 digests are independently verified | **CLOSED HISTORY.** Rebuilt from a clean `git archive` export of `455561632fc0f0f389109e5417c32798a02538c0`, in isolated trees, on Python **3.9.6** and **3.11.14**, at `SOURCE_DATE_EPOCH=1786716463`. Both interpreters reproduced the checked-in rows and each other. See the historical verification record below. |
-| The 0.3.0 owner source is reviewed | **CLOSED.** Release metadata pins the exact reviewed source commit `ddf12f04803eeb03016c10759aaf2a2be8e85f84`, whose committer epoch is `1786893899`. |
+| The 0.4.0 owner source is reviewed | **CLOSED.** `docs/iptc/machina-sports-canonical-0.4.0.review-source.json` preserves the exact reviewed source commit, tree, release epoch, approved design and artefact hashes independently of Git object reachability after a squash merge. |
 
 **A closed prerequisite is not an open door.** All four rows say the *standing
 setup* is in place and that the bytes are reproducible. None of them approves this
@@ -111,7 +111,7 @@ None of these is closed by anything above, and none may be skipped:
    not done when the upload succeeds; it is done when what the index serves is
    confirmed to be what was approved.
 
-A published version cannot be replaced: uploading `0.3.0` prematurely spends the
+A published version cannot be replaced: uploading `0.4.0` prematurely spends the
 version number permanently.
 
 ---
@@ -162,7 +162,7 @@ environment requires a reviewer. Verify it by opening the settings page.
 ## Tag convention
 
 ```
-machina-sports-canonical-v0.3.0
+machina-sports-canonical-v0.4.0
 ```
 
 Distribution-scoped, because this repository also releases templates and a bare
@@ -178,18 +178,22 @@ The release is built once, by
 environment:
 
 ```sh
-SOURCE_DATE_EPOCH=1786893899 \
+SOURCE_DATE_EPOCH=1786951696 \
   python packaging/machina_sports_canonical/release.py . dist
 sha256sum dist/*.whl dist/*.tar.gz
 ```
 
-`1786893899` is the committer timestamp of `ddf12f04803eeb03016c10759aaf2a2be8e85f84`,
-the canonical source commit recorded in `tools/iptc/canonical/package-receipt.json`
-— re-derivable with `git log -1 --format=%ct <commit>`, not an arbitrary constant.
-It moves with that commit every time the canonical source changes. This release
-uses the reviewed Phase 1 owner source commit, so the epoch and digests follow it.
+`docs/iptc/machina-sports-canonical-0.4.0.review-source.json` is the durable review
+receipt for these values. It records schema `machina-reviewed-source/1`, approval
+reference `canonical-provider-attestation-prerequisites-v1`, source commit
+`a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671`, reviewed tree
+`6102c846860a05aa42932dbbad81541d25f64d7c`, and integer epoch `1786951696`.
+The commit ID remains in `tools/iptc/canonical/package-receipt.json` as package
+provenance, but release verification does not require that commit to remain a
+reachable Git object after a squash merge or branch deletion. The checked receipt,
+not repository history, closes the reviewed source-to-artefact association.
 The values
-`1786716463` and `1786398569` survive below in historical verification records,
+`1786893899`, `1786716463` and `1786398569` survive below in historical records,
 which describe builds of *those* bytes and must not be restamped.
 
 **Why this is a fixed point, and why it takes two commits to reach.**
@@ -216,23 +220,28 @@ digests for review.
 
 ### The reviewed digests
 
-`docs/iptc/machina-sports-canonical-0.3.0.sha256` holds the **reviewed 0.3.0
+`docs/iptc/machina-sports-canonical-0.4.0.sha256` holds the **reviewed 0.4.0
 release candidate** digests, and it is the authority every automated comparison
 diffs against:
 
 | Artefact | SHA-256 |
 |---|---|
-| `machina_sports_canonical-0.3.0-py3-none-any.whl` | `52c2b5a321a60ca242166e5522307f72ef974a460e8f906775bb3cf0480d22a1` |
-| `machina_sports_canonical-0.3.0.tar.gz` | `0cbb26540e346daf86a31cc2ed2b1126da0e28c5836114ccb6cd39212c915024` |
+| `machina_sports_canonical-0.4.0-py3-none-any.whl` | `7f9befa7ba89b7d8370d0120558573885fb5966e9c6f9d05f8937c4a4c92d1a4` |
+| `machina_sports_canonical-0.4.0.tar.gz` | `0b4b9ef47d5475124ed87b2e0b184952a4c10bc02619a03c33da8f794247f3ae` |
 
-These rows are the **0.3.0 release candidate**, produced from the reviewed Phase 1
+These rows are the **0.4.0 release candidate**, produced from the reviewed 0.4
 owner source commit and its re-pinned generated receipts. They are recorded so
 every automated comparison has an authority to diff against. Preparing this
 fixed point does not tag, publish, deploy, merge, push, or approve an environment.
+The review receipt named above repeats both exact filenames and hashes and binds
+them to the reviewed source tree and approval reference
+`canonical-provider-attestation-prerequisites-v1`; it is deliberately outside the
+wheel and sdist inputs, so recording the review does not alter either artefact.
 
-Older records follow it and are kept as history rather than rewritten: the 0.2.0
-rows and their superseded predecessor, the 0.1.0 renewed rows, and the pre-license
-0.1.0 rows they superseded. Each keeps its own filenames and its own digests. A
+Older records follow it and are kept as history rather than rewritten: the 0.3.0
+rows, the 0.2.0 rows and their superseded predecessor, the 0.1.0 renewed rows, and
+the pre-license 0.1.0 rows they superseded. Each keeps its own filenames and its
+own digests. A
 historical record re-stamped with the current version's names would read as
 vouching for bytes nobody rebuilt.
 
@@ -256,6 +265,23 @@ Reproduce them locally with the command above; the rows must match character for
 character. **If the wheel bytes change for any reason, these digests are stale and
 this file must be re-recorded as a reviewed change.** Phase 1 changes the packaged
 runtime and data, which is why these rows differ from the historical ones below.
+
+### Frozen 0.3.0 release evidence — HISTORY
+
+The 0.3.0 fixed point remains immutable history. Its frozen package receipt is
+`tools/iptc/canonical/data/package_receipt_0_3.json`; its source commit is
+`ddf12f04803eeb03016c10759aaf2a2be8e85f84`, whose committer epoch is
+`1786893899`; and `docs/iptc/machina-sports-canonical-0.3.0.sha256` retains these
+exact rows:
+
+| Artefact (0.3.0) | SHA-256 |
+|---|---|
+| `machina_sports_canonical-0.3.0-py3-none-any.whl` | `52c2b5a321a60ca242166e5522307f72ef974a460e8f906775bb3cf0480d22a1` |
+| `machina_sports_canonical-0.3.0.tar.gz` | `0cbb26540e346daf86a31cc2ed2b1126da0e28c5836114ccb6cd39212c915024` |
+
+These values are evidence for 0.3.0 only. They are packaged so the 0.4 runtime can
+verify the frozen compatibility closure, but they are not the active release tag,
+epoch, receipt, or checksum authority and must not be rewritten for 0.4.
 
 ### Independent verification of the 0.2.0 digests — ✅ CLOSED HISTORY
 
@@ -441,14 +467,14 @@ Do these in order. Each step depends on the one before it.
    published artefact is traced to for ever.
 2. **Push the tag** on the merge commit:
    ```sh
-   git tag machina-sports-canonical-v0.3.0
-   git push origin machina-sports-canonical-v0.3.0
+   git tag machina-sports-canonical-v0.4.0
+   git push origin machina-sports-canonical-v0.4.0
    ```
    This starts the workflow. The `build` job builds, checks the tag against the
    built version, records `SHA256SUMS` and uploads the artefact. It has no upload
    scope.
 3. **Read the digests** in the `build` job log and compare them with
-   `docs/iptc/machina-sports-canonical-0.3.0.sha256`. That job already diffed them
+   `docs/iptc/machina-sports-canonical-0.4.0.sha256`. That job already diffed them
    against that file and would have failed on a mismatch, so this is a
    confirmation rather than the only check — but confirm it. If they are not
    identical, **stop** — do not approve.
@@ -458,7 +484,7 @@ Do these in order. Each step depends on the one before it.
    It never rebuilds — publishing a rebuild publishes bytes nobody approved.
 5. After `publish` succeeds, the `release` job downloads that same named workflow
    artefact, verifies `SHA256SUMS` again, and creates the GitHub Release for
-   `machina-sports-canonical-v0.3.0`. It never checks out or rebuilds the source.
+   `machina-sports-canonical-v0.4.0`. It never checks out or rebuilds the source.
    Because it needs a successful `publish`, no GitHub Release is created for a
    distribution PyPI rejected.
 
@@ -467,23 +493,23 @@ Do these in order. Each step depends on the one before it.
 ## After publishing
 
 1. Open the repository's Releases page and verify an actual **GitHub Release
-   exists** for the exact tag `machina-sports-canonical-v0.3.0`.
+   exists** for the exact tag `machina-sports-canonical-v0.4.0`.
 2. Verify its uploaded assets contain **exactly three attachments** (GitHub's
    automatically generated source-code links are not uploaded attachments):
-   - `machina_sports_canonical-0.3.0-py3-none-any.whl`
-   - `machina_sports_canonical-0.3.0.tar.gz`
+   - `machina_sports_canonical-0.4.0-py3-none-any.whl`
+   - `machina_sports_canonical-0.4.0.tar.gz`
    - `SHA256SUMS`
 3. Download those three attachments into a clean directory and run
    `sha256sum --check --strict SHA256SUMS`. Both distribution files must pass;
    this proves the GitHub Release exposes the exact bytes the build job hashed.
-4. `https://pypi.org/pypi/machina-sports-canonical/json` returns `0.3.0`.
+4. `https://pypi.org/pypi/machina-sports-canonical/json` returns `0.4.0`.
 5. **Compare** the `digests.sha256` values in that JSON, for both the wheel and
    the sdist, against `SHA256SUMS` from the approved run. They must match exactly.
    A mismatch means what PyPI serves is not what was approved.
 6. Verify a **clean** install from the index, in a throwaway virtual environment
    with nothing else in it:
    ```sh
-   pip install machina-sports-canonical==0.3.0
+   pip install machina-sports-canonical==0.4.0
    python -c "import machina_sports_canonical"
    ```
    Then repeat the offline resource case the proof suite covers — load
@@ -497,14 +523,14 @@ Only when all six pass is the version usable as a pin.
 ## When it goes wrong
 
 **A published version cannot be replaced.** Deleting a release on PyPI does not
-free its version number: `0.3.0` can never be re-uploaded with different bytes.
+free its version number: `0.4.0` can never be re-uploaded with different bytes.
 
 - **Before the upload** — any failure, at any step, is cheap. Fix it, rebuild,
   re-review the digests. Never approve past a failing gate.
-- **After the upload** — if post-publish verification fails, **yank** `0.3.0`
+- **After the upload** — if post-publish verification fails, **yank** `0.4.0`
   (which leaves it installable for existing exact pins but hides it from
-  resolution) and ship `0.3.1` with the fix. Yanking plus `0.3.1` is the recovery;
-  re-uploading `0.3.0` is not possible, and pretending the release is fine because
+  resolution) and ship `0.4.1` with the fix. Yanking plus `0.4.1` is the recovery;
+  re-uploading `0.4.0` is not possible, and pretending the release is fine because
   it installed is how a bad pin spreads.
 - **Do not proceed to the client runtime pin** on a release whose verification
   failed. A pin is only as good as the artefact it names.

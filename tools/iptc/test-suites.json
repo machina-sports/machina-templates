@@ -40,6 +40,10 @@
       "group": "canonical"
     },
     {
+      "path": "tests/test_iptc_canonical_runtime_0_4.py",
+      "group": "canonical"
+    },
+    {
       "path": "tests/test_iptc_canonical_serializer.py",
       "group": "canonical",
       "timeout_seconds": 600

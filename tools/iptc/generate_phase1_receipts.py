@@ -15,7 +15,8 @@ RUNTIME_MANIFEST = DATA / "trusted_loader_manifest_v1.json"
 VENDORED_MANIFEST = ROOT / "tools/iptc/vendored-manifest.json"
 PACKAGE_RECEIPT = PACKAGE / "package-receipt.json"
 LEGACY_RECEIPT = DATA / "legacy_0_2_surface.json"
-SOURCE_COMMIT = "ddf12f04803eeb03016c10759aaf2a2be8e85f84"
+VERSION = "0.4.0"
+SOURCE_COMMIT = "a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671"
 
 PRIVATE_SYMBOLS = (
     "_IdentityResolutionProvider", "_load_source_artifact", "_build_statistic_fact",
@@ -28,6 +29,8 @@ PRIVATE_SYMBOLS = (
     "_build_successor_envelope", "_project_successor_graph",
     "_validate_successor_envelope", "_validate_successor_envelope_bytes",
     "_validate_longitudinal_envelope_bytes", "_statistic_projection_disposition",
+    "_load_0_3_compatibility_closure", "_load_0_4_closure",
+    "_validate_source_shape_schema", "_validate_source_artifact_shape",
     "execute_adapter_operation",
 )
 
@@ -106,7 +109,7 @@ def generate():
          for item in module_records + data_records])).hexdigest()
     runtime = {
         "schema_version": "machina-canonical-runtime-vendored-manifest/1",
-        "owner_package": {"name": "machina-sports-canonical", "version": "0.3.0",
+        "owner_package": {"name": "machina-sports-canonical", "version": VERSION,
                           "release_digest": aggregate},
         "runtime_files": module_records,
         "required_data_files": data_records,
@@ -131,7 +134,7 @@ def generate():
     }
     VENDORED_MANIFEST.write_text(json.dumps(vendored, indent=2) + "\n", encoding="utf-8")
     receipt = {
-        "distribution_version": "0.3.0",
+        "distribution_version": VERSION,
         "source": "machina-templates:tools/iptc/canonical",
         "source_commit": SOURCE_COMMIT,
         "legacy_contract_version": "0.2.0",
