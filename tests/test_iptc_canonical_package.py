@@ -454,7 +454,7 @@ REVIEW_RECEIPT_FILE = \
 REVIEW_RECEIPT_PATH = REPO_ROOT / REVIEW_RECEIPT_FILE
 REVIEW_RECEIPT_SCHEMA = "machina-reviewed-source/1"
 REVIEW_RECEIPT_KEYS = {
-    "approved_design",
+    "approval_ref",
     "distribution",
     "reviewed_source_commit",
     "reviewed_source_tree",
@@ -785,7 +785,7 @@ GITHUB_RELEASE_ATTACHMENTS = ("dist/*.whl", "dist/*.tar.gz",
 CANONICAL_SOURCE_COMMIT = "a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671"
 CANONICAL_SOURCE_TREE = "6102c846860a05aa42932dbbad81541d25f64d7c"
 RELEASE_SOURCE_DATE_EPOCH = "1786951696"
-APPROVED_DESIGN = "Design Log #035"
+APPROVAL_REFERENCE = "canonical-provider-attestation-prerequisites-v1"
 
 #: The one place a release is built. `SOURCE_DATE_EPOCH` is enough for the wheel —
 #: `wheel` stamps every zip entry with it — and this backend's sdist ignores it
@@ -1786,7 +1786,7 @@ def review_receipt() -> dict:
 
 def expected_review_receipt() -> dict:
     return {
-        "approved_design": APPROVED_DESIGN,
+        "approval_ref": APPROVAL_REFERENCE,
         "distribution": DISTRIBUTION,
         "reviewed_source_commit": CANONICAL_SOURCE_COMMIT,
         "reviewed_source_tree": CANONICAL_SOURCE_TREE,
@@ -3554,7 +3554,8 @@ class TestTheCheckedReviewReceipt(unittest.TestCase):
                  CANONICAL_SOURCE_TREE.upper()),
                 ("bad wheel name", "wheel_filename", "canonical.whl"),
                 ("short digest", "sdist_sha256", "0b4b9ef"),
-                ("different design", "approved_design", "Design Log #034"),
+                ("different approval reference", "approval_ref",
+                 "canonical-provider-attestation-prerequisites-v2"),
                 ("different version", "version", "0.4.1")):
             changed = dict(self.receipt)
             changed[key] = value
@@ -3599,7 +3600,7 @@ class TestTheCheckedReviewReceipt(unittest.TestCase):
             self.receipt["reviewed_source_commit"],
             self.receipt["reviewed_source_tree"],
             str(self.receipt["source_date_epoch"]),
-            self.receipt["approved_design"],
+            self.receipt["approval_ref"],
             self.receipt["wheel_filename"],
             self.receipt["wheel_sha256"],
             self.receipt["sdist_filename"],

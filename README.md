@@ -6,7 +6,8 @@ Repository of templates and connectors for Machina Sports - a platform for creat
 The durable review authority for `machina-sports-canonical` 0.4.0 is
 `docs/iptc/machina-sports-canonical-0.4.0.review-source.json`, not the continued
 reachability of a pre-squash Git object. The closed `machina-reviewed-source/1`
-receipt binds approved design `Design Log #035`, source commit
+receipt binds approval reference
+`canonical-provider-attestation-prerequisites-v1`, source commit
 `a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671`, reviewed tree
 `6102c846860a05aa42932dbbad81541d25f64d7c`, and epoch `1786951696` to these
 reviewed artefacts:

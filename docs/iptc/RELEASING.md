@@ -184,8 +184,8 @@ sha256sum dist/*.whl dist/*.tar.gz
 ```
 
 `docs/iptc/machina-sports-canonical-0.4.0.review-source.json` is the durable review
-receipt for these values. It records schema `machina-reviewed-source/1`, approved
-design `Design Log #035`, source commit
+receipt for these values. It records schema `machina-reviewed-source/1`, approval
+reference `canonical-provider-attestation-prerequisites-v1`, source commit
 `a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671`, reviewed tree
 `6102c846860a05aa42932dbbad81541d25f64d7c`, and integer epoch `1786951696`.
 The commit ID remains in `tools/iptc/canonical/package-receipt.json` as package
@@ -234,8 +234,9 @@ owner source commit and its re-pinned generated receipts. They are recorded so
 every automated comparison has an authority to diff against. Preparing this
 fixed point does not tag, publish, deploy, merge, push, or approve an environment.
 The review receipt named above repeats both exact filenames and hashes and binds
-them to the reviewed source tree and `Design Log #035`; it is deliberately outside
-the wheel and sdist inputs, so recording the review does not alter either artefact.
+them to the reviewed source tree and approval reference
+`canonical-provider-attestation-prerequisites-v1`; it is deliberately outside the
+wheel and sdist inputs, so recording the review does not alter either artefact.
 
 Older records follow it and are kept as history rather than rewritten: the 0.3.0
 rows, the 0.2.0 rows and their superseded predecessor, the 0.1.0 renewed rows, and
