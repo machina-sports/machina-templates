@@ -6,18 +6,22 @@ Repository of templates and connectors for Machina Sports - a platform for creat
 The durable review authority for `machina-sports-canonical` 0.4.1 is
 `docs/iptc/machina-sports-canonical-0.4.1.review-source.json`, not the continued
 reachability of a pre-squash Git object. The closed `machina-reviewed-source/1`
-receipt binds approval reference
+receipt records approval reference
 `provider-attested-sports-skills-operations-v1`, source commit
 `0165557eb459740071963de3cf7a0669bd4dd721`, reviewed tree
-`bfddaab8c9ac4d9ab335af085dadfdfb8c50525d`, and epoch `1786983984` to these
-reviewed artefacts:
+`bfddaab8c9ac4d9ab335af085dadfdfb8c50525d`, and epoch `1786983984` alongside
+these reviewed artefacts:
 
 - `machina_sports_canonical-0.4.1-py3-none-any.whl`: `e8c65a4f22136075bd8414743de25ea83470b737a780c814a4137ff91850c1b5`
 - `machina_sports_canonical-0.4.1.tar.gz`: `caa7b6aa4c7e6f5f77ec483d2fa58d4abae8c558599252b387a254c23c4aa95b`
 
 The source commit remains package provenance even if squash merge and branch
-deletion make it unreachable as a Git object. The review receipt is excluded from
-both distribution artefacts, whose checksum gates remain unchanged.
+deletion make it unreachable as a Git object. `reviewed_source_tree` identifies
+the canonical implementation tree before generated fixed-point metadata is
+re-pinned; it does not identify the complete fixed-point tree. The review receipt
+is excluded from both distribution artefacts. Rebuilding the fixed-point checkout
+and matching the recorded archive hashes, rather than the receipt alone,
+establishes the source-to-artifact association.
 
 ## Repository Structure
 

@@ -1009,12 +1009,18 @@ def _validate_source_shape_binding_templates(shape):
                     interpretation.get("source_record_kind") != "provider-record-id":
                 raise ValueError
 
+        absence_keys = set()
         for probe in absence:
             if not isinstance(probe, Mapping) or set(probe) != {
                     "pointer_template", "probe"} or probe.get("probe") not in (
-                        "shape_not_exposed", "not_applicable_by_shape"):
+                        "member_absent", "shape_not_exposed",
+                        "not_applicable_by_shape"):
                 raise ValueError
             _pointer_template_variables(probe["pointer_template"])
+            key = (probe["probe"], probe["pointer_template"])
+            if key in absence_keys:
+                raise ValueError
+            absence_keys.add(key)
     except (AttributeError, KeyError, TypeError, ValueError):
         raise CanonicalContractError("invalid-source-shape-record") from None
 
@@ -1098,6 +1104,32 @@ def _source_template_exists(artifact_schema, pointer, fixture_ids=None):
     return True
 
 
+def _source_template_is_optional(artifact_schema, pointer, fixture_ids=None):
+    parts = _pointer_parts(pointer)
+    if artifact_schema.get("kind") == "fixture-discriminated":
+        branches = artifact_schema["branches"]
+        selected = [branch for branch in branches if fixture_ids is None or
+                    branch["fixture_id"] in fixture_ids]
+        if not selected or fixture_ids is not None and \
+                sorted(branch["fixture_id"] for branch in selected) != \
+                sorted(fixture_ids):
+            return False
+        return all(_source_template_is_optional(branch["shape"], pointer)
+                   for branch in selected)
+    node = artifact_schema
+    for index, part in enumerate(parts):
+        if node.get("kind") == "object" and part in node.get("members", {}):
+            if index == len(parts) - 1:
+                return part not in node.get("required", ())
+            node = node["members"][part]
+        elif node.get("kind") == "array" and re.fullmatch(
+                r"\{[A-Za-z][A-Za-z0-9._-]*\}", part):
+            node = node["items"]
+        else:
+            return False
+    return False
+
+
 def _validate_owner_binding_coherence(shape, operation, output):
     """Bind operation evidence and collection pointers to executable shape paths."""
     try:
@@ -1121,6 +1153,23 @@ def _validate_owner_binding_coherence(shape, operation, output):
                 if field in template and not _source_template_exists(
                         schema, template[field], fixture_ids):
                     raise ValueError
+        boundary_templates = {
+            template["boundary_pointer_template"] for template in semantics
+            if template["semantic_kind"] == "longitudinal_period"
+        }
+        member_absence_templates = {
+            probe["pointer_template"]
+            for probe in shape["safe_absence_probe_templates"]
+            if probe["probe"] == "member_absent"
+        }
+        if member_absence_templates != boundary_templates or any(
+                not _source_template_is_optional(schema, pointer)
+                for pointer in member_absence_templates):
+            raise ValueError
+        for probe in shape["safe_absence_probe_templates"]:
+            if probe["probe"] != "member_absent" and _source_template_exists(
+                    schema, probe["pointer_template"]):
+                raise ValueError
         for promise in output["promised_collections"]:
             if not _source_template_exists(
                     schema, promise["source_base_pointer_template"]):
@@ -2697,9 +2746,11 @@ def _load_source_value_handle(artifact, template, bindings, trust_closure):
         if field in template:
             pointer = _instantiate_template(template[field], bindings)
             if field == "boundary_pointer_template":
-                try:
-                    resolve_json_pointer(parsed, pointer)
-                except ValueError:
+                approved_probe = {
+                    "pointer_template": template[field], "probe": "member_absent"}
+                probes = trust.source_shape.get("safe_absence_probe_templates", ())
+                if sum(probe == approved_probe for probe in probes) == 1 and \
+                        _source_member_is_absent(parsed, pointer):
                     continue
             expanded[name] = pointer
     if semantic_kind == "longitudinal_period":
@@ -2712,6 +2763,19 @@ def _load_source_value_handle(artifact, template, bindings, trust_closure):
         raise CanonicalContractError("source-value-handle-template-incomplete")
     return LoadedSourceValueHandleV1(
         _HANDLE_SEAL, artifact, semantic_kind, template, dict(bindings), expanded, trust)
+
+
+def _source_member_is_absent(parsed, pointer):
+    """Prove that one exact member is absent without accepting a missing parent."""
+    parts = _pointer_parts(pointer)
+    if not parts:
+        return False
+    parent_pointer = pointer.rsplit("/", 1)[0]
+    try:
+        parent = resolve_json_pointer(parsed, parent_pointer)
+    except ValueError:
+        return False
+    return isinstance(parent, Mapping) and parts[-1] not in parent
 
 
 def _build_statistic_fact(

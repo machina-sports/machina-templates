@@ -185,13 +185,18 @@ sha256sum dist/*.whl dist/*.tar.gz
 
 `docs/iptc/machina-sports-canonical-0.4.1.review-source.json` is the durable review
 receipt for these values. It records schema `machina-reviewed-source/1`, approval
-reference `provider-attested-sports-skills-operations-v1`, source commit
+reference `provider-attested-sports-skills-operations-v1`, canonical source commit
 `0165557eb459740071963de3cf7a0669bd4dd721`, reviewed tree
 `bfddaab8c9ac4d9ab335af085dadfdfb8c50525d`, and integer epoch `1786983984`.
+`reviewed_source_tree` identifies the canonical implementation tree before the
+generated fixed-point metadata re-pin; it does not identify the complete fixed-point
+tree that produces the recorded archives.
 The commit ID remains in `tools/iptc/canonical/package-receipt.json` as package
 provenance, but release verification does not require that commit to remain a
 reachable Git object after a squash merge or branch deletion. The checked receipt,
-not repository history, closes the reviewed source-to-artefact association.
+not repository history, preserves the reviewed canonical-source identity and the
+resulting artifact rows. The isolated rebuild gates on the fixed-point checkout,
+not the receipt alone, establish the source-to-artifact association.
 The values
 `1786893899`, `1786716463` and `1786398569` survive below in historical records,
 which describe builds of *those* bytes and must not be restamped.
@@ -233,10 +238,13 @@ These rows are the **0.4.1 release candidate**, produced from the reviewed 0.4
 owner source commit and its re-pinned generated receipts. They are recorded so
 every automated comparison has an authority to diff against. Preparing this
 fixed point does not tag, publish, deploy, merge, push, or approve an environment.
-The review receipt named above repeats both exact filenames and hashes and binds
-them to the reviewed source tree and approval reference
-`provider-attested-sports-skills-operations-v1`; it is deliberately outside the
-wheel and sdist inputs, so recording the review does not alter either artefact.
+The review receipt named above repeats both exact filenames and hashes alongside
+the reviewed canonical-source identity and approval reference
+`provider-attested-sports-skills-operations-v1`. It does not claim that
+`reviewed_source_tree` is the complete fixed-point tree. The receipt is deliberately
+outside the wheel and sdist inputs, so recording the review does not alter either
+artefact; rebuilding the fixed-point checkout and matching these rows is the exact
+artifact evidence.
 
 Older records follow it and are kept as history rather than rewritten: the 0.3.0
 rows, the 0.2.0 rows and their superseded predecessor, the 0.1.0 renewed rows, and

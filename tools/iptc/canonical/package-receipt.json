@@ -3,7 +3,7 @@
   "source": "machina-templates:tools/iptc/canonical",
   "source_commit": "0165557eb459740071963de3cf7a0669bd4dd721",
   "legacy_contract_version": "0.2.0",
-  "runtime_manifest": "sha256:57a96e45c9e5e4f2780fa24a5d2178e3dd3490109a4f048a74947aa85ce5093d",
+  "runtime_manifest": "sha256:08d6b166ce13d00c4f621b103cda710179dbeb004c0998da41aa2dc7c7be934f",
   "core_manifest": {
     "__init__.py": "42b677afb4d5dc9f2c3265274b6b5b7aa4190c1b93aa6e51f489679cfa74a579",
     "adapters/__init__.py": "435f101bf2ac993c028ea0e2e310cbba90223996c419073db0c9ee8117e88d4c",
@@ -22,7 +22,7 @@
     "data/official_statistic_admissibility_v1.json": "abd12e312ecb0bb00969735d50502572abcbbf027828b24909fa602bb6f38947",
     "data/package_receipt_0_3.json": "9b536e6b1949fe1ae2aecbafccccebac21a205436f9f849c55130d0d605a1171",
     "data/source_shape_registry_v1.json": "3b4bc5cf04af3cfa15a9f2544202bdfeb0402a75277e15aa086c0de887319c42",
-    "data/source_shape_registry_v2.json": "48ff7f5c3e459f2d887886b794e1623d11db661ee3cd40eb297c34b8c27e49b3",
+    "data/source_shape_registry_v2.json": "442213f819bf8f1fd5ea9a940695f9a182dbb914d04203d311427c14bdbd1437",
     "data/spatial_coordinate_system_manifest_v1.json": "033b83ec072c37165c776f23cf520c68f96bb94d66c5dbd3e677919f36d4500d",
     "data/spatial_distance_unit_registry_v1.json": "d348eb9df54a4149db5cfb25b8244e717b53a9f4197167d459a1b05f2b82f962",
     "data/spatial_metric_manifest_v1.json": "217b6805654cc44b61704c8fc7ca681daf5592cf4e7dc60c5cd49ca00f76ac07",
@@ -30,7 +30,7 @@
     "data/statistic_derivation_manifest_v1.json": "e20fd77c50a78dc0e89a96024dc07c5b39f703cd0cfe2e800a350d69507de115",
     "data/statistic_unit_registry_v1.json": "a94880a5eb16068e4d61e2b1830b8f477cee4d52f67e8ab1f5f76094c6ece2a7",
     "data/successor_provenance_schema_v1.json": "5d2eecf82d31825465cdebe0a95b2f861a844edc25f8037fafe7825d4186f868",
-    "data/trusted_loader_manifest_v1.json": "57a96e45c9e5e4f2780fa24a5d2178e3dd3490109a4f048a74947aa85ce5093d",
+    "data/trusted_loader_manifest_v1.json": "08d6b166ce13d00c4f621b103cda710179dbeb004c0998da41aa2dc7c7be934f",
     "data/zone_scheme_manifest_v1.json": "92bfc6e4cde4ae6783f4d312ab184d0d6bdb4a0be24078f24e0e2c714b2d255b",
     "ids.py": "06910976674e3b4747e0bd5f2b71ba92c6214b54bf76fb604f7920d1893781f4",
     "observation.py": "7b17faced2130dac88436bcc15b87795dec5d66eefb35757187787ee6b5e4b0d",
@@ -38,7 +38,7 @@
     "rights.py": "7177ff0bf7899c77b99f14a5a39c21919d2d7bc2d539757c8f2e8376f317739e",
     "serialize.py": "b7e16c94b3557e3d6b80fcb3a61ab8f76f98cf1185d58950dbcbfe2cfba10d4f",
     "shared-context.json": "50a437a694057037bc1b9580772b37671a5af62802df5e652e8e59d11759b695",
-    "successor.py": "12ed12b30b8a5890313e557ce6fce489d6f57a9ab46c20e9d8dd997402eab1e6",
+    "successor.py": "ee8b488d5114391c464988dc1dd092f6c1b8dcbb2aa906155ddef47fdc80d54b",
     "vocab.py": "2782eada455637f23edc3cf4bc751fb500fc987c84725c55a230f46e683ecbdd"
   }
 }

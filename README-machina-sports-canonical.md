@@ -86,9 +86,13 @@ receipt = json.loads(
     .read_text(encoding="utf-8"))
 ```
 
-The same complete file hashes gate the source tree in the originating repository, so an
-installed file that disagrees with the receipt is a build that transformed
-something it had no business transforming.
+The complete file hashes gate the packaged runtime and data in the originating
+repository. The release review receipt's `reviewed_source_tree` identifies the
+canonical implementation tree before generated fixed-point metadata is re-pinned;
+it does not identify the complete fixed-point tree. Rebuilding that fixed-point
+checkout and matching the reviewed archive hashes supplies the artifact
+association, so an installed file that disagrees with the package receipt is a
+build that transformed something it had no business transforming.
 
 `export_official_terms`, the generator that produces
 `official-property-names.json`, stays in the originating repository: it needs the

@@ -3612,6 +3612,10 @@ class TestTheCheckedReviewReceipt(unittest.TestCase):
                 for value in required:
                     self.assertIn(value, text)
                 self.assertNotIn("re-derivable with `git log", text)
+                self.assertIn("reviewed_source_tree` identifies", text)
+                self.assertIn("canonical implementation tree", text)
+                self.assertIn("it does not identify the complete", text)
+                self.assertIn("fixed-point tree", text)
 
     def test_the_review_receipt_is_not_a_wheel_or_sdist_input(self):
         self.assertNotIn("docs", PACKAGING_INPUTS)

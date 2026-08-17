@@ -5,10 +5,13 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -224,6 +227,28 @@ def package_for_operation(operation, *, registry_bytes=None, fixture_ids=None,
     }
 
 
+def repin_shape(package, operation, mutate):
+    value = json.loads(package["registry_bytes"])
+    shape = by_operation(value["shapes"])[operation]
+    contract = by_operation(value["operation_contracts"])[operation]
+    output = by_operation(value["output_collection_contracts"])[operation]
+    mutate(shape)
+    source_ref = {
+        "source_shape_digest": digest(shape),
+        "source_shape_id": shape["source_shape_id"],
+        "source_shape_version": shape["source_shape_version"],
+    }
+    contract["source_shape_ref"] = source_ref
+    output["source_shape_ref"] = source_ref
+    contract["output_collection_contract_ref"][
+        "output_collection_contract_digest"] = digest(output)
+    package["registry_bytes"] = successor.canonical_json_bytes(value)
+    package["package_link"]["source_shape_ref"] = source_ref
+    package["package_link"]["source_shape_digest"] = digest(shape)
+    package["package_link"]["operation_contract_digest"] = digest(contract)
+    package["package_link"]["output_collection_contract_digest"] = digest(output)
+
+
 def request_for_operation(operation):
     return {
         "requested_provider": PROVIDER,
@@ -377,6 +402,18 @@ class TestProviderAttestedOwnerRegistry(unittest.TestCase):
                 self.assertIsInstance(shape["semantic_binding_templates"], list)
                 self.assertIsInstance(shape["safe_absence_probe_templates"], list)
 
+    def test_longitudinal_shapes_declare_the_exact_optional_boundary_absence_probe(self):
+        expected = [{
+            "pointer_template": "/records/{record_index}/period/boundary",
+            "probe": "member_absent",
+        }]
+        for operation, shape in self.shapes.items():
+            with self.subTest(operation=operation):
+                self.assertEqual(
+                    shape["safe_absence_probe_templates"],
+                    expected if OUTPUT_KINDS[operation] == "longitudinal" else [],
+                )
+
     def test_fixture_manifest_argument_and_owner_enums_agree_for_all_nine(self):
         for operation, fixture_ids in FIXTURES.items():
             with self.subTest(operation=operation):
@@ -511,6 +548,7 @@ class TestProviderAttestedOwnerRegistry(unittest.TestCase):
             built = successor._build_period_descriptor(
                 handle, record_ref="/records/0", loaded_trust=trust)
             self.assertEqual(built["period"]["sequence"], 1)
+            self.assertNotIn("period_boundary", built)
             if fixture_id == "nfl-rolling-anchor-number":
                 anchor = next(
                     item for item in trust.source_shape["semantic_binding_templates"]
@@ -520,6 +558,129 @@ class TestProviderAttestedOwnerRegistry(unittest.TestCase):
                 built_anchor = successor._build_rolling_event_anchor(
                     anchor_handle, anchor_ref="/scope/anchor", loaded_trust=trust)
                 self.assertEqual(built_anchor["provider"]["id"], "event-1")
+
+    def test_present_longitudinal_boundary_reaches_temporal_validation(self):
+        operation = "arena_nba_longitudinal"
+        fixture_id = "nba-career-string"
+        trust = successor._load_0_4_closure(
+            package_ref=package_for_operation(operation),
+            request=request_for_operation(operation),
+        )
+        source = longitudinal_fixture(operation, fixture_id, "1")
+        boundary = {
+            "end": {
+                "instant": "2021-01-01T00:00:00Z",
+                "source_ref": "/records/0/period/boundary/end",
+                "state": "exact",
+            },
+            "interval_semantics": "start_inclusive_end_exclusive",
+            "schema_version": "canonical-temporal-range/1",
+            "start": {
+                "instant": "2020-01-01T00:00:00Z",
+                "source_ref": "/records/0/period/boundary/start",
+                "state": "exact",
+            },
+        }
+        source["records"][0]["period"]["boundary"] = boundary
+        artifact = successor._load_source_artifact(
+            json.dumps(source, sort_keys=True, separators=(",", ":")).encode(), trust)
+        period = next(
+            item for item in trust.source_shape["semantic_binding_templates"]
+            if item["semantic_kind"] == "longitudinal_period")
+        handle = successor._load_source_value_handle(
+            artifact, period, {"record_index": 0}, trust)
+        with mock.patch.object(
+                successor, "validate_temporal_range",
+                wraps=successor.validate_temporal_range) as validate:
+            built = successor._build_period_descriptor(
+                handle, record_ref="/records/0", loaded_trust=trust)
+        validate.assert_called_once_with(boundary)
+        self.assertEqual(built["period_boundary"], boundary)
+
+    def test_mistyped_boundary_absence_probe_refuses_before_adapter_import(self):
+        operation = "arena_nba_longitudinal"
+        package = package_for_operation(operation)
+        repin_shape(
+            package, operation,
+            lambda shape: shape["safe_absence_probe_templates"][0].update({
+                "pointer_template": "/records/{record_index}/period/boundary_typo"}),
+        )
+        imported = []
+
+        class Loader:
+            def load_static(self, package_ref, operation_request):
+                return successor._load_0_4_closure(
+                    package_ref=package, request=operation_request)
+
+            def import_adapter(self, trust):
+                imported.append(True)
+
+        with self.assertRaisesRegex(
+                successor.CanonicalContractError,
+                "^owner-binding-coherence-mismatch$"):
+            successor.execute_adapter_operation(
+                package_ref={},
+                request_bytes=successor.canonical_json_bytes(
+                    request_for_operation(operation)),
+                operation_arguments_bytes=b'{"fixture_id":"nba-career-string"}',
+                trusted_loader=Loader(),
+            )
+        self.assertEqual(imported, [])
+
+    def test_boundary_absence_probe_is_closed_and_digest_bound_pre_import(self):
+        operation = "arena_nba_longitudinal"
+        closed = package_for_operation(operation)
+        repin_shape(
+            closed, operation,
+            lambda shape: shape["safe_absence_probe_templates"][0].update({
+                "extension": True}),
+        )
+        with self.assertRaisesRegex(
+                successor.CanonicalContractError,
+                "^invalid-source-shape-record$"):
+            successor._load_0_4_closure(
+                package_ref=closed, request=request_for_operation(operation))
+
+        digest_bound = package_for_operation(operation)
+        value = json.loads(digest_bound["registry_bytes"])
+        by_operation(value["shapes"])[operation][
+            "safe_absence_probe_templates"][0]["probe"] = "shape_not_exposed"
+        digest_bound["registry_bytes"] = successor.canonical_json_bytes(value)
+        with self.assertRaisesRegex(
+                successor.CanonicalContractError,
+                "^source-shape-digest-mismatch$"):
+            successor._load_0_4_closure(
+                package_ref=digest_bound, request=request_for_operation(operation))
+
+    def test_legacy_0_3_and_0_4_missing_boundary_remain_strict(self):
+        operation = "arena_nba_longitudinal"
+        source = longitudinal_fixture(operation, "nba-career-string", "1")
+        raw = json.dumps(source, sort_keys=True, separators=(",", ":")).encode()
+        template = next(
+            item for item in self.shapes[operation]["semantic_binding_templates"]
+            if item["semantic_kind"] == "longitudinal_period")
+        for version in ("0.3.0", "0.4.0"):
+            trust = successor._construct_loaded_trust_closure(
+                source_shape={
+                    "artifact_schema": self.shapes[operation]["artifact_schema"],
+                    "media_type": "application/json",
+                    "source_shape_ref": {},
+                },
+                package_release={
+                    "name": "machina-sports-canonical", "version": version,
+                    "package_artifact_digest": "sha256:" + "2" * 64,
+                    "release_id": "fixture", "release_digest": "sha256:" + "3" * 64,
+                },
+            )
+            artifact = successor._load_source_artifact(raw, trust)
+            handle = successor._load_source_value_handle(
+                artifact, template, {"record_index": 0}, trust)
+            self.assertIn("boundary", handle.expanded_pointers)
+            with self.subTest(version=version), self.assertRaisesRegex(
+                    ValueError,
+                    "^JSON pointer does not resolve: /records/0/period/boundary$"):
+                successor._build_period_descriptor(
+                    handle, record_ref="/records/0", loaded_trust=trust)
 
     def test_refusal_shapes_expose_only_assigned_runtime_binding_paths(self):
         expected = {
@@ -718,6 +879,7 @@ class TestProviderAttestedOwnerRegistry(unittest.TestCase):
                 "complete_identity_census",
                 "validated_spatial_evidence_and_disposition",
             },
+            "arena_nfl_refusal_event": {"preflight_refusal_only"},
             "arena_nba_refusal_event": {"complete_identity_census"},
         }
         for operation, evidence_classes in expected.items():
@@ -773,19 +935,36 @@ class TestProviderAttestedOwnerRegistry(unittest.TestCase):
         for operation, contract in self.operations.items():
             evidence = contract["promised_non_collection_evidence"]
             descriptions = " ".join(item["description"] for item in evidence)
-            if operation != "arena_nfl_refusal_event":
-                self.assertIn("synthetic-replay-only", descriptions)
+            self.assertIn("synthetic-replay-only", descriptions)
             self.assertNotIn("raw ESPN fidelity", descriptions)
             self.assertNotIn("raw ESPN", descriptions)
 
+    def test_nfl_refusal_preflight_evidence_is_exact(self):
+        self.assertEqual(
+            self.operations["arena_nfl_refusal_event"][
+                "promised_non_collection_evidence"],
+            [{
+                "description": (
+                    "This synthetic-replay-only operation exists for preflight rights, "
+                    "capability, and argument refusals; selecting it attests no provider "
+                    "source field."
+                ),
+                "evidence_class": "preflight_refusal_only",
+            }],
+        )
+
     def test_checked_in_registry_is_a_deterministic_generator_fixed_point(self):
         before = REGISTRY_PATH.read_bytes()
-        subprocess.run(
-            [sys.executable, str(GENERATOR)],
-            cwd=str(REPO_ROOT), check=True, timeout=120,
-        )
-        self.assertEqual(SOURCE_REGISTRY_PATH.read_bytes(), before)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            generated = Path(temp_dir) / SOURCE_REGISTRY_PATH.name
+            shutil.copyfile(SOURCE_REGISTRY_PATH, generated)
+            subprocess.run(
+                [sys.executable, str(GENERATOR), "--output", str(generated)],
+                cwd=str(REPO_ROOT), check=True, timeout=120,
+            )
+            self.assertEqual(generated.read_bytes(), before)
         self.assertEqual(REGISTRY_PATH.read_bytes(), before)
+        self.assertEqual(SOURCE_REGISTRY_PATH.read_bytes(), before)
 
     def test_trusted_loader_manifest_truthfully_owns_0_4_1(self):
         manifest = json.loads((

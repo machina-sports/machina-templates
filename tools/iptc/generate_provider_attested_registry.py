@@ -6,6 +6,7 @@ Sports Skills' normalized adapter boundary, never provider transport payloads.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -145,10 +146,17 @@ def object_shape(members, required=()):
 
 
 def boundary_schema():
-    return object_shape(
-        {"end_exclusive": string(), "start_inclusive": string()},
-        ("end_exclusive", "start_inclusive"),
-    )
+    endpoint = object_shape({
+        "instant": string(),
+        "source_ref": string(),
+        "state": string("exact"),
+    }, ("instant", "source_ref", "state"))
+    return object_shape({
+        "end": endpoint,
+        "interval_semantics": string("start_inclusive_end_exclusive"),
+        "schema_version": string("canonical-temporal-range/1"),
+        "start": endpoint,
+    }, ("end", "interval_semantics", "schema_version", "start"))
 
 
 def identity_schema(output_kind):
@@ -482,6 +490,15 @@ def semantic_binding_templates(operation, config):
         longitudinal_binding_templates(operation, config)
 
 
+def safe_absence_probe_templates(config):
+    if config["family"] != "longitudinal":
+        return []
+    return [{
+        "pointer_template": "/records/{record_index}/period/boundary",
+        "probe": "member_absent",
+    }]
+
+
 def nfl_refusal_schema(config):
     return object_shape({
         "contains_provider_data": boolean(False),
@@ -640,8 +657,9 @@ def operation_evidence(operation, config):
     if config["family"] == "nfl-refusal":
         return [{
             "description": (
-                "This operation exists only for preflight rights, capability, and "
-                "argument refusals; selecting it attests no provider source field."
+                "This synthetic-replay-only operation exists for preflight rights, "
+                "capability, and argument refusals; selecting it attests no provider "
+                "source field."
             ),
             "evidence_class": "preflight_refusal_only",
         }]
@@ -727,7 +745,7 @@ def generate_registry():
             "operation": operation,
             "output_kind": config["output_kind"],
             "provider_namespace": PROVIDER,
-            "safe_absence_probe_templates": [],
+            "safe_absence_probe_templates": safe_absence_probe_templates(config),
             "schema_version": "machina-source-shape/1",
             "semantic_binding_templates": semantic_binding_templates(
                 operation, config),
@@ -780,9 +798,11 @@ def generate_registry():
     }
 
 
-def generate():
-    OUTPUT.write_bytes(canonical_bytes(generate_registry()))
+def generate(output=OUTPUT):
+    output.write_bytes(canonical_bytes(generate_registry()))
 
 
 if __name__ == "__main__":
-    generate()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=OUTPUT)
+    generate(parser.parse_args().output)
