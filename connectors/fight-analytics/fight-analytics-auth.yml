@@ -1,0 +1,5 @@
+connector:
+  name: "fight-analytics-auth"
+  description: "Fight Analytics authentication API"
+  filename: "fight-analytics-auth.json"
+  filetype: "restapi"

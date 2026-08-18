@@ -1,0 +1,13 @@
+datasets:
+  - type: "connector"
+    path: "fight-analytics.yml"
+  - type: "connector"
+    path: "fight-analytics-auth.yml"
+  - type: "connector"
+    path: "fight-analytics-statistics.yml"
+  - type: "connector"
+    path: "fight-analytics-certified.yml"
+  - type: "workflow"
+    path: "fight-analytics-certified-smoke.yml"
+  - type: "workflow"
+    path: "fight-analytics-fantasy-canary.yml"
