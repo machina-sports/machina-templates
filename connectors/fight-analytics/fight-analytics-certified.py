@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import requests
@@ -155,6 +156,22 @@ def _safe_text(value: Any) -> str | None:
 
 def _safe_number(value: Any) -> int | float | None:
     return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def _safe_finite_number_or_text(value: Any) -> int | float | str | None:
+    text = _safe_text(value)
+    if text is not None:
+        return text
+    number = _safe_number(value)
+    if isinstance(number, int):
+        return number
+    return number if number is not None and math.isfinite(number) else None
+
+
+def _safe_winner_id(value: Any) -> int | str | None:
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return value
+    return _safe_text(value)
 
 
 def _fantasy_receipt(
@@ -409,13 +426,29 @@ def _fight_statistics(payload: Any, fight_id: str) -> dict | None:
     status = _safe_text(payload.get("status"))
     current_round = _safe_number(payload.get("currentRound"))
     current_stance = _safe_text(payload.get("currentStance"))
-    if not isinstance(outcomes, list) or status is None or current_round is None or current_stance is None:
+    if (
+        not isinstance(outcomes, list)
+        or any(not isinstance(outcome, dict) for outcome in outcomes)
+        or status is None
+        or current_round is None
+        or current_stance is None
+    ):
         return None
-    nullable_text = ("finishType", "finishTime", "winnerId")
-    if any(payload.get(key) is not None and _safe_text(payload.get(key)) is None for key in nullable_text):
+    finish_type = payload.get("finishType")
+    if finish_type is not None and _safe_text(finish_type) is None:
         return None
     finish_round = payload.get("finishRound")
     if finish_round is not None and _safe_number(finish_round) is None:
+        return None
+    raw_finish_time = payload.get("finishTime")
+    finish_time = (
+        None if raw_finish_time is None else _safe_finite_number_or_text(raw_finish_time)
+    )
+    if raw_finish_time is not None and finish_time is None:
+        return None
+    raw_winner_id = payload.get("winnerId")
+    winner_id = None if raw_winner_id is None else _safe_winner_id(raw_winner_id)
+    if raw_winner_id is not None and winner_id is None:
         return None
     return {
         "providerFightId": fight_id,
@@ -423,10 +456,10 @@ def _fight_statistics(payload: Any, fight_id: str) -> dict | None:
         "currentRound": current_round,
         "currentStance": current_stance,
         "finish": {
-            "type": payload.get("finishType"),
+            "type": finish_type,
             "round": finish_round,
-            "time": payload.get("finishTime"),
-            "winnerId": payload.get("winnerId"),
+            "time": finish_time,
+            "winnerId": winner_id,
         },
         "fightersOutcomeCount": len(outcomes),
     }

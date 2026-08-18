@@ -1093,6 +1093,10 @@ class TestFightAnalyticsFantasyCanary(unittest.TestCase):
         )
         for metrics in packet["fighterStats"][0]["metrics"].values():
             self.assertEqual(set(metrics), self.METRIC_KEYS)
+        self.assertEqual(packet["fightStats"]["finish"], {
+            "type": "finish-label", "round": 3, "time": 245, "winnerId": 202,
+        })
+        self.assertEqual(packet["fightStats"]["fightersOutcomeCount"], 1)
         self.assertTrue(all(
             receipt["classification"] == "provider_empty"
             for receipt in packet["scenarios"]
@@ -1110,6 +1114,100 @@ class TestFightAnalyticsFantasyCanary(unittest.TestCase):
             1,
         )
         self.assert_secret_free(result)
+
+    def test_populated_fight_summary_accepts_observed_numeric_finish_fields(self):
+        summary = {
+            "currentRound": 3,
+            "currentStance": "standing",
+            "fightId": 101,
+            "fightNewId": "fight-03",
+            "fightersOutcome": [{}],
+            "finishRound": 3,
+            "finishTime": 245,
+            "finishType": "decision",
+            "status": "finished",
+            "winnerId": 202,
+        }
+
+        self.assertEqual(
+            self.connector._fight_statistics(summary, "fight-03"),
+            {
+                "providerFightId": "fight-03",
+                "status": "finished",
+                "currentRound": 3,
+                "currentStance": "standing",
+                "finish": {
+                    "type": "decision",
+                    "round": 3,
+                    "time": 245,
+                    "winnerId": 202,
+                },
+                "fightersOutcomeCount": 1,
+            },
+        )
+
+    def test_fight_summary_preserves_null_finish_fields_for_unfinished_fights(self):
+        summary = copy.deepcopy(self.shapes["fightSummary"])
+        summary.update({
+            "fightNewId": "fight-03",
+            "fightersOutcome": [],
+            "finishRound": None,
+            "finishTime": None,
+            "finishType": None,
+            "status": "in_progress",
+            "winnerId": None,
+        })
+
+        projected = self.connector._fight_statistics(summary, "fight-03")
+
+        self.assertEqual(projected["finish"], {
+            "type": None, "round": None, "time": None, "winnerId": None,
+        })
+        self.assertEqual(projected["fightersOutcomeCount"], 0)
+
+    def test_fight_summary_accepts_non_empty_string_finish_fields(self):
+        summary = copy.deepcopy(self.shapes["fightSummary"])
+        summary.update({
+            "fightNewId": "fight-03",
+            "finishTime": "04:05",
+            "winnerId": "fighter-202",
+        })
+
+        projected = self.connector._fight_statistics(summary, "fight-03")
+
+        self.assertEqual(projected["finish"]["time"], "04:05")
+        self.assertEqual(projected["finish"]["winnerId"], "fighter-202")
+
+    def test_fight_summary_accepts_integer_finish_time_without_float_coercion(self):
+        summary = copy.deepcopy(self.shapes["fightSummary"])
+        summary.update({
+            "fightNewId": "fight-03",
+            "finishTime": 10**400,
+        })
+
+        projected = self.connector._fight_statistics(summary, "fight-03")
+
+        self.assertEqual(projected["finish"]["time"], 10**400)
+
+    def test_fight_summary_rejects_invalid_finish_fields_and_outcomes(self):
+        cases = (
+            ("finishTime", float("inf")),
+            ("finishTime", float("nan")),
+            ("finishTime", ""),
+            ("winnerId", -1),
+            ("winnerId", 1.5),
+            ("winnerId", ""),
+            ("fightersOutcome", [None]),
+        )
+        for field, value in cases:
+            with self.subTest(field=field, value=value):
+                summary = copy.deepcopy(self.shapes["fightSummary"])
+                summary["fightNewId"] = "fight-03"
+                summary[field] = value
+
+                self.assertIsNone(
+                    self.connector._fight_statistics(summary, "fight-03")
+                )
 
     def test_all_empty_fight_summaries_fail_the_verdict(self):
         def empty_summaries(method, url, **kwargs):
