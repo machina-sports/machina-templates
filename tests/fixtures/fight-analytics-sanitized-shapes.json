@@ -1,0 +1,8 @@
+{
+  "collection": {"data": [], "pagination": {"total": 0}},
+  "event": {"id": "event-id", "name": "event-label", "date": "2000-01-01"},
+  "fighter": {"id": "fighter-id", "firstName": "first-label", "lastName": "last-label", "country": "XX", "weightClass": "weight-label", "wins": 0, "losses": 0, "draws": 0},
+  "fight": {"id": "fight-id", "eventId": "event-id", "event": {"id": "event-id", "name": "event-label", "date": "2000-01-01"}, "redCornerId": "red-id", "blueCornerId": "blue-id", "redCorner": {}, "blueCorner": {}},
+  "fighterStats": {"wins": 0, "losses": 0, "draws": 0, "score": 0, "elapsedFightTime": 0, "totalRounds": 0, "standing": {"score": 0, "significantStrikes": 0, "totalStrikes": 0, "takedowns": 0, "takedownAttempts": 0, "submissionAttempts": 0, "knockdowns": 0, "elapsedControlTime": 0}, "ground": {}, "fence": {}, "riding": {}},
+  "fightSummary": {"fightNewId": "fight-id", "status": "status-label", "currentRound": 0, "currentStance": "stance-label", "finishType": null, "finishRound": null, "finishTime": null, "winnerId": null, "fightersOutcome": []}
+}

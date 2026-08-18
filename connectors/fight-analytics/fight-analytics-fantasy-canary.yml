@@ -1,0 +1,30 @@
+workflow:
+  name: "fight-analytics-fantasy-canary"
+  title: "Fight Analytics Fantasy Canary"
+  description: "Manually exercises bounded Fantasy scenarios and returns prototype-only provider coverage evidence."
+  context-variables:
+    debugger:
+      enabled: false
+    fight-analytics-certified:
+      username: "$TEMP_CONTEXT_VARIABLE_FIGHT_ANALYTICS_USERNAME"
+      password: "$TEMP_CONTEXT_VARIABLE_FIGHT_ANALYTICS_PASSWORD"
+  inputs:
+    fight_id: "$.get('fight_id', None)"
+  outputs:
+    canary_packet: "$.get('canary_packet', {})"
+    canary_verdict: "$.get('canary_verdict', 'failed')"
+    workflow-status: "'executed' if $.get('canary_verdict', 'failed') == 'passed' else 'failed'"
+  tasks:
+    - type: "connector"
+      name: "run-fantasy-scenarios"
+      description: "Authenticate in memory and emit only a bounded prototype canary packet."
+      connector:
+        name: "fight-analytics-certified"
+        command: "run_fantasy_scenarios"
+      inputs:
+        username: "$.get('username')"
+        password: "$.get('password')"
+        fight_id: "$.get('fight_id', None)"
+      outputs:
+        canary_packet: "$"
+        canary_verdict: "$.get('verdict', 'failed')"

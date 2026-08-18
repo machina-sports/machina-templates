@@ -6,3 +6,5 @@ connector:
   commands:
     - name: "Certified smoke"
       value: "run_certified_smoke"
+    - name: "Fantasy scenarios canary"
+      value: "run_fantasy_scenarios"

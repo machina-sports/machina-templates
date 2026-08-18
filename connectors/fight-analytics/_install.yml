@@ -9,3 +9,5 @@ datasets:
     path: "fight-analytics-certified.yml"
   - type: "workflow"
     path: "fight-analytics-certified-smoke.yml"
+  - type: "workflow"
+    path: "fight-analytics-fantasy-canary.yml"
