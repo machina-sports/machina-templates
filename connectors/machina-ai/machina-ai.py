@@ -29,6 +29,7 @@ from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional,
 from urllib.parse import urlparse
 
 CONTRACT_VERSION = "v1"
+FIXED_PROVIDER_ENDPOINTS = {"cerebras": "https://api.cerebras.ai/v1"}
 TRANSIENT_ERRORS = {
     "provider_timeout",
     "provider_rate_limited",
@@ -63,6 +64,7 @@ PROVIDER_ALIASES = {
     "anthropic_vertex": "vertex_anthropic",
     "anthropic": "vertex_anthropic",
     "claude": "vertex_anthropic",
+    "cerebras_cloud": "cerebras",
 }
 COMMANDS = {
     "invoke_prompt": ("chat", "factory"),
@@ -170,13 +172,20 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "long_context": {
             "chat": [{"provider": "vertex_ai", "model": "gemini-2.5-pro"}],
         },
-        "fast": {"chat": [{"provider": "groq", "model": "llama-3.3-70b-versatile"}]},
+        "fast": {"chat": [
+            {"provider": "cerebras", "model": "gpt-oss-120b"},
+            {"provider": "groq", "model": "llama-3.3-70b-versatile"},
+        ]},
         "private_runtime": {"chat": [{"provider": "nvidia_nim"}]},
         "open_source": {"chat": [{"provider": "nvidia_nim"}]},
         "multimodal": {},
     },
     "remaps": {"families": {}, "capabilities": {}, "profiles": {}},
-    "fallbacks": {},
+    "fallbacks": {
+        "chat": {
+            "cerebras": [{"provider": "groq", "model": "llama-3.3-70b-versatile"}],
+        },
+    },
     "providers": {
         "vertex_ai": {
             "enabled": True,
@@ -258,6 +267,20 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "credential_env": "TEMP_CONTEXT_VARIABLE_GROQ_API_KEY",
             "credential_env_aliases": ["TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"],
             "allowed_models": {"chat": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]},
+        },
+        "cerebras": {
+            # Dormant until enabled by environment config. The public endpoint,
+            # credential source, and model allowlist are operator-owned.
+            "enabled": False,
+            "adapter": "cerebras",
+            "protected": True,
+            "fail_closed": False,
+            "reject_request_credentials": True,
+            "require_credential": True,
+            "credential_env": "TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY",
+            "credential_env_aliases": ["TEMP_CONTEXT_VARIABLE_SDK_CEREBRAS_API_KEY"],
+            "endpoint": "https://api.cerebras.ai/v1",
+            "allowed_models": {"chat": ["gpt-oss-120b", "gemma-4-31b"]},
         },
         "xai": {
             "enabled": False,
@@ -444,14 +467,22 @@ def _thaw(value: Any) -> Any:
 
 
 def _safe_exception(error: Exception) -> Tuple[str, str]:
+    status_code = getattr(error, "status_code", None)
+    response = getattr(error, "response", None)
+    if status_code is None and response is not None:
+        status_code = getattr(response, "status_code", None)
     name = error.__class__.__name__.lower()
-    if isinstance(error, TimeoutError) or "timeout" in name:
+    if isinstance(error, TimeoutError) or "timeout" in name or status_code == 408:
         return "provider_timeout", "The provider did not respond before the route timeout."
-    if "ratelimit" in name or "rate_limit" in name or "too many" in str(error).lower():
+    if status_code == 429 or "ratelimit" in name or "rate_limit" in name or "too many" in str(error).lower():
         return "provider_rate_limited", "The provider rate limit was reached."
-    if "auth" in name or "permission" in name or "unauthorized" in str(error).lower():
+    if status_code in {401, 402, 403} or "auth" in name or "permission" in name or "unauthorized" in str(error).lower():
         return "provider_authentication", "The provider rejected the configured credential."
-    if "connection" in name or "unavailable" in str(error).lower():
+    if status_code == 413 or "contenttoolarge" in name or "content_filter" in name:
+        return "provider_content_rejected", "The provider rejected the request content."
+    if status_code in {400, 404, 422}:
+        return "invalid_request", "The provider rejected the request parameters."
+    if status_code in {500, 502, 503, 504} or "connection" in name or "unavailable" in str(error).lower():
         return "provider_unavailable", "The provider is temporarily unavailable."
     return "internal_adapter_error", "The selected provider adapter failed."
 
@@ -948,7 +979,23 @@ class PolicyEngine:
         profile = _as_dict(_as_dict(self.config.get("profiles")).get(request.profile))
         candidates = profile.get(request.capability)
         if isinstance(candidates, list) and candidates:
-            return _as_dict(candidates[0]), f"profile:{request.profile}", False
+            # Ordered profiles may carry a compatibility candidate. Skip an
+            # unavailable primary before invocation, but leave the final entry
+            # for route() so existing typed failures remain unchanged.
+            for candidate in candidates[:-1]:
+                candidate = _as_dict(candidate)
+                provider = _canonical_provider(candidate.get("provider"))
+                conf = _as_dict(_as_dict(self.config.get("providers")).get(provider))
+                if not provider or not _as_bool(conf.get("enabled")):
+                    continue
+                allowed_models = self._allowed_models(provider, conf, request.capability)
+                if request.model and allowed_models and request.model not in allowed_models:
+                    continue
+                credential = self._read_env(conf, "credential") or self._read_env(conf, "api_key")
+                if _as_bool(conf.get("require_credential")) and not credential:
+                    continue
+                return candidate, f"profile:{request.profile}", False
+            return _as_dict(candidates[-1]), f"profile:{request.profile}", False
         defaults = _as_dict(_as_dict(self.config.get("defaults")).get(request.capability))
         if defaults:
             return defaults, f"default:{request.capability}", False
@@ -1018,9 +1065,11 @@ class PolicyEngine:
         callback_url = request.security.get("callback_url")
         if callback_url and callback_url not in set(policy.get("allowed_callback_urls") or []):
             raise RouterError("policy_endpoint_not_allowed", "The callback URL is not allowlisted by runtime policy.")
+        if provider in FIXED_PROVIDER_ENDPOINTS and supplied_endpoint:
+            raise RouterError("policy_endpoint_not_allowed", "This route endpoint is fixed by connector policy.")
         if protected and supplied_endpoint:
             raise RouterError("policy_endpoint_not_allowed", "This route endpoint is controlled by runtime policy.")
-        endpoint = self._read_env(conf, "endpoint")
+        endpoint = FIXED_PROVIDER_ENDPOINTS.get(provider) or self._read_env(conf, "endpoint")
         if supplied_endpoint:
             if not _as_bool(policy.get("allow_custom_base_url")):
                 raise RouterError("policy_endpoint_not_allowed", "Caller-supplied provider endpoints are disabled.")
@@ -1034,6 +1083,8 @@ class PolicyEngine:
 
         credential = self._read_env(conf, "credential") or self._read_env(conf, "api_key")
         request_credential = request.security.get("api_key") or request.security.get("credential")
+        if (provider == "cerebras" or _as_bool(conf.get("reject_request_credentials"))) and request_credential:
+            raise RouterError("policy_credential_not_allowed", "This route credential is controlled by runtime policy.")
         if request_credential and not credential:
             trusted = _as_bool(request.security.get("_credential_trusted"))
             if not (trusted or _as_bool(policy.get("allow_workflow_credentials"))):
@@ -1079,6 +1130,8 @@ class PolicyEngine:
         """Return raw fallback candidate specs; routes are built lazily at dispatch
         time so one unbuildable fallback cannot poison a healthy primary."""
         if route.protected and _as_bool(route.config.get("fail_closed", True)):
+            return []
+        if route.provider == "cerebras" and request.provider:
             return []
         configured = _as_dict(_as_dict(self.config.get("fallbacks")).get(request.capability))
         chain = configured.get(route.provider) or []
@@ -1602,6 +1655,32 @@ class GroqAdapter(ProviderAdapter):
             raise RouterError(error_class, message)
 
 
+class CerebrasAdapter(OpenAICompatibleAdapter):
+    provider_id = "cerebras"
+    capabilities = {"chat"}
+    delegate_connector = "cerebras"
+
+    def create_chat_model(self, route: Route, request: NormalizedRequest) -> AdapterResult:
+        delegated = self._delegate("invoke_prompt", route, request)
+        if delegated is not None:
+            return delegated
+        return super().create_chat_model(route, request)
+
+    def invoke_chat(self, route: Route, request: NormalizedRequest) -> AdapterResult:
+        command = "completion_receipt" if request.command == "completion_receipt" else "invoke_chat"
+        delegated = self._delegate(command, route, request)
+        if delegated is not None:
+            data = delegated.data
+            if isinstance(data, Mapping) and "role" in data:
+                return delegated
+            if isinstance(data, Mapping) and "output" in data:
+                delegated.data = _chat_data(data.get("output"), extensions={"completion_receipt": dict(data)})
+            else:
+                delegated.data = _chat_data(_content_from_response(data))
+            return delegated
+        return super().invoke_chat(route, request)
+
+
 class PerplexityAdapter(OpenAICompatibleAdapter):
     provider_id = "perplexity"
     capabilities = {"chat", "search_answer"}
@@ -1847,6 +1926,7 @@ class AdapterRegistry:
             "openai_compatible": OpenAICompatibleAdapter,
             "azure_foundry": AzureFoundryAdapter,
             "groq": GroqAdapter,
+            "cerebras": CerebrasAdapter,
             "perplexity": PerplexityAdapter,
             "xai": XAIAdapter,
             "nvidia_nim": NvidiaNimAdapter,
@@ -1934,7 +2014,11 @@ class Router:
                         entries.append({"provider": provider, "model": model, "capability": "chat", "enabled": True})
             else:
                 missing: List[str] = []
-                if enabled and conf.get("credential_env") and not (conf.get("credential") or os.getenv(str(conf.get("credential_env")))):
+                credential_names = [conf.get("credential_env"), *(conf.get("credential_env_aliases") or [])]
+                has_credential = conf.get("credential") or any(
+                    name and os.getenv(str(name)) for name in credential_names
+                )
+                if enabled and conf.get("credential_env") and not has_credential:
                     missing.append("credential")
                 if enabled and conf.get("endpoint_env") and not (conf.get("endpoint") or os.getenv(str(conf.get("endpoint_env")))):
                     missing.append("endpoint")

@@ -872,7 +872,7 @@ class TestDefaultEnablement:
         assert result["status"] is False
         assert result["metadata"]["error_class"] == "credential_missing"
 
-    def test_fast_profile_routes_to_groq_default_model(self, monkeypatch):
+    def test_fast_profile_preserves_groq_when_cerebras_is_dormant(self, monkeypatch):
         monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "env-secret")
         groq = FakeAdapter()
         runtime = FakeRuntime(adapters={"vertex_ai": FakeAdapter(), "groq": groq})
@@ -952,3 +952,249 @@ class TestVertexAnthropicRoute:
         assert result["metadata"]["selected_provider"] == "vertex_anthropic"
         assert result["metadata"]["selected_model"] == "claude-haiku-4-5"
         assert result["metadata"]["route_reason"] == "remap:capability:chat"
+
+
+class TestCerebrasFastRoute:
+    def _runtime(self, cerebras, groq, **config):
+        return FakeRuntime(
+            config=config,
+            adapters={"vertex_ai": FakeAdapter(), "cerebras": cerebras, "groq": groq},
+        )
+
+    def test_provider_ships_dormant_registered_and_allowlisted_from_official_catalog(self):
+        conf = router.DEFAULT_CONFIG["providers"]["cerebras"]
+        assert conf["enabled"] is False
+        assert conf["adapter"] == "cerebras"
+        assert conf["protected"] is True
+        assert conf["endpoint"] == "https://api.cerebras.ai/v1"
+        assert conf["credential_env"] == "TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY"
+        assert conf["credential_env_aliases"] == ["TEMP_CONTEXT_VARIABLE_SDK_CEREBRAS_API_KEY"]
+        assert conf["allowed_models"]["chat"] == ["gpt-oss-120b", "gemma-4-31b"]
+        assert router.DEFAULT_CONFIG["profiles"]["fast"]["chat"] == [
+            {"provider": "cerebras", "model": "gpt-oss-120b"},
+            {"provider": "groq", "model": "llama-3.3-70b-versatile"},
+        ]
+        assert router.DEFAULT_CONFIG["fallbacks"]["chat"]["cerebras"] == [
+            {"provider": "groq", "model": "llama-3.3-70b-versatile"}
+        ]
+        assert "cerebras" in router.Router(FakeRuntime()).registry.factories
+        assert router.CerebrasAdapter.capabilities == {"chat"}
+
+    def test_provider_alias_is_canonical(self):
+        assert router._canonical_provider("cerebras-cloud") == "cerebras"
+
+    def test_health_accepts_repository_credential_alias(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_SDK_CEREBRAS_API_KEY", "alias-secret")
+        runtime = self._runtime(FakeAdapter(), FakeAdapter(), providers={"cerebras": {"enabled": True}})
+        result = router.health({"_runtime": runtime, "provider": "cerebras"})
+        assert result["status"] is True
+        assert result["data"] == [{
+            "provider": "cerebras",
+            "enabled": True,
+            "ready": True,
+            "missing": [],
+            "adapter": "cerebras",
+            "capabilities": ["chat"],
+        }]
+
+    def test_explicit_provider_routes_to_cerebras(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", "operator-secret")
+        cerebras = FakeAdapter()
+        result = router.invoke_prompt({
+            "_runtime": self._runtime(cerebras, FakeAdapter(), providers={"cerebras": {"enabled": True}}),
+            "provider": "cerebras",
+            "model": "gpt-oss-120b",
+        })
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "cerebras"
+        assert result["metadata"]["route_reason"] == "explicit_provider"
+
+    def test_runtime_config_cannot_replace_fixed_cerebras_endpoint(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", "operator-secret")
+        runtime = self._runtime(
+            FakeAdapter(),
+            FakeAdapter(),
+            providers={"cerebras": {"enabled": True, "endpoint": "https://evil.example/v1"}},
+        )
+        request = router.Router(runtime).normalizer.normalize(
+            "invoke_chat", {"provider": "cerebras", "model": "gpt-oss-120b", "prompt": "hello"}
+        )
+        route = router.Router(runtime).policy.route(request)
+        assert route.endpoint == "https://api.cerebras.ai/v1"
+
+    def test_runtime_overlay_cannot_disable_endpoint_or_credential_injection_guards(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", "operator-secret")
+        cerebras = FakeAdapter()
+        runtime = self._runtime(
+            cerebras,
+            FakeAdapter(),
+            policy={"allow_custom_base_url": True, "allow_workflow_credentials": True,
+                    "allowed_endpoint_hosts": ["evil.example"]},
+            providers={"cerebras": {"enabled": True, "protected": False,
+                                     "reject_request_credentials": False}},
+        )
+        endpoint = router.invoke_chat({
+            "_runtime": runtime, "provider": "cerebras", "model": "gpt-oss-120b",
+            "base_url": "https://evil.example/v1", "prompt": "hello",
+        })
+        credential = router.invoke_chat({
+            "_runtime": runtime, "provider": "cerebras", "model": "gpt-oss-120b",
+            "api_key": "caller-secret", "prompt": "hello",
+        })
+        assert endpoint["metadata"]["error_class"] == "policy_endpoint_not_allowed"
+        assert credential["metadata"]["error_class"] == "policy_credential_not_allowed"
+        assert not cerebras.calls
+
+    def test_fast_profile_uses_cerebras_when_enabled_and_configured(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", "operator-secret")
+        cerebras = FakeAdapter()
+        result = router.invoke_prompt({
+            "_runtime": self._runtime(cerebras, FakeAdapter(), providers={"cerebras": {"enabled": True}}),
+            "profile": "fast",
+        })
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "cerebras"
+        assert result["metadata"]["selected_model"] == "gpt-oss-120b"
+
+    def test_fast_profile_with_explicit_groq_model_skips_configured_cerebras(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", "operator-secret")
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "groq-secret")
+        cerebras = FakeAdapter()
+        groq = FakeAdapter()
+        result = router.invoke_prompt({
+            "_runtime": self._runtime(cerebras, groq, providers={"cerebras": {"enabled": True}}),
+            "profile": "fast",
+            "model": "llama-3.3-70b-versatile",
+        })
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "groq"
+        assert result["metadata"]["selected_model"] == "llama-3.3-70b-versatile"
+        assert not cerebras.calls
+
+    def test_fast_profile_skips_enabled_cerebras_without_credential(self, monkeypatch):
+        monkeypatch.delenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", raising=False)
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "groq-secret")
+        groq = FakeAdapter()
+        result = router.invoke_prompt({
+            "_runtime": self._runtime(FakeAdapter(), groq, providers={"cerebras": {"enabled": True}}),
+            "profile": "fast",
+        })
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "groq"
+        assert result["metadata"]["selected_model"] == "llama-3.3-70b-versatile"
+
+    def test_explicit_cerebras_missing_credential_does_not_fallback(self, monkeypatch):
+        monkeypatch.delenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", raising=False)
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "groq-secret")
+        groq = FakeAdapter()
+        result = router.invoke_chat({
+            "_runtime": self._runtime(FakeAdapter(), groq, providers={"cerebras": {"enabled": True}}),
+            "provider": "cerebras",
+            "model": "gpt-oss-120b",
+            "prompt": "hello",
+        })
+        assert result["metadata"]["error_class"] == "credential_missing"
+        assert not groq.calls
+
+    def test_explicit_cerebras_transient_failure_does_not_change_provider(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", "operator-secret")
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "groq-secret")
+        primary = FakeAdapter({"invoke_chat": router.RouterError("provider_unavailable", "down")})
+        fallback = FakeAdapter()
+        result = router.invoke_chat({
+            "_runtime": self._runtime(primary, fallback, providers={"cerebras": {"enabled": True}}),
+            "provider": "cerebras",
+            "model": "gpt-oss-120b",
+            "prompt": "hello",
+        })
+        assert result["status"] is False
+        assert result["metadata"]["selected_provider"] == "cerebras"
+        assert result["metadata"]["fallback_used"] is False
+        assert not fallback.calls
+
+    def test_transient_cerebras_failure_falls_back_to_explicit_groq_receipt(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", "operator-secret")
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "groq-secret")
+        primary = FakeAdapter({"invoke_chat": router.RouterError("provider_rate_limited", "busy")})
+        fallback = FakeAdapter()
+        result = router.invoke_chat({
+            "_runtime": self._runtime(primary, fallback, providers={"cerebras": {"enabled": True}}),
+            "profile": "fast",
+            "prompt": "hello",
+        })
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "groq"
+        assert result["metadata"]["selected_model"] == "llama-3.3-70b-versatile"
+        assert result["metadata"]["fallback_used"] is True
+        assert result["metadata"]["fallback_attempts"] == [{
+            "provider": "cerebras",
+            "model": "gpt-oss-120b",
+            "error_class": "provider_rate_limited",
+            "latency_ms": 0,
+            "retry": False,
+        }]
+
+    @pytest.mark.parametrize(
+        "error_class",
+        ["provider_authentication", "policy_model_not_allowed", "invalid_request",
+         "provider_content_rejected", "unsupported_capability"],
+    )
+    def test_non_transient_cerebras_errors_never_fallback(self, monkeypatch, error_class):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", "operator-secret")
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "groq-secret")
+        primary = FakeAdapter({"invoke_chat": router.RouterError(error_class, "safe failure")})
+        fallback = FakeAdapter()
+        result = router.invoke_chat({
+            "_runtime": self._runtime(primary, fallback, providers={"cerebras": {"enabled": True}}),
+            "profile": "fast",
+            "prompt": "hello",
+        })
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] == error_class
+        assert not fallback.calls
+
+    @pytest.mark.parametrize("field", ["endpoint", "base_url"])
+    def test_endpoint_injection_is_rejected_before_adapter(self, monkeypatch, field):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", "operator-secret")
+        cerebras = FakeAdapter()
+        result = router.invoke_chat({
+            "_runtime": self._runtime(cerebras, FakeAdapter(), providers={"cerebras": {"enabled": True}}),
+            "provider": "cerebras",
+            "model": "gpt-oss-120b",
+            field: "https://evil.example/v1",
+            "prompt": "hello",
+        })
+        assert result["metadata"]["error_class"] == "policy_endpoint_not_allowed"
+        assert not cerebras.calls
+
+    def test_api_key_injection_is_rejected_and_sanitized_before_adapter(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", "operator-secret")
+        cerebras = FakeAdapter()
+        result = router.invoke_chat({
+            "_runtime": self._runtime(cerebras, FakeAdapter(), providers={"cerebras": {"enabled": True}}),
+            "provider": "cerebras",
+            "model": "gpt-oss-120b",
+            "api_key": "caller-secret",
+            "prompt": "private prompt",
+        })
+        assert result["metadata"]["error_class"] == "policy_credential_not_allowed"
+        assert not cerebras.calls
+        serialized = json.dumps(result)
+        assert "caller-secret" not in serialized
+        assert "private prompt" not in serialized
+
+    def test_cerebras_adapter_delegates_and_parses_receipt(self):
+        services = RuntimeServicesDelegate(response={
+            "status": True,
+            "data": {"completed": True, "output": "ok"},
+            "metadata": {"provider_request_id": "cerebras-1", "usage": {"total_tokens": 2}},
+        })
+        adapter = router.CerebrasAdapter(router.RuntimeFacade(services), router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}}))
+        route = TestProviderAdapters().route("cerebras", "cerebras", model="gpt-oss-120b")
+        request = TestProviderAdapters().request("completion_receipt", "chat", "execute", prompt="hello")
+        result = adapter.invoke_chat(route, request)
+        assert services.calls[0]["target"] == "cerebras"
+        assert services.calls[0]["command"] == "completion_receipt"
+        assert result.data["content"] == "ok"
+        assert result.provider_request_id == "cerebras-1"
+        assert result.usage == {"total_tokens": 2}
