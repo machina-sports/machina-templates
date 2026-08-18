@@ -28,9 +28,6 @@ SMOKE_DESCRIPTOR_PATH = CONNECTOR_DIR / "fight-analytics-certified.yml"
 SMOKE_SCRIPT_PATH = CONNECTOR_DIR / "fight-analytics-certified.py"
 SMOKE_WORKFLOW_PATH = CONNECTOR_DIR / "fight-analytics-certified-smoke.yml"
 FANTASY_WORKFLOW_PATH = CONNECTOR_DIR / "fight-analytics-fantasy-canary.yml"
-FANTASY_LIVE_SHAPE_FIXTURE_PATH = (
-    REPO_ROOT / "tests" / "fixtures" / "fight-analytics-live-shape-sanitized.json"
-)
 FANTASY_SHAPE_FIXTURE_PATH = REPO_ROOT / "tests" / "fixtures" / "fight-analytics-sanitized-shapes.json"
 
 EXPECTED_PATHS = {
