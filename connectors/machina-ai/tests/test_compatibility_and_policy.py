@@ -170,6 +170,17 @@ class TestManifestAndPackaging:
         document = yaml.safe_load((FAST_DIR / "machina-ai-fast.yml").read_text())
         assert document["connector"]["delegates_to"] == ["machina-ai"]
 
+    def test_router_manifest_declares_cerebras_delegation(self):
+        document = yaml.safe_load((CONNECTOR_DIR / "machina-ai.yml").read_text())
+        declared = set(document["connector"]["delegates_to"])
+        adapter_delegates = {
+            factory.delegate_connector
+            for factory in router.Router(None).registry.factories.values()
+            if factory.delegate_connector
+        }
+        assert declared == adapter_delegates
+        assert "cerebras" in declared
+
     def test_openai_connector_identity_is_unique(self):
         openai_manifest = (ROOT / "connectors" / "openai" / "openai.yml").read_text()
         google_manifest = (ROOT / "connectors" / "google-genai" / "google-genai.yml").read_text()

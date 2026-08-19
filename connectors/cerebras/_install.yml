@@ -1,0 +1,22 @@
+setup:
+  title: Cerebras
+  description: Fast chat inference on the fixed Cerebras public API endpoint.
+  category:
+    - ai-models
+  estimatedTime: 5 minutes
+  features:
+    - Prompt factories and direct chat completions
+    - Fixed public endpoint with runtime-owned credentials and model policy
+    - Health, completion receipt, and allowlisted model discovery
+  requirements:
+    - Cerebras API key in TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY
+  status: available
+  value: connectors/cerebras
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "cerebras.yml"
+
+  - type: "workflow"
+    path: "test-credentials.yml"

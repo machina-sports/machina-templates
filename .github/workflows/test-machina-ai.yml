@@ -8,6 +8,7 @@ on:
     paths:
       - "connectors/machina-ai/**"
       - "connectors/machina-ai-fast/**"
+      - "connectors/cerebras/**"
       - "connectors/nvidia-nim/**"
       - "connectors/google-genai/**"
       - "connectors/azure-foundry/**"
@@ -28,6 +29,7 @@ on:
     paths:
       - "connectors/machina-ai/**"
       - "connectors/machina-ai-fast/**"
+      - "connectors/cerebras/**"
       - "connectors/nvidia-nim/**"
       - "connectors/grok/**"
       - "connectors/perplexity/**"
@@ -46,9 +48,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install --disable-pip-version-check pytest pyyaml
+      - run: python -m pip install --disable-pip-version-check pytest pyyaml requests
       - name: Run offline router tests
-        run: python -m pytest connectors/machina-ai/tests -q
+        run: python -m pytest connectors/cerebras/tests connectors/machina-ai/tests -q
       - name: Run routing-policy and inventory checks
         run: |
           python scripts/check-machina-ai-policy.py all --require-semantic

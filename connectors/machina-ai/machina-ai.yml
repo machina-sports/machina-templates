@@ -6,6 +6,7 @@ connector:
   delegates_to:
     - "google-genai"
     - "groq"
+    - "cerebras"
     - "nvidia-nim"
     - "stability"
     - "elevenlabs"
