@@ -639,7 +639,7 @@ class TestRuntimeContractAdoption:
     def media(self):
         return router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}})
 
-    def route(self, provider="groq", adapter="groq", capability="chat", model="llama-3.3-70b-versatile"):
+    def route(self, provider="groq", adapter="groq", capability="chat", model="openai/gpt-oss-120b"):
         return router.Route(
             provider=provider,
             adapter=adapter,
@@ -779,14 +779,14 @@ class TestLazyFallbacksAndReceipts:
         runtime = FakeRuntime(
             config={
                 "providers": {"groq": {"enabled": True, "credential": "groq-secret"}},
-                "fallbacks": {"chat": {"vertex_ai": [{"provider": "groq", "model": "llama-3.1-8b-instant"}]}},
+                "fallbacks": {"chat": {"vertex_ai": [{"provider": "groq", "model": "openai/gpt-oss-20b"}]}},
             },
             adapters={"vertex_ai": primary, "groq": fallback},
         )
         result = router.invoke_chat({"_runtime": runtime, "model": "gemini-2.5-flash", "prompt": "hello"})
         assert result["status"] is True
         assert result["metadata"]["selected_provider"] == "groq"
-        assert result["metadata"]["selected_model"] == "llama-3.1-8b-instant"
+        assert result["metadata"]["selected_model"] == "openai/gpt-oss-20b"
         assert result["metadata"]["fallback_used"] is True
 
     def test_unbuildable_fallback_recorded_as_skipped(self):
@@ -807,7 +807,7 @@ class TestLazyFallbacksAndReceipts:
         runtime = FakeRuntime(
             config={
                 "providers": {"groq": {"enabled": True, "credential": "groq-secret"}},
-                "fallbacks": {"chat": {"vertex_ai": [{"provider": "groq", "model": "llama-3.3-70b-versatile"}]}},
+                "fallbacks": {"chat": {"vertex_ai": [{"provider": "groq", "model": "openai/gpt-oss-120b"}]}},
             },
             adapters={"vertex_ai": primary, "groq": fallback},
         )
@@ -821,7 +821,7 @@ class TestLazyFallbacksAndReceipts:
 
 class TestRemapPrecedence:
     def test_profile_remap_without_capability_entry_falls_through(self):
-        runtime = FakeRuntime(config={"remaps": {"profiles": {"fast": {"chat": {"provider": "groq", "model": "llama-3.3-70b-versatile"}}}}})
+        runtime = FakeRuntime(config={"remaps": {"profiles": {"fast": {"chat": {"provider": "groq", "model": "openai/gpt-oss-120b"}}}}})
         result = router.invoke_embedding({"_runtime": runtime, "profile": "fast"})
         assert result["status"] is True
         assert result["metadata"]["selected_provider"] == "vertex_ai"
@@ -914,14 +914,14 @@ class TestDefaultEnablement:
         monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "env-secret")
         groq = FakeAdapter()
         runtime = FakeRuntime(adapters={"vertex_ai": FakeAdapter(), "groq": groq})
-        result = router.invoke_chat({"_runtime": runtime, "provider": "groq", "model": "llama-3.3-70b-versatile", "prompt": "hi"})
+        result = router.invoke_chat({"_runtime": runtime, "provider": "groq", "model": "openai/gpt-oss-120b", "prompt": "hi"})
         assert result["status"] is True
         assert result["metadata"]["selected_provider"] == "groq"
 
     def test_groq_without_env_credential_is_typed_credential_missing(self, monkeypatch):
         monkeypatch.delenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", raising=False)
         monkeypatch.delenv("TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY", raising=False)
-        result = router.invoke_chat({"_runtime": FakeRuntime(), "provider": "groq", "model": "llama-3.3-70b-versatile", "prompt": "hi"})
+        result = router.invoke_chat({"_runtime": FakeRuntime(), "provider": "groq", "model": "openai/gpt-oss-120b", "prompt": "hi"})
         assert result["status"] is False
         assert result["metadata"]["error_class"] == "credential_missing"
 
@@ -932,7 +932,7 @@ class TestDefaultEnablement:
         result = router.invoke_prompt({"_runtime": runtime, "profile": "fast"})
         assert result["status"] is True
         assert result["metadata"]["selected_provider"] == "groq"
-        assert result["metadata"]["selected_model"] == "llama-3.3-70b-versatile"
+        assert result["metadata"]["selected_model"] == "openai/gpt-oss-120b"
 
     def test_google_speech_transcription_enabled_by_default(self):
         speech = FakeAdapter()
@@ -1025,10 +1025,10 @@ class TestCerebrasFastRoute:
         assert conf["allowed_models"]["chat"] == ["gpt-oss-120b", "gemma-4-31b"]
         assert router.DEFAULT_CONFIG["profiles"]["fast"]["chat"] == [
             {"provider": "cerebras", "model": "gpt-oss-120b"},
-            {"provider": "groq", "model": "llama-3.3-70b-versatile"},
+            {"provider": "groq", "model": "openai/gpt-oss-120b"},
         ]
         assert router.DEFAULT_CONFIG["fallbacks"]["chat"]["cerebras"] == [
-            {"provider": "groq", "model": "llama-3.3-70b-versatile"}
+            {"provider": "groq", "model": "openai/gpt-oss-120b"}
         ]
         assert "cerebras" in router.Router(FakeRuntime()).registry.factories
         assert router.CerebrasAdapter.capabilities == {"chat"}
@@ -1117,11 +1117,11 @@ class TestCerebrasFastRoute:
         result = router.invoke_prompt({
             "_runtime": self._runtime(cerebras, groq, providers={"cerebras": {"enabled": True}}),
             "profile": "fast",
-            "model": "llama-3.3-70b-versatile",
+            "model": "openai/gpt-oss-120b",
         })
         assert result["status"] is True
         assert result["metadata"]["selected_provider"] == "groq"
-        assert result["metadata"]["selected_model"] == "llama-3.3-70b-versatile"
+        assert result["metadata"]["selected_model"] == "openai/gpt-oss-120b"
         assert not cerebras.calls
 
     def test_fast_profile_skips_enabled_cerebras_without_credential(self, monkeypatch):
@@ -1134,7 +1134,7 @@ class TestCerebrasFastRoute:
         })
         assert result["status"] is True
         assert result["metadata"]["selected_provider"] == "groq"
-        assert result["metadata"]["selected_model"] == "llama-3.3-70b-versatile"
+        assert result["metadata"]["selected_model"] == "openai/gpt-oss-120b"
 
     def test_explicit_cerebras_missing_credential_does_not_fallback(self, monkeypatch):
         monkeypatch.delenv("TEMP_CONTEXT_VARIABLE_CEREBRAS_API_KEY", raising=False)
@@ -1177,7 +1177,7 @@ class TestCerebrasFastRoute:
         })
         assert result["status"] is True
         assert result["metadata"]["selected_provider"] == "groq"
-        assert result["metadata"]["selected_model"] == "llama-3.3-70b-versatile"
+        assert result["metadata"]["selected_model"] == "openai/gpt-oss-120b"
         assert result["metadata"]["fallback_used"] is True
         assert result["metadata"]["fallback_attempts"] == [{
             "provider": "cerebras",
