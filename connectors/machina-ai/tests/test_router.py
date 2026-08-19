@@ -1048,6 +1048,7 @@ class TestCerebrasFastRoute:
             "missing": [],
             "adapter": "cerebras",
             "capabilities": ["chat"],
+            "models": {"chat": ["gpt-oss-120b", "gemma-4-31b"]},
         }]
 
     def test_explicit_provider_routes_to_cerebras(self, monkeypatch):
