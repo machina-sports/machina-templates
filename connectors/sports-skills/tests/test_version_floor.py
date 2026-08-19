@@ -17,19 +17,19 @@ _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 
 
-def test_min_version_is_0_30_1():
-    assert _module._MIN_VERSION == (0, 30, 1)
+def test_min_version_is_0_33_0():
+    assert _module._MIN_VERSION == (0, 33, 0)
 
 
 def test_pip_package_pins_the_same_floor():
-    assert _module._PIP_PACKAGE == "sports-skills>=0.30.1,<1.0"
+    assert _module._PIP_PACKAGE == "sports-skills>=0.33.0,<1.0"
 
 
 def test_runtime_requirement_docs_recommend_no_older_floor():
     """The docstring must not tell operators to pin below _MIN_VERSION."""
     floors = re.findall(r"sports-skills>=([0-9][0-9.]*)", _module.__doc__)
     assert floors, "runtime requirement docs must state a sports-skills floor"
-    assert all(f == "0.30.1" for f in floors), floors
+    assert all(f == "0.33.0" for f in floors), floors
 
 
 def test_upgrade_target_stays_in_tmp():

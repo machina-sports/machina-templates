@@ -1,6 +1,6 @@
 setup:
   title: Sports Skills
-  description: Aggregator over 21 sports-data domains via the machina-sports/sports-skills Python package — football (13 leagues), NBA, WNBA, NFL, NHL, MLB, CFB, CBB, tennis, golf, F1, volleyball, XCTF, cricket, esports, plus Polymarket/Kalshi prediction markets, betting utilities, cross-sportsbook market matching, and news. Most modules are zero-config (public providers); betting markets need their own keys.
+  description: Aggregator over sports-data domains via the machina-sports/sports-skills Python package — football, major US leagues, individual sports, Polymarket/Kalshi, keyless read-only ProphetX, betting utilities, cross-sportsbook market matching, and news.
   category:
     - data-acquisition
     - sports
@@ -11,7 +11,7 @@ setup:
     - Tennis, golf, F1, volleyball, XCTF — schedules, results, leaders
     - Cricket — ESPN live/standings + Cricsheet ball-by-ball deliveries
     - Esports — OpenDota (Dota 2) and Leaguepedia (LoL) pro matches, teams, tournaments
-    - Polymarket and Kalshi prediction markets (read + order placement)
+    - Polymarket and Kalshi prediction markets, plus ProphetX keyless public read-only market data
     - Betting utilities — odds conversion, devig, Kelly criterion, arbitrage, parlay analysis
     - Cross-sportsbook market matching and normalization
     - Sports news aggregation

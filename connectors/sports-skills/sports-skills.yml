@@ -1,6 +1,6 @@
 connector:
   name: "sports-skills"
-  description: "Aggregator over 21 sports-data domains via the machina-sports/sports-skills Python package. Each command dispatches to one module; pass `command=<function_name>` in workflow inputs plus the function's kwargs. Most public-data modules (football, NBA, NFL, NHL, MLB, tennis, golf, F1, cricket, esports) need no API keys; betting markets (kalshi, polymarket) need their own."
+  description: "Aggregator over sports-data domains via the machina-sports/sports-skills Python package. Each command dispatches to one module; pass `command=<function_name>` in workflow inputs plus the function's kwargs. Most public-data modules need no API keys; ProphetX is keyless and read-only, while credentialed trading surfaces remain separate."
   filename: "sports-skills.py"
   filetype: "pyscript"
   commands:
@@ -38,6 +38,8 @@ connector:
       value: "invoke_polymarket"
     - name: "Kalshi"
       value: "invoke_kalshi"
+    - name: "ProphetX (public read-only)"
+      value: "invoke_prophetx"
     - name: "Betting utilities"
       value: "invoke_betting"
     - name: "Markets (cross-sportsbook)"
