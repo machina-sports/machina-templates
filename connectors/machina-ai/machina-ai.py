@@ -146,29 +146,29 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "allowed_schemes": ["https"],
     },
     "defaults": {
-        "chat": {"provider": "vertex_ai", "model": "gemini-2.5-flash"},
+        "chat": {"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"},
         "embedding": {"provider": "vertex_ai", "model": "text-embedding-004"},
-        "search_answer": {"provider": "vertex_ai", "model": "gemini-2.5-flash"},
+        "search_answer": {"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"},
         "transcription": {"provider": "google_speech", "model": "latest_long"},
     },
     "profiles": {
         "default": {
-            "chat": [{"provider": "vertex_ai", "model": "gemini-2.5-flash"}],
+            "chat": [{"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"}],
             "embedding": [{"provider": "vertex_ai", "model": "text-embedding-004"}],
         },
         "balanced": {
-            "chat": [{"provider": "vertex_ai", "model": "gemini-2.5-flash"}],
+            "chat": [{"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"}],
             "embedding": [{"provider": "vertex_ai", "model": "text-embedding-004"}],
-            "search_answer": [{"provider": "vertex_ai", "model": "gemini-2.5-flash"}],
+            "search_answer": [{"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"}],
         },
         "quality": {
-            "chat": [{"provider": "vertex_ai", "model": "gemini-2.5-pro"}],
+            "chat": [{"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"}],
         },
         "cheap": {
-            "chat": [{"provider": "vertex_ai", "model": "gemini-2.5-flash-lite"}],
+            "chat": [{"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"}],
         },
         "long_context": {
-            "chat": [{"provider": "vertex_ai", "model": "gemini-2.5-pro"}],
+            "chat": [{"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"}],
         },
         "fast": {"chat": [{"provider": "groq", "model": "llama-3.3-70b-versatile"}]},
         "private_runtime": {"chat": [{"provider": "nvidia_nim"}]},
@@ -185,9 +185,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "project_env": "TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID",
             "location": "global",
             "allowed_models": {
-                "chat": ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"],
+                "chat": ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"],
                 "embedding": ["text-embedding-004"],
-                "search_answer": ["gemini-2.5-flash", "gemini-2.5-pro"],
+                "search_answer": ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"],
                 "image": [],
                 "video": [],
                 "tts": [],
@@ -1945,6 +1945,7 @@ class Router:
                     "missing": missing,
                     "adapter": conf.get("adapter"),
                     "capabilities": sorted(key for key, models in allowed_models.items() if models),
+                    "models": {key: list(models) for key, models in allowed_models.items() if models},
                 })
         message = "Allowed models listed." if request.command == "list_models" else "Router health evaluated."
         return self._success(entries, message, self._metadata(request, started))

@@ -141,6 +141,25 @@ class TestManifestAndPackaging:
             assert f'value: "{command}"' in manifest
             assert callable(getattr(router, command))
 
+    def test_gemini_35_smoke_workflow_is_installed_and_uses_balanced_vertex_route(self):
+        install = yaml.safe_load((CONNECTOR_DIR / "_install.yml").read_text())
+        workflows = {
+            item["path"]
+            for item in install["datasets"]
+            if item["type"] == "workflow"
+        }
+        assert "test-smoke-gemini-35-flash-lite.yml" in workflows
+
+        smoke = yaml.safe_load((CONNECTOR_DIR / "test-smoke-gemini-35-flash-lite.yml").read_text())
+        connector = smoke["workflow"]["tasks"][0]["connector"]
+        assert connector == {
+            "name": "machina-ai",
+            "command": "invoke_prompt",
+            "provider": "vertex_ai",
+            "model": "gemini-3.5-flash-lite",
+            "profile": "balanced",
+        }
+
     def test_fast_manifest_declares_only_real_compatibility_commands(self):
         manifest = (FAST_DIR / "machina-ai-fast.yml").read_text()
         assert 'value: "invoke_prompt"' in manifest
@@ -197,7 +216,7 @@ workflow:
         name: machina-ai
         command: invoke_prompt
         provider: vertex_ai
-        model: gemini-2.5-flash
+        model: gemini-3.5-flash-lite
         profile: balanced
       inputs:
         prompt: hello

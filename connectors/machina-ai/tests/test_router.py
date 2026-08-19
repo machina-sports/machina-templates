@@ -181,7 +181,7 @@ class TestRoutingAndReceipts:
         assert result["status"] is True
         assert result["data"] is runtime.adapters["vertex_ai"].factory
         assert result["metadata"]["selected_provider"] == "vertex_ai"
-        assert result["metadata"]["selected_model"] == "gemini-2.5-flash"
+        assert result["metadata"]["selected_model"] == "gemini-3.5-flash-lite"
         assert result["metadata"]["route_reason"] == "profile:balanced"
 
     def test_direct_chat_returns_canonical_envelope_and_receipt(self):
@@ -252,6 +252,59 @@ class TestRoutingAndReceipts:
         vertex = next(item for item in result["data"] if item["provider"] == "vertex_ai")
         assert vertex["enabled"] is True
         assert "capabilities" in vertex
+
+
+class TestGemini35FlashLiteDefaults:
+    MODEL = "gemini-3.5-flash-lite"
+
+    def test_default_chat_config_uses_gemini_35_flash_lite(self):
+        assert router.DEFAULT_CONFIG["defaults"]["chat"] == {
+            "provider": "vertex_ai",
+            "model": self.MODEL,
+        }
+
+    @pytest.mark.parametrize("profile", ["default", "balanced", "quality", "cheap", "long_context"])
+    def test_gemini_chat_profiles_use_gemini_35_flash_lite(self, profile):
+        result = router.invoke_prompt({"_runtime": FakeRuntime(), "profile": profile})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_ai"
+        assert result["metadata"]["selected_model"] == self.MODEL
+        assert result["metadata"]["route_reason"] == f"profile:{profile}"
+
+    def test_search_default_and_balanced_profile_use_gemini_35_flash_lite(self):
+        assert router.DEFAULT_CONFIG["defaults"]["search_answer"] == {
+            "provider": "vertex_ai",
+            "model": self.MODEL,
+        }
+        result = router.invoke_search({"_runtime": FakeRuntime(), "profile": "balanced", "prompt": "latest"})
+        assert result["status"] is True
+        assert result["metadata"]["selected_model"] == self.MODEL
+        assert result["metadata"]["route_reason"] == "profile:balanced"
+
+    def test_vertex_allowlists_include_gemini_35_flash_lite(self):
+        allowed = router.DEFAULT_CONFIG["providers"]["vertex_ai"]["allowed_models"]
+        assert self.MODEL in allowed["chat"]
+        assert self.MODEL in allowed["search_answer"]
+
+    def test_exact_model_passes_policy_and_arbitrary_model_is_refused(self):
+        accepted = router.invoke_chat({"_runtime": FakeRuntime(), "model": self.MODEL, "prompt": "hello"})
+        refused = router.invoke_chat({"_runtime": FakeRuntime(), "model": "gemini-arbitrary-unsupported", "prompt": "hello"})
+        assert accepted["status"] is True
+        assert accepted["metadata"]["selected_model"] == self.MODEL
+        assert refused["status"] is False
+        assert refused["metadata"]["error_class"] == "policy_model_not_allowed"
+
+    def test_management_commands_expose_gemini_35_flash_lite(self):
+        models = router.list_models({"_runtime": FakeRuntime()})
+        health = router.health({"_runtime": FakeRuntime()})
+        assert {
+            "provider": "vertex_ai",
+            "model": self.MODEL,
+            "capability": "chat",
+            "enabled": True,
+        } in models["data"]
+        vertex = next(item for item in health["data"] if item["provider"] == "vertex_ai")
+        assert self.MODEL in vertex["models"]["chat"]
 
 
 class TestFallbacks:
@@ -761,7 +814,7 @@ class TestLazyFallbacksAndReceipts:
         result = router.invoke_chat({"_runtime": runtime, "prompt": "hello"})
         assert result["status"] is False
         assert result["metadata"]["selected_provider"] == "vertex_ai"
-        assert result["metadata"]["selected_model"] == "gemini-2.5-flash"
+        assert result["metadata"]["selected_model"] == "gemini-3.5-flash-lite"
         assert result["metadata"]["route_reason"] == "profile:balanced"
         assert [attempt["provider"] for attempt in result["metadata"]["fallback_attempts"]] == ["vertex_ai", "groq"]
 
@@ -854,7 +907,7 @@ class TestDefaultEnablement:
         result = router.invoke_prompt({"_runtime": FakeRuntime(), "profile": "cheap"})
         assert result["status"] is True
         assert result["metadata"]["selected_provider"] == "vertex_ai"
-        assert result["metadata"]["selected_model"] == "gemini-2.5-flash-lite"
+        assert result["metadata"]["selected_model"] == "gemini-3.5-flash-lite"
         assert result["metadata"]["route_reason"] == "profile:cheap"
 
     def test_groq_enabled_with_env_credential_only(self, monkeypatch):

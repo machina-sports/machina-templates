@@ -1,0 +1,29 @@
+workflow:
+  name: "machina-ai-smoke-gemini-35-flash-lite"
+  title: "Machina AI Router - Smoke: Gemini 3.5 Flash-Lite"
+  description: >-
+    Non-production probe for Gemini 3.5 Flash-Lite through the balanced Vertex AI
+    route. Requires operator-provided Vertex credentials at runtime.
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    prompt: "$.get('prompt', 'Reply with a one-sentence hello and name the model answering.')"
+  outputs:
+    result: "$.get('smoke_result', {})"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+    - type: prompt
+      name: machina-ai-test-credentials-prompt
+      description: Invoke Gemini 3.5 Flash-Lite through the balanced Vertex AI route.
+      connector:
+        name: machina-ai
+        command: invoke_prompt
+        provider: vertex_ai
+        model: gemini-3.5-flash-lite
+        profile: balanced
+      inputs:
+        prompt: "$.get('prompt', 'Reply with a one-sentence hello and name the model answering.')"
+      outputs:
+        smoke_result: "$"
+        workflow-status: "'executed'"

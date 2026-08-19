@@ -1,4 +1,18 @@
-# Activating the Claude on Vertex route (`vertex_anthropic`)
+# Machina AI Router Activation
+
+## Repository default
+
+`machina-ai` defaults chat and search-answer requests to the Vertex AI model ID
+`gemini-3.5-flash-lite`. The `default`, `balanced`, `quality`, `cheap`, and
+`long_context` chat profiles use the same model; `fast`, `private_runtime`, and
+`open_source` retain their provider-specific routes. The model ID and GA availability
+are sourced from the [Google Cloud Vertex AI model documentation](https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-5-flash-lite).
+
+The installable non-production probe is `test-smoke-gemini-35-flash-lite.yml`.
+It requires operator-provided Vertex credentials. No live smoke was run as part of
+this repository change because those credentials were unavailable.
+
+## Activating the Claude on Vertex route (`vertex_anthropic`)
 
 The `vertex_anthropic` provider ships **dormant** (`enabled: false`). Nothing routes
 to Claude until an environment opts in. This is the Stage 0 activation runbook for
