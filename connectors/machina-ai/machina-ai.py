@@ -174,7 +174,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         },
         "fast": {"chat": [
             {"provider": "cerebras", "model": "gpt-oss-120b"},
-            {"provider": "groq", "model": "llama-3.3-70b-versatile"},
+            {"provider": "groq", "model": "openai/gpt-oss-120b"},
         ]},
         "private_runtime": {"chat": [{"provider": "nvidia_nim"}]},
         "open_source": {"chat": [{"provider": "nvidia_nim"}]},
@@ -183,7 +183,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "remaps": {"families": {}, "capabilities": {}, "profiles": {}},
     "fallbacks": {
         "chat": {
-            "cerebras": [{"provider": "groq", "model": "llama-3.3-70b-versatile"}],
+            "cerebras": [{"provider": "groq", "model": "openai/gpt-oss-120b"}],
         },
     },
     "providers": {
@@ -266,7 +266,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "require_credential": True,
             "credential_env": "TEMP_CONTEXT_VARIABLE_GROQ_API_KEY",
             "credential_env_aliases": ["TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"],
-            "allowed_models": {"chat": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]},
+            "allowed_models": {"chat": ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]},
         },
         "cerebras": {
             # Dormant until enabled by environment config. The public endpoint,

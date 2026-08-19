@@ -45,7 +45,7 @@ Enable Cerebras for a bounded environment canary through layered router config:
 The canonical `fast` profile then selects Cerebras first. Approved transient
 classes (`provider_timeout`, `provider_rate_limited`, `provider_unavailable`, and
 `provider_bad_response`) may fall back to the explicit Groq model
-`llama-3.3-70b-versatile`. Receipts must show `selected_provider`,
+`openai/gpt-oss-120b`. Receipts must show `selected_provider`,
 `selected_model`, `route_reason`, `fallback_used`, and `fallback_attempts`.
 
 ## Rollback
