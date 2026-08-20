@@ -10,8 +10,6 @@ workflow:
     google-genai:
       credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-    machina-ai-fast:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
   inputs:
     messages: "$.get('messages', [])"
   outputs:
@@ -53,16 +51,9 @@ workflow:
       name: "chat-completions-prompt"
       description: "Chat Completions."
       connector:
+        # Fast alternative via the router alias (runtime-owned credentials/model):
         # name: "machina-ai-fast"
         # command: "invoke_prompt"
-        # model: "llama-3.1-8b-instant"
-        # model: "llama-3.3-70b-versatile"
-        # model: "meta-llama/llama-4-maverick-17b-128e-instruct"
-        # model: "deepseek-r1-distill-llama-70b"
-        # model: "deepseek-r1-distill-llama-70b-specdec"
-        # name: "google-genai"
-        # command: "invoke_prompt"
-        # model: "gemini-2.5-flash"
         name: "google-genai"
         command: "invoke_prompt"
         model: "gemini-2.5-pro"

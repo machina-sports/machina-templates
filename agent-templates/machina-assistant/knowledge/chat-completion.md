@@ -86,24 +86,23 @@ tasks:
 
 ## Available LLM Providers
 
-### OpenAI (machina-ai)
+### Policy-governed router (machina-ai)
+Credentials, endpoints, and model policy are runtime-owned. Vertex AI is the repository default:
 ```yaml
 connector:
   name: "machina-ai"
   command: "invoke_prompt"
-  model: "gpt-4o"  # or "gpt-4o-mini", "gpt-4", "gpt-3.5-turbo"
+  provider: "vertex_ai"
+  model: "gemini-2.5-flash"
+  profile: "balanced"
 ```
 
-### Groq (machina-ai-fast)
-Fast inference for open-source models:
+### Fast route (machina-ai-fast)
+Low-latency open-source route (currently `openai/gpt-oss-120b` via Groq; Cerebras dormant). The alias delegates to `machina-ai` with `profile=fast` at runtime — committed workflows must not pin a model, credential, or the `fast` profile directly (policy lint rejects them):
 ```yaml
 connector:
   name: "machina-ai-fast"
   command: "invoke_prompt"
-  model: "llama-3.3-70b-versatile"
-  # Other options:
-  # - "llama-3.1-8b-instant"
-  # - "deepseek-r1-distill-llama-70b"
 ```
 
 ### Google Gemini (google-genai)
