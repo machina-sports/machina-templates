@@ -144,9 +144,7 @@ workflow:
       condition: "$.get('document_id') is not None and $.get('prompt_name') == 'prompt-thread-completion'"
       connector:
         name: "groq"
-        # model: "llama-3.1-8b-instant"
-        # model: "llama-3.3-70b-versatile"
-        model: "deepseek-r1-distill-llama-70b"
+        model: "openai/gpt-oss-120b"
         #name: "google-genai"
         command: "invoke_prompt"
         #model: "gemini-2.5-flash"
@@ -168,7 +166,7 @@ workflow:
       condition: "$.get('document_id') is not None and $.get('prompt_name') == 'prompt-chat-postmatch'"
       connector:
         name: "groq"
-        model: "deepseek-r1-distill-llama-70b"
+        model: "openai/gpt-oss-120b"
         command: "invoke_prompt"
       inputs:
         documents: |

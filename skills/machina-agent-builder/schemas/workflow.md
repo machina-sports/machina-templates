@@ -171,7 +171,7 @@ Calls an LLM via a connector to generate structured output.
 |-------|----------|-------------|
 | `name` | Yes | Connector name from `context-variables` |
 | `command` | Yes | `invoke_prompt`, `invoke_search`, `invoke_embedding`, `invoke_video` |
-| `model` | No | Model identifier (e.g., `gemini-2.5-flash`, `gemini-2.5-flash`, `llama-3.3-70b-versatile`) |
+| `model` | No | Model identifier (e.g., `gemini-2.5-flash`, `openai/gpt-oss-120b`) |
 | `location` | No | Region/location for provider (e.g., `global`) |
 | `provider` | No | Backend provider (e.g., `vertex_ai`) |
 

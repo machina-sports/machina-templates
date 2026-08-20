@@ -8,8 +8,6 @@ workflow:
     google-genai:
       credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-    machina-ai-fast:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
   inputs:
     event_type: "$.get('event_type', 'content-snippet')"
     input_status: "$.get('input_status', 'waiting')"
@@ -102,17 +100,11 @@ workflow:
       description: "Thread Executor."
       condition: "$.get('document_id') is not None"
       connector:
+        # Fast route via the policy-governed router alias (delegates to
+        # machina-ai profile=fast at runtime; credentials and model are
+        # runtime-owned — committed workflows must not pin either).
         name: "machina-ai-fast"
         command: "invoke_prompt"
-        model: "llama-3.3-70b-versatile"
-        # model: "deepseek-r1-distill-qwen-32b"
-        # model: "llama-3.1-8b-instant"
-        # model: "llama-3.3-70b-versatile"
-        # model: "deepseek-r1-distill-llama-70b"
-        # model: "deepseek-r1-distill-llama-70b-specdec"
-        #  name: "google-genai"
-        #  command: "invoke_prompt"
-        #  model: "gemini-2.5-pro"
       inputs:
         documents: "$.get('documents')"
         messages: "$.get('messages')"
