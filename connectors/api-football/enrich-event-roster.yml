@@ -1,0 +1,147 @@
+workflow:
+  name: "api-football-enrich-event-roster"
+  title: "API Football - Enrich Event Roster"
+  description: |
+    Enrich one raw API-Football fixture payload with exact provider roster facts.
+    Existing fixture lineups take precedence. Otherwise this workflow makes at
+    most one lineup call, two squad calls, and 20 optional profile calls. Squad
+    players stay in a distinct rosters field and are never represented as fixture
+    participants or lineups.
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    payload: "$.get('payload', {})"
+    include_player_profiles: "$.get('include_player_profiles', False)"
+    max_profile_requests: "$.get('max_profile_requests', 20)"
+  outputs:
+    payload: "$.get('enriched-payload', $.get('payload', {}))"
+    metadata: "$.get('roster-metadata', {})"
+    roster-available: "$.get('roster-available', False)"
+    roster-source: "$.get('roster-source')"
+    requirements-unavailable: "$.get('requirements-unavailable', ['event.rosters'])"
+    errors: "$.get('roster-errors', [])[:20]"
+    workflow-status: "'failed' if not $.get('request-valid', False) or $.get('roster-errors', []) else ('executed' if $.get('roster-available', False) else 'skipped')"
+  tasks:
+    - type: connector
+      name: plan-event-roster
+      description: "Validate the fixture identity and clamp profile work before provider retrieval."
+      connector:
+        name: api-football-roster
+        command: plan_event_roster
+      inputs:
+        payload: "$.get('payload', {})"
+        max_profile_requests: "$.get('max_profile_requests', 20)"
+      outputs:
+        request-valid: "$.get('valid') is True"
+        fixture-id: "$.get('fixture_id')"
+        home-team-id: "$.get('home_team_id')"
+        away-team-id: "$.get('away_team_id')"
+        embedded-lineups: "$.get('embedded_lineups') is True"
+        bounded-profile-limit: "$.get('max_profile_requests', 0)"
+        roster-errors: "[] if $.get('valid') is True else [str($.get('message', 'invalid fixture payload'))[:500]]"
+
+    - type: connector
+      name: fetch-fixture-lineups
+      description: "Fetch both fixture lineups once when the payload does not already carry them."
+      condition: "$.get('request-valid', False) and not $.get('embedded-lineups', False)"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-fixtures/lineups
+      inputs:
+        fixture: "$.get('fixture-id')"
+      outputs:
+        lineup-response: "$.get('response', []) if isinstance($.get('response'), list) else []"
+        lineup-errors: "{str(key)[:100]: str(value)[:500] for key, value in list($.get('errors', {}).items())[:20]} if isinstance($.get('errors'), dict) else [str(item)[:500] for item in $.get('errors', [])[:20]] if isinstance($.get('errors'), list) else [str($.get('errors'))[:500]] if $.get('errors') else []"
+        lineup-response-valid: "isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') == len($.get('response'))"
+        roster-errors: "([] if isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') == len($.get('response')) and not $.get('errors') else ['fixture lineup response is invalid or reports provider errors'])"
+
+    - type: connector
+      name: fetch-home-squad
+      description: "Fetch the home squad only when a valid lineup response is empty."
+      condition: "$.get('request-valid', False) and not $.get('embedded-lineups', False) and $.get('lineup-response-valid', False) and not $.get('lineup-errors', []) and len($.get('lineup-response', [])) == 0"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-players/squads
+      inputs:
+        team: "$.get('home-team-id')"
+      outputs:
+        home-squad-response: "$.get('response', []) if isinstance($.get('response'), list) else []"
+        home-squad-valid: "isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') == len($.get('response')) and not $.get('errors')"
+
+    - type: connector
+      name: fetch-away-squad
+      description: "Fetch the away squad only when a valid lineup response is empty."
+      condition: "$.get('request-valid', False) and not $.get('embedded-lineups', False) and $.get('lineup-response-valid', False) and not $.get('lineup-errors', []) and len($.get('lineup-response', [])) == 0"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-players/squads
+      inputs:
+        team: "$.get('away-team-id')"
+      outputs:
+        away-squad-response: "$.get('response', []) if isinstance($.get('response'), list) else []"
+        away-squad-valid: "isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') == len($.get('response')) and not $.get('errors')"
+
+    - type: connector
+      name: plan-player-profiles
+      description: "Select only missing-name squad players, capped before foreach execution."
+      condition: "$.get('include_player_profiles') is True and $.get('home-squad-valid', False) and $.get('away-squad-valid', False)"
+      connector:
+        name: api-football-roster
+        command: plan_player_profiles
+      inputs:
+        include_player_profiles: "$.get('include_player_profiles', False)"
+        max_profile_requests: "$.get('bounded-profile-limit', 0)"
+        home_squad: "$.get('home-squad-response', [])"
+        away_squad: "$.get('away-squad-response', [])"
+      outputs:
+        profile-plan-valid: "$.get('valid') is True"
+        profile-requests: "$.get('profile_requests', [])[:20]"
+
+    - type: connector
+      name: fetch-player-profiles
+      description: "Fetch at most 20 profiles, only for provider ids selected by the plan."
+      condition: "$.get('profile-plan-valid', False) and len($.get('profile-requests', [])) > 0"
+      continue_on_error: true
+      foreach:
+        concurrent: false
+        limit: 20
+        name: profile-request
+        expr: $
+        value: "$.get('profile-requests', [])"
+      connector:
+        name: api-football
+        command: get-players/profiles
+      inputs:
+        player: "$.get('profile-request', {}).get('id')"
+      outputs:
+        player-profile-responses: "[{'response': $.get('response', []) if isinstance($.get('response'), list) else []}]"
+        player-profile-validity: "[isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') == len($.get('response')) and not $.get('errors')]"
+        roster-errors: "[] if isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') == len($.get('response')) and not $.get('errors') else ['player profile response is invalid or reports provider errors']"
+
+    - type: connector
+      name: normalize-event-roster
+      description: "Keep real lineups and add exact per-team rosters without changing canonical fields."
+      condition: "$.get('request-valid', False) and not $.get('roster-errors', [])"
+      connector:
+        name: api-football-roster
+        command: normalize_event_roster
+      inputs:
+        payload: "$.get('payload', {})"
+        lineups: "$.get('lineup-response', [])"
+        home_squad: "$.get('home-squad-response', [])"
+        away_squad: "$.get('away-squad-response', [])"
+        player_profiles: "$.get('player-profile-responses', []) if all($.get('player-profile-validity', [])) else []"
+      outputs:
+        normalization-valid: "$.get('valid') is True"
+        enriched-payload: "$.get('payload', {})"
+        roster-metadata: "$.get('metadata', {})"
+        roster-available: "$.get('available') is True"
+        roster-source: "$.get('roster_source')"
+        requirements-unavailable: "$.get('requirements_unavailable', ['event.rosters'])"
+        roster-errors: "[] if $.get('valid') is True else [str($.get('message', 'roster normalization failed'))[:500]]"

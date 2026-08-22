@@ -1,0 +1,12 @@
+connector:
+  name: "api-football-roster"
+  description: "Validate, plan, and normalize bounded API-Football event roster enrichment without provider calls or inferred player facts."
+  filename: "api-football-roster.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Plan one event roster enrichment"
+      value: "plan_event_roster"
+    - name: "Plan bounded player profile lookups"
+      value: "plan_player_profiles"
+    - name: "Normalize one enriched event roster"
+      value: "normalize_event_roster"
