@@ -85,24 +85,27 @@ workflow:
         payload: "$.get('provider-fixture', {})"
       outputs:
         canonical-envelopes: "[$.get('envelope', {})]"
-        canonical-envelope-validity: "[isinstance($.get('envelope'), dict) and isinstance($.get('envelope', {}).get('machina_sports_schema'), dict) and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('provider', {}).get('namespace') == 'api-football' and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('provider', {}).get('family') == 'licensed' and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('data_class') == 'licensed-provider-example-fixture' and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('prototype_only') is True and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('commercial_use') is False]"
-
-    # iptc-api-football-event-mapping
-    - type: mapping
-      name: iptc-api-football-event-mapping
-      title: "IPTC | API Football Event Mapping"
-      description: "Mapping data from api-football to IPTC events"
-      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('provider-fixtures', [])) > 0 and len($.get('canonical-envelopes', [])) == len($.get('provider-fixtures', [])) and len($.get('canonical-envelope-validity', [])) == len($.get('provider-fixtures', [])) and all($.get('canonical-envelope-validity', []))"
-      inputs:
-        fixtures: "$.get('provider-fixtures', [])"
-      outputs:
-        fixtures: "$.get('sport_schema_events')"
+        canonical-envelope-validity: "[$.get('allowed') is True and isinstance($.get('envelope'), dict) and isinstance($.get('envelope', {}).get('machina_sports_schema'), dict) and $.get('envelope', {}).get('machina_sports_schema', {}).get('schema_version') == 'machina-sports-schema/1' and isinstance($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view'), dict) and isinstance($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id'), str) and bool($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id')) and isinstance($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('label'), str) and bool($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('label')) and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('provider', {}).get('namespace') == 'api-football' and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('provider', {}).get('family') == 'licensed' and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('provider', {}).get('raw') == $.get('provider-fixture') and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('provider', {}).get('namespace') == 'api-football' and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('provider', {}).get('family') == 'licensed' and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('observed_at') == $.get('observed_at') and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('data_class') == 'licensed-provider-example-fixture' and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('prototype_only') is True and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('commercial_use') is False]"
+        fixtures: |
+          [
+            {
+              '@id': block.get('event_view', {}).get('event_id', ''),
+              '@type': 'sport:Event',
+              'name': block.get('event_view', {}).get('label', ''),
+              'event_view': block.get('event_view', {}),
+              'machina_sports_schema': block
+            }
+            for envelope in [$.get('envelope')]
+            if isinstance(envelope, dict)
+            for block in [envelope.get('machina_sports_schema')]
+            if isinstance(block, dict)
+          ]
 
     # task-bulk-save-fixtures
     - type: "document"
       name: "task-bulk-save-fixtures"
       description: "Bulk save the individual fixtures."
-      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('fixtures', [])) > 0 and len($.get('fixtures', [])) == len($.get('canonical-envelopes', []))"
+      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('provider-fixtures', [])) > 0 and len($.get('fixtures', [])) == len($.get('provider-fixtures', [])) and len($.get('canonical-envelopes', [])) == len($.get('provider-fixtures', [])) and len($.get('canonical-envelope-validity', [])) == len($.get('provider-fixtures', [])) and all($.get('canonical-envelope-validity', []))"
       config:
         action: "bulk-update"
         embed-selector: "$.get('title')"
@@ -120,13 +123,12 @@ workflow:
           [
             {
               **f,
-              'machina_sports_schema': $.get('canonical-envelopes', [])[index].get('machina_sports_schema', {}),
               'metadata': {
                 'event_code': str(f.get('@id', '')),
               },
               'title': f.get('name', '')
             }
-            for index, f in enumerate($.get('fixtures', []))
+            for f in $.get('fixtures', [])
           ]
       metadata:
         document_type: "'fixture'"

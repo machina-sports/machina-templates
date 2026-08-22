@@ -91,7 +91,7 @@ def test_get_fixtures_rejects_an_invalid_response_shape():
 def test_sync_fixtures_fails_closed_on_errors_and_invalid_payloads():
     workflow = load_yaml("sync-fixtures.yml")["workflow"]
     connector_outputs = task(workflow, "api-football-get-fixtures")["outputs"]
-    mapping = task(workflow, "iptc-api-football-event-mapping")
+    canonicalize = task(workflow, "canonicalize-fixtures")
     save = task(workflow, "task-bulk-save-fixtures")
 
     for payload in (
@@ -100,13 +100,17 @@ def test_sync_fixtures_fails_closed_on_errors_and_invalid_payloads():
         {"response": [provider_fixture()], "errors": [], "results": 2},
     ):
         state = evaluate_outputs(connector_outputs, payload)
-        with_state = {**state, "canonical-envelopes": []}
+        with_state = {
+            **state,
+            "canonical-envelopes": [],
+            "canonical-envelope-validity": [],
+        }
         assert evaluate(workflow["outputs"]["workflow-status"], with_state) == "failed"
-        assert not evaluate(mapping["condition"], with_state)
+        assert not evaluate(canonicalize["condition"], with_state)
         assert not evaluate(save["condition"], {**with_state, "fixtures": []})
 
 
-def test_sync_fixtures_reports_executed_only_after_complete_mapping():
+def test_sync_fixtures_reports_executed_only_after_complete_canonicalization():
     workflow = load_yaml("sync-fixtures.yml")["workflow"]
     fixture = provider_fixture()
     block = {
@@ -134,13 +138,67 @@ def test_sync_fixtures_reports_executed_only_after_complete_mapping():
     ) == "failed"
 
 
-def test_sync_fixtures_retains_the_complete_canonical_sidecar():
+def test_sync_fixtures_uses_canonical_connector_for_each_exact_fixture():
+    workflow = load_yaml("sync-fixtures.yml")["workflow"]
+    install = load_yaml("_install.yml")
+    canonicalize = task(workflow, "canonicalize-fixtures")
+    fixture = provider_fixture()
+
+    assert all(item.get("type") != "mapping" for item in workflow["tasks"])
+    assert all(
+        item.get("name") != "iptc-api-football-event-mapping"
+        for item in workflow["tasks"]
+    )
+    assert canonicalize["connector"] == {
+        "name": "machina-sports-canonical",
+        "command": "canonicalize_event",
+    }
+    assert [
+        item
+        for item in install["datasets"]
+        if item.get("type") == "connector"
+        and item.get("path")
+        == "../machina-sports-canonical/machina-sports-canonical.yml"
+    ] == [
+        {
+            "type": "connector",
+            "path": "../machina-sports-canonical/machina-sports-canonical.yml",
+        }
+    ]
+    assert canonicalize["inputs"]["provider"] == "'api-football'"
+    assert evaluate(
+        canonicalize["inputs"]["payload"], {"provider-fixture": fixture}
+    ) is fixture
+    assert evaluate(
+        canonicalize["inputs"]["observed_at"],
+        {"observed_at": "2026-08-22T12:00:00+00:00"},
+    ) == "2026-08-22T12:00:00+00:00"
+    assert canonicalize["foreach"]["value"] == "$.get('provider-fixtures', [])"
+    assert canonicalize["foreach"]["limit"] == 1000
+    assert "concurrent" not in canonicalize["foreach"]
+
+
+def test_sync_fixtures_builds_validated_canonical_event_documents():
     workflow = load_yaml("sync-fixtures.yml")["workflow"]
     canonicalize = task(workflow, "canonicalize-fixtures")
     save = task(workflow, "task-bulk-save-fixtures")
+    fixture = provider_fixture()
+    observed_at = "2026-08-22T12:00:00+00:00"
+    event_view = {
+        "event_id": "urn:machina:sports:event:x123",
+        "label": "A vs B",
+        "provider": {
+            "namespace": "api-football",
+            "family": "licensed",
+            "raw": fixture,
+        },
+    }
     block = {
+        "schema_version": "machina-sports-schema/1",
+        "event_view": event_view,
         "provenance": {
-            "provider": {"namespace": "api-football", "family": "licensed"}
+            "provider": {"namespace": "api-football", "family": "licensed"},
+            "observed_at": observed_at,
         },
         "rights": {
             "data_class": "licensed-provider-example-fixture",
@@ -148,38 +206,71 @@ def test_sync_fixtures_retains_the_complete_canonical_sidecar():
             "commercial_use": False,
         },
     }
-    context = {
-        "fixtures": [{"@id": "urn:apifootball:sport_event:1390823", "name": "A v B"}],
-        "canonical-envelopes": [{"machina_sports_schema": block}],
+    connector_context = {
+        "allowed": True,
+        "envelope": {"machina_sports_schema": block},
+        "provider-fixture": fixture,
+        "observed_at": observed_at,
     }
 
-    assert canonicalize["connector"] == {
-        "name": "machina-sports-canonical",
-        "command": "canonicalize_event",
-    }
-    assert canonicalize["inputs"]["provider"] == "'api-football'"
-    assert canonicalize["foreach"]["limit"] == 1000
-    assert "concurrent" not in canonicalize["foreach"]
-    canonical_outputs = evaluate_outputs(
-        canonicalize["outputs"], {"envelope": {"machina_sports_schema": block}}
-    )
+    canonical_outputs = evaluate_outputs(canonicalize["outputs"], connector_context)
     assert canonical_outputs["canonical-envelopes"] == [
         {"machina_sports_schema": block}
     ]
     assert canonical_outputs["canonical-envelope-validity"] == [True]
+    assert canonical_outputs["fixtures"] == [
+        {
+            "@id": event_view["event_id"],
+            "@type": "sport:Event",
+            "name": event_view["label"],
+            "event_view": event_view,
+            "machina_sports_schema": block,
+        }
+    ]
     altered = {
         "machina_sports_schema": {
             **block,
             "rights": {**block["rights"], "commercial_use": True},
         }
     }
-    assert evaluate_outputs(canonicalize["outputs"], {"envelope": altered})[
-        "canonical-envelope-validity"
-    ] == [False]
+    assert evaluate_outputs(
+        canonicalize["outputs"], {**connector_context, "envelope": altered}
+    )["canonical-envelope-validity"] == [False]
+
+    canonical_fixture = canonical_outputs["fixtures"][0]
+    context = {"fixtures": [canonical_fixture]}
     items = evaluate(save["documents"]["items"], context)
     assert items[0]["machina_sports_schema"] == block
+    assert items[0]["@id"] == event_view["event_id"]
+    assert items[0]["@type"] == "sport:Event"
+    assert items[0]["name"] == event_view["label"]
+    assert items[0]["title"] == event_view["label"]
+    assert items[0]["metadata"]["event_code"] == event_view["event_id"]
     assert items[0]["machina_sports_schema"]["provenance"]["provider"]["namespace"] == "api-football"
     assert items[0]["machina_sports_schema"]["rights"] == block["rights"]
+    assert evaluate(save["documents"]["items"], context) == items
+
+
+def test_sync_fixtures_bulk_update_fails_closed_on_canonical_drift():
+    workflow = load_yaml("sync-fixtures.yml")["workflow"]
+    save = task(workflow, "task-bulk-save-fixtures")
+    base = {
+        "provider-response-valid": True,
+        "provider-errors": [],
+        "provider-fixtures": [provider_fixture()],
+        "fixtures": [{"@id": "urn:machina:sports:event:x123"}],
+        "canonical-envelopes": [{"machina_sports_schema": {}}],
+        "canonical-envelope-validity": [True],
+    }
+
+    assert save["config"]["action"] == "bulk-update"
+    assert save["config"]["force-update"] is True
+    assert save["document_name"] == "'sport:Event'"
+    assert evaluate(save["condition"], base)
+    assert not evaluate(
+        save["condition"], {**base, "canonical-envelope-validity": [False]}
+    )
+    assert not evaluate(save["condition"], {**base, "fixtures": []})
 
 
 def test_populate_is_inactive_with_a_bounded_recurring_frequency():
