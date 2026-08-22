@@ -3,7 +3,7 @@
   "owner_package": {
     "name": "machina-sports-canonical",
     "version": "0.4.1",
-    "release_digest": "sha256:c8e64bcffaf946a5143063acd9166830a21404a1189e993cd23cf7ebc92fe109"
+    "release_digest": "sha256:96d1817fc0ba4357029860b73b5a2dddcc3738a80240a73cd443c7a30bf25e5b"
   },
   "runtime_files": [
     {
@@ -20,8 +20,8 @@
     },
     {
       "relative_path": "adapters/api_football.py",
-      "byte_length": 17101,
-      "sha256": "sha256:b666710e7fea85023818b3a5bc161e2c8d5b438e7937fba61ca6fe09b070a847",
+      "byte_length": 12736,
+      "sha256": "sha256:f60d347722d53897521aee7d50649bd20e8fee11e01c45e859226b2776a032fc",
       "executable_module": true
     },
     {
@@ -350,5 +350,5 @@
       "source_file_sha256": "sha256:49abb4bc6c52f923b4fcfa405c049f315b9836c130bf3a69dfd9f2a137e2d576"
     }
   ],
-  "aggregate_runtime_digest": "sha256:c8e64bcffaf946a5143063acd9166830a21404a1189e993cd23cf7ebc92fe109"
+  "aggregate_runtime_digest": "sha256:96d1817fc0ba4357029860b73b5a2dddcc3738a80240a73cd443c7a30bf25e5b"
 }

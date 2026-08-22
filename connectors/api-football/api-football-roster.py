@@ -11,15 +11,19 @@ from copy import deepcopy
 
 
 MAX_PROFILE_REQUESTS = 20
-REQUIRED_CAPABILITY = "event.lineups"
+REQUIRED_CAPABILITY = "event.rosters"
 
 
 def _params(request_data):
     return dict((request_data or {}).get("params") or {})
 
 
-def _result(status, message, **data):
-    return {"status": status, "message": message, "data": data}
+def _result(status, message, *, metadata=None, **data):
+    result = {"status": status, "message": message, "data": data}
+    if metadata is not None:
+        result["metadata"] = metadata
+        data["metadata"] = metadata
+    return result
 
 
 def _text(value):
@@ -165,42 +169,39 @@ def _player_fields(player, *, profile_names):
         name = profile_names.get(player_id)
     if player_id is None or name is None:
         return None, "every roster player requires provider id and name"
-    normalized = {"id": player.get("id"), "name": name}
-    number = player.get("number")
-    if number is not None and _text(number) is not None:
-        normalized["number"] = number
     position = player.get("pos")
     if position is None:
         position = player.get("position")
-    if _text(position) is not None:
-        normalized["pos"] = position
-    return normalized, None
+    return {
+        "id": player.get("id"),
+        "name": name,
+        "position": position,
+        "number": player.get("number"),
+    }, None
 
 
-def _normalize_lineups(entries, expected_team_ids, profile_names):
+def _rosters_from_lineups(entries, expected_teams, profile_names):
     if not isinstance(entries, list) or not entries:
         return None, "fixture lineups are absent"
-    normalized = []
+    rosters_by_team = {}
     seen_teams = set()
     seen_players = set()
     for entry in entries:
         team = entry.get("team") if isinstance(entry, dict) else None
         team_id = _text(team.get("id")) if isinstance(team, dict) else None
-        if team_id not in expected_team_ids or team_id in seen_teams:
+        if team_id not in expected_teams or team_id in seen_teams:
             return None, "fixture lineups must contain each fixture team exactly once"
-        normalized_entry = {"team": {"id": team.get("id")}}
+        normalized_team = {"id": team.get("id")}
         team_name = _text(team.get("name"))
+        if team_name is None:
+            team_name = _text(expected_teams[team_id].get("name"))
         if team_name is not None:
-            normalized_entry["team"]["name"] = team_name
-        formation = _text(entry.get("formation"))
-        if formation is not None:
-            normalized_entry["formation"] = entry.get("formation")
-        player_count = 0
+            normalized_team["name"] = team_name
+        players = []
         for source_key in ("startXI", "substitutes"):
             rows = entry.get(source_key)
             if not isinstance(rows, list):
                 return None, "fixture lineup {0} must be an array".format(source_key)
-            output_rows = []
             for row in rows:
                 player = row.get("player") if isinstance(row, dict) else None
                 normalized_player, error = _player_fields(
@@ -211,16 +212,17 @@ def _normalize_lineups(entries, expected_team_ids, profile_names):
                 if player_id in seen_players:
                     return None, "a provider player id appears more than once"
                 seen_players.add(player_id)
-                output_rows.append({"player": normalized_player})
-            normalized_entry[source_key] = output_rows
-            player_count += len(output_rows)
-        if player_count == 0:
+                players.append(normalized_player)
+        if not players:
             return None, "each fixture lineup must contain at least one player"
         seen_teams.add(team_id)
-        normalized.append(normalized_entry)
-    if seen_teams != expected_team_ids:
+        rosters_by_team[team_id] = {
+            "team": normalized_team,
+            "players": players,
+        }
+    if seen_teams != set(expected_teams):
         return None, "fixture lineups are incomplete for this fixture"
-    return normalized, None
+    return [rosters_by_team[team_id] for team_id in expected_teams], None
 
 
 def _normalize_squad(response, expected_team_id, fixture_team, profile_names):
@@ -254,14 +256,47 @@ def _normalize_squad(response, expected_team_id, fixture_team, profile_names):
         if player_id in seen:
             return None, "a squad contains a duplicate provider player id"
         seen.add(player_id)
-        normalized_players.append({"player": normalized_player})
+        normalized_players.append(normalized_player)
     return {"team": normalized_team, "players": normalized_players}, None
 
 
-def _unavailable(payload, reason):
+def _source_refs(*endpoint_classes):
+    return [
+        {"kind": "endpoint-class", "value": endpoint_class}
+        for endpoint_class in endpoint_classes
+    ]
+
+
+def _metadata(payload, *, available, source, endpoints, profile_count=0,
+              player_count=0, reason=None):
+    roster = {
+        "available": available,
+        "fixture_id": payload["fixture"]["id"],
+        "source": source,
+        "team_count": 2 if available else 0,
+        "player_count": player_count,
+        "profile_count": profile_count,
+    }
+    if reason is not None:
+        roster["unavailable_reason"] = reason
+    return {
+        "provider": {"namespace": "api-football", "family": "licensed"},
+        "source_refs": _source_refs(*endpoints),
+        "roster": roster,
+    }
+
+
+def _unavailable(payload, reason, endpoints):
     return _result(
         True,
         "event roster unavailable: {0}".format(reason),
+        metadata=_metadata(
+            payload,
+            available=False,
+            source=None,
+            endpoints=endpoints,
+            reason=reason,
+        ),
         valid=True,
         available=False,
         payload=deepcopy(payload) if isinstance(payload, dict) else {},
@@ -271,7 +306,7 @@ def _unavailable(payload, reason):
 
 
 def normalize_event_roster(request_data):
-    """Merge exact provider roster facts into ``lineups`` or ``players``."""
+    """Add exact provider rosters without changing canonical event semantics."""
     params = _params(request_data)
     payload = params.get("payload")
     fixture_id, home_id, away_id, error = _fixture_identity(payload)
@@ -280,24 +315,27 @@ def normalize_event_roster(request_data):
                        requirements_unavailable=[REQUIRED_CAPABILITY])
 
     profile_names = _profile_index(params.get("player_profiles"))
-    expected_team_ids = {home_id, away_id}
+    teams = payload["teams"]
+    expected_teams = {
+        home_id: teams["home"],
+        away_id: teams["away"],
+    }
     embedded_lineups = payload.get("lineups")
     fetched_lineups = params.get("lineups")
     lineups = embedded_lineups if embedded_lineups else fetched_lineups
     enriched = deepcopy(payload)
 
     if lineups:
-        normalized, reason = _normalize_lineups(
-            lineups, expected_team_ids, profile_names)
-        if normalized is None:
-            return _unavailable(payload, reason)
-        enriched["lineups"] = normalized
-        enriched.pop("players", None)
-        source = "fixture-lineups"
+        rosters, reason = _rosters_from_lineups(
+            lineups, expected_teams, profile_names)
         endpoints = ["api-football/fixtures", "api-football/fixtures/lineups"]
+        if rosters is None:
+            return _unavailable(payload, reason, endpoints)
+        enriched["lineups"] = deepcopy(lineups)
+        source = "fixture-lineups"
     else:
-        teams = payload["teams"]
-        normalized = []
+        rosters = []
+        endpoints = ["api-football/fixtures", "api-football/players/squads"]
         for response, team_id, fixture_team in (
             (params.get("home_squad"), home_id, teams.get("home")),
             (params.get("away_squad"), away_id, teams.get("away")),
@@ -305,34 +343,37 @@ def normalize_event_roster(request_data):
             squad, reason = _normalize_squad(
                 response, team_id, fixture_team, profile_names)
             if squad is None:
-                return _unavailable(payload, reason)
-            normalized.append(squad)
+                return _unavailable(payload, reason, endpoints)
+            rosters.append(squad)
         home_players = {
-            _text(row["player"].get("id")) for row in normalized[0]["players"]
+            _text(player.get("id")) for player in rosters[0]["players"]
         }
         away_players = {
-            _text(row["player"].get("id")) for row in normalized[1]["players"]
+            _text(player.get("id")) for player in rosters[1]["players"]
         }
         if home_players & away_players:
             return _unavailable(
-                payload, "a provider player id appears in both fixture squads")
-        enriched["players"] = normalized
-        enriched.pop("lineups", None)
+                payload,
+                "a provider player id appears in both fixture squads",
+                endpoints,
+            )
         source = "team-squads"
-        endpoints = ["api-football/fixtures", "api-football/players/squads"]
         if profile_names:
             endpoints.append("api-football/players/profiles")
 
-    enriched["_roster_provenance"] = {
-        "provider": {"namespace": "api-football", "family": "licensed"},
-        "fixture_id": payload["fixture"]["id"],
-        "source": source,
-        "endpoint_classes": endpoints,
-        "profile_count": len(profile_names),
-    }
+    enriched["rosters"] = rosters
+    player_count = sum(len(roster["players"]) for roster in rosters)
     return _result(
         True,
         "event roster enriched from {0}".format(source),
+        metadata=_metadata(
+            payload,
+            available=True,
+            source=source,
+            endpoints=endpoints,
+            profile_count=len(profile_names),
+            player_count=player_count,
+        ),
         valid=True,
         available=True,
         payload=enriched,

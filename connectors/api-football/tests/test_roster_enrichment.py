@@ -46,12 +46,26 @@ def test_no_roster_returns_an_explicit_unavailable_requirement():
         "available": False,
         "payload": payload,
         "roster_source": None,
-        "requirements_unavailable": ["event.lineups"],
+        "requirements_unavailable": ["event.rosters"],
+        "metadata": result["metadata"],
     }
     assert result["data"]["payload"] is not payload
+    assert result["metadata"]["source_refs"] == [
+        {"kind": "endpoint-class", "value": "api-football/fixtures"},
+        {"kind": "endpoint-class", "value": "api-football/players/squads"},
+    ]
+    assert result["metadata"]["roster"] == {
+        "available": False,
+        "fixture_id": 7001,
+        "source": None,
+        "team_count": 0,
+        "player_count": 0,
+        "profile_count": 0,
+        "unavailable_reason": "each squad response must contain exactly one team",
+    }
 
 
-def test_squad_fallback_has_the_exact_adapter_input_shape():
+def test_squad_fallback_adds_distinct_exact_rosters_to_the_raw_fixture():
     payload = fixture_payload()
     home = squad(40, "Home FC", [
         {"id": 101, "name": "A. Keeper", "number": 1,
@@ -78,43 +92,85 @@ def test_squad_fallback_has_the_exact_adapter_input_shape():
     assert result["data"]["roster_source"] == "team-squads"
     assert result["data"]["requirements_unavailable"] == []
     enriched = result["data"]["payload"]
+    assert {key: enriched[key] for key in payload} == payload
     assert "lineups" not in enriched
-    assert enriched["players"] == [
+    assert "players" not in enriched
+    assert "_roster_provenance" not in enriched
+    assert enriched["rosters"] == [
         {
             "team": {"id": 40, "name": "Home FC"},
             "players": [
-                {"player": {"id": 101, "name": "A. Keeper", "number": 1,
-                            "pos": "Goalkeeper"}},
-                {"player": {"id": 102, "name": "D. Back",
-                            "pos": "Defender"}},
+                {"id": 101, "name": "A. Keeper", "position": "Goalkeeper",
+                 "number": 1},
+                {"id": 102, "name": "D. Back", "position": "Defender",
+                 "number": None},
             ],
         },
         {
             "team": {"id": 47, "name": "Away FC"},
             "players": [
-                {"player": {"id": 201, "name": "F. Striker", "number": 9,
-                            "pos": "Attacker"}},
+                {"id": 201, "name": "F. Striker", "position": "Attacker",
+                 "number": 9},
             ],
         },
     ]
-    assert enriched["_roster_provenance"] == {
+    assert result["metadata"] == {
         "provider": {"namespace": "api-football", "family": "licensed"},
-        "fixture_id": 7001,
-        "source": "team-squads",
-        "endpoint_classes": [
-            "api-football/fixtures",
-            "api-football/players/squads",
+        "source_refs": [
+            {"kind": "endpoint-class", "value": "api-football/fixtures"},
+            {"kind": "endpoint-class", "value": "api-football/players/squads"},
         ],
-        "profile_count": 0,
+        "roster": {
+            "available": True,
+            "fixture_id": 7001,
+            "source": "team-squads",
+            "team_count": 2,
+            "player_count": 3,
+            "profile_count": 0,
+        },
     }
 
 
-def test_lineups_take_precedence_over_supplied_squads():
+def test_squad_players_never_become_lineups_or_canonical_fields():
+    payload = fixture_payload()
+    result = invoke(
+        roster.normalize_event_roster,
+        payload=payload,
+        home_squad=squad(40, "Home FC", [{"id": 101, "name": "Home"}]),
+        away_squad=squad(47, "Away FC", [{"id": 201, "name": "Away"}]),
+    )
+
+    enriched = result["data"]["payload"]
+    assert "lineups" not in enriched
+    assert "participants" not in enriched
+    assert "memberships" not in enriched
+    assert "capabilities" not in enriched
+    assert "machina_sports_schema" not in enriched
+
+
+def test_source_refs_are_metadata_not_provider_payload_fields():
+    payload = fixture_payload()
+    result = invoke(
+        roster.normalize_event_roster,
+        payload=payload,
+        home_squad=squad(40, "Home FC", [{"id": 101, "name": "Home"}]),
+        away_squad=squad(47, "Away FC", [{"id": 201, "name": "Away"}]),
+    )
+
+    assert "source_refs" in result["metadata"]
+    assert result["data"]["metadata"] == result["metadata"]
+    assert "source_refs" not in result["data"]["payload"]
+    assert "roster" in result["metadata"]
+    assert "roster" not in payload
+
+
+def test_lineups_take_precedence_and_remain_exact_provider_data():
     payload = fixture_payload()
     lineups = [
         {
             "team": {"id": 40, "name": "Home FC"},
             "formation": "4-3-3",
+            "coach": {"id": 501, "name": "Home Coach"},
             "startXI": [{"player": {"id": 111, "name": "H. Starter",
                                       "number": 8, "pos": "M", "grid": "2:2"}}],
             "substitutes": [],
@@ -139,24 +195,43 @@ def test_lineups_take_precedence_over_supplied_squads():
 
     enriched = result["data"]["payload"]
     assert result["data"]["roster_source"] == "fixture-lineups"
-    assert "players" not in enriched
-    assert enriched["lineups"] == [
+    assert enriched["lineups"] == lineups
+    assert enriched["lineups"] is not lineups
+    assert enriched["rosters"] == [
         {
             "team": {"id": 40, "name": "Home FC"},
-            "formation": "4-3-3",
-            "startXI": [{"player": {"id": 111, "name": "H. Starter",
-                                      "number": 8, "pos": "M"}}],
-            "substitutes": [],
+            "players": [
+                {"id": 111, "name": "H. Starter", "position": "M",
+                 "number": 8},
+            ],
         },
         {
             "team": {"id": 47, "name": "Away FC"},
-            "formation": "4-4-2",
-            "startXI": [{"player": {"id": 211, "name": "A. Starter",
-                                      "number": 10, "pos": "F"}}],
-            "substitutes": [{"player": {"id": 212, "name": "A. Bench",
-                                          "number": 18, "pos": "D"}}],
+            "players": [
+                {"id": 211, "name": "A. Starter", "position": "F",
+                 "number": 10},
+                {"id": 212, "name": "A. Bench", "position": "D",
+                 "number": 18},
+            ],
         },
     ]
+    assert 999 not in {
+        player["id"]
+        for team_roster in enriched["rosters"]
+        for player in team_roster["players"]
+    }
+    assert result["metadata"]["source_refs"] == [
+        {"kind": "endpoint-class", "value": "api-football/fixtures"},
+        {"kind": "endpoint-class", "value": "api-football/fixtures/lineups"},
+    ]
+    assert result["metadata"]["roster"] == {
+        "available": True,
+        "fixture_id": 7001,
+        "source": "fixture-lineups",
+        "team_count": 2,
+        "player_count": 3,
+        "profile_count": 0,
+    }
 
 
 def test_profiles_are_bounded_and_only_planned_for_missing_names():
@@ -208,11 +283,17 @@ def test_profile_name_is_used_only_for_the_same_provider_player_id():
         ],
     )
 
-    assert result["data"]["payload"]["players"][0]["players"][0] == {
-        "player": {"id": 101, "name": "Exact Profile", "number": 4,
-                   "pos": "Defender"}
+    assert result["data"]["payload"]["rosters"][0]["players"][0] == {
+        "id": 101,
+        "name": "Exact Profile",
+        "position": "Defender",
+        "number": 4,
     }
-    assert result["data"]["payload"]["_roster_provenance"]["profile_count"] == 1
+    assert result["metadata"]["roster"]["profile_count"] == 1
+    assert result["metadata"]["source_refs"][-1] == {
+        "kind": "endpoint-class",
+        "value": "api-football/players/profiles",
+    }
 
 
 def test_duplicate_player_across_squads_is_unavailable():
@@ -225,7 +306,7 @@ def test_duplicate_player_across_squads_is_unavailable():
 
     assert result["status"] is True
     assert result["data"]["available"] is False
-    assert result["data"]["requirements_unavailable"] == ["event.lineups"]
+    assert result["data"]["requirements_unavailable"] == ["event.rosters"]
 
 
 def test_malformed_lineup_arrays_fail_unavailable_without_squad_fallback():
@@ -243,7 +324,7 @@ def test_malformed_lineup_arrays_fail_unavailable_without_squad_fallback():
     )
 
     assert result["data"]["available"] is False
-    assert "players" not in result["data"]["payload"]
+    assert "rosters" not in result["data"]["payload"]
 
 
 def test_workflow_and_installer_expose_only_bounded_supported_resources():
@@ -270,6 +351,12 @@ def test_workflow_and_installer_expose_only_bounded_supported_resources():
         tasks["fetch-home-squad"]["condition"]
     assert "not $.get('errors')" in \
         profiles["outputs"]["player-profile-validity"]
+    assert workflow["outputs"]["metadata"] == \
+        "$.get('roster-metadata', {})"
+    assert workflow["outputs"]["requirements-unavailable"] == \
+        "$.get('requirements-unavailable', ['event.rosters'])"
+    assert tasks["normalize-event-roster"]["outputs"]["roster-metadata"] == \
+        "$.get('metadata', {})"
 
     install = yaml.safe_load(
         (CONNECTOR_ROOT / "_install.yml").read_text(encoding="utf-8")

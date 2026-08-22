@@ -2,10 +2,11 @@ workflow:
   name: "api-football-enrich-event-roster"
   title: "API Football - Enrich Event Roster"
   description: |
-    Enrich one API-Football fixture payload with exact provider roster facts.
+    Enrich one raw API-Football fixture payload with exact provider roster facts.
     Existing fixture lineups take precedence. Otherwise this workflow makes at
-    most one lineup call, two squad calls, and 20 optional profile calls. Profile
-    calls are planned only for squad rows that have an id but no name.
+    most one lineup call, two squad calls, and 20 optional profile calls. Squad
+    players stay in a distinct rosters field and are never represented as fixture
+    participants or lineups.
   context-variables:
     debugger:
       enabled: true
@@ -17,9 +18,10 @@ workflow:
     max_profile_requests: "$.get('max_profile_requests', 20)"
   outputs:
     payload: "$.get('enriched-payload', $.get('payload', {}))"
+    metadata: "$.get('roster-metadata', {})"
     roster-available: "$.get('roster-available', False)"
     roster-source: "$.get('roster-source')"
-    requirements-unavailable: "$.get('requirements-unavailable', ['event.lineups'])"
+    requirements-unavailable: "$.get('requirements-unavailable', ['event.rosters'])"
     errors: "$.get('roster-errors', [])[:20]"
     workflow-status: "'failed' if not $.get('request-valid', False) or $.get('roster-errors', []) else ('executed' if $.get('roster-available', False) else 'skipped')"
   tasks:
@@ -124,7 +126,7 @@ workflow:
 
     - type: connector
       name: normalize-event-roster
-      description: "Prefer lineups, otherwise normalize both squads into adapter-consumable player fields."
+      description: "Keep real lineups and add exact per-team rosters without changing canonical fields."
       condition: "$.get('request-valid', False) and not $.get('roster-errors', [])"
       connector:
         name: api-football-roster
@@ -138,7 +140,8 @@ workflow:
       outputs:
         normalization-valid: "$.get('valid') is True"
         enriched-payload: "$.get('payload', {})"
+        roster-metadata: "$.get('metadata', {})"
         roster-available: "$.get('available') is True"
         roster-source: "$.get('roster_source')"
-        requirements-unavailable: "$.get('requirements_unavailable', ['event.lineups'])"
+        requirements-unavailable: "$.get('requirements_unavailable', ['event.rosters'])"
         roster-errors: "[] if $.get('valid') is True else [str($.get('message', 'roster normalization failed'))[:500]]"
