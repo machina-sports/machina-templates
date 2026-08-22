@@ -4,6 +4,7 @@ agent:
   description: |
     Populate agent that syncs fixtures for all configured leagues from API-Football.
   context:
+    config-frequency: 360
     status: "inactive"
   workflows:
   

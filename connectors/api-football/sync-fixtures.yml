@@ -28,8 +28,11 @@ workflow:
     status: "$.get('status')"
     venue: "$.get('venue')"
     timezone: "$.get('timezone')"
+    observed_at: "$.get('observed_at', datetime.utcnow().isoformat() + '+00:00')"
   outputs:
-    workflow-status: "'executed'"
+    errors: "$.get('provider-errors', [])"
+    results: "$.get('provider-results')"
+    workflow-status: "'failed' if not $.get('provider-response-valid', False) or $.get('provider-errors', []) or (len($.get('provider-fixtures', [])) > 0 and (not isinstance($.get('fixtures'), list) or len($.get('fixtures', [])) != len($.get('provider-fixtures', [])) or len($.get('canonical-envelopes', [])) != len($.get('provider-fixtures', [])) or len($.get('canonical-envelope-validity', [])) != len($.get('provider-fixtures', [])) or not all($.get('canonical-envelope-validity', [])))) else ('skipped' if len($.get('provider-fixtures', [])) == 0 else 'executed')"
   tasks:
 
     - type: "connector"
@@ -55,16 +58,43 @@ workflow:
         venue: "$.get('venue')"
         timezone: "$.get('timezone')"
       outputs:
-        fixtures: "$.get('response')"
+        provider-fixtures: "$.get('response', []) if isinstance($.get('response'), list) else []"
+        provider-errors: "{str(key)[:100]: str(value)[:500] for key, value in list($.get('errors', {}).items())[:20]} if isinstance($.get('errors'), dict) else [str(item)[:500] for item in $.get('errors', [])[:20]] if isinstance($.get('errors'), list) else [str($.get('errors'))[:500]] if $.get('errors') else []"
+        provider-results: "$.get('results') if isinstance($.get('results'), int) and not isinstance($.get('results'), bool) else None"
+        provider-response-valid: "isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') >= 0 and $.get('results') == len($.get('response'))"
+
+    # canonicalize-fixtures
+    - type: connector
+      name: canonicalize-fixtures
+      description: "Canonicalize each provider fixture and retain its provenance and rights envelope."
+      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('provider-fixtures', [])) > 0"
+      foreach:
+        limit: 1000
+        name: provider-fixture
+        expr: $
+        value: "$.get('provider-fixtures', [])"
+      connector:
+        name: machina-sports-canonical
+        command: canonicalize_event
+      inputs:
+        provider: "'api-football'"
+        consumer_tier: "'prototype'"
+        requires: "['event.identity', 'event.competition', 'event.participants', 'event.start_time', 'event.status', 'provenance']"
+        optional: "['event.score']"
+        observed_at: "$.get('observed_at')"
+        payload: "$.get('provider-fixture', {})"
+      outputs:
+        canonical-envelopes: "[$.get('envelope', {})]"
+        canonical-envelope-validity: "[isinstance($.get('envelope'), dict) and isinstance($.get('envelope', {}).get('machina_sports_schema'), dict) and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('provider', {}).get('namespace') == 'api-football' and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('provider', {}).get('family') == 'licensed' and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('data_class') == 'licensed-provider-example-fixture' and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('prototype_only') is True and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('commercial_use') is False]"
 
     # iptc-api-football-event-mapping
     - type: mapping
       name: iptc-api-football-event-mapping
       title: "IPTC | API Football Event Mapping"
       description: "Mapping data from api-football to IPTC events"
-      condition: "$.get('fixtures') is not None"
+      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('provider-fixtures', [])) > 0 and len($.get('canonical-envelopes', [])) == len($.get('provider-fixtures', [])) and len($.get('canonical-envelope-validity', [])) == len($.get('provider-fixtures', [])) and all($.get('canonical-envelope-validity', []))"
       inputs:
-        fixtures: "$.get('fixtures', [])"
+        fixtures: "$.get('provider-fixtures', [])"
       outputs:
         fixtures: "$.get('sport_schema_events')"
 
@@ -72,6 +102,7 @@ workflow:
     - type: "document"
       name: "task-bulk-save-fixtures"
       description: "Bulk save the individual fixtures."
+      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('fixtures', [])) > 0 and len($.get('fixtures', [])) == len($.get('canonical-envelopes', []))"
       config:
         action: "bulk-update"
         embed-selector: "$.get('title')"
@@ -89,12 +120,13 @@ workflow:
           [
             {
               **f,
+              'machina_sports_schema': $.get('canonical-envelopes', [])[index].get('machina_sports_schema', {}),
               'metadata': {
                 'event_code': str(f.get('@id', '')),
               },
               'title': f.get('name', '')
             }
-            for f in $.get('fixtures', [])
+            for index, f in enumerate($.get('fixtures', []))
           ]
       metadata:
         document_type: "'fixture'"

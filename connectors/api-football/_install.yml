@@ -39,6 +39,9 @@ datasets:
   - type: "connector"
     path: "api-football.yml"
 
+  - type: "connector"
+    path: "../machina-sports-canonical/machina-sports-canonical.yml"
+
   # test credentials
 
   - type: "workflow"
