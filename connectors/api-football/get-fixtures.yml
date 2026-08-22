@@ -26,7 +26,10 @@ workflow:
     venue: "$.get('venue')"
     timezone: "$.get('timezone')"
   outputs:
-    workflow-status: "'executed'"
+    response: "$.get('provider-response', [])"
+    errors: "$.get('provider-errors', [])"
+    results: "$.get('provider-results')"
+    workflow-status: "'executed' if $.get('provider-response-valid', False) and not $.get('provider-errors', []) else 'failed'"
   tasks:
 
     - type: "connector"
@@ -52,4 +55,7 @@ workflow:
         venue: "$.get('venue')"
         timezone: "$.get('timezone')"
       outputs:
-        fixtures: "$"
+        provider-response: "$.get('response', [])[:100] if isinstance($.get('response'), list) else []"
+        provider-errors: "{str(key)[:100]: str(value)[:500] for key, value in list($.get('errors', {}).items())[:20]} if isinstance($.get('errors'), dict) else [str(item)[:500] for item in $.get('errors', [])[:20]] if isinstance($.get('errors'), list) else [str($.get('errors'))[:500]] if $.get('errors') else []"
+        provider-results: "$.get('results') if isinstance($.get('results'), int) and not isinstance($.get('results'), bool) else None"
+        provider-response-valid: "isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') >= 0 and $.get('results') == len($.get('response'))"

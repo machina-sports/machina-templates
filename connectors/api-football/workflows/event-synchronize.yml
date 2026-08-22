@@ -15,7 +15,7 @@ workflow:
   inputs:
     event_document_id: $.get('event_document_id')
   outputs:
-    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+    workflow-status: "'executed' if $.get('event_updated') is not None else ('skipped' if $.get('event_exists') is not True or ($.get('provider-response-valid', False) and not $.get('provider-errors', []) and not $.get('fixture_exists', False)) else 'failed')"
   tasks:
 
     # load-event-by-id
@@ -58,15 +58,17 @@ workflow:
       inputs:
         id: $.get('original_fixture_id')
       outputs:
-        fixture_data: $.get('response', [{}])[0] if $.get('response') else {}
-        fixture_exists: len($.get('response', [])) > 0
+        provider-errors: "{str(key)[:100]: str(value)[:500] for key, value in list($.get('errors', {}).items())[:20]} if isinstance($.get('errors'), dict) else [str(item)[:500] for item in $.get('errors', [])[:20]] if isinstance($.get('errors'), list) else [str($.get('errors'))[:500]] if $.get('errors') else []"
+        provider-response-valid: "isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') in (0, 1) and $.get('results') == len($.get('response'))"
+        fixture_data: "$.get('response', [])[0] if isinstance($.get('response'), list) and len($.get('response')) > 0 else {}"
+        fixture_exists: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response', [])[0], dict) and isinstance($.get('response', [])[0].get('fixture'), dict) and $.get('response', [])[0].get('fixture', {}).get('id') is not None and str($.get('response', [])[0].get('fixture', {}).get('id')) == str($.get('original_fixture_id'))"
 
     # iptc-api-football-event-mapping
     - type: mapping
       name: iptc-api-football-event-mapping
       title: IPTC | API Football Event Mapping
       description: Mapping data from api-football to IPTC events
-      condition: $.get('fixture_exists') is True
+      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and $.get('fixture_exists') is True"
       inputs:
         fixtures: |
           [
@@ -81,7 +83,7 @@ workflow:
     - type: document
       name: version-control-update
       description: Update the events document with synchronized data.
-      condition: $.get('event_exists') is True
+      condition: "$.get('event_exists') is True and $.get('provider-response-valid', False) and not $.get('provider-errors', []) and $.get('fixture_exists') is True and isinstance($.get('event_updated'), dict)"
       config:
         action: update
         embed-vector: false
@@ -97,4 +99,3 @@ workflow:
               **$.get('event_value', {}).get('version_control', {})
             }
           }
-
