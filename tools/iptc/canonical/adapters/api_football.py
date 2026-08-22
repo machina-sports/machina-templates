@@ -12,7 +12,7 @@ than a licence and why every observation this adapter emits is
 ``prototype_only`` and ``commercial_use: False``. A production consumer refuses
 it, which is the intended outcome.
 
-Six provider-specific readings, written down because each one is a decision a
+Seven provider-specific readings, written down because each one is a decision a
 reader would otherwise have to reverse-engineer:
 
 ``fixture.status.short`` **is mapped, and an unmapped code raises.**
@@ -52,6 +52,14 @@ reader would otherwise have to reverse-engineer:
     It says a standings table exists, not that the competition is a league, so no
     ``spct:`` code is emitted from it.
 
+``lineups`` **take precedence over squad-fallback ``players``.**
+    The bounded enrichment workflow writes one of those provider-shaped fields.
+    Lineup players become starters or substitutes; squad players become
+    individuals and memberships without a fabricated event status. IDs, names,
+    team links, positions and numbers are copied only when the provider stated
+    them. Unknown position strings survive in ``raw`` and are not guessed into a
+    NewsCode.
+
 Labels for the event and the season are composed from provider-stated names
 (``"{home} vs {away}"``, ``"{league} {season}"``). A label is a rendering of facts
 already in the payload rather than a new claim, and the alternative — an event
@@ -88,6 +96,23 @@ RIGHTS_DATA_CLASS = "licensed-provider-example-fixture"
 #: credential: ``validate_observation`` refuses anything request-shaped, because a
 #: fixture is the artefact that gets published.
 ENDPOINT_CLASS = "api-football/fixtures"
+
+ROSTER_ENDPOINT_CLASSES = {
+    "fixture-lineups": "api-football/fixtures/lineups",
+    "team-squads": "api-football/players/squads",
+}
+
+POSITION_BY_PROVIDER_VALUE = {
+    "G": "goalkeeper",
+    "Goalkeeper": "goalkeeper",
+    "D": "defender",
+    "Defender": "defender",
+    "M": "midfielder",
+    "Midfielder": "midfielder",
+    "F": "forward",
+    "Attacker": "forward",
+    "Forward": "forward",
+}
 
 #: IPTC ``medtop`` for association football, and the ``event_view`` sport key.
 #: Constant because this provider's fixtures endpoint covers exactly one sport.
@@ -198,6 +223,89 @@ def _participant(team, alignment, score):
     return participant
 
 
+def _player_participant(player, team_id, player_status=None):
+    """One exact provider player row as a canonical individual participant."""
+    provider_id = _text(player.get("id"))
+    name = _text(player.get("name"))
+    if provider_id is None or name is None or team_id is None:
+        return None
+    participant = {
+        "kind": "individual",
+        "provider_id": provider_id,
+        "name": name,
+        "team_provider_id": team_id,
+    }
+    _put(participant, "player_status", player_status)
+    _put(participant, "position",
+         POSITION_BY_PROVIDER_VALUE.get(_text(player.get("pos"))))
+    _put(participant, "uniform_number", _text(player.get("number")))
+    return participant
+
+
+def _roster(payload, team_ids):
+    """Return provider players and memberships, with lineup precedence."""
+    participants = []
+    memberships = []
+    seen = set()
+    lineups = payload.get("lineups")
+    sources = lineups if isinstance(lineups, list) and lineups else payload.get("players")
+    if not isinstance(sources, list):
+        return participants, memberships
+
+    using_lineups = sources is lineups
+    for entry in sources:
+        if not isinstance(entry, dict):
+            continue
+        team = _section(entry, "team")
+        team_id = _text(team.get("id"))
+        if team_id not in team_ids:
+            continue
+        groups = (("startXI", "starter"), ("substitutes", "substitute")) \
+            if using_lineups else (("players", None),)
+        for key, status in groups:
+            rows = entry.get(key)
+            if not isinstance(rows, list):
+                continue
+            for row in rows:
+                player = _section(row, "player")
+                participant = _player_participant(player, team_id, status)
+                if participant is None:
+                    continue
+                if participant["provider_id"] in seen:
+                    raise ValueError(
+                        "api-football roster repeats player id '{0}'; no "
+                        "observation was produced".format(
+                            participant["provider_id"])
+                    )
+                seen.add(participant["provider_id"])
+                participants.append(participant)
+                membership = {
+                    "individual_provider_id": participant["provider_id"],
+                    "team_provider_id": team_id,
+                }
+                _put(membership, "uniform_number",
+                     participant.get("uniform_number"))
+                memberships.append(membership)
+    return participants, memberships
+
+
+def _source_refs(payload):
+    refs = [{"kind": "endpoint-class", "value": ENDPOINT_CLASS}]
+    provenance = payload.get("_roster_provenance")
+    if not isinstance(provenance, dict):
+        return refs
+    source = provenance.get("source")
+    endpoint = ROSTER_ENDPOINT_CLASSES.get(source)
+    if endpoint is not None:
+        refs.append({"kind": "endpoint-class", "value": endpoint})
+    if provenance.get("profile_count") and source == "team-squads":
+        refs.append({
+            "kind": "endpoint-class",
+            "value": "api-football/players/profiles",
+        })
+    return refs
+
+
 def _competition(league):
     competition = {}
     _put(competition, "provider_id", _text(league.get("id")))
@@ -280,7 +388,7 @@ def to_observation(payload, *, observed_at):
         "adapter": {
             "name": ADAPTER_NAME,
             "version": ADAPTER_VERSION,
-            "source_refs": [{"kind": "endpoint-class", "value": ENDPOINT_CLASS}],
+            "source_refs": _source_refs(payload),
         },
         "rights": {
             "data_class": RIGHTS_DATA_CLASS,
@@ -294,10 +402,17 @@ def to_observation(payload, *, observed_at):
     _put(observation, "site", _site(fixture) or None)
     observation["event"] = _event(
         fixture, event_id, _event_status(fixture), label)
-    observation["participants"] = [
+    team_participants = [
         _participant(home, "home", goals.get("home")),
         _participant(away, "away", goals.get("away")),
     ]
+    team_ids = set(
+        participant.get("provider_id") for participant in team_participants
+        if participant.get("provider_id") is not None
+    )
+    players, memberships = _roster(payload, team_ids)
+    observation["participants"] = team_participants + players
+    _put(observation, "memberships", memberships or None)
     # The provider's own bytes, unaltered. Every fact this adapter declined to map
     # — the referee, the period timestamps, half-time and the four nulls — is
     # readable here, which is what makes "we omitted it" checkable.
