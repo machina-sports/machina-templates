@@ -28,7 +28,10 @@ def load_yaml(relative_path):
 
 def evaluate(expression, context):
     namespace = {"__builtins__": {}, **SAFE_BUILTINS, "context": context}
-    return eval(expression.replace("$.get", "context.get"), namespace, namespace)
+    expression = expression.replace("$.context", "context")
+    expression = expression.replace("$.get", "response.get")
+    namespace["response"] = context
+    return eval(expression, namespace, namespace)
 
 
 def task(workflow, name):
