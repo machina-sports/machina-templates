@@ -13,6 +13,7 @@ workflow:
       x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
   inputs:
     event_document_id: "$.get('event_document_id')"
+    observed_at: "$.get('observed_at', datetime.utcnow().isoformat() + 'Z')"
   outputs:
     workflow-status: "$.get('projection-workflow-status', 'failed') if $.get('projection-valid', False) and $.get('projections-saved', False) else 'failed'"
     event_document_id: "$.get('event_document_id')"
@@ -32,7 +33,12 @@ workflow:
       outputs:
         event-exists: "len($.get('documents', [])) == 1"
         event-value: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) == 1 else {}"
-        event-code: "$.get('documents', [])[0].get('metadata', {}).get('event_code') if len($.get('documents', [])) == 1 else None"
+        event-view: "$.get('documents', [])[0].get('value', {}).get('machina_sports_schema', {}).get('event_view', {}) if len($.get('documents', [])) == 1 else {}"
+        provider-crosswalk: "$.get('documents', [])[0].get('value', {}).get('machina_sports_schema', {}).get('provider_ids', []) if len($.get('documents', [])) == 1 else []"
+        source-event-rights: "$.get('documents', [])[0].get('value', {}).get('machina_sports_schema', {}).get('rights', {}) if len($.get('documents', [])) == 1 else {}"
+        source-event-provenance: "$.get('documents', [])[0].get('value', {}).get('machina_sports_schema', {}).get('provenance', {}) if len($.get('documents', [])) == 1 else {}"
+        event-code: "$.get('documents', [])[0].get('value', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id') if len($.get('documents', [])) == 1 else None"
+        projection-observed-at: "$.get('observed_at', datetime.utcnow().isoformat() + 'Z')"
 
     - type: mapping
       name: resolve-provider-fixture-id
@@ -54,7 +60,7 @@ workflow:
       inputs:
         id: "$.get('provider-fixture-id')"
       outputs:
-        fixture-envelope: "{'parameters': $.get('parameters', {'id': str($.get('provider-fixture-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+        fixture-envelope: "dict($.items())"
         fixture-response: "$.get('response', []) if isinstance($.get('response'), list) else []"
         fixture-valid: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response')[0], dict) and isinstance($.get('response')[0].get('fixture'), dict) and str($.get('response')[0].get('fixture', {}).get('id')) == str($.get('provider-fixture-id')) and isinstance($.get('errors'), (list, dict)) and not $.get('errors') and $.get('results') == 1"
         home-team-id: "$.get('response', [])[0].get('teams', {}).get('home', {}).get('id') if isinstance($.get('response'), list) and len($.get('response')) == 1 else None"
@@ -71,7 +77,7 @@ workflow:
       inputs:
         fixture: "$.get('provider-fixture-id')"
       outputs:
-        events-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('provider-fixture-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+        events-envelope: "dict($.items())"
 
     - type: connector
       name: fetch-lineups
@@ -84,7 +90,7 @@ workflow:
       inputs:
         fixture: "$.get('provider-fixture-id')"
       outputs:
-        lineups-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('provider-fixture-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+        lineups-envelope: "dict($.items())"
 
     - type: connector
       name: fetch-team-statistics
@@ -97,7 +103,7 @@ workflow:
       inputs:
         fixture: "$.get('provider-fixture-id')"
       outputs:
-        team-statistics-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('provider-fixture-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+        team-statistics-envelope: "dict($.items())"
 
     - type: connector
       name: fetch-player-statistics
@@ -110,7 +116,7 @@ workflow:
       inputs:
         fixture: "$.get('provider-fixture-id')"
       outputs:
-        player-statistics-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('provider-fixture-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+        player-statistics-envelope: "dict($.items())"
 
     - type: connector
       name: fetch-head-to-head
@@ -124,7 +130,7 @@ workflow:
         h2h: "str($.get('home-team-id')) + '-' + str($.get('away-team-id'))"
         last: 5
       outputs:
-        head-to-head-envelope: "{'parameters': $.get('parameters', {'h2h': str($.get('home-team-id')) + '-' + str($.get('away-team-id')), 'last': '5'}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+        head-to-head-envelope: "dict($.items())"
 
     - type: connector
       name: project-event-data
@@ -134,84 +140,165 @@ workflow:
         name: api-football-event-data
         command: project_event_data
       inputs:
-        fixture: "$.get('fixture-response', [])[0] if len($.get('fixture-response', [])) == 1 else {}"
+        fixture_envelope: "$.get('fixture-envelope')"
         events: "$.get('events-envelope')"
         lineups: "$.get('lineups-envelope')"
         team_statistics: "$.get('team-statistics-envelope')"
         player_statistics: "$.get('player-statistics-envelope')"
         head_to_head: "$.get('head-to-head-envelope')"
-        event_code: "$.get('event-code')"
+        event_view: "$.get('event-view', {})"
+        provider_ids: "$.get('provider-crosswalk', [])"
         source_event_document_id: "$.get('event_document_id')"
         provider_fixture_id: "$.get('provider-fixture-id')"
-        observed_at: "datetime.utcnow().isoformat() + 'Z'"
-        provider: "$.get('event-value', {}).get('machina_sports_schema', {}).get('provenance', {}).get('provider', {})"
-        rights: "$.get('event-value', {}).get('machina_sports_schema', {}).get('rights', {})"
-        provenance: "$.get('event-value', {}).get('machina_sports_schema', {}).get('provenance', {})"
+        source_event_rights: "$.get('source-event-rights', {})"
+        source_event_provenance: "$.get('source-event-provenance', {})"
+        endpoint_observed_at: "{key: $.get('projection-observed-at') for key in ['events', 'lineups', 'team_statistics', 'player_statistics', 'head_to_head']}"
+        request_contexts: "{'fixture': {'id': $.get('provider-fixture-id')}, 'events': {'fixture': $.get('provider-fixture-id')}, 'lineups': {'fixture': $.get('provider-fixture-id')}, 'team_statistics': {'fixture': $.get('provider-fixture-id')}, 'player_statistics': {'fixture': $.get('provider-fixture-id')}, 'head_to_head': {'h2h': str($.get('home-team-id')) + '-' + str($.get('away-team-id')), 'last': 5}}"
       outputs:
         projection-valid: "$.get('valid') is True"
         projection-documents: "$.get('documents', [])"
+        actions-projection: "[item for item in $.get('documents', []) if item.get('name') == 'api-football-event-actions'][0] if any(item.get('name') == 'api-football-event-actions' for item in $.get('documents', [])) else {}"
+        lineups-projection: "[item for item in $.get('documents', []) if item.get('name') == 'api-football-event-lineups'][0] if any(item.get('name') == 'api-football-event-lineups' for item in $.get('documents', [])) else {}"
+        team-statistics-projection: "[item for item in $.get('documents', []) if item.get('name') == 'api-football-event-team-statistics'][0] if any(item.get('name') == 'api-football-event-team-statistics' for item in $.get('documents', [])) else {}"
+        player-statistics-projection: "[item for item in $.get('documents', []) if item.get('name') == 'api-football-event-player-statistics'][0] if any(item.get('name') == 'api-football-event-player-statistics' for item in $.get('documents', [])) else {}"
+        head-to-head-projection: "[item for item in $.get('documents', []) if item.get('name') == 'api-football-event-head-to-head'][0] if any(item.get('name') == 'api-football-event-head-to-head' for item in $.get('documents', [])) else {}"
         projection-workflow-status: "$.get('workflow_status', 'failed')"
         requirements-unavailable: "$.get('requirements_unavailable', [])"
         projection-diagnostics: "$.get('diagnostics', {})"
 
     - type: document
       name: save-actions
-      description: "Bulk-upsert the event actions document by its stable event metadata."
+      description: "Upsert the event actions projection by its full stable identity."
       condition: "$.get('projection-valid', False) and len($.get('projection-documents', [])) == 5"
       config:
-        action: bulk-update
+        action: update
         embed-vector: false
         force-update: true
-      document_name: "'api-football-event-actions'"
+      filters:
+        name: "'api-football-event-actions'"
+        metadata.projection_key: "$.get('actions-projection', {}).get('metadata', {}).get('projection_key')"
+        metadata.source_event_document_id: "$.get('event_document_id')"
+        metadata.event_code: "$.get('event-code')"
       documents:
-        items: "[{'metadata': item.get('metadata', {}), 'value': item.get('value', {})} for item in $.get('projection-documents', []) if item.get('name') == 'api-football-event-actions']"
+        api-football-event-actions: "$.get('actions-projection', {}).get('value', {})"
+      metadata:
+        event_code: "$.get('actions-projection', {}).get('metadata', {}).get('event_code')"
+        source_event_document_id: "$.get('actions-projection', {}).get('metadata', {}).get('source_event_document_id')"
+        provider_fixture_id: "$.get('actions-projection', {}).get('metadata', {}).get('provider_fixture_id')"
+        provider: "$.get('actions-projection', {}).get('metadata', {}).get('provider')"
+        rights: "$.get('actions-projection', {}).get('metadata', {}).get('rights')"
+        provenance: "$.get('actions-projection', {}).get('metadata', {}).get('provenance')"
+        projection_capability: "$.get('actions-projection', {}).get('metadata', {}).get('projection_capability')"
+        status: "$.get('actions-projection', {}).get('metadata', {}).get('status')"
+        observed_at: "$.get('actions-projection', {}).get('metadata', {}).get('observed_at')"
+        projection_key: "$.get('actions-projection', {}).get('metadata', {}).get('projection_key')"
 
     - type: document
       name: save-lineups
-      description: "Bulk-upsert the event lineups document by its stable event metadata."
+      description: "Upsert the event lineups projection by its full stable identity."
       condition: "$.get('projection-valid', False) and len($.get('projection-documents', [])) == 5"
       config:
-        action: bulk-update
+        action: update
         embed-vector: false
         force-update: true
-      document_name: "'api-football-event-lineups'"
+      filters:
+        name: "'api-football-event-lineups'"
+        metadata.projection_key: "$.get('lineups-projection', {}).get('metadata', {}).get('projection_key')"
+        metadata.source_event_document_id: "$.get('event_document_id')"
+        metadata.event_code: "$.get('event-code')"
       documents:
-        items: "[{'metadata': item.get('metadata', {}), 'value': item.get('value', {})} for item in $.get('projection-documents', []) if item.get('name') == 'api-football-event-lineups']"
+        api-football-event-lineups: "$.get('lineups-projection', {}).get('value', {})"
+      metadata:
+        event_code: "$.get('lineups-projection', {}).get('metadata', {}).get('event_code')"
+        source_event_document_id: "$.get('lineups-projection', {}).get('metadata', {}).get('source_event_document_id')"
+        provider_fixture_id: "$.get('lineups-projection', {}).get('metadata', {}).get('provider_fixture_id')"
+        provider: "$.get('lineups-projection', {}).get('metadata', {}).get('provider')"
+        rights: "$.get('lineups-projection', {}).get('metadata', {}).get('rights')"
+        provenance: "$.get('lineups-projection', {}).get('metadata', {}).get('provenance')"
+        projection_capability: "$.get('lineups-projection', {}).get('metadata', {}).get('projection_capability')"
+        status: "$.get('lineups-projection', {}).get('metadata', {}).get('status')"
+        observed_at: "$.get('lineups-projection', {}).get('metadata', {}).get('observed_at')"
+        projection_key: "$.get('lineups-projection', {}).get('metadata', {}).get('projection_key')"
 
     - type: document
       name: save-team-statistics
-      description: "Bulk-upsert the event team-statistics document by its stable event metadata."
+      description: "Upsert the event team-statistics projection by its full stable identity."
       condition: "$.get('projection-valid', False) and len($.get('projection-documents', [])) == 5"
       config:
-        action: bulk-update
+        action: update
         embed-vector: false
         force-update: true
-      document_name: "'api-football-event-team-statistics'"
+      filters:
+        name: "'api-football-event-team-statistics'"
+        metadata.projection_key: "$.get('team-statistics-projection', {}).get('metadata', {}).get('projection_key')"
+        metadata.source_event_document_id: "$.get('event_document_id')"
+        metadata.event_code: "$.get('event-code')"
       documents:
-        items: "[{'metadata': item.get('metadata', {}), 'value': item.get('value', {})} for item in $.get('projection-documents', []) if item.get('name') == 'api-football-event-team-statistics']"
+        api-football-event-team-statistics: "$.get('team-statistics-projection', {}).get('value', {})"
+      metadata:
+        event_code: "$.get('team-statistics-projection', {}).get('metadata', {}).get('event_code')"
+        source_event_document_id: "$.get('team-statistics-projection', {}).get('metadata', {}).get('source_event_document_id')"
+        provider_fixture_id: "$.get('team-statistics-projection', {}).get('metadata', {}).get('provider_fixture_id')"
+        provider: "$.get('team-statistics-projection', {}).get('metadata', {}).get('provider')"
+        rights: "$.get('team-statistics-projection', {}).get('metadata', {}).get('rights')"
+        provenance: "$.get('team-statistics-projection', {}).get('metadata', {}).get('provenance')"
+        projection_capability: "$.get('team-statistics-projection', {}).get('metadata', {}).get('projection_capability')"
+        status: "$.get('team-statistics-projection', {}).get('metadata', {}).get('status')"
+        observed_at: "$.get('team-statistics-projection', {}).get('metadata', {}).get('observed_at')"
+        projection_key: "$.get('team-statistics-projection', {}).get('metadata', {}).get('projection_key')"
 
     - type: document
       name: save-player-statistics
-      description: "Bulk-upsert the event player-statistics document by its stable event metadata."
+      description: "Upsert the event player-statistics projection by its full stable identity."
       condition: "$.get('projection-valid', False) and len($.get('projection-documents', [])) == 5"
       config:
-        action: bulk-update
+        action: update
         embed-vector: false
         force-update: true
-      document_name: "'api-football-event-player-statistics'"
+      filters:
+        name: "'api-football-event-player-statistics'"
+        metadata.projection_key: "$.get('player-statistics-projection', {}).get('metadata', {}).get('projection_key')"
+        metadata.source_event_document_id: "$.get('event_document_id')"
+        metadata.event_code: "$.get('event-code')"
       documents:
-        items: "[{'metadata': item.get('metadata', {}), 'value': item.get('value', {})} for item in $.get('projection-documents', []) if item.get('name') == 'api-football-event-player-statistics']"
+        api-football-event-player-statistics: "$.get('player-statistics-projection', {}).get('value', {})"
+      metadata:
+        event_code: "$.get('player-statistics-projection', {}).get('metadata', {}).get('event_code')"
+        source_event_document_id: "$.get('player-statistics-projection', {}).get('metadata', {}).get('source_event_document_id')"
+        provider_fixture_id: "$.get('player-statistics-projection', {}).get('metadata', {}).get('provider_fixture_id')"
+        provider: "$.get('player-statistics-projection', {}).get('metadata', {}).get('provider')"
+        rights: "$.get('player-statistics-projection', {}).get('metadata', {}).get('rights')"
+        provenance: "$.get('player-statistics-projection', {}).get('metadata', {}).get('provenance')"
+        projection_capability: "$.get('player-statistics-projection', {}).get('metadata', {}).get('projection_capability')"
+        status: "$.get('player-statistics-projection', {}).get('metadata', {}).get('status')"
+        observed_at: "$.get('player-statistics-projection', {}).get('metadata', {}).get('observed_at')"
+        projection_key: "$.get('player-statistics-projection', {}).get('metadata', {}).get('projection_key')"
 
     - type: document
       name: save-head-to-head
-      description: "Bulk-upsert the event H2H document by its stable event metadata."
+      description: "Upsert the event H2H projection by its full stable identity."
       condition: "$.get('projection-valid', False) and len($.get('projection-documents', [])) == 5"
       config:
-        action: bulk-update
+        action: update
         embed-vector: false
         force-update: true
-      document_name: "'api-football-event-head-to-head'"
+      filters:
+        name: "'api-football-event-head-to-head'"
+        metadata.projection_key: "$.get('head-to-head-projection', {}).get('metadata', {}).get('projection_key')"
+        metadata.source_event_document_id: "$.get('event_document_id')"
+        metadata.event_code: "$.get('event-code')"
       documents:
-        items: "[{'metadata': item.get('metadata', {}), 'value': item.get('value', {})} for item in $.get('projection-documents', []) if item.get('name') == 'api-football-event-head-to-head']"
+        api-football-event-head-to-head: "$.get('head-to-head-projection', {}).get('value', {})"
+      metadata:
+        event_code: "$.get('head-to-head-projection', {}).get('metadata', {}).get('event_code')"
+        source_event_document_id: "$.get('head-to-head-projection', {}).get('metadata', {}).get('source_event_document_id')"
+        provider_fixture_id: "$.get('head-to-head-projection', {}).get('metadata', {}).get('provider_fixture_id')"
+        provider: "$.get('head-to-head-projection', {}).get('metadata', {}).get('provider')"
+        rights: "$.get('head-to-head-projection', {}).get('metadata', {}).get('rights')"
+        provenance: "$.get('head-to-head-projection', {}).get('metadata', {}).get('provenance')"
+        projection_capability: "$.get('head-to-head-projection', {}).get('metadata', {}).get('projection_capability')"
+        status: "$.get('head-to-head-projection', {}).get('metadata', {}).get('status')"
+        observed_at: "$.get('head-to-head-projection', {}).get('metadata', {}).get('observed_at')"
+        projection_key: "$.get('head-to-head-projection', {}).get('metadata', {}).get('projection_key')"
       outputs:
         projections-saved: "True"
