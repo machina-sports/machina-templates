@@ -67,25 +67,24 @@ class TestGrokConnector(unittest.TestCase):
 
     def test_uses_runtime_bearer_security_contract_for_every_operation(self):
         self.assertNotIn("securitySchemes", self.document)
-        self.assertEqual(self.document["security"], [{"basicAuth": []}])
+        self.assertEqual(self.document["security"], [{"authorization": []}])
         self.assertEqual(
             self.document["components"]["securitySchemes"],
             {
-                "basicAuth": {
-                    "type": "http",
+                "authorization": {
+                    "type": "apiKey",
                     "in": "header",
                     "name": "Authorization",
-                    "scheme": "Bearer",
-                    "description": "Bearer token authentication using an xAI API key",
+                    "description": "Authorization header value supplied by the runtime context",
                 }
             },
         )
         for path, path_item in self.document["paths"].items():
             with self.subTest(path=path):
-                self.assertEqual(path_item["post"]["security"], [{"basicAuth": []}])
+                self.assertEqual(path_item["post"]["security"], [{"authorization": []}])
 
     def test_workflows_map_the_vault_secret_to_the_runtime_bearer_key(self):
-        expected = {"basicAuth": "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"}
+        expected = {"authorization": "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"}
         for path in WORKFLOW_PATHS:
             with self.subTest(path=path.relative_to(REPO_ROOT)):
                 workflow = read_yaml(path)["workflow"]
