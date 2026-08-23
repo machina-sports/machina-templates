@@ -501,6 +501,14 @@
       ]
     },
     {
+      "file": "connectors/api-football/api-football-enrich-event-data.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "iptc_schema_events"
+      ]
+    },
+    {
       "file": "connectors/api-football/sync-fixtures-events.yml",
       "kind": "workflow-or-mapping",
       "reads_field_paths": [
@@ -535,15 +543,6 @@
         "iptc_schema_ids",
         "iptc_teams",
         "iptc_teams_statistics"
-      ]
-    },
-    {
-      "file": "connectors/api-football/sync-fixtures.yml",
-      "kind": "workflow-or-mapping",
-      "reads_field_paths": [],
-      "reads_payload_keys": [
-        "sport_schema_event",
-        "sport_schema_events"
       ]
     },
     {
@@ -1999,28 +1998,28 @@
     {
       "category": "document-name",
       "file": "connectors/api-football/sync-fixtures-events.yml",
-      "line": 79,
+      "line": 81,
       "literal": "sport:Action",
       "snippet": "document_name: \"'sport:Action'\""
     },
     {
       "category": "document-name",
       "file": "connectors/api-football/sync-fixtures-players-statistics.yml",
-      "line": 77,
+      "line": 79,
       "literal": "sport:IndividualParticipation",
       "snippet": "document_name: \"'sport:IndividualParticipation'\""
     },
     {
       "category": "document-name",
       "file": "connectors/api-football/sync-fixtures-teams-statistics.yml",
-      "line": 77,
+      "line": 80,
       "literal": "sport:TeamParticipation",
       "snippet": "document_name: \"'sport:TeamParticipation'\""
     },
     {
       "category": "document-name",
       "file": "connectors/api-football/sync-fixtures.yml",
-      "line": 86,
+      "line": 120,
       "literal": "sport:Event",
       "snippet": "document_name: \"'sport:Event'\""
     },
@@ -2029,7 +2028,7 @@
       "file": "connectors/api-football/workflows/event-consumer-live.yml",
       "line": 32,
       "path": "value.schema:startDate",
-      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+      "snippet": "search-sorters: [[\"value.schema:startDate\", 1]]"
     },
     {
       "category": "document-name",
@@ -2043,7 +2042,7 @@
       "file": "connectors/api-football/workflows/event-consumer-live.yml",
       "line": 66,
       "path": "value.schema:startDate",
-      "snippet": "search-sorters: [\"value.version_control.consumer-update-timestamp\", 1, \"value.schema:startDate\", 1]"
+      "snippet": "search-sorters: [[\"value.version_control.consumer-update-timestamp\", 1], [\"value.schema:startDate\", 1]]"
     },
     {
       "category": "document-name",
@@ -2085,7 +2084,7 @@
       "file": "connectors/api-football/workflows/event-consumer-prelive.yml",
       "line": 32,
       "path": "value.schema:startDate",
-      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+      "snippet": "search-sorters: [[\"value.schema:startDate\", 1]]"
     },
     {
       "category": "document-name",
@@ -2099,7 +2098,7 @@
       "file": "connectors/api-football/workflows/event-consumer-prelive.yml",
       "line": 66,
       "path": "value.schema:startDate",
-      "snippet": "search-sorters: [\"value.version_control.consumer-update-timestamp\", 1, \"value.schema:startDate\", 1]"
+      "snippet": "search-sorters: [[\"value.version_control.consumer-update-timestamp\", 1], [\"value.schema:startDate\", 1]]"
     },
     {
       "category": "document-name",

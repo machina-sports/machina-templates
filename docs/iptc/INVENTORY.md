@@ -447,10 +447,10 @@ Each row is a field path the consumer migration must cover. A consumer here is a
 | `agent-templates/world-cup-intelligence/workflows/worldcup-sync-model-forecasts.yml` | workflow-or-mapping | `sport:status` | — |
 | `agent-templates/world-cup-intelligence/worldcup-market-intelligence.py` | script | `schema:startDate`, `sport:competition`, `sport:competitor`, `sport:competitors`, `sport:qualifier`, `sport:round`, `sport:status`, `sport:venue` | `sport_schema_event`, `sport_schema_events` |
 | `connectors/american-football/workflows/sync-games.yml` | workflow-or-mapping | — | `sport_schema_event`, `sport_schema_events` |
+| `connectors/api-football/api-football-enrich-event-data.yml` | workflow-or-mapping | — | `iptc_schema_events` |
 | `connectors/api-football/sync-fixtures-events.yml` | workflow-or-mapping | `sport:label` | `iptc_events`, `iptc_schema_events`, `iptc_schema_ids` |
 | `connectors/api-football/sync-fixtures-players-statistics.yml` | workflow-or-mapping | — | `iptc_players`, `iptc_players_statistics`, `iptc_schema_events`, `iptc_schema_ids` |
 | `connectors/api-football/sync-fixtures-teams-statistics.yml` | workflow-or-mapping | `sport:participation`, `sport:participationBy` | `iptc_schema_events`, `iptc_schema_ids`, `iptc_teams`, `iptc_teams_statistics` |
-| `connectors/api-football/sync-fixtures.yml` | workflow-or-mapping | — | `sport_schema_event`, `sport_schema_events` |
 | `connectors/api-football/workflows/event-consumer-live.yml` | workflow-or-mapping | `schema:startDate`, `sport:competition`, `sport:status` | — |
 | `connectors/api-football/workflows/event-consumer-prelive.yml` | workflow-or-mapping | `schema:startDate`, `sport:competition`, `sport:status` | — |
 | `connectors/api-football/workflows/event-sync-markets.yml` | workflow-or-mapping | `schema:startDate` | `iptc_schema_events` |
