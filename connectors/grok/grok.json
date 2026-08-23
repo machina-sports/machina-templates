@@ -17,10 +17,19 @@
   ],
   "security": [
     {
-      "bearerAuth": []
+      "basicAuth": []
     }
   ],
   "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "in": "header",
+        "name": "Authorization",
+        "scheme": "Bearer",
+        "description": "Bearer token authentication using an xAI API key"
+      }
+    },
     "schemas": {
       "Message": {
         "type": "object",
@@ -173,19 +182,17 @@
       }
     }
   },
-  "securitySchemes": {
-    "bearerAuth": {
-      "type": "http",
-      "scheme": "bearer",
-      "description": "Bearer token authentication using xAI API key (format: xai-...)"
-    }
-  },
   "paths": {
     "/responses": {
       "post": {
         "summary": "Create a response (Agent Tools API)",
         "description": "Creates a model response with optional server-side agent tools (web_search, x_search, code_interpreter). Replaces the deprecated chat-completions live search (search_parameters), which xAI now rejects with HTTP 410.",
         "operationId": "responses",
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -274,6 +281,11 @@
         "summary": "Create a chat completion",
         "description": "Creates a model response for the given chat conversation using Grok models.",
         "operationId": "createChatCompletion",
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
