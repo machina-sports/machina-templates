@@ -305,6 +305,57 @@ def test_event_synchronize_never_updates_without_a_provider_fixture():
     assert empty["fixture_exists"] is False
 
 
+def test_event_synchronize_resolves_canonical_provider_fixture_id_exactly():
+    workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    resolver = task(workflow, "resolve-provider-fixture-id")
+    fetch = task(workflow, "fetch-fixture-details")
+
+    assert all(
+        item.get("name") != "iptc-api-football-id-conversion-mapping"
+        for item in workflow["tasks"]
+    )
+    assert resolver["type"] == "connector"
+    assert resolver["connector"] == {
+        "name": "api-football-event-data",
+        "command": "resolve_provider_fixture_id",
+    }
+    assert resolver["inputs"] == {
+        "event_document_value": "$.get('event_value', {})"
+    }
+    assert resolver["outputs"] == {
+        "provider_fixture_id": "$.get('provider_fixture_id')"
+    }
+    assert fetch["condition"] == "$.get('provider_fixture_id') is not None"
+    assert fetch["inputs"] == {"id": "$.get('provider_fixture_id')"}
+    assert not evaluate(fetch["condition"], {"event_exists": True})
+    assert evaluate(
+        fetch["inputs"]["id"], {"provider_fixture_id": 1390823}
+    ) == 1390823
+
+
+def test_successful_event_synchronization_reaches_event_data_enrichment():
+    synchronize = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    synchronized = {
+        "event_exists": True,
+        "provider-response-valid": True,
+        "provider-errors": [],
+        "fixture_exists": True,
+        "event_updated": {"@id": "urn:machina:sports:event:x123"},
+    }
+
+    status = evaluate(synchronize["outputs"]["workflow-status"], synchronized)
+    assert status == "executed"
+
+    for path in ("agents/event-prelive-update.yml", "agents/event-live-update.yml"):
+        agent = load_yaml(path)["agent"]
+        enrich = next(
+            item
+            for item in agent["workflows"]
+            if item["name"] == "api-football-enrich-event-data"
+        )
+        assert evaluate(enrich["condition"], {"event-synchronize-status": status})
+
+
 def test_event_synchronize_rejects_provider_errors_and_malformed_payloads():
     workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
     fetch_outputs = task(workflow, "fetch-fixture-details")["outputs"]
@@ -329,7 +380,7 @@ def test_event_synchronize_rejects_a_different_fixture_id():
             "response": [provider_fixture(999)],
             "errors": [],
             "results": 1,
-            "original_fixture_id": "1390823",
+            "provider_fixture_id": 1390823,
         },
     )
 
