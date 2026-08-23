@@ -17,17 +17,16 @@
   ],
   "security": [
     {
-      "basicAuth": []
+      "authorization": []
     }
   ],
   "components": {
     "securitySchemes": {
-      "basicAuth": {
-        "type": "http",
+      "authorization": {
+        "type": "apiKey",
         "in": "header",
         "name": "Authorization",
-        "scheme": "Bearer",
-        "description": "Bearer token authentication using an xAI API key"
+        "description": "Authorization header value supplied by the runtime context"
       }
     },
     "schemas": {
@@ -190,7 +189,7 @@
         "operationId": "responses",
         "security": [
           {
-            "basicAuth": []
+            "authorization": []
           }
         ],
         "requestBody": {
@@ -283,7 +282,7 @@
         "operationId": "createChatCompletion",
         "security": [
           {
-            "basicAuth": []
+            "authorization": []
           }
         ],
         "requestBody": {

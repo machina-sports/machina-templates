@@ -16,7 +16,7 @@ workflow:
     debugger:
       enabled: true
     grok:
-      basicAuth: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
+      authorization: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
   inputs:
     # No default here: an explicit query must beat the resolved fixture name in
     # the Grok prompt, but a DEFAULT query must not (or every scoped pulse
