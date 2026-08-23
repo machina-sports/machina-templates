@@ -6,7 +6,7 @@ workflow:
     debugger:
       enabled: true
     grok:
-      authorization: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
+      basicAuth: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
   inputs:
     user_message: "$.get('user_message', \"Analyze recent tweets about the upcoming Ferencvaros game. Create an engaging narrative from a researcher's perspective that builds anticipation for fans, highlights key insights, captures the emotional sentiment, and includes a bold prediction about the outcome. Make it exciting and fan-focused!\")"
     model: "$.get('model', 'grok-4-fast')"

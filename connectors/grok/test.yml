@@ -6,7 +6,7 @@ workflow:
     debugger:
       enabled: true
     grok:
-      authorization: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
+      basicAuth: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
   inputs:
     user_message: "$.get('user_message', 'Search for recent tweets about 49ers')"
     model: "$.get('model', 'grok-4-fast')"
