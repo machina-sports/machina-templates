@@ -41,22 +41,22 @@ workflow:
       inputs:
         iptc_schema_events: "[$.get('event-value', {})]"
       outputs:
-        source-event-id: "$.get('original_ids', [None])[0] if $.get('original_ids') else None"
+        provider-fixture-id: "$.get('original_ids', [None])[0] if $.get('original_ids') else None"
 
     - type: connector
       name: fetch-fixture
       description: "Fetch exactly one fixture before any dependent endpoint calls."
-      condition: "$.get('source-event-id') is not None"
+      condition: "$.get('provider-fixture-id') is not None"
       continue_on_error: true
       connector:
         name: api-football
         command: get-fixtures
       inputs:
-        id: "$.get('source-event-id')"
+        id: "$.get('provider-fixture-id')"
       outputs:
-        fixture-envelope: "{'parameters': $.get('parameters', {'id': str($.get('source-event-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+        fixture-envelope: "{'parameters': $.get('parameters', {'id': str($.get('provider-fixture-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
         fixture-response: "$.get('response', []) if isinstance($.get('response'), list) else []"
-        fixture-valid: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response')[0], dict) and isinstance($.get('response')[0].get('fixture'), dict) and str($.get('response')[0].get('fixture', {}).get('id')) == str($.get('source-event-id')) and isinstance($.get('errors'), (list, dict)) and not $.get('errors') and $.get('results') == 1"
+        fixture-valid: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response')[0], dict) and isinstance($.get('response')[0].get('fixture'), dict) and str($.get('response')[0].get('fixture', {}).get('id')) == str($.get('provider-fixture-id')) and isinstance($.get('errors'), (list, dict)) and not $.get('errors') and $.get('results') == 1"
         home-team-id: "$.get('response', [])[0].get('teams', {}).get('home', {}).get('id') if isinstance($.get('response'), list) and len($.get('response')) == 1 else None"
         away-team-id: "$.get('response', [])[0].get('teams', {}).get('away', {}).get('id') if isinstance($.get('response'), list) and len($.get('response')) == 1 else None"
 
@@ -69,9 +69,9 @@ workflow:
         name: api-football
         command: get-fixtures/events
       inputs:
-        fixture: "$.get('source-event-id')"
+        fixture: "$.get('provider-fixture-id')"
       outputs:
-        events-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('source-event-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+        events-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('provider-fixture-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
 
     - type: connector
       name: fetch-lineups
@@ -82,9 +82,9 @@ workflow:
         name: api-football
         command: get-fixtures/lineups
       inputs:
-        fixture: "$.get('source-event-id')"
+        fixture: "$.get('provider-fixture-id')"
       outputs:
-        lineups-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('source-event-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+        lineups-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('provider-fixture-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
 
     - type: connector
       name: fetch-team-statistics
@@ -95,9 +95,9 @@ workflow:
         name: api-football
         command: get-fixtures/statistics
       inputs:
-        fixture: "$.get('source-event-id')"
+        fixture: "$.get('provider-fixture-id')"
       outputs:
-        team-statistics-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('source-event-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+        team-statistics-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('provider-fixture-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
 
     - type: connector
       name: fetch-player-statistics
@@ -108,9 +108,9 @@ workflow:
         name: api-football
         command: get-fixtures/players
       inputs:
-        fixture: "$.get('source-event-id')"
+        fixture: "$.get('provider-fixture-id')"
       outputs:
-        player-statistics-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('source-event-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+        player-statistics-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('provider-fixture-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
 
     - type: connector
       name: fetch-head-to-head
@@ -128,7 +128,7 @@ workflow:
 
     - type: connector
       name: project-event-data
-      description: "Validate exact identities and build the five stable typed documents."
+      description: "Validate exact identities and build five stable internal projections."
       condition: "$.get('fixture-valid', False)"
       connector:
         name: api-football-event-data
@@ -141,8 +141,10 @@ workflow:
         player_statistics: "$.get('player-statistics-envelope')"
         head_to_head: "$.get('head-to-head-envelope')"
         event_code: "$.get('event-code')"
-        source_event_id: "$.get('source-event-id')"
+        source_event_document_id: "$.get('event_document_id')"
+        provider_fixture_id: "$.get('provider-fixture-id')"
         observed_at: "datetime.utcnow().isoformat() + 'Z'"
+        provider: "$.get('event-value', {}).get('machina_sports_schema', {}).get('provenance', {}).get('provider', {})"
         rights: "$.get('event-value', {}).get('machina_sports_schema', {}).get('rights', {})"
         provenance: "$.get('event-value', {}).get('machina_sports_schema', {}).get('provenance', {})"
       outputs:

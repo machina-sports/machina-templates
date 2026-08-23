@@ -7,25 +7,26 @@ import hashlib
 
 
 PROVIDER = "api-football"
+SCHEMA_VERSION = "api-football-event-projection/1"
 DOCUMENT_SPECS = (
-    ("events", "api-football-event-actions", "sport:ActionCollection", "event.actions"),
-    ("lineups", "api-football-event-lineups", "sport:LineupCollection", "event.lineups"),
+    ("events", "api-football-event-actions", "event-actions", "event.actions"),
+    ("lineups", "api-football-event-lineups", "event-lineups", "event.lineups"),
     (
         "team_statistics",
         "api-football-event-team-statistics",
-        "sport:TeamStatisticsCollection",
+        "event-team-statistics",
         "event.team-statistics",
     ),
     (
         "player_statistics",
         "api-football-event-player-statistics",
-        "sport:PlayerStatisticsCollection",
+        "event-player-statistics",
         "event.player-statistics",
     ),
     (
         "head_to_head",
         "api-football-event-head-to-head",
-        "sport:HeadToHeadCollection",
+        "event-head-to-head",
         "event.head-to-head",
     ),
 )
@@ -52,7 +53,7 @@ def _result(status, message, **data):
     return {"status": status, "message": message, "data": data}
 
 
-def _fixture_identity(fixture, source_event_id):
+def _fixture_identity(fixture, provider_fixture_id):
     if not isinstance(fixture, dict):
         return None, "fixture must be an object"
     fixture_data = fixture.get("fixture")
@@ -66,8 +67,8 @@ def _fixture_identity(fixture, source_event_id):
     away_id = _text(away.get("id")) if isinstance(away, dict) else None
     if fixture_id is None or home_id is None or away_id is None:
         return None, "fixture.id and exact home/away team ids are required"
-    if fixture_id != _text(source_event_id):
-        return None, "fixture.id must equal source_event_id"
+    if fixture_id != _text(provider_fixture_id):
+        return None, "fixture.id must equal provider_fixture_id"
     if home_id == away_id:
         return None, "home and away team ids must differ"
     return {
@@ -82,21 +83,27 @@ def _fixture_identity(fixture, source_event_id):
 
 def _required_metadata(params):
     event_code = _text(params.get("event_code"))
-    source_event_id = _text(params.get("source_event_id"))
+    source_event_document_id = _text(params.get("source_event_document_id"))
+    provider_fixture_id = _text(params.get("provider_fixture_id"))
     observed_at = _text(params.get("observed_at"))
+    provider = params.get("provider")
     rights = params.get("rights")
     provenance = params.get("provenance")
-    if not event_code or not source_event_id or not observed_at:
-        return None, "event_code, source_event_id, and observed_at are required"
-    provider = provenance.get("provider") if isinstance(provenance, dict) else None
+    if not event_code or not source_event_document_id or not provider_fixture_id or not observed_at:
+        return None, (
+            "event_code, source_event_document_id, provider_fixture_id, and "
+            "observed_at are required"
+        )
     if not isinstance(rights, dict) or not rights or not isinstance(provenance, dict) or not provenance:
         return None, "rights and provenance must be non-empty objects"
     if not isinstance(provider, dict) or provider.get("namespace") != PROVIDER:
-        return None, "provenance provider namespace must be api-football"
+        return None, "provider must be an object with namespace api-football"
     return {
         "event_code": event_code,
-        "source_event_id": source_event_id,
+        "source_event_document_id": source_event_document_id,
+        "provider_fixture_id": provider_fixture_id,
         "observed_at": observed_at,
+        "provider": provider,
         "rights": rights,
         "provenance": provenance,
     }, None
@@ -149,7 +156,6 @@ def _player(player, team_id):
     player_id = _urn("player", PROVIDER, team_id, player["id"])
     return {
         "@id": player_id,
-        "@type": "sport:Individual",
         "player_id": player_id,
         "provider_player_id": player["id"],
         "name": player.get("name"),
@@ -186,7 +192,7 @@ def _project_actions(rows, identity, event_id):
         seen.add(action_id)
         fact = {
             "@id": action_id,
-            "@type": "sport:Action",
+            "type": "action",
             "event_id": event_id,
             "team_id": _urn("team", PROVIDER, team_id),
             "provider_team_id": team["id"],
@@ -200,7 +206,7 @@ def _project_actions(rows, identity, event_id):
                 _urn("player", PROVIDER, team_id, assist_provider_id)
                 if _text(assist_provider_id) is not None else None
             ),
-            "facts": deepcopy(row),
+            "provider_facts": deepcopy(row),
         }
         facts.append(fact)
     return facts, None
@@ -244,7 +250,6 @@ def _project_lineups(rows, identity, event_id):
         seen.add(team_id)
         facts.append({
             "@id": _urn("lineup", PROVIDER, identity["fixture_id"], team_id),
-            "@type": "sport:Lineup",
             "event_id": event_id,
             "team_id": _urn("team", PROVIDER, team_id),
             "provider_team_id": team["id"],
@@ -271,7 +276,6 @@ def _project_team_statistics(rows, identity, event_id):
         seen.add(team_id)
         facts.append({
             "@id": _urn("team-statistics", PROVIDER, identity["fixture_id"], team_id),
-            "@type": "sport:TeamStatistics",
             "event_id": event_id,
             "team_id": _urn("team", PROVIDER, team_id),
             "provider_team_id": team["id"],
@@ -306,7 +310,6 @@ def _project_player_statistics(rows, identity, event_id):
         seen_teams.add(team_id)
         facts.append({
             "@id": _urn("player-statistics", PROVIDER, identity["fixture_id"], team_id),
-            "@type": "sport:PlayerStatistics",
             "event_id": event_id,
             "team_id": _urn("team", PROVIDER, team_id),
             "provider_team_id": team["id"],
@@ -330,7 +333,6 @@ def _project_head_to_head(rows, identity, event_id):
             return None, "head-to-head result is outside the exact fixture team pair"
         facts.append({
             "@id": _urn("event", PROVIDER, fixture_id),
-            "@type": "sport:Event",
             "event_id": event_id,
             "provider_fixture_id": fixture["id"],
             "home_team_id": _urn("team", PROVIDER, home_id),
@@ -352,30 +354,36 @@ PROJECTORS = {
 
 
 def _document(spec, facts, reason, identity, metadata, event_id):
-    _, name, value_type, capability = spec
+    _, name, kind, capability_name = spec
     status = "available" if facts else "unavailable"
+    projection_key = _urn("projection", PROVIDER, identity["fixture_id"], kind)
+    capability = {"name": capability_name, "status": status}
     value = {
-        "@id": _urn("projection", PROVIDER, identity["fixture_id"], name),
-        "@type": value_type,
+        "@id": projection_key,
+        "schema_version": SCHEMA_VERSION,
+        "kind": kind,
         "event_id": event_id,
         "event_code": metadata["event_code"],
-        "source_event_id": metadata["source_event_id"],
+        "source_event_document_id": metadata["source_event_document_id"],
         "provider_fixture_id": identity["provider_fixture_id"],
-        "observed_at": metadata["observed_at"],
-        "rights": deepcopy(metadata["rights"]),
-        "provenance": deepcopy(metadata["provenance"]),
-        "capability": {"name": capability, "status": status},
         "facts": facts or [],
     }
     if status == "unavailable":
         value["unavailable_reason"] = reason or "provider returned no facts"
     return {
         "name": name,
-        "key": metadata["event_code"],
+        "key": projection_key,
         "metadata": {
             "event_code": metadata["event_code"],
-            "source_event_id": metadata["source_event_id"],
-            "provider": PROVIDER,
+            "source_event_document_id": metadata["source_event_document_id"],
+            "provider_fixture_id": identity["provider_fixture_id"],
+            "provider": deepcopy(metadata["provider"]),
+            "rights": deepcopy(metadata["rights"]),
+            "provenance": deepcopy(metadata["provenance"]),
+            "capability": capability,
+            "status": status,
+            "observed_at": metadata["observed_at"],
+            "projection_key": projection_key,
         },
         "value": value,
     }
@@ -387,17 +395,19 @@ def project_event_data(request_data):
     metadata, error = _required_metadata(params)
     if error:
         return _result(False, error, valid=False, documents=[])
-    identity, error = _fixture_identity(params.get("fixture"), metadata["source_event_id"])
+    identity, error = _fixture_identity(
+        params.get("fixture"), metadata["provider_fixture_id"]
+    )
     if error:
         return _result(False, error, valid=False, documents=[])
 
-    event_id = _urn("event", PROVIDER, identity["fixture_id"])
+    event_id = metadata["event_code"]
     documents = []
     unavailable = []
     diagnostics = {}
     h2h_pair = "{0}-{1}".format(identity["home_id"], identity["away_id"])
     for spec in DOCUMENT_SPECS:
-        source_key, _, _, capability = spec
+        source_key, _, _, capability_name = spec
         rows, reason = _provider_response(
             params.get(source_key),
             identity["fixture_id"],
@@ -410,8 +420,8 @@ def project_event_data(request_data):
         if facts is None:
             facts = []
         if not facts:
-            unavailable.append(capability)
-            diagnostics[capability] = reason or "provider returned no facts"
+            unavailable.append(capability_name)
+            diagnostics[capability_name] = reason or "provider returned no facts"
         documents.append(_document(spec, facts, reason, identity, metadata, event_id))
 
     if not unavailable:

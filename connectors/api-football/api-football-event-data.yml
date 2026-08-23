@@ -1,6 +1,6 @@
 connector:
   name: "api-football-event-data"
-  description: "Validate exact API-Football event responses and build stable typed projection documents."
+  description: "Validate exact API-Football event responses and build stable internal projection documents."
   filename: "api-football-event-data.py"
   filetype: "pyscript"
   commands:

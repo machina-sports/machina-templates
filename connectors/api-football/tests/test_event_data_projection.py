@@ -22,8 +22,10 @@ DOCUMENT_NAMES = {
 }
 METADATA = {
     "event_code": "urn:machina:sports:event:test-7001",
-    "source_event_id": "7001",
+    "source_event_document_id": "document-7001",
+    "provider_fixture_id": "7001",
     "observed_at": "2026-08-22T20:01:02+00:00",
+    "provider": {"namespace": "api-football", "family": "licensed"},
     "rights": {
         "data_class": "licensed-provider-data",
         "commercial_use": True,
@@ -58,25 +60,45 @@ def documents_by_name(result):
     return {document["name"]: document for document in result["data"]["documents"]}
 
 
-def test_projects_all_stable_documents_with_typed_values_and_metadata():
+def contains_jsonld_type(value):
+    if isinstance(value, dict):
+        return "@type" in value or any(contains_jsonld_type(item) for item in value.values())
+    if isinstance(value, list):
+        return any(contains_jsonld_type(item) for item in value)
+    return False
+
+
+def test_projects_all_stable_documents_with_internal_types_and_required_metadata():
     result = project()
 
     assert result["status"] is True
     assert result["data"]["valid"] is True
     documents = documents_by_name(result)
     assert set(documents) == DOCUMENT_NAMES
-    assert all(document["key"] == METADATA["event_code"] for document in documents.values())
+    assert len({document["key"] for document in documents.values()}) == 5
     for document in documents.values():
         value = document["value"]
+        metadata = document["metadata"]
         assert value["@id"].startswith("urn:machina:sports:projection:")
-        assert value["@type"].startswith("sport:")
+        assert value["schema_version"] == "api-football-event-projection/1"
+        assert value["kind"].startswith("event-")
+        assert not contains_jsonld_type(value)
         assert value["event_code"] == METADATA["event_code"]
-        assert value["source_event_id"] == METADATA["source_event_id"]
+        assert value["event_id"] == METADATA["event_code"]
+        assert value["source_event_document_id"] == METADATA["source_event_document_id"]
         assert value["provider_fixture_id"] == 7001
-        assert value["observed_at"] == METADATA["observed_at"]
-        assert value["rights"] == METADATA["rights"]
-        assert value["provenance"] == METADATA["provenance"]
-        assert value["capability"]["status"] == "available"
+        assert document["key"] == metadata["projection_key"] == value["@id"]
+        assert (
+            metadata["source_event_document_id"]
+            == METADATA["source_event_document_id"]
+        )
+        assert metadata["provider_fixture_id"] == 7001
+        assert metadata["provider"] == METADATA["provider"]
+        assert metadata["rights"] == METADATA["rights"]
+        assert metadata["provenance"] == METADATA["provenance"]
+        assert metadata["capability"]["status"] == "available"
+        assert metadata["status"] == "available"
+        assert metadata["observed_at"] == METADATA["observed_at"]
 
 
 def test_action_ids_are_deterministic_and_duplicate_provider_rows_are_idempotent():
@@ -86,10 +108,9 @@ def test_action_ids_are_deterministic_and_duplicate_provider_rows_are_idempotent
     assert len(first["facts"]) == 1
     assert first["facts"] == second["facts"]
     action = first["facts"][0]
-    assert first["event_id"] == (
-        "urn:machina:sports:event:5043c6f7424d8349f1c23dccb9330f71"
-    )
-    assert action["@type"] == "sport:Action"
+    assert first["event_id"] == METADATA["event_code"]
+    assert action["type"] == "action"
+    assert "@type" not in action
     assert action["@id"] == (
         "urn:machina:sports:action:a2fd5a2434548bcce25f82730c0b15b7"
     )
@@ -102,13 +123,17 @@ def test_action_ids_are_deterministic_and_duplicate_provider_rows_are_idempotent
     )
     assert action["provider_assist_player_id"] == 102
     assert action["assist_player_id"].startswith("urn:machina:sports:player:")
-    assert action["facts"]["time"] == {"elapsed": 25, "extra": None}
+    assert action["provider_facts"]["time"] == {"elapsed": 25, "extra": None}
 
 
 def test_real_lineups_bind_players_to_exact_fixture_teams():
-    value = documents_by_name(project())["api-football-event-lineups"]["value"]
+    document = documents_by_name(project())["api-football-event-lineups"]
+    value = document["value"]
 
-    assert value["capability"] == {"name": "event.lineups", "status": "available"}
+    assert document["metadata"]["capability"] == {
+        "name": "event.lineups",
+        "status": "available",
+    }
     assert [lineup["provider_team_id"] for lineup in value["facts"]] == [40, 47]
     assert value["facts"][0]["starting"][0]["provider_player_id"] == 101
     assert value["facts"][0]["starting"][0]["player_id"].startswith(
@@ -146,7 +171,8 @@ def test_zero_results_and_provider_errors_are_explicitly_unavailable():
     assert result["data"]["workflow_status"] == "unavailable"
     for document in documents_by_name(result).values():
         assert document["value"]["facts"] == []
-        assert document["value"]["capability"]["status"] == "unavailable"
+        assert document["metadata"]["capability"]["status"] == "unavailable"
+        assert document["metadata"]["status"] == "unavailable"
     assert "event.actions" in result["data"]["requirements_unavailable"]
 
 
@@ -162,7 +188,7 @@ def test_partial_coverage_never_reports_executed():
     result = project(payload)
 
     assert result["data"]["workflow_status"] == "partial"
-    assert documents_by_name(result)["api-football-event-lineups"]["value"][
+    assert documents_by_name(result)["api-football-event-lineups"]["metadata"][
         "capability"
     ]["status"] == "unavailable"
 
@@ -180,7 +206,10 @@ def test_squad_rosters_never_create_lineup_facts_or_capability():
     lineup = documents_by_name(project(payload))["api-football-event-lineups"]["value"]
 
     assert lineup["facts"] == []
-    assert lineup["capability"] == {"name": "event.lineups", "status": "unavailable"}
+    metadata = documents_by_name(project(payload))["api-football-event-lineups"][
+        "metadata"
+    ]
+    assert metadata["capability"] == {"name": "event.lineups", "status": "unavailable"}
 
 
 def test_h2h_rejects_any_fixture_outside_the_exact_provider_team_pair():
@@ -190,19 +219,24 @@ def test_h2h_rejects_any_fixture_outside_the_exact_provider_team_pair():
     h2h = documents_by_name(project(payload))["api-football-event-head-to-head"]["value"]
 
     assert h2h["facts"] == []
-    assert h2h["capability"]["status"] == "unavailable"
+    metadata = documents_by_name(project(payload))["api-football-event-head-to-head"][
+        "metadata"
+    ]
+    assert metadata["capability"]["status"] == "unavailable"
     assert "exact fixture team pair" in h2h["unavailable_reason"]
 
 
 def test_mismatched_fixture_or_endpoint_identity_fails_closed():
-    assert project(source_event_id="9999")["status"] is False
-    assert project(provenance={})["status"] is False
+    assert project(provider_fixture_id="9999")["status"] is False
+    assert project(provider={})["status"] is False
+    assert project(source_event_document_id=None)["status"] is False
 
     payload = load_payload()
     payload["events"]["parameters"]["fixture"] = "9999"
     result = project(payload)
     actions = documents_by_name(result)["api-football-event-actions"]["value"]
-    assert actions["capability"]["status"] == "unavailable"
+    metadata = documents_by_name(result)["api-football-event-actions"]["metadata"]
+    assert metadata["capability"]["status"] == "unavailable"
     assert actions["facts"] == []
 
 
@@ -227,6 +261,10 @@ def test_connector_workflow_installer_and_agent_orchestration_contracts():
     assert tasks["fetch-player-statistics"]["connector"]["command"] == "get-fixtures/players"
     assert tasks["fetch-head-to-head"]["connector"]["command"] == "get-fixtures/headtohead"
     assert tasks["fetch-head-to-head"]["inputs"]["last"] == 5
+    projection_inputs = tasks["project-event-data"]["inputs"]
+    assert projection_inputs["source_event_document_id"] == "$.get('event_document_id')"
+    assert projection_inputs["provider_fixture_id"] == "$.get('provider-fixture-id')"
+    assert "source_event_id" not in projection_inputs
     saves = {
         "save-actions": "api-football-event-actions",
         "save-lineups": "api-football-event-lineups",
