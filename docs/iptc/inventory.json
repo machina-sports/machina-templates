@@ -501,14 +501,6 @@
       ]
     },
     {
-      "file": "connectors/api-football/api-football-enrich-event-data.yml",
-      "kind": "workflow-or-mapping",
-      "reads_field_paths": [],
-      "reads_payload_keys": [
-        "iptc_schema_events"
-      ]
-    },
-    {
       "file": "connectors/api-football/sync-fixtures-events.yml",
       "kind": "workflow-or-mapping",
       "reads_field_paths": [
@@ -543,6 +535,14 @@
         "iptc_schema_ids",
         "iptc_teams",
         "iptc_teams_statistics"
+      ]
+    },
+    {
+      "file": "connectors/api-football/tests/test_event_data_projection.py",
+      "kind": "test",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "iptc_schema_events"
       ]
     },
     {
