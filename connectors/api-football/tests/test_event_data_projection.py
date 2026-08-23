@@ -481,25 +481,30 @@ def test_connector_workflow_installer_and_upsert_contracts():
     assert tasks["fetch-player-statistics"]["connector"]["command"] == "get-fixtures/players"
     assert tasks["fetch-head-to-head"]["connector"]["command"] == "get-fixtures/headtohead"
 
-    for task_name in (
-        "fetch-fixture",
-        "fetch-events",
-        "fetch-lineups",
-        "fetch-team-statistics",
-        "fetch-player-statistics",
-        "fetch-head-to-head",
-    ):
-        envelope_output = next(
-            value
-            for key, value in tasks[task_name]["outputs"].items()
-            if key.endswith("envelope")
-        )
-        assert envelope_output == "dict($.items())"
-        assert "parameters" not in envelope_output
-        assert "errors" not in envelope_output
-        assert "results" not in envelope_output
+    envelope_outputs = {
+        "fetch-fixture": "fixture-envelope",
+        "fetch-events": "events-envelope",
+        "fetch-lineups": "lineups-envelope",
+        "fetch-team-statistics": "team-statistics-envelope",
+        "fetch-player-statistics": "player-statistics-envelope",
+        "fetch-head-to-head": "head-to-head-envelope",
+    }
+    for task_name, output_name in envelope_outputs.items():
+        outputs = tasks[task_name]["outputs"]
+        assert "dict($.items())" not in outputs.values()
+        assert outputs[output_name] == "$"
 
     projection_inputs = tasks["project-event-data"]["inputs"]
+    assert projection_inputs["fixture_envelope"] == "$.get('fixture-envelope')"
+    assert projection_inputs["events"] == "$.get('events-envelope')"
+    assert projection_inputs["lineups"] == "$.get('lineups-envelope')"
+    assert projection_inputs["team_statistics"] == (
+        "$.get('team-statistics-envelope')"
+    )
+    assert projection_inputs["player_statistics"] == (
+        "$.get('player-statistics-envelope')"
+    )
+    assert projection_inputs["head_to_head"] == "$.get('head-to-head-envelope')"
     assert projection_inputs["event_view"] == "$.get('event-view', {})"
     assert projection_inputs["provider_ids"] == "$.get('provider-crosswalk', [])"
     assert "request_contexts" in projection_inputs

@@ -63,7 +63,7 @@ workflow:
       inputs:
         id: "$.get('provider-fixture-id')"
       outputs:
-        fixture-envelope: "dict($.items())"
+        fixture-envelope: "$"
         fixture-response: "$.get('response', []) if isinstance($.get('response'), list) else []"
         fixture-valid: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response')[0], dict) and isinstance($.get('response')[0].get('fixture'), dict) and str($.get('response')[0].get('fixture', {}).get('id')) == str($.get('provider-fixture-id')) and isinstance($.get('errors'), (list, dict)) and not $.get('errors') and $.get('results') == 1"
         home-team-id: "$.get('response', [])[0].get('teams', {}).get('home', {}).get('id') if isinstance($.get('response'), list) and len($.get('response')) == 1 else None"
@@ -80,7 +80,7 @@ workflow:
       inputs:
         fixture: "$.get('provider-fixture-id')"
       outputs:
-        events-envelope: "dict($.items())"
+        events-envelope: "$"
 
     - type: connector
       name: fetch-lineups
@@ -93,7 +93,7 @@ workflow:
       inputs:
         fixture: "$.get('provider-fixture-id')"
       outputs:
-        lineups-envelope: "dict($.items())"
+        lineups-envelope: "$"
 
     - type: connector
       name: fetch-team-statistics
@@ -106,7 +106,7 @@ workflow:
       inputs:
         fixture: "$.get('provider-fixture-id')"
       outputs:
-        team-statistics-envelope: "dict($.items())"
+        team-statistics-envelope: "$"
 
     - type: connector
       name: fetch-player-statistics
@@ -119,7 +119,7 @@ workflow:
       inputs:
         fixture: "$.get('provider-fixture-id')"
       outputs:
-        player-statistics-envelope: "dict($.items())"
+        player-statistics-envelope: "$"
 
     - type: connector
       name: fetch-head-to-head
@@ -133,7 +133,7 @@ workflow:
         h2h: "str($.get('home-team-id')) + '-' + str($.get('away-team-id'))"
         last: 5
       outputs:
-        head-to-head-envelope: "dict($.items())"
+        head-to-head-envelope: "$"
 
     - type: connector
       name: project-event-data

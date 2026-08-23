@@ -27,6 +27,8 @@ def load_yaml(relative_path):
 
 
 def evaluate(expression, context):
+    if expression.strip() == "$":
+        return context
     namespace = {"__builtins__": {}, **SAFE_BUILTINS, "context": context}
     expression = expression.replace("$.context", "context")
     expression = expression.replace("$.get", "response.get")
@@ -354,6 +356,49 @@ def test_successful_event_synchronization_reaches_event_data_enrichment():
             if item["name"] == "api-football-enrich-event-data"
         )
         assert evaluate(enrich["condition"], {"event-synchronize-status": status})
+
+
+def test_event_data_enrichment_snapshots_complete_provider_envelopes_safely():
+    workflow = load_yaml("api-football-enrich-event-data.yml")["workflow"]
+    envelope_outputs = {
+        "fetch-fixture": "fixture-envelope",
+        "fetch-events": "events-envelope",
+        "fetch-lineups": "lineups-envelope",
+        "fetch-team-statistics": "team-statistics-envelope",
+        "fetch-player-statistics": "player-statistics-envelope",
+        "fetch-head-to-head": "head-to-head-envelope",
+    }
+    payload = {
+        "get": "fixtures",
+        "parameters": {"fixture": "1390823"},
+        "errors": [],
+        "results": 1,
+        "paging": {"current": 1, "total": 1},
+        "response": [provider_fixture()],
+        "provider-extension": {"retained": True},
+    }
+
+    for task_name, output_name in envelope_outputs.items():
+        outputs = task(workflow, task_name)["outputs"]
+        assert "dict($.items())" not in outputs.values()
+        assert outputs[output_name] == "$"
+
+        envelope = evaluate(outputs[output_name], payload)
+        assert envelope == payload
+        assert set(envelope) >= {
+            "get",
+            "parameters",
+            "errors",
+            "results",
+            "paging",
+            "response",
+        }
+        assert isinstance(envelope["parameters"], dict)
+        assert isinstance(envelope["errors"], (list, dict))
+        assert isinstance(envelope["results"], int)
+        assert isinstance(envelope["paging"], dict)
+        assert isinstance(envelope["response"], list)
+        assert envelope["provider-extension"] == {"retained": True}
 
 
 def test_event_synchronize_rejects_provider_errors_and_malformed_payloads():
