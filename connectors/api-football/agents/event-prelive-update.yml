@@ -30,7 +30,7 @@ agent:
     # Workflow Event Data Enrichment
     - name: api-football-enrich-event-data
       description: API Football Event Data Enrichment
-      condition: "$.get('event-synchronize-status') == 'executed'"
+      condition: "$.get('event_exists') is True and $.get('event-synchronize-status') in ('executed', 'skipped')"
       inputs:
         event_document_id: $.get('event_document_id')
       outputs:
@@ -53,4 +53,3 @@ agent:
         event_document_id: $.get('event_document_id')
       outputs:
         event-update-status: $.get('workflow-status', False)
-

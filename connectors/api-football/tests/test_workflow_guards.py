@@ -359,7 +359,41 @@ def test_successful_event_synchronization_reaches_event_data_enrichment():
             for item in agent["workflows"]
             if item["name"] == "api-football-enrich-event-data"
         )
-        assert evaluate(enrich["condition"], {"event-synchronize-status": status})
+        assert evaluate(
+            enrich["condition"],
+            {"event_exists": True, "event-synchronize-status": status},
+        )
+
+
+def test_event_data_enrichment_requires_existing_event_and_completed_sync():
+    expected = (
+        "$.get('event_exists') is True and "
+        "$.get('event-synchronize-status') in ('executed', 'skipped')"
+    )
+    allowed = (
+        {"event_exists": True, "event-synchronize-status": "executed"},
+        {"event_exists": True, "event-synchronize-status": "skipped"},
+    )
+    blocked = (
+        {"event_exists": True, "event-synchronize-status": "failed"},
+        {"event_exists": True},
+        {"event-synchronize-status": "executed"},
+        {"event-synchronize-status": "skipped"},
+        {"event_exists": False, "event-synchronize-status": "executed"},
+        {"event_exists": False, "event-synchronize-status": "skipped"},
+    )
+
+    for path in ("agents/event-prelive-update.yml", "agents/event-live-update.yml"):
+        agent = load_yaml(path)["agent"]
+        enrich = next(
+            item
+            for item in agent["workflows"]
+            if item["name"] == "api-football-enrich-event-data"
+        )
+
+        assert enrich["condition"] == expected
+        assert all(evaluate(enrich["condition"], context) for context in allowed)
+        assert not any(evaluate(enrich["condition"], context) for context in blocked)
 
 
 def test_event_data_enrichment_snapshots_complete_provider_envelopes_safely():
