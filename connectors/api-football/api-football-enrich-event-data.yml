@@ -65,7 +65,7 @@ workflow:
       outputs:
         fixture-envelope: "$"
         fixture-response: "$.get('response', []) if isinstance($.get('response'), list) else []"
-        fixture-valid: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response')[0], dict) and isinstance($.get('response')[0].get('fixture'), dict) and str($.get('response')[0].get('fixture', {}).get('id')) == str($.get('provider-fixture-id')) and isinstance($.get('errors'), (list, dict)) and not $.get('errors') and $.get('results') == 1"
+        fixture-valid: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response')[0], dict) and isinstance($.get('response')[0].get('fixture'), dict) and str($.get('response')[0].get('fixture', {}).get('id')) == str($.context.get('provider-fixture-id')) and isinstance($.get('errors'), (list, dict)) and not $.get('errors') and $.get('results') == 1"
         home-team-id: "$.get('response', [])[0].get('teams', {}).get('home', {}).get('id') if isinstance($.get('response'), list) and len($.get('response')) == 1 else None"
         away-team-id: "$.get('response', [])[0].get('teams', {}).get('away', {}).get('id') if isinstance($.get('response'), list) and len($.get('response')) == 1 else None"
 

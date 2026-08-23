@@ -26,13 +26,17 @@ def load_yaml(relative_path):
     )
 
 
-def evaluate(expression, context):
+def evaluate(expression, response, workflow_context=None):
     if expression.strip() == "$":
-        return context
-    namespace = {"__builtins__": {}, **SAFE_BUILTINS, "context": context}
+        return response
+    namespace = {
+        "__builtins__": {},
+        **SAFE_BUILTINS,
+        "context": workflow_context if workflow_context is not None else response,
+    }
     expression = expression.replace("$.context", "context")
     expression = expression.replace("$.get", "response.get")
-    namespace["response"] = context
+    namespace["response"] = response
     return eval(expression, namespace, namespace)
 
 
@@ -399,6 +403,23 @@ def test_event_data_enrichment_snapshots_complete_provider_envelopes_safely():
         assert isinstance(envelope["paging"], dict)
         assert isinstance(envelope["response"], list)
         assert envelope["provider-extension"] == {"retained": True}
+
+
+def test_event_data_enrichment_validates_fixture_against_workflow_context():
+    workflow = load_yaml("api-football-enrich-event-data.yml")["workflow"]
+    fixture_valid = task(workflow, "fetch-fixture")["outputs"]["fixture-valid"]
+    response = {
+        "response": [provider_fixture(1557375)],
+        "errors": [],
+        "results": 1,
+    }
+
+    assert evaluate(
+        fixture_valid, response, {"provider-fixture-id": 1557375}
+    ) is True
+    assert evaluate(
+        fixture_valid, response, {"provider-fixture-id": 1557376}
+    ) is False
 
 
 def test_event_synchronize_rejects_provider_errors_and_malformed_payloads():
