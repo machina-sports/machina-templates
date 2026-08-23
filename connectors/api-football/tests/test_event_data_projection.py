@@ -6,6 +6,7 @@ from copy import deepcopy
 import importlib.util
 import json
 from pathlib import Path
+import re
 
 import yaml
 
@@ -45,6 +46,9 @@ REQUEST_CONTEXTS = {
     "player_statistics": {"fixture": "7001"},
     "head_to_head": {"h2h": "40-47", "last": 5},
 }
+LOCAL_URN_RE = re.compile(
+    r"^urn:machina:sports:[a-z][a-z0-9_-]*:x[0-9a-f]{32}$"
+)
 METADATA = {
     "source_event_document_id": "document-7001",
     "provider_fixture_id": "7001",
@@ -147,6 +151,56 @@ def contains_jsonld_type(value):
     if isinstance(value, list):
         return any(contains_jsonld_type(item) for item in value)
     return False
+
+
+def machina_urns(value):
+    if isinstance(value, dict):
+        for item in value.values():
+            yield from machina_urns(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from machina_urns(item)
+    elif isinstance(value, str) and value.startswith("urn:machina:sports:"):
+        yield value
+
+
+def test_local_urn_uses_canonical_provider_scoped_bytes_and_tuple_boundaries():
+    projector = load_projector()
+
+    api_football_id = projector._urn("action", "provider-event", "provider-action-a")
+    assert api_football_id == (
+        "urn:machina:sports:action:x192c7d20a468c4ac36233abd075a5df0"
+    )
+    assert projector._urn("participation", EVENT_CODE, HOME_TEAM_ID, 101) == (
+        "urn:machina:sports:participation:xab3d84005871fc26254872d7d93a1a27"
+    )
+    assert projector._urn("test", "a", "b\x1fc") != projector._urn(
+        "test", "a\x1fb", "c"
+    )
+    projector.PROVIDER = "other-provider"
+    assert projector._urn("action", "provider-event", "provider-action-a") != (
+        api_football_id
+    )
+
+
+def test_every_emitted_local_machina_urn_is_visibly_marked():
+    result = project()
+    durable_ids = {EVENT_CODE, HOME_TEAM_ID, AWAY_TEAM_ID}
+    emitted_urns = set(machina_urns(result["data"]["documents"]))
+    local_urns = emitted_urns - durable_ids
+
+    assert durable_ids <= emitted_urns
+    assert local_urns
+    assert all(LOCAL_URN_RE.fullmatch(value) for value in local_urns)
+    assert {value.split(":")[3] for value in local_urns} == {
+        "action",
+        "head-to-head-observation",
+        "lineup",
+        "participation",
+        "player-statistics",
+        "projection",
+        "team-statistics",
+    }
 
 
 def test_resolves_provider_fixture_id_from_one_matching_canonical_crosswalk_entry():

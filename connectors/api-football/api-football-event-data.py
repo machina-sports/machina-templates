@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import hashlib
+import json
 
 
 PROVIDER = "api-football"
@@ -59,9 +60,13 @@ def _text(value):
 
 
 def _urn(kind, *parts):
-    material = "\x1f".join(str(part) for part in parts)
+    material = json.dumps(
+        [PROVIDER, kind] + [str(part) for part in parts],
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
     digest = hashlib.blake2b(material.encode("utf-8"), digest_size=16).hexdigest()
-    return "urn:machina:sports:{0}:{1}".format(kind, digest)
+    return "urn:machina:sports:{0}:x{1}".format(kind, digest)
 
 
 def _result(status, message, **data):
@@ -339,7 +344,7 @@ def _project_actions(rows, identity, event_id):
             return None, error
         provider_event_id = _text(row.get("id"))
         action_id = (
-            _urn("action", PROVIDER, "provider-event", provider_event_id)
+            _urn("action", "provider-event", provider_event_id)
             if provider_event_id is not None
             else _urn("action", event_id, ordinal)
         )
