@@ -16,7 +16,7 @@ workflow:
     fixture: "$.get('fixture')"
     team: "$.get('team', None)"
   outputs:
-    workflow-status: "'executed'"
+    workflow-status: "'failed' if not $.get('provider-response-valid', False) or $.get('provider-errors', []) else ('executed' if $.get('players-count', 0) > 0 and len($.get('iptc_players_statistics', [])) > 0 else 'unavailable')"
   tasks:
 
     # iptc-api-football-id-conversion-mapping
@@ -42,15 +42,17 @@ workflow:
         fixture: "$.get('original_fixture_id', $.get('fixture'))"
         team: "$.get('team')"
       outputs:
-        fixtures-players-statistics: "$.get('response')"
-        players-count: "len($.get('response', []))"
+        provider-errors: "{str(key)[:100]: str(value)[:500] for key, value in list($.get('errors', {}).items())[:20]} if isinstance($.get('errors'), dict) else [str(item)[:500] for item in $.get('errors', [])[:20]] if isinstance($.get('errors'), list) else [str($.get('errors'))[:500]] if $.get('errors') else []"
+        provider-response-valid: "isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') == len($.get('response'))"
+        fixtures-players-statistics: "$.get('response', []) if isinstance($.get('response'), list) else []"
+        players-count: "len($.get('response', [])) if isinstance($.get('response'), list) else 0"
 
     # iptc-api-football-event-players-stats
     - type: mapping
       name: iptc-api-football-event-players-stats
       title: "Convert to IPTC Players Statistics"
       description: "Convert API Football players statistics to IPTC Soccer Statistics format"
-      condition: "len($.get('fixtures-players-statistics', [])) > 0"
+      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('fixtures-players-statistics', [])) > 0"
       inputs:
         fixtures_players_statistics: "$.get('fixtures-players-statistics', [])"
         fixture: "$.get('original_fixture_id', $.get('fixture'))"
@@ -62,7 +64,7 @@ workflow:
     - type: "document"
       name: "task-bulk-save-fixtures-players-statistics"
       description: "Bulk save the individual fixtures players statistics."
-      condition: "len($.get('fixtures-players-statistics', [])) > 0"
+      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('iptc_players_statistics', [])) > 0"
       config:
         action: "bulk-update"
         embed-selector: "$.get('title')"

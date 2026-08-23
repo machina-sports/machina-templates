@@ -450,7 +450,7 @@ Each row is a field path the consumer migration must cover. A consumer here is a
 | `connectors/api-football/sync-fixtures-events.yml` | workflow-or-mapping | `sport:label` | `iptc_events`, `iptc_schema_events`, `iptc_schema_ids` |
 | `connectors/api-football/sync-fixtures-players-statistics.yml` | workflow-or-mapping | — | `iptc_players`, `iptc_players_statistics`, `iptc_schema_events`, `iptc_schema_ids` |
 | `connectors/api-football/sync-fixtures-teams-statistics.yml` | workflow-or-mapping | `sport:participation`, `sport:participationBy` | `iptc_schema_events`, `iptc_schema_ids`, `iptc_teams`, `iptc_teams_statistics` |
-| `connectors/api-football/sync-fixtures.yml` | workflow-or-mapping | — | `sport_schema_event`, `sport_schema_events` |
+| `connectors/api-football/tests/test_event_data_projection.py` | test | — | `iptc_schema_events` |
 | `connectors/api-football/workflows/event-consumer-live.yml` | workflow-or-mapping | `schema:startDate`, `sport:competition`, `sport:status` | — |
 | `connectors/api-football/workflows/event-consumer-prelive.yml` | workflow-or-mapping | `schema:startDate`, `sport:competition`, `sport:status` | — |
 | `connectors/api-football/workflows/event-sync-markets.yml` | workflow-or-mapping | `schema:startDate` | `iptc_schema_events` |

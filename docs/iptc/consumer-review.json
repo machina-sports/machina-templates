@@ -1634,11 +1634,11 @@
     },
     {
       "repo": "machina-templates",
-      "path": "connectors/api-football/sync-fixtures.yml",
+      "path": "connectors/api-football/tests/test_event_data_projection.py",
       "category": "payload-key-read",
       "owner": "machina-templates:connectors/api-football",
-      "disposition": "migrate",
-      "evidence": "inventory.json consumers[kind=workflow-or-mapping].reads_payload_keys = `sport_schema_event`, `sport_schema_events` (2 keys) \u2014 legacy IPTC payload passed between workflow tasks. PR 3 action: repoint at the shared canonical seam and read `event_view` (PR3-CONSUMER-INVENTORY.md \u00a74 migration order, \u00a75 seam requirements)."
+      "disposition": "no-change",
+      "evidence": "inventory.json consumers[kind=test].reads_payload_keys = `iptc_schema_events` (1 key). The match is a negative assertion that `iptc_schema_events` is absent from the canonical resolver inputs, so this test already enforces the migrated contract and requires no consumer change."
     },
     {
       "repo": "machina-templates",

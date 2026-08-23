@@ -18,7 +18,7 @@ workflow:
     player: "$.get('player', None)"
     type: "$.get('type', None)"
   outputs:
-    workflow-status: "'executed'"
+    workflow-status: "'failed' if not $.get('provider-response-valid', False) or $.get('provider-errors', []) else ('executed' if $.get('events-count', 0) > 0 and len($.get('iptc_events', [])) == $.get('events-count', 0) else 'unavailable')"
   tasks:
 
     # iptc-api-football-id-conversion-mapping
@@ -46,15 +46,17 @@ workflow:
         player: "$.get('player')"
         type: "$.get('type')"
       outputs:
-        fixtures-events: "$.get('response')"
-        events-count: "len($.get('response', []))"
+        provider-errors: "{str(key)[:100]: str(value)[:500] for key, value in list($.get('errors', {}).items())[:20]} if isinstance($.get('errors'), dict) else [str(item)[:500] for item in $.get('errors', [])[:20]] if isinstance($.get('errors'), list) else [str($.get('errors'))[:500]] if $.get('errors') else []"
+        provider-response-valid: "isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') == len($.get('response'))"
+        fixtures-events: "$.get('response', []) if isinstance($.get('response'), list) else []"
+        events-count: "len($.get('response', [])) if isinstance($.get('response'), list) else 0"
 
     # iptc-api-football-events-mapping
     - type: mapping
       name: iptc-api-football-events-mapping
       title: "IPTC | API Football Events Mapping"
       description: "Convert API Football match events to IPTC format"
-      condition: "len($.get('fixtures-events', [])) > 0"
+      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('fixtures-events', [])) > 0"
       inputs:
         match_events: "$.get('fixtures-events', [])"
       outputs:
@@ -64,7 +66,7 @@ workflow:
     - type: "document"
       name: "task-bulk-save-fixtures-events"
       description: "Bulk save the individual fixtures events."
-      condition: "len($.get('fixtures-events', [])) > 0"
+      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('iptc_events', [])) == $.get('events-count', 0) and $.get('events-count', 0) > 0"
       config:
         action: "bulk-update"
         embed-selector: "$.get('title')"

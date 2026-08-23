@@ -15,7 +15,7 @@ workflow:
   inputs:
     fixture: "$.get('fixture')"
   outputs:
-    workflow-status: "'executed'"
+    workflow-status: "'failed' if not $.get('provider-response-valid', False) or $.get('provider-errors', []) else ('executed' if $.get('statistics-count', 0) > 0 and len($.get('iptc_teams_statistics', {}).get('sport:participation', [])) > 0 else 'unavailable')"
   tasks:
 
     # iptc-api-football-id-conversion-mapping
@@ -40,16 +40,19 @@ workflow:
       inputs:
         fixture: "$.get('original_fixture_id', $.get('fixture'))"
       outputs:
-        fixtures-statistics: "$.get('response')"
-        fixture-team-home-name: "$.get('response', {})[0].get('team', {}).get('name', 'Unknown')"
-        fixture-team-away-name: "$.get('response', {})[1].get('team', {}).get('name', 'Unknown')"
+        provider-errors: "{str(key)[:100]: str(value)[:500] for key, value in list($.get('errors', {}).items())[:20]} if isinstance($.get('errors'), dict) else [str(item)[:500] for item in $.get('errors', [])[:20]] if isinstance($.get('errors'), list) else [str($.get('errors'))[:500]] if $.get('errors') else []"
+        provider-response-valid: "isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') == len($.get('response'))"
+        fixtures-statistics: "$.get('response', []) if isinstance($.get('response'), list) else []"
+        statistics-count: "len($.get('response', [])) if isinstance($.get('response'), list) else 0"
+        fixture-team-home-name: "next((row.get('team', {}).get('name', 'Unknown') for index, row in enumerate($.get('response', [])) if index == 0 and isinstance(row, dict)), 'Unknown') if isinstance($.get('response'), list) else 'Unknown'"
+        fixture-team-away-name: "next((row.get('team', {}).get('name', 'Unknown') for index, row in enumerate($.get('response', [])) if index == 1 and isinstance(row, dict)), 'Unknown') if isinstance($.get('response'), list) else 'Unknown'"
 
     # iptc-api-football-event-teams-stats
     - type: mapping
       name: iptc-api-football-event-teams-stats
       title: "Convert to IPTC Event Teams Statistics"
       description: "Convert API Football statistics to IPTC Soccer Statistics format"
-      condition: "len($.get('fixtures-statistics', [])) > 0"
+      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('fixtures-statistics', [])) > 0"
       inputs:
         fixtures_statistics: "$.get('fixtures-statistics', [])"
         fixture: "$.get('original_fixture_id', $.get('fixture'))"
@@ -62,7 +65,7 @@ workflow:
     - type: "document"
       name: "task-bulk-save-fixtures-teams-statistics"
       description: "Bulk save the individual fixtures teams statistics."
-      condition: "len($.get('fixtures-statistics', [])) > 0"
+      condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('iptc_teams_statistics', {}).get('sport:participation', [])) > 0"
       config:
         action: "bulk-update"
         embed-selector: "$.get('title')"
