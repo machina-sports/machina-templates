@@ -40,14 +40,17 @@ workflow:
         event-code: "$.get('documents', [])[0].get('value', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id') if len($.get('documents', [])) == 1 else None"
         projection-observed-at: "$.get('observed_at', datetime.utcnow().isoformat() + 'Z')"
 
-    - type: mapping
+    - type: connector
       name: resolve-provider-fixture-id
-      description: "Resolve the exact API-Football fixture id from the synchronized event."
+      description: "Resolve exactly one API-Football fixture id from the canonical event crosswalk."
       condition: "$.get('event-exists', False)"
+      connector:
+        name: api-football-event-data
+        command: resolve_provider_fixture_id
       inputs:
-        iptc_schema_events: "[$.get('event-value', {})]"
+        event_document_value: "$.get('event-value', {})"
       outputs:
-        provider-fixture-id: "$.get('original_ids', [None])[0] if $.get('original_ids') else None"
+        provider-fixture-id: "$.get('provider_fixture_id')"
 
     - type: connector
       name: fetch-fixture

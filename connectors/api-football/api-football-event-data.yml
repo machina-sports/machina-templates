@@ -4,5 +4,7 @@ connector:
   filename: "api-football-event-data.py"
   filetype: "pyscript"
   commands:
+    - name: "Resolve one canonical event provider fixture ID"
+      value: "resolve_provider_fixture_id"
     - name: "Project one event data bundle"
       value: "project_event_data"

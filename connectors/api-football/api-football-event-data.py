@@ -68,6 +68,53 @@ def _result(status, message, **data):
     return {"status": status, "message": message, "data": data}
 
 
+def resolve_provider_fixture_id(request_data):
+    """Resolve one API-Football fixture ID from a canonical event document."""
+    params = _params(request_data)
+    event_value = params.get("event_document_value")
+    if not isinstance(event_value, dict):
+        return _result(False, "event_document_value must be an object")
+
+    canonical = event_value.get("machina_sports_schema")
+    if not isinstance(canonical, dict):
+        return _result(False, "canonical machina_sports_schema is required")
+    event_view = canonical.get("event_view")
+    event_id = _text(event_view.get("event_id")) if isinstance(event_view, dict) else None
+    if not event_id:
+        return _result(False, "canonical event_view.event_id is required")
+
+    provider_ids = canonical.get("provider_ids")
+    if not isinstance(provider_ids, list):
+        return _result(False, "canonical provider_ids crosswalk must be an array")
+    candidates = [
+        entry
+        for entry in provider_ids
+        if isinstance(entry, dict)
+        and entry.get("provider_namespace") == PROVIDER
+        and entry.get("entity_type") == "event"
+    ]
+    if len(candidates) != 1:
+        return _result(
+            False,
+            "canonical event must have exactly one api-football provider id",
+        )
+
+    candidate = candidates[0]
+    if _text(candidate.get("machina_id")) != event_id:
+        return _result(
+            False,
+            "api-football provider id must map to canonical event_view.event_id",
+        )
+    provider_fixture_id = _text(candidate.get("provider_id"))
+    if not provider_fixture_id:
+        return _result(False, "api-football event provider_id is required")
+    return _result(
+        True,
+        "API-Football fixture id resolved from canonical event crosswalk",
+        provider_fixture_id=provider_fixture_id,
+    )
+
+
 def _required_context(params):
     source_event_document_id = _text(params.get("source_event_document_id"))
     provider_fixture_id = _text(params.get("provider_fixture_id"))

@@ -99,6 +99,24 @@ def load_projector():
     return module
 
 
+def resolve_provider_fixture_id(event_value):
+    return load_projector().resolve_provider_fixture_id(
+        {"params": {"event_document_value": event_value}}
+    )
+
+
+def canonical_event_value(provider_ids=None):
+    return {
+        "@id": EVENT_CODE,
+        "machina_sports_schema": {
+            "event_view": {"event_id": EVENT_CODE},
+            "provider_ids": deepcopy(
+                METADATA["provider_ids"] if provider_ids is None else provider_ids
+            ),
+        },
+    }
+
+
 def project(payload=None, **overrides):
     source = deepcopy(payload or load_payload())
     fixture = source.pop("fixture")
@@ -129,6 +147,43 @@ def contains_jsonld_type(value):
     if isinstance(value, list):
         return any(contains_jsonld_type(item) for item in value)
     return False
+
+
+def test_resolves_provider_fixture_id_from_one_matching_canonical_crosswalk_entry():
+    result = resolve_provider_fixture_id(canonical_event_value())
+
+    assert result["status"] is True
+    assert result["data"]["provider_fixture_id"] == "7001"
+
+
+def test_missing_canonical_event_crosswalk_entry_fails_closed():
+    provider_ids = [
+        entry
+        for entry in METADATA["provider_ids"]
+        if entry["entity_type"] != "event"
+    ]
+    result = resolve_provider_fixture_id(canonical_event_value(provider_ids))
+
+    assert result["status"] is False
+    assert result["data"] == {}
+
+
+def test_duplicate_canonical_event_crosswalk_entries_fail_closed():
+    provider_ids = deepcopy(METADATA["provider_ids"])
+    provider_ids.append(deepcopy(provider_ids[0]))
+    result = resolve_provider_fixture_id(canonical_event_value(provider_ids))
+
+    assert result["status"] is False
+    assert result["data"] == {}
+
+
+def test_mismatched_canonical_event_crosswalk_entry_fails_closed():
+    provider_ids = deepcopy(METADATA["provider_ids"])
+    provider_ids[0]["machina_id"] = "urn:machina:sports:event:different"
+    result = resolve_provider_fixture_id(canonical_event_value(provider_ids))
+
+    assert result["status"] is False
+    assert result["data"] == {}
 
 
 def test_projects_stable_internal_documents_from_the_source_canonical_event():
@@ -341,8 +396,19 @@ def test_connector_workflow_installer_and_upsert_contracts():
 
     assert declaration["filename"] == "api-football-event-data.py"
     assert {command["value"] for command in declaration["commands"]} == {
-        "project_event_data"
+        "project_event_data",
+        "resolve_provider_fixture_id",
     }
+    resolver = tasks["resolve-provider-fixture-id"]
+    assert resolver["type"] == "connector"
+    assert resolver["connector"] == {
+        "name": "api-football-event-data",
+        "command": "resolve_provider_fixture_id",
+    }
+    assert resolver["inputs"] == {
+        "event_document_value": "$.get('event-value', {})"
+    }
+    assert "iptc_schema_events" not in resolver["inputs"]
     assert tasks["fetch-fixture"]["connector"]["command"] == "get-fixtures"
     assert tasks["fetch-events"]["connector"]["command"] == "get-fixtures/events"
     assert tasks["fetch-lineups"]["connector"]["command"] == "get-fixtures/lineups"
