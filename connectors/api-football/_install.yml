@@ -43,6 +43,9 @@ datasets:
     path: "api-football-roster.yml"
 
   - type: "connector"
+    path: "api-football-event-data.yml"
+
+  - type: "connector"
     path: "../machina-sports-canonical/machina-sports-canonical.yml"
 
   # test credentials
@@ -58,6 +61,9 @@ datasets:
 
   - type: "workflow"
     path: "enrich-event-roster.yml"
+
+  - type: "workflow"
+    path: "api-football-enrich-event-data.yml"
 
   - type: "workflow"
     path: "get-leagues.yml"

@@ -1,0 +1,215 @@
+workflow:
+  name: "api-football-enrich-event-data"
+  title: "API Football - Enrich Event Data"
+  description: |
+    Fetch and project one event's exact API-Football fixture, actions, lineups,
+    fixture team/player statistics, and five most recent exact-pair H2H fixtures.
+    The six provider calls are bounded and each unavailable endpoint is persisted
+    explicitly rather than represented as an available capability.
+  context-variables:
+    debugger:
+      enabled: false
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    event_document_id: "$.get('event_document_id')"
+  outputs:
+    workflow-status: "$.get('projection-workflow-status', 'failed') if $.get('projection-valid', False) and $.get('projections-saved', False) else 'failed'"
+    event_document_id: "$.get('event_document_id')"
+    requirements-unavailable: "$.get('requirements-unavailable', [])"
+    diagnostics: "$.get('projection-diagnostics', {})"
+  tasks:
+    - type: document
+      name: load-event
+      description: "Load the synchronized event and its canonical provider metadata."
+      condition: "$.get('event_document_id') is not None"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: "$.get('event_document_id')"
+      outputs:
+        event-exists: "len($.get('documents', [])) == 1"
+        event-value: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) == 1 else {}"
+        event-code: "$.get('documents', [])[0].get('metadata', {}).get('event_code') if len($.get('documents', [])) == 1 else None"
+
+    - type: mapping
+      name: resolve-provider-fixture-id
+      description: "Resolve the exact API-Football fixture id from the synchronized event."
+      condition: "$.get('event-exists', False)"
+      inputs:
+        iptc_schema_events: "[$.get('event-value', {})]"
+      outputs:
+        source-event-id: "$.get('original_ids', [None])[0] if $.get('original_ids') else None"
+
+    - type: connector
+      name: fetch-fixture
+      description: "Fetch exactly one fixture before any dependent endpoint calls."
+      condition: "$.get('source-event-id') is not None"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        id: "$.get('source-event-id')"
+      outputs:
+        fixture-envelope: "{'parameters': $.get('parameters', {'id': str($.get('source-event-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+        fixture-response: "$.get('response', []) if isinstance($.get('response'), list) else []"
+        fixture-valid: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response')[0], dict) and isinstance($.get('response')[0].get('fixture'), dict) and str($.get('response')[0].get('fixture', {}).get('id')) == str($.get('source-event-id')) and isinstance($.get('errors'), (list, dict)) and not $.get('errors') and $.get('results') == 1"
+        home-team-id: "$.get('response', [])[0].get('teams', {}).get('home', {}).get('id') if isinstance($.get('response'), list) and len($.get('response')) == 1 else None"
+        away-team-id: "$.get('response', [])[0].get('teams', {}).get('away', {}).get('id') if isinstance($.get('response'), list) and len($.get('response')) == 1 else None"
+
+    - type: connector
+      name: fetch-events
+      description: "Fetch fixture actions once."
+      condition: "$.get('fixture-valid', False)"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-fixtures/events
+      inputs:
+        fixture: "$.get('source-event-id')"
+      outputs:
+        events-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('source-event-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+
+    - type: connector
+      name: fetch-lineups
+      description: "Fetch actual fixture lineups once; squad rosters are not queried."
+      condition: "$.get('fixture-valid', False)"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-fixtures/lineups
+      inputs:
+        fixture: "$.get('source-event-id')"
+      outputs:
+        lineups-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('source-event-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+
+    - type: connector
+      name: fetch-team-statistics
+      description: "Fetch fixture team statistics once."
+      condition: "$.get('fixture-valid', False)"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-fixtures/statistics
+      inputs:
+        fixture: "$.get('source-event-id')"
+      outputs:
+        team-statistics-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('source-event-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+
+    - type: connector
+      name: fetch-player-statistics
+      description: "Fetch fixture player statistics once."
+      condition: "$.get('fixture-valid', False)"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-fixtures/players
+      inputs:
+        fixture: "$.get('source-event-id')"
+      outputs:
+        player-statistics-envelope: "{'parameters': $.get('parameters', {'fixture': str($.get('source-event-id'))}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+
+    - type: connector
+      name: fetch-head-to-head
+      description: "Fetch at most five H2H fixtures for the exact provider home-away pair."
+      condition: "$.get('fixture-valid', False) and $.get('home-team-id') is not None and $.get('away-team-id') is not None"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-fixtures/headtohead
+      inputs:
+        h2h: "str($.get('home-team-id')) + '-' + str($.get('away-team-id'))"
+        last: 5
+      outputs:
+        head-to-head-envelope: "{'parameters': $.get('parameters', {'h2h': str($.get('home-team-id')) + '-' + str($.get('away-team-id')), 'last': '5'}), 'errors': $.get('errors', []), 'results': $.get('results'), 'response': $.get('response')}"
+
+    - type: connector
+      name: project-event-data
+      description: "Validate exact identities and build the five stable typed documents."
+      condition: "$.get('fixture-valid', False)"
+      connector:
+        name: api-football-event-data
+        command: project_event_data
+      inputs:
+        fixture: "$.get('fixture-response', [])[0] if len($.get('fixture-response', [])) == 1 else {}"
+        events: "$.get('events-envelope')"
+        lineups: "$.get('lineups-envelope')"
+        team_statistics: "$.get('team-statistics-envelope')"
+        player_statistics: "$.get('player-statistics-envelope')"
+        head_to_head: "$.get('head-to-head-envelope')"
+        event_code: "$.get('event-code')"
+        source_event_id: "$.get('source-event-id')"
+        observed_at: "datetime.utcnow().isoformat() + 'Z'"
+        rights: "$.get('event-value', {}).get('machina_sports_schema', {}).get('rights', {})"
+        provenance: "$.get('event-value', {}).get('machina_sports_schema', {}).get('provenance', {})"
+      outputs:
+        projection-valid: "$.get('valid') is True"
+        projection-documents: "$.get('documents', [])"
+        projection-workflow-status: "$.get('workflow_status', 'failed')"
+        requirements-unavailable: "$.get('requirements_unavailable', [])"
+        projection-diagnostics: "$.get('diagnostics', {})"
+
+    - type: document
+      name: save-actions
+      description: "Bulk-upsert the event actions document by its stable event metadata."
+      condition: "$.get('projection-valid', False) and len($.get('projection-documents', [])) == 5"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'api-football-event-actions'"
+      documents:
+        items: "[{'metadata': item.get('metadata', {}), 'value': item.get('value', {})} for item in $.get('projection-documents', []) if item.get('name') == 'api-football-event-actions']"
+
+    - type: document
+      name: save-lineups
+      description: "Bulk-upsert the event lineups document by its stable event metadata."
+      condition: "$.get('projection-valid', False) and len($.get('projection-documents', [])) == 5"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'api-football-event-lineups'"
+      documents:
+        items: "[{'metadata': item.get('metadata', {}), 'value': item.get('value', {})} for item in $.get('projection-documents', []) if item.get('name') == 'api-football-event-lineups']"
+
+    - type: document
+      name: save-team-statistics
+      description: "Bulk-upsert the event team-statistics document by its stable event metadata."
+      condition: "$.get('projection-valid', False) and len($.get('projection-documents', [])) == 5"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'api-football-event-team-statistics'"
+      documents:
+        items: "[{'metadata': item.get('metadata', {}), 'value': item.get('value', {})} for item in $.get('projection-documents', []) if item.get('name') == 'api-football-event-team-statistics']"
+
+    - type: document
+      name: save-player-statistics
+      description: "Bulk-upsert the event player-statistics document by its stable event metadata."
+      condition: "$.get('projection-valid', False) and len($.get('projection-documents', [])) == 5"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'api-football-event-player-statistics'"
+      documents:
+        items: "[{'metadata': item.get('metadata', {}), 'value': item.get('value', {})} for item in $.get('projection-documents', []) if item.get('name') == 'api-football-event-player-statistics']"
+
+    - type: document
+      name: save-head-to-head
+      description: "Bulk-upsert the event H2H document by its stable event metadata."
+      condition: "$.get('projection-valid', False) and len($.get('projection-documents', [])) == 5"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'api-football-event-head-to-head'"
+      documents:
+        items: "[{'metadata': item.get('metadata', {}), 'value': item.get('value', {})} for item in $.get('projection-documents', []) if item.get('name') == 'api-football-event-head-to-head']"
+      outputs:
+        projections-saved: "True"

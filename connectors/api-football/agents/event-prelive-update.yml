@@ -27,6 +27,16 @@ agent:
       outputs:
         event-synchronize-status: $.get('workflow-status', False)
 
+    # Workflow Event Data Enrichment
+    - name: api-football-enrich-event-data
+      description: API Football Event Data Enrichment
+      condition: "$.get('event-synchronize-status') == 'executed'"
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-data-enrichment-status: $.get('workflow-status', 'failed')
+        event-data-requirements-unavailable: $.get('requirements-unavailable', [])
+
     # Workflow Event Sync Markets
     - name: api-football-event-sync-markets
       description: API Football Event Sync Markets
@@ -43,5 +53,4 @@ agent:
         event_document_id: $.get('event_document_id')
       outputs:
         event-update-status: $.get('workflow-status', False)
-
 

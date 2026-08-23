@@ -1,0 +1,112 @@
+{
+  "fixture": {
+    "fixture": {
+      "id": 7001,
+      "date": "2026-08-22T19:30:00+00:00",
+      "status": {"short": "1H", "elapsed": 31}
+    },
+    "league": {"id": 39, "name": "Premier League", "season": 2026},
+    "teams": {
+      "home": {"id": 40, "name": "Home FC"},
+      "away": {"id": 47, "name": "Away FC"}
+    },
+    "goals": {"home": 1, "away": 0}
+  },
+  "events": {
+    "parameters": {"fixture": "7001"},
+    "errors": [],
+    "results": 2,
+    "response": [
+      {
+        "time": {"elapsed": 25, "extra": null},
+        "team": {"id": 40, "name": "Home FC"},
+        "player": {"id": 101, "name": "H. Scorer"},
+        "assist": {"id": 102, "name": "H. Assist"},
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "comments": null
+      },
+      {
+        "time": {"elapsed": 25, "extra": null},
+        "team": {"id": 40, "name": "Home FC"},
+        "player": {"id": 101, "name": "H. Scorer"},
+        "assist": {"id": 102, "name": "H. Assist"},
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "comments": null
+      }
+    ]
+  },
+  "lineups": {
+    "parameters": {"fixture": "7001"},
+    "errors": [],
+    "results": 2,
+    "response": [
+      {
+        "team": {"id": 40, "name": "Home FC"},
+        "formation": "4-3-3",
+        "coach": {"id": 501, "name": "Home Coach"},
+        "startXI": [
+          {"player": {"id": 101, "name": "H. Scorer", "number": 9, "pos": "F", "grid": "3:2"}}
+        ],
+        "substitutes": [
+          {"player": {"id": 103, "name": "H. Bench", "number": 18, "pos": "M", "grid": null}}
+        ]
+      },
+      {
+        "team": {"id": 47, "name": "Away FC"},
+        "formation": "4-4-2",
+        "coach": {"id": 502, "name": "Away Coach"},
+        "startXI": [
+          {"player": {"id": 201, "name": "A. Starter", "number": 10, "pos": "F", "grid": "2:1"}}
+        ],
+        "substitutes": []
+      }
+    ]
+  },
+  "team_statistics": {
+    "parameters": {"fixture": "7001"},
+    "errors": [],
+    "results": 2,
+    "response": [
+      {"team": {"id": 40, "name": "Home FC"}, "statistics": [{"type": "Shots on Goal", "value": 3}]},
+      {"team": {"id": 47, "name": "Away FC"}, "statistics": [{"type": "Shots on Goal", "value": 1}]}
+    ]
+  },
+  "player_statistics": {
+    "parameters": {"fixture": "7001"},
+    "errors": [],
+    "results": 2,
+    "response": [
+      {
+        "team": {"id": 40, "name": "Home FC"},
+        "players": [
+          {"player": {"id": 101, "name": "H. Scorer"}, "statistics": [{"games": {"minutes": 31}, "goals": {"total": 1}}]}
+        ]
+      },
+      {
+        "team": {"id": 47, "name": "Away FC"},
+        "players": [
+          {"player": {"id": 201, "name": "A. Starter"}, "statistics": [{"games": {"minutes": 31}, "goals": {"total": 0}}]}
+        ]
+      }
+    ]
+  },
+  "head_to_head": {
+    "parameters": {"h2h": "40-47", "last": "5"},
+    "errors": [],
+    "results": 2,
+    "response": [
+      {
+        "fixture": {"id": 6001, "date": "2026-02-10T20:00:00+00:00", "status": {"short": "FT"}},
+        "teams": {"home": {"id": 40, "name": "Home FC"}, "away": {"id": 47, "name": "Away FC"}},
+        "goals": {"home": 2, "away": 1}
+      },
+      {
+        "fixture": {"id": 6002, "date": "2025-10-02T20:00:00+00:00", "status": {"short": "FT"}},
+        "teams": {"home": {"id": 47, "name": "Away FC"}, "away": {"id": 40, "name": "Home FC"}},
+        "goals": {"home": 0, "away": 0}
+      }
+    ]
+  }
+}
