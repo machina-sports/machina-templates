@@ -110,9 +110,15 @@ def resolve_provider_fixture_id(request_data):
             False,
             "api-football provider id must map to canonical event_view.event_id",
         )
-    provider_fixture_id = _text(candidate.get("provider_id"))
-    if not provider_fixture_id:
-        return _result(False, "api-football event provider_id is required")
+    raw_provider_fixture_id = candidate.get("provider_id")
+    if isinstance(raw_provider_fixture_id, bool):
+        return _result(False, "api-football event provider_id must be a positive integer")
+    try:
+        provider_fixture_id = int(raw_provider_fixture_id)
+    except (TypeError, ValueError):
+        return _result(False, "api-football event provider_id must be a positive integer")
+    if provider_fixture_id <= 0 or str(provider_fixture_id) != str(raw_provider_fixture_id):
+        return _result(False, "api-football event provider_id must be a positive integer")
     return _result(
         True,
         "API-Football fixture id resolved from canonical event crosswalk",

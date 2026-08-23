@@ -207,7 +207,18 @@ def test_resolves_provider_fixture_id_from_one_matching_canonical_crosswalk_entr
     result = resolve_provider_fixture_id(canonical_event_value())
 
     assert result["status"] is True
-    assert result["data"]["provider_fixture_id"] == "7001"
+    assert result["data"]["provider_fixture_id"] == 7001
+
+
+def test_non_integer_canonical_event_provider_id_fails_closed():
+    for provider_id in (EVENT_CODE, "7001.0", 0, -1, True):
+        provider_ids = deepcopy(METADATA["provider_ids"])
+        provider_ids[0]["provider_id"] = provider_id
+
+        result = resolve_provider_fixture_id(canonical_event_value(provider_ids))
+
+        assert result["status"] is False
+        assert result["data"] == {}
 
 
 def test_missing_canonical_event_crosswalk_entry_fails_closed():

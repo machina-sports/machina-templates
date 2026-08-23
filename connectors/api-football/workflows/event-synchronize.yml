@@ -34,34 +34,34 @@ workflow:
         event_exists: len($.get('documents', [])) > 0
         event_value: $.get('documents', [])[0].get('value', {}) if $.get('documents') else None
 
-    # iptc-api-football-id-conversion-mapping
-    - type: mapping
-      name: iptc-api-football-id-conversion-mapping
-      description: Convert IPTC URN IDs to original API Football IDs and preserve URN
+    # resolve-provider-fixture-id
+    - type: connector
+      name: resolve-provider-fixture-id
+      description: Resolve exactly one API-Football fixture id from the canonical event crosswalk.
       condition: $.get('event_exists') is True
+      connector:
+        name: api-football-event-data
+        command: resolve_provider_fixture_id
       inputs:
-        iptc_schema_events: |
-          [
-            $.get('event_value')
-          ]
+        event_document_value: $.get('event_value', {})
       outputs:
-        original_fixture_id: $.get('original_ids', [''])[0]
+        provider_fixture_id: $.get('provider_fixture_id')
 
     # fetch-fixture-details
     - type: connector
       name: fetch-fixture-details
       description: Get fixture details from API Football
-      condition: $.get('event_exists') is True
+      condition: $.get('provider_fixture_id') is not None
       connector:
         name: api-football
         command: get-fixtures
       inputs:
-        id: $.get('original_fixture_id')
+        id: $.get('provider_fixture_id')
       outputs:
         provider-errors: "{str(key)[:100]: str(value)[:500] for key, value in list($.get('errors', {}).items())[:20]} if isinstance($.get('errors'), dict) else [str(item)[:500] for item in $.get('errors', [])[:20]] if isinstance($.get('errors'), list) else [str($.get('errors'))[:500]] if $.get('errors') else []"
         provider-response-valid: "isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') in (0, 1) and $.get('results') == len($.get('response'))"
         fixture_data: "$.get('response', [])[0] if isinstance($.get('response'), list) and len($.get('response')) > 0 else {}"
-        fixture_exists: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response', [])[0], dict) and isinstance($.get('response', [])[0].get('fixture'), dict) and $.get('response', [])[0].get('fixture', {}).get('id') is not None and str($.get('response', [])[0].get('fixture', {}).get('id')) == str($.get('original_fixture_id'))"
+        fixture_exists: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response', [])[0], dict) and isinstance($.get('response', [])[0].get('fixture'), dict) and $.get('response', [])[0].get('fixture', {}).get('id') is not None and $.get('response', [])[0].get('fixture', {}).get('id') == $.get('provider_fixture_id')"
 
     # iptc-api-football-event-mapping
     - type: mapping

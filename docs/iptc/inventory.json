@@ -582,7 +582,6 @@
         "schema:startDate"
       ],
       "reads_payload_keys": [
-        "iptc_schema_events",
         "sport_schema_event",
         "sport_schema_events"
       ]

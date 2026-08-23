@@ -454,7 +454,7 @@ Each row is a field path the consumer migration must cover. A consumer here is a
 | `connectors/api-football/workflows/event-consumer-live.yml` | workflow-or-mapping | `schema:startDate`, `sport:competition`, `sport:status` | — |
 | `connectors/api-football/workflows/event-consumer-prelive.yml` | workflow-or-mapping | `schema:startDate`, `sport:competition`, `sport:status` | — |
 | `connectors/api-football/workflows/event-sync-markets.yml` | workflow-or-mapping | `schema:startDate` | `iptc_schema_events` |
-| `connectors/api-football/workflows/event-synchronize.yml` | workflow-or-mapping | `schema:startDate` | `iptc_schema_events`, `sport_schema_event`, `sport_schema_events` |
+| `connectors/api-football/workflows/event-synchronize.yml` | workflow-or-mapping | `schema:startDate` | `sport_schema_event`, `sport_schema_events` |
 | `connectors/api-football/workflows/event-update.yml` | workflow-or-mapping | `schema:startDate` | — |
 | `connectors/sportradar-mlb/sync-games.yml` | workflow-or-mapping | `schema:sportName`, `sport:competition`, `sport:homeScore`, `sport:score`, `sport:status` | `sport_schema_event`, `sport_schema_events` |
 | `connectors/sportradar-mlb/sync-pitchers.yml` | workflow-or-mapping | `sport:score`, `sport:status` | — |
