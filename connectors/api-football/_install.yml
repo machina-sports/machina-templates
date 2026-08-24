@@ -31,6 +31,9 @@ datasets:
     path: "agents/event-live-update.yml"
 
   - type: "agent"
+    path: "agents/event-postlive-update.yml"
+
+  - type: "agent"
     path: "agents/populate.yml"
 
   - type: "workflow"
@@ -103,3 +106,9 @@ datasets:
 
   - type: "workflow"
     path: "workflows/event-update.yml"
+
+  - type: "workflow"
+    path: "workflows/event-consumer-postlive.yml"
+
+  - type: "workflow"
+    path: "workflows/event-terminal-update.yml"

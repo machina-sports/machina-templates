@@ -5,6 +5,16 @@ agent:
   context:
     config-frequency: 0.1
     status: "inactive"
+  # Dual-format scheduling: see populate.yml for the rationale.
+  # NOTE: interval 6s x ~7 provider calls per tick requires a high API
+  # rate tier; pair activation with a gateway/phase-gate (see
+  # world-cup-intelligence coverage gateway) on rate-limited keys.
+  jobs:
+    - name: api-football-event-live-update-tick
+      enabled: true
+      type: agent
+      target: api-football-event-live-update
+      interval: 6
   context-agent:
     event_code: $.get('event_code')
   workflows:

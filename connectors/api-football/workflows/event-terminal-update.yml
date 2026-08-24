@@ -1,0 +1,100 @@
+workflow:
+
+  # api-football-event-terminal-update
+  name: api-football-event-terminal-update
+  title: API Football - Event Terminal Update
+  description: >
+    Workflow to close out the post-live reconciliation lane. Releases the
+    processing lock like api-football-event-update, and additionally decides
+    whether `version_control.finished` may be set.
+
+    `finished` is only ever set when the event's own status is one of the
+    provider terminal codes (FT, AET, PEN, CANC, ABD, AWD, WO) AND both the
+    final synchronize and the final enrichment actually ran to completion:
+    synchronize in ('executed', 'skipped') and enrichment in
+    ('executed', 'partial', 'unavailable') -- i.e. not 'failed'. 'partial'
+    and 'unavailable' are legitimate completions here, not failures: they
+    mean the enrichment workflow reached every endpoint and persisted an
+    explicit unavailable/partial capability record rather than fabricating
+    data (see api-football-event-data.py DOCUMENT_SPECS), which is exactly
+    what a cancelled or awarded-without-play fixture looks like.
+
+    On a hard failure (enrichment 'failed', or the claimed event's status
+    turning out not to be terminal after all) `finished` is deliberately
+    left unset so the lane retries -- a premature generic finished marker
+    has historically blocked recap generation, and that mistake is not
+    repeated here. Retries are bounded by
+    `version_control.terminal-retry-count`: once it would exceed
+    TERMINAL_RETRY_LIMIT (5), `version_control.terminal-retry-exhausted` is
+    set so api-football-event-consumer-postlive stops reclaiming the event.
+    `finished` is still never set in that case -- an exhausted retry means
+    the data genuinely could not be completed, not that it is safe to
+    consume, so the honest signal stays "not finished" rather than a false
+    "finished".
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    event_document_id: $.get('event_document_id')
+    event-synchronize-status: $.get('event-synchronize-status')
+    event-data-enrichment-status: $.get('event-data-enrichment-status')
+  outputs:
+    event_document_id: $.get('event_document_id')
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load-event-by-id
+    - type: document
+      name: load-event-by-id
+      description: Search event (api-football) by document id.
+      condition: $.get('event_document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        document_id: $.get('event_document_id')
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+
+    # version-control-update
+    # Every derived field below repeats the same three-part completion
+    # check (status is terminal, synchronize completed, enrichment did not
+    # fail) rather than factoring it into a shared variable, matching this
+    # connector's existing convention of repeating boundary conditions
+    # inline per field (see the five save-* task conditions in
+    # api-football-enrich-event-data.yml).
+    - type: document
+      name: version-control-update
+      description: Update the events document version control, setting `finished` only on a complete final refresh.
+      condition: $.get('event_exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {}),
+              'processing': False,
+              'finished': ($.get('event_value', {}).get('sport:status') in ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO'] and $.get('event-synchronize-status') in ('executed', 'skipped') and $.get('event-data-enrichment-status') in ('executed', 'partial', 'unavailable')) or $.get('event_value', {}).get('version_control', {}).get('finished', False),
+              'terminal-reconciled': ($.get('event_value', {}).get('sport:status') in ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO'] and $.get('event-synchronize-status') in ('executed', 'skipped') and $.get('event-data-enrichment-status') in ('executed', 'partial', 'unavailable')) or $.get('event_value', {}).get('version_control', {}).get('terminal-reconciled', False),
+              'terminal-reconciled-status': $.get('event-data-enrichment-status') if ($.get('event_value', {}).get('sport:status') in ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO'] and $.get('event-synchronize-status') in ('executed', 'skipped') and $.get('event-data-enrichment-status') in ('executed', 'partial', 'unavailable')) else ('retry-exhausted' if ($.get('event_value', {}).get('version_control', {}).get('terminal-retry-count', 0) + 1) >= 5 else 'pending-retry'),
+              'terminal-reconciled-timestamp': datetime.utcnow().isoformat(),
+              'terminal-retry-count': 0 if ($.get('event_value', {}).get('sport:status') in ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO'] and $.get('event-synchronize-status') in ('executed', 'skipped') and $.get('event-data-enrichment-status') in ('executed', 'partial', 'unavailable')) else $.get('event_value', {}).get('version_control', {}).get('terminal-retry-count', 0) + 1,
+              'terminal-retry-exhausted': (not ($.get('event_value', {}).get('sport:status') in ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO'] and $.get('event-synchronize-status') in ('executed', 'skipped') and $.get('event-data-enrichment-status') in ('executed', 'partial', 'unavailable'))) and ($.get('event_value', {}).get('version_control', {}).get('terminal-retry-count', 0) + 1) >= 5
+            }
+          }
