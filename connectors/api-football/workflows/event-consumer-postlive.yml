@@ -98,9 +98,16 @@ workflow:
               {'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=30)).isoformat()}},
               {'value.version_control.consumer-update-timestamp': {'$exists': False}},
             ]},
+            # Optional coverage allowlist: when no coverage config doc
+            # exists this MUST resolve to a match-all clause -- the
+            # runtime rejects any search whose authored filter resolves
+            # to None/empty ('Document search requires non-empty
+            # filters'), which silently disabled the whole claim.
+            ($.get('coverage-config-exists') and {'$or': [
+              {'value.sport:competition.@id': {'$in': $.get('coverage-events-postlive')}},
+              {'value.event_view.competition.id': {'$in': $.get('coverage-events-postlive')}},
+            ]} or {'_id': {'$exists': True}}),
           ]
-        value.sport:competition.@id: |
-          $.get('coverage-config-exists') and {'$in': $.get('coverage-events-postlive')} or None
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0
