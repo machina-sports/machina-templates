@@ -1,0 +1,143 @@
+workflow:
+
+  # api-football-event-consumer-postlive
+  name: api-football-event-consumer-postlive
+  title: API Football - Event Consumer (Post-Live / Terminal)
+  description: >
+    Workflow to claim events that have reached a provider terminal status
+    (FT, AET, PEN, CANC, ABD, AWD, WO) so a single guaranteed final refresh
+    can run before the event is marked finished. The live consumer's status
+    set excludes these terminal codes on purpose (it only claims in-progress
+    play), so without this lane a fixture can stop being polled the instant
+    it goes final and never receive its last score/timeline/statistics
+    refresh. Postponed (PST) is intentionally excluded: it denotes a
+    reschedule-pending state, not a final one, and can still return to
+    NS/live under the same status field.
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    event_code: $.get('event_code')
+  outputs:
+    event_document_id: $.get('event_document_id')
+    event_exists: $.get('event_exists')
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load-event-by-code
+    - type: document
+      name: load-event-by-code
+      description: Search event (api-football) by code.
+      condition: $.get('event_code') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: [["value.schema:startDate", 1]]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        metadata.event_code: $.get('event_code')
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+
+    # load soccer preview configuration
+    - type: document
+      name: coverage-soccer-preview-config
+      description: Load soccer preview configuration to control soccer preview execution
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'coverage-soccer-preview-config'"
+      outputs:
+        coverage-config-exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        coverage-events-postlive: $.get('documents', [])[0].get('value', {}).get('coverage-events-postlive', []) if len($.get('documents', [])) > 0 else []
+
+    # load event filtering by terminal events (FT, AET, PEN, CANC, ABD, AWD, WO)
+    # Window is startDate in [now-72h, now]: a terminal fixture has, by
+    # definition, already started, and 72h gives ample slack to catch
+    # finalizations the provider or the live lane reported late without
+    # letting the schedule query grow unbounded (compare live: +/-6h,
+    # prelive: -24h/+240h).
+    - type: document
+      name: load-event-by-schedule
+      description: Search for terminal schedule events (api-football).
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: [["value.version_control.consumer-update-timestamp", 1], ["value.schema:startDate", 1]]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=72)).isoformat(), '$lt': datetime.utcnow().isoformat()}"
+        value.sport:status: "{'$in': ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO']}"
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.processing: "{'$ne': True}"
+        value.version_control.terminal-retry-exhausted: "{'$ne': True}"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=30)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
+        value.sport:competition.@id: |
+          $.get('coverage-config-exists') and {'$in': $.get('coverage-events-postlive')} or None
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+
+    # load-stuck-events - safety mechanism to recover stuck terminal events.
+    # Scoped to the same terminal status set (and excludes retry-exhausted
+    # events) so a stuck lock left by another lane can never be reclaimed
+    # here and have this chain mark a still-live fixture finished.
+    - type: document
+      name: load-stuck-events
+      description: Find terminal events stuck in processing state for more than 5 minutes.
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: [["value.version_control.consumer-update-timestamp", 1]]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.sport:status: "{'$in': ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO']}"
+        value.version_control.processing: "True"
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.terminal-retry-exhausted: "{'$ne': True}"
+        updated: "{'$lt': datetime.utcnow() - timedelta(minutes=5)}"
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the events document version control.
+      condition: $.get('event_exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {}),
+              'processing': True,
+              'consumer-update-timestamp': datetime.utcnow().isoformat()
+            }
+          }
