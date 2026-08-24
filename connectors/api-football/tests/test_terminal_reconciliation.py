@@ -80,21 +80,37 @@ def task(workflow, name):
 # ---------------------------------------------------------------------------
 
 
+def _and_clauses(schedule):
+    """Evaluate the dual-shape $and claim filter into its clause list."""
+    namespace = {"__builtins__": {}, "datetime": datetime, "timedelta": timedelta}
+    clauses = raw_eval(schedule["filters"]["$and"], namespace)
+    assert isinstance(clauses, list) and len(clauses) == 3
+    return clauses
+
+
+def _clause_for(clauses, field):
+    for clause in clauses:
+        for branch in clause["$or"]:
+            if field in branch:
+                return clause["$or"]
+    raise AssertionError(f"no $or clause carries {field}")
+
+
 def test_consumer_postlive_claims_exactly_the_terminal_status_set():
     workflow = load_yaml("workflows/event-consumer-postlive.yml")["workflow"]
     schedule = task(workflow, "load-event-by-schedule")
     stuck = task(workflow, "load-stuck-events")
 
-    schedule_filter = raw_eval(
-        schedule["filters"]["value.sport:status"],
-        {"__builtins__": {}},
-    )
+    status_or = _clause_for(_and_clauses(schedule), "value.sport:status")
+    legacy = status_or[0]["value.sport:status"]
+    canonical = status_or[1]["value.event_view.status"]
     stuck_filter = raw_eval(
         stuck["filters"]["value.sport:status"],
         {"__builtins__": {}},
     )
 
-    assert schedule_filter == {"$in": TERMINAL_STATUSES}
+    assert legacy == {"$in": TERMINAL_STATUSES}
+    assert canonical == {"$in": ["closed", "cancelled", "abandoned", "awarded"]}
     assert stuck_filter == {"$in": TERMINAL_STATUSES}
     assert "PST" not in TERMINAL_STATUSES
     assert set(TERMINAL_STATUSES) == {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO"}
@@ -120,8 +136,10 @@ def test_consumer_postlive_schedule_window_is_bounded_to_the_recent_past():
     workflow = load_yaml("workflows/event-consumer-postlive.yml")["workflow"]
     schedule = task(workflow, "load-event-by-schedule")
 
-    namespace = {"__builtins__": {}, "datetime": datetime, "timedelta": timedelta}
-    window = raw_eval(schedule["filters"]["value.schema:startDate"], namespace)
+    window_or = _clause_for(_and_clauses(schedule), "value.schema:startDate")
+    window = window_or[0]["value.schema:startDate"]
+    canonical_window = window_or[1]["value.event_view.start_time"]
+    assert set(canonical_window) == set(window) == {"$gt", "$lt"}
 
     lower = datetime.fromisoformat(window["$gt"])
     upper = datetime.fromisoformat(window["$lt"])
@@ -144,8 +162,9 @@ def test_consumer_postlive_schedule_fairness_sort_and_or_clause():
         ["value.schema:startDate", 1],
     ]
 
-    namespace = {"__builtins__": {}, "datetime": datetime, "timedelta": timedelta}
-    fairness = raw_eval(schedule["filters"]["$or"], namespace)
+    fairness = _clause_for(
+        _and_clauses(schedule), "value.version_control.consumer-update-timestamp"
+    )
     assert fairness[1] == {
         "value.version_control.consumer-update-timestamp": {"$exists": False}
     }
@@ -372,3 +391,39 @@ def test_scheduled_agents_declare_dual_format_jobs():
         assert job["interval"] == interval
         assert job["interval"] == int(frequency * 60)
         assert job["name"] == f"{name}-tick"
+
+
+def test_all_consumers_claim_both_document_shapes():
+    """Prelive, live, and postlive claim filters must match both the legacy
+    IPTC shape (value.sport:status / value.schema:startDate) and the canonical
+    seam shape (value.event_view.status / value.event_view.start_time), since
+    canonical events only gain legacy fields after their first synchronize."""
+
+    expected_canonical = {
+        "event-consumer-prelive.yml": ["not_started"],
+        "event-consumer-live.yml": ["in_progress", "halftime", "suspended"],
+        "event-consumer-postlive.yml": ["closed", "cancelled", "abandoned", "awarded"],
+    }
+
+    for filename, canonical_statuses in expected_canonical.items():
+        workflow = load_yaml(f"workflows/{filename}")["workflow"]
+        schedule = task(workflow, "load-event-by-schedule")
+        clauses = _and_clauses(schedule)
+
+        status_or = _clause_for(clauses, "value.sport:status")
+        assert status_or[1]["value.event_view.status"] == {"$in": canonical_statuses}
+
+        window_or = _clause_for(clauses, "value.schema:startDate")
+        legacy_window = window_or[0]["value.schema:startDate"]
+        canonical_window = window_or[1]["value.event_view.start_time"]
+        # Both shapes carry the same window; the two utcnow() calls inside one
+        # expression differ by microseconds, so compare with tolerance.
+        assert set(canonical_window) == set(legacy_window)
+        for bound in canonical_window:
+            drift = abs(
+                datetime.fromisoformat(canonical_window[bound])
+                - datetime.fromisoformat(legacy_window[bound])
+            )
+            assert drift < timedelta(seconds=1)
+
+        _clause_for(clauses, "value.version_control.consumer-update-timestamp")

@@ -80,12 +80,25 @@ workflow:
         search-sorters: [["value.version_control.consumer-update-timestamp", 1], ["value.schema:startDate", 1]]
       filters:
         name: "{'$in': ['sport:Event']}"
-        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=72)).isoformat(), '$lt': datetime.utcnow().isoformat()}"
-        value.sport:status: "{'$in': ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO']}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
         value.version_control.terminal-retry-exhausted: "{'$ne': True}"
-        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=30)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
+        # Dual-shape claim: see event-consumer-prelive.yml for the rationale.
+        '$and': |
+          [
+            {'$or': [
+              {'value.schema:startDate': {'$gt': (datetime.utcnow() - timedelta(hours=72)).isoformat(), '$lt': datetime.utcnow().isoformat()}},
+              {'value.event_view.start_time': {'$gt': (datetime.utcnow() - timedelta(hours=72)).isoformat(), '$lt': datetime.utcnow().isoformat()}},
+            ]},
+            {'$or': [
+              {'value.sport:status': {'$in': ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO']}},
+              {'value.event_view.status': {'$in': ['closed', 'cancelled', 'abandoned', 'awarded']}},
+            ]},
+            {'$or': [
+              {'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=30)).isoformat()}},
+              {'value.version_control.consumer-update-timestamp': {'$exists': False}},
+            ]},
+          ]
         value.sport:competition.@id: |
           $.get('coverage-config-exists') and {'$in': $.get('coverage-events-postlive')} or None
       outputs:

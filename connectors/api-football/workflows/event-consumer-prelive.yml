@@ -66,11 +66,28 @@ workflow:
         search-sorters: [["value.version_control.consumer-update-timestamp", 1], ["value.schema:startDate", 1]]
       filters:
         name: "{'$in': ['sport:Event']}"
-        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=240)).isoformat()}"
-        value.sport:status: "{'$in': ['NS', 'TBD', 'not_started']}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
-        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
+        # Dual-shape claim: legacy IPTC docs carry value.schema:startDate /
+        # value.sport:status (provider short codes); canonical seam docs carry
+        # value.event_view.start_time / value.event_view.status instead, and
+        # only gain the legacy fields after their first synchronize. Claiming
+        # on either shape lets a freshly canonicalized event enter the lane.
+        '$and': |
+          [
+            {'$or': [
+              {'value.schema:startDate': {'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=240)).isoformat()}},
+              {'value.event_view.start_time': {'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=240)).isoformat()}},
+            ]},
+            {'$or': [
+              {'value.sport:status': {'$in': ['NS', 'TBD', 'not_started']}},
+              {'value.event_view.status': {'$in': ['not_started']}},
+            ]},
+            {'$or': [
+              {'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}},
+              {'value.version_control.consumer-update-timestamp': {'$exists': False}},
+            ]},
+          ]
         value.sport:competition.@id: |
           $.get('coverage-config-exists') and {'$in': $.get('coverage-events-prelive')} or None
       outputs:
