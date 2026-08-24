@@ -470,3 +470,41 @@ def test_all_consumers_coverage_allowlist_never_resolves_to_none():
             {"value.sport:competition.@id": {"$in": ["urn:x"]}},
             {"value.event_view.competition.id": {"$in": ["urn:x"]}},
         ]}
+
+
+def test_terminal_finished_gate_accepts_canonical_shape_events():
+    """The finished/reconciled gates must read the event status from BOTH
+    shapes: legacy value['sport:status'] and canonical
+    value['event_view']['status'] -- canonical docs (whose synchronize is
+    'skipped' and whose sport:status is None) were stuck on pending-retry
+    forever because the gate only read the legacy field."""
+
+    workflow = load_yaml("workflows/event-terminal-update.yml")["workflow"]
+    update = task(workflow, "version-control-update")
+    doc_expr = update["documents"]["sport:Event"]
+
+    def finished_for(event_value, sync="skipped", enrich="executed"):
+        ctx = {
+            "event_value": event_value,
+            "event-synchronize-status": sync,
+            "event-data-enrichment-status": enrich,
+        }
+        namespace = {
+            "__builtins__": {},
+            "datetime": datetime,
+            "timedelta": timedelta,
+            "ctx": ctx,
+        }
+        value = raw_eval(doc_expr.replace("$.get", "ctx.get"), namespace)
+        return value["version_control"]["finished"]
+
+    canonical = {"event_view": {"status": "closed"}, "version_control": {}}
+    legacy = {"sport:status": "FT", "version_control": {}}
+    canonical_word_legacy = {"sport:status": "closed", "version_control": {}}
+    not_terminal = {"event_view": {"status": "in_progress"}, "version_control": {}}
+
+    assert finished_for(canonical) is True
+    assert finished_for(legacy) is True
+    assert finished_for(canonical_word_legacy) is True
+    assert finished_for(not_terminal) is False
+    assert finished_for(canonical, enrich="failed") is False
