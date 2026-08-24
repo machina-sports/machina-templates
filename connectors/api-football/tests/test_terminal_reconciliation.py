@@ -80,11 +80,22 @@ def task(workflow, name):
 # ---------------------------------------------------------------------------
 
 
-def _and_clauses(schedule):
-    """Evaluate the dual-shape $and claim filter into its clause list."""
-    namespace = {"__builtins__": {}, "datetime": datetime, "timedelta": timedelta}
-    clauses = raw_eval(schedule["filters"]["$and"], namespace)
-    assert isinstance(clauses, list) and len(clauses) == 3
+def _and_clauses(schedule, ctx=None):
+    """Evaluate the dual-shape $and claim filter into its clause list.
+
+    `$.get(...)` is the workflow-context accessor; substitute a plain dict
+    (same convention as test_workflow_guards.py). Default context has no
+    coverage config, exercising the match-all fallback branch.
+    """
+    expression = schedule["filters"]["$and"].replace("$.get", "ctx.get")
+    namespace = {
+        "__builtins__": {},
+        "datetime": datetime,
+        "timedelta": timedelta,
+        "ctx": ctx or {"coverage-config-exists": False},
+    }
+    clauses = raw_eval(expression, namespace)
+    assert isinstance(clauses, list) and len(clauses) == 4
     return clauses
 
 
@@ -427,3 +438,32 @@ def test_all_consumers_claim_both_document_shapes():
             assert drift < timedelta(seconds=1)
 
         _clause_for(clauses, "value.version_control.consumer-update-timestamp")
+
+
+def test_all_consumers_coverage_allowlist_never_resolves_to_none():
+    """The optional coverage allowlist must resolve to a match-all clause
+    (not None) when no coverage config exists -- the runtime rejects any
+    search whose authored filter resolves to None/empty, which silently
+    disabled the whole claim query. With a config, both document shapes
+    must be allowlisted."""
+
+    for filename, lane in (
+        ("event-consumer-prelive.yml", "prelive"),
+        ("event-consumer-live.yml", "live"),
+        ("event-consumer-postlive.yml", "postlive"),
+    ):
+        workflow = load_yaml(f"workflows/{filename}")["workflow"]
+        schedule = task(workflow, "load-event-by-schedule")
+        assert "value.sport:competition.@id" not in schedule["filters"]
+
+        no_config = _and_clauses(schedule)[3]
+        assert no_config == {"_id": {"$exists": True}}
+
+        with_config = _and_clauses(
+            schedule,
+            {"coverage-config-exists": True, f"coverage-events-{lane}": ["urn:x"]},
+        )[3]
+        assert with_config == {"$or": [
+            {"value.sport:competition.@id": {"$in": ["urn:x"]}},
+            {"value.event_view.competition.id": {"$in": ["urn:x"]}},
+        ]}
