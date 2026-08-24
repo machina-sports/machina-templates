@@ -1,0 +1,68 @@
+agent:
+  name: api-football-event-postlive-update
+  title: API Football - Post-Live (Terminal Reconciliation)
+  description: >
+    Agent to run the single guaranteed final refresh for API Football events
+    that have reached a provider terminal status (FT, AET, PEN, CANC, ABD,
+    AWD, WO) and mark `version_control.finished` once that refresh actually
+    completes. The live agent's status set intentionally excludes these
+    terminal codes, so without this lane a fixture can go final and stop
+    being polled before its last score/timeline/statistics/lineups are
+    persisted. No market sync step is chained here: api-football-event-sync-
+    markets is a no-op today (the odds endpoint is commented out pending a
+    premium subscription) and post-match markets are not a recap dependency,
+    so chaining it would add a step with nothing to verify.
+  # Uses context.config-frequency (minutes) rather than a `jobs:` entry to
+  # match event-live-update.yml / event-prelive-update.yml exactly: both
+  # sibling agents inline a `workflows:` chain, and `jobs:` (see
+  # mkn-constructor/schemas/agent.md) dispatches a named skill/agent on a
+  # schedule instead of running an inline chain, so it is not a drop-in
+  # replacement here. If the deployed scheduler only activates agents that
+  # declare `jobs:` with `enabled: true`, this agent will need an
+  # additional `jobs:` entry (type: agent, target: this agent's name) added
+  # at deploy time -- see the open question in the implementation report.
+  context:
+    config-frequency: 1
+    status: "inactive"
+  context-agent:
+    event_code: $.get('event_code')
+  workflows:
+
+    # Workflow Event Consumer - Post-Live
+    - name: api-football-event-consumer-postlive
+      description: API Football Event Consumer (Post-Live / Terminal)
+      inputs:
+        event_code: $.get('event_code')
+      outputs:
+        event_document_id: $.get('event_document_id')
+        event_exists: $.get('event_exists')
+        event-consumer-status: $.get('workflow-status', False)
+
+    # Workflow Event Synchronize (final refresh)
+    - name: api-football-event-synchronize
+      description: API Football Event Synchronize
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-synchronize-status: $.get('workflow-status', False)
+
+    # Workflow Event Data Enrichment (final refresh)
+    - name: api-football-enrich-event-data
+      description: API Football Event Data Enrichment
+      condition: "$.get('event_exists') is True and $.get('event-synchronize-status') in ('executed', 'skipped')"
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-data-enrichment-status: $.get('workflow-status', 'failed')
+        event-data-requirements-unavailable: $.get('requirements-unavailable', [])
+
+    # Workflow Event Terminal Update
+    - name: api-football-event-terminal-update
+      description: API Football Event Terminal Update
+      condition: $.get('event_exists') is True
+      inputs:
+        event_document_id: $.get('event_document_id')
+        event-synchronize-status: $.get('event-synchronize-status')
+        event-data-enrichment-status: $.get('event-data-enrichment-status')
+      outputs:
+        event-terminal-update-status: $.get('workflow-status', False)
