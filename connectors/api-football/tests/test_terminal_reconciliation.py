@@ -33,7 +33,9 @@ SAFE_BUILTINS = {
 # (AWD, WO). PST (postponed) is deliberately excluded -- it denotes a
 # reschedule-pending state, not a final one, and the same fixture can still
 # return to NS/live under the same `sport:status` field.
-TERMINAL_STATUSES = ["FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO"]
+# Provider short codes plus the canonical words older sync eras stored
+# verbatim in value.sport:status (e.g. "closed" on 2026-08-22 documents).
+TERMINAL_STATUSES = ["FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "closed", "cancelled", "abandoned", "awarded"]
 
 
 def load_yaml(relative_path):
@@ -124,7 +126,8 @@ def test_consumer_postlive_claims_exactly_the_terminal_status_set():
     assert canonical == {"$in": ["closed", "cancelled", "abandoned", "awarded"]}
     assert stuck_filter == {"$in": TERMINAL_STATUSES}
     assert "PST" not in TERMINAL_STATUSES
-    assert set(TERMINAL_STATUSES) == {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO"}
+    assert "postponed" not in TERMINAL_STATUSES
+    assert set(TERMINAL_STATUSES) == {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "closed", "cancelled", "abandoned", "awarded"}
 
 
 def test_consumer_postlive_schedule_claim_guards_finished_processing_and_exhausted():

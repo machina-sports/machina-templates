@@ -91,7 +91,7 @@ workflow:
               {'value.event_view.start_time': {'$gt': (datetime.utcnow() - timedelta(hours=72)).isoformat(), '$lt': datetime.utcnow().isoformat()}},
             ]},
             {'$or': [
-              {'value.sport:status': {'$in': ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO']}},
+              {'value.sport:status': {'$in': ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO', 'closed', 'cancelled', 'abandoned', 'awarded']}},
               {'value.event_view.status': {'$in': ['closed', 'cancelled', 'abandoned', 'awarded']}},
             ]},
             {'$or': [
@@ -129,7 +129,7 @@ workflow:
         search-sorters: [["value.version_control.consumer-update-timestamp", 1]]
       filters:
         name: "{'$in': ['sport:Event']}"
-        value.sport:status: "{'$in': ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO']}"
+        value.sport:status: "{'$in': ['FT', 'AET', 'PEN', 'CANC', 'ABD', 'AWD', 'WO', 'closed', 'cancelled', 'abandoned', 'awarded']}"
         value.version_control.processing: "True"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.terminal-retry-exhausted: "{'$ne': True}"
