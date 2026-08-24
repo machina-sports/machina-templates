@@ -12,18 +12,21 @@ agent:
     markets is a no-op today (the odds endpoint is commented out pending a
     premium subscription) and post-match markets are not a recap dependency,
     so chaining it would add a step with nothing to verify.
-  # Uses context.config-frequency (minutes) rather than a `jobs:` entry to
-  # match event-live-update.yml / event-prelive-update.yml exactly: both
-  # sibling agents inline a `workflows:` chain, and `jobs:` (see
-  # mkn-constructor/schemas/agent.md) dispatches a named skill/agent on a
-  # schedule instead of running an inline chain, so it is not a drop-in
-  # replacement here. If the deployed scheduler only activates agents that
-  # declare `jobs:` with `enabled: true`, this agent will need an
-  # additional `jobs:` entry (type: agent, target: this agent's name) added
-  # at deploy time -- see the open question in the implementation report.
   context:
     config-frequency: 1
     status: "inactive"
+  # Dual-format scheduling: `jobs:` drives the current jobs-only scheduler
+  # (a `type: agent` job self-targets this agent, so the inline workflows
+  # chain runs via agent_executor); `config-frequency` remains for older
+  # three-lane runtimes, whose legacy lane skips agents that declare jobs[].
+  # Activation stays a single switch: the scheduler scans
+  # {status: active, jobs.enabled: true}, so flip top-level status only.
+  jobs:
+    - name: api-football-event-postlive-update-tick
+      enabled: true
+      type: agent
+      target: api-football-event-postlive-update
+      interval: 60
   context-agent:
     event_code: $.get('event_code')
   workflows:

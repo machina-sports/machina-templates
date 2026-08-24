@@ -6,6 +6,18 @@ agent:
   context:
     config-frequency: 360
     status: "inactive"
+  # Dual-format scheduling: `jobs:` drives the current jobs-only scheduler
+  # (a `type: agent` job self-targets this agent, so the inline workflows
+  # chain runs via agent_executor); `config-frequency` remains for older
+  # three-lane runtimes, whose legacy lane skips agents that declare jobs[].
+  # Activation stays a single switch: the scheduler scans
+  # {status: active, jobs.enabled: true}, so flip top-level status only.
+  jobs:
+    - name: api-football-populate-tick
+      enabled: true
+      type: agent
+      target: api-football-populate
+      interval: 21600
   workflows:
   
     # Load leagues configuration

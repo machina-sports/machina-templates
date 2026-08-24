@@ -337,3 +337,38 @@ def test_install_registers_the_postlive_agent_and_its_workflows():
     assert "agents/event-postlive-update.yml" in paths
     assert "workflows/event-consumer-postlive.yml" in paths
     assert "workflows/event-terminal-update.yml" in paths
+
+
+# --- Dual-format scheduling (jobs[] + legacy config-frequency) ---------------
+
+SCHEDULED_AGENTS = {
+    "populate.yml": ("api-football-populate", 360, 21600),
+    "event-prelive-update.yml": ("api-football-event-prelive-update", 0.5, 30),
+    "event-live-update.yml": ("api-football-event-live-update", 0.1, 6),
+    "event-postlive-update.yml": ("api-football-event-postlive-update", 1, 60),
+}
+
+
+def test_scheduled_agents_declare_dual_format_jobs():
+    """Every scheduled api-football agent carries a self-targeting jobs[]
+    entry for the jobs-only scheduler, with an interval consistent with its
+    legacy config-frequency (minutes * 60), and keeps config-frequency for
+    older three-lane runtimes (whose legacy lane skips jobs[] agents)."""
+
+    for filename, (name, frequency, interval) in SCHEDULED_AGENTS.items():
+        agent = yaml.safe_load(
+            (CONNECTOR_ROOT / "agents" / filename).read_text(encoding="utf-8")
+        )["agent"]
+        assert agent["name"] == name
+        assert agent["context"]["config-frequency"] == frequency
+        assert agent["context"]["status"] == "inactive"
+
+        jobs = agent["jobs"]
+        assert len(jobs) == 1
+        job = jobs[0]
+        assert job["type"] == "agent"
+        assert job["target"] == name
+        assert job["enabled"] is True
+        assert job["interval"] == interval
+        assert job["interval"] == int(frequency * 60)
+        assert job["name"] == f"{name}-tick"

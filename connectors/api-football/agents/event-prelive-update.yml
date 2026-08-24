@@ -5,6 +5,13 @@ agent:
   context:
     config-frequency: 0.5
     status: "inactive"
+  # Dual-format scheduling: see populate.yml for the rationale.
+  jobs:
+    - name: api-football-event-prelive-update-tick
+      enabled: true
+      type: agent
+      target: api-football-event-prelive-update
+      interval: 30
   context-agent:
     event_code: $.get('event_code')
   workflows:
