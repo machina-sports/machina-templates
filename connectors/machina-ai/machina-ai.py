@@ -153,6 +153,23 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "search_answer": {"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"},
         "transcription": {"provider": "google_speech", "model": "latest_long"},
     },
+    # What each profile is for, in the router's own words. A workflow names an
+    # intent ("social_pulse") and never a vendor, so swapping the model behind an
+    # intent is a router change rather than an edit to every workflow that uses
+    # it. Kept beside the routes so the two cannot drift.
+    "profile_intents": {
+        "default": "General prompting where nothing else applies.",
+        "balanced": "Everyday generation: reasonable quality at reasonable cost.",
+        "quality": "Highest fidelity, when the answer is worth the latency.",
+        "cheap": "High volume, low stakes.",
+        "long_context": "Inputs too large for the everyday route.",
+        "fast": "Lowest latency, for interactive surfaces.",
+        "private_runtime": "Must run inside a private runtime.",
+        "open_source": "Open-weight models only.",
+        "multimodal": "Inputs beyond text.",
+        "social_pulse": "What the public is saying right now, paraphrased in aggregate. Live social retrieval, never verbatim quotes.",
+        "live_search": "Facts that change between crawls: news, announcements, breaking events. Returns citations.",
+    },
     "profiles": {
         "default": {
             "chat": [{"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"}],
@@ -179,6 +196,25 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "private_runtime": {"chat": [{"provider": "nvidia_nim"}]},
         "open_source": {"chat": [{"provider": "nvidia_nim"}]},
         "multimodal": {},
+        # xAI leads these two because live social and web retrieval is what it is
+        # for; Vertex follows so an absent XAI credential costs recency, not the
+        # whole run.
+        "social_pulse": {
+            "search_answer": [
+                {"provider": "xai", "model": "grok-4-fast"},
+                {"provider": "vertex_ai", "model": "gemini-3.7-flash"},
+            ],
+            "chat": [
+                {"provider": "xai", "model": "grok-4-fast"},
+                {"provider": "vertex_ai", "model": "gemini-3.7-flash"},
+            ],
+        },
+        "live_search": {
+            "search_answer": [
+                {"provider": "xai", "model": "grok-4-fast"},
+                {"provider": "vertex_ai", "model": "gemini-3.7-flash"},
+            ],
+        },
     },
     "remaps": {"families": {}, "capabilities": {}, "profiles": {}},
     "fallbacks": {
@@ -283,11 +319,20 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "allowed_models": {"chat": ["gpt-oss-120b", "gemma-4-31b"]},
         },
         "xai": {
-            "enabled": False,
+            # Ships enabled but credential-gated: with no XAI key present the
+            # route fails typed credential_missing and the profile falls through
+            # to its Vertex entry, so enabling this cannot break a tenant that
+            # has not bought xAI.
+            "enabled": True,
             "adapter": "xai",
+            "require_credential": True,
             "credential_env": "TEMP_CONTEXT_VARIABLE_XAI_API_KEY",
+            "credential_env_aliases": ["MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"],
             "endpoint": "https://api.x.ai/v1",
-            "allowed_models": {"chat": [], "search_answer": []},
+            "allowed_models": {
+                "chat": ["grok-4-fast", "grok-4-latest"],
+                "search_answer": ["grok-4-fast", "grok-4-latest"],
+            },
         },
         "perplexity": {
             "enabled": False,
@@ -2032,7 +2077,27 @@ class Router:
                     "models": {key: list(models) for key, models in allowed_models.items() if models},
                 })
         message = "Allowed models listed." if request.command == "list_models" else "Router health evaluated."
-        return self._success(entries, message, self._metadata(request, started))
+        extra: Dict[str, Any] = {}
+        if request.command == "list_models":
+            # The intent map travels in metadata, not in data: `data` is a list
+            # of models and a caller iterating it should not have to guard
+            # against entries of a second shape. A caller picking a profile can
+            # still read what each one is for without going to the source,
+            # which is how "fast" ends up used for a job that needed "quality".
+            intents = _as_dict(self.config.get("profile_intents"))
+            profiles = _as_dict(self.config.get("profiles"))
+            # Only profiles that actually route are advertised. "multimodal"
+            # ships as an empty placeholder for per-environment override, and
+            # publishing it as a usable intent would be a promise the router
+            # cannot keep.
+            published = []
+            for name, description in intents.items():
+                capabilities = sorted(_as_dict(profiles.get(name)).keys())
+                if not capabilities:
+                    continue
+                published.append({"profile": name, "intent": description, "capabilities": capabilities})
+            extra["profiles"] = published
+        return self._success(entries, message, self._metadata(request, started, **extra))
 
     def _execute_adapter(self, adapter: ProviderAdapter, route: Route, request: NormalizedRequest) -> AdapterResult:
         if request.capability == "chat":

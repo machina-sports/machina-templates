@@ -242,9 +242,38 @@ class TestRoutingAndReceipts:
         assert result["status"] is True
         providers = {item["provider"] for item in result["data"]}
         # groq and google_speech ship enabled (env-only credentials) for no-regression.
-        assert providers == {"vertex_ai", "groq", "google_speech"}
+        # xai ships enabled but require_credential, so a tenant without an XAI key
+        # gets a typed credential_missing and falls through to the profile's
+        # Vertex entry rather than losing the run.
+        assert providers == {"vertex_ai", "groq", "google_speech", "xai"}
         assert "openai" not in providers
         assert all(item["enabled"] for item in result["data"])
+
+    def test_list_models_publishes_what_each_profile_is_for(self):
+        result = router.list_models({"_runtime": FakeRuntime()})
+        profiles = {item["profile"]: item for item in result["metadata"]["profiles"]}
+
+        # The intent map travels in metadata so `data` stays a list of models
+        # and callers iterating it never meet a second entry shape.
+        assert not any("profile" in item for item in result["data"])
+        assert "social_pulse" in profiles
+        assert "live_search" in profiles
+        assert "paraphrased" in profiles["social_pulse"]["intent"]
+        assert "search_answer" in profiles["social_pulse"]["capabilities"]
+        # Every advertised profile has to actually route somewhere; an intent
+        # with no routes is a promise the router cannot keep, so it is not
+        # published at all.
+        for name, entry in profiles.items():
+            assert entry["capabilities"], f"profile {name} advertises no routes"
+        assert "multimodal" not in profiles
+
+    def test_social_profiles_fall_back_to_vertex(self):
+        # An absent XAI credential must cost recency, not the whole workflow.
+        config = router.DEFAULT_CONFIG
+        for name in ("social_pulse", "live_search"):
+            routes = config["profiles"][name]["search_answer"]
+            assert routes[0]["provider"] == "xai"
+            assert routes[-1]["provider"] == "vertex_ai"
 
     def test_health_is_local_and_structured(self):
         result = router.health({"_runtime": FakeRuntime()})
