@@ -194,9 +194,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "project_env": "TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID",
             "location": "global",
             "allowed_models": {
-                "chat": ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"],
+                "chat": ["gemini-3.7-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"],
                 "embedding": ["text-embedding-004"],
-                "search_answer": ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"],
+                "search_answer": ["gemini-3.7-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"],
                 "image": [],
                 "video": [],
                 "tts": [],
