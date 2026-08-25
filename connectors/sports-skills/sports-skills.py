@@ -374,9 +374,16 @@ def invoke_markets(request_data):
 
 
 def invoke_metadata(request_data):
-    """Team / league metadata helpers.
+    """Team / player metadata helpers.
 
-    Commands: get_team_logo.
+    Commands: search_players, search_teams, get_player_photo, get_team_info,
+    get_team_logo.
+
+    `search_players` is the one to reach for when you have a name but no
+    provider id — it returns identity, team, position, nationality and photo
+    URLs. Note the `player_id` it returns is a TheSportsDB id, which is a
+    DIFFERENT id space from the ESPN athlete ids the stats modules expect: use
+    it for identity and imagery, never as a player_id in a stats call.
     """
     return _dispatch("metadata", request_data)
 
@@ -410,23 +417,87 @@ def invoke_sports_skills(request_data):
         # Fall back to CBB (College Basketball)
         return _dispatch("cbb", request_data)
 
-    # 2. Standard resolution
+    # 2. Standard resolution.
+    #
+    # Every branch is explicit and the fallthrough REFUSES. This used to end in
+    # `else: module_name = "nfl"`, which meant any sport or league the table did
+    # not name was sent to the NFL module. That is not a harmless default: a
+    # college football player with a valid ESPN athlete id gets
+    # "HTTP 404 ... No stats found" from the NFL endpoint, and because callers
+    # set continue_on_error on this task, the 404 is indistinguishable from
+    # "this athlete has no provider id". The caller silently falls back to web
+    # search and nobody sees an error. Reported as issue #343 with a
+    # reproduction: nfl.get_player_stats(player_id="5079720") returns
+    # status False while cfb.get_player_stats on the same id returns real data.
+    #
+    # The same fallthrough meant `volleyball`, `xctf`, `cbb`, `nhl`, `tennis`
+    # and `golf` were unreachable through this dispatcher even though the
+    # connector exposes invoke_* commands for all of them.
+    college_football = league in ("CFB", "NCAAF", "NCAA-FB", "COLLEGE FOOTBALL")
+    college_basketball = league in ("CBB", "NCAAB", "NCAAM", "NCAAW", "COLLEGE BASKETBALL")
+
     if sport == "soccer" or (sport == "football" and league in ["MLS", "LALIGA", "PREMIER LEAGUE", "NWSL"]):
         module_name = "football"
         default_command = "get_player_profile"
+    elif college_football:
+        module_name = "cfb"
+        default_command = "get_player_stats"
+    elif college_basketball:
+        module_name = "cbb"
+        default_command = "get_player_stats"
     elif league == "NBA":
         module_name = "nba"
         default_command = "get_player_stats"
     elif league == "WNBA":
         module_name = "wnba"
         default_command = "get_player_stats"
+    elif league == "NFL" or sport in ("american-football", "american_football"):
+        module_name = "nfl"
+        default_command = "get_player_stats"
     elif sport == "baseball":
         module_name = "mlb"
         default_command = "get_player_stats"
-    else:
-        # Default to NFL
-        module_name = "nfl"
+    elif sport in ("hockey", "ice-hockey", "ice_hockey") or league == "NHL":
+        module_name = "nhl"
         default_command = "get_player_stats"
+    elif sport == "volleyball":
+        module_name = "volleyball"
+        default_command = "get_player_stats"
+    elif sport in ("track_and_field", "track-and-field", "athletics", "cross_country", "cross-country"):
+        module_name = "xctf"
+        default_command = "get_player_stats"
+    elif sport == "tennis":
+        module_name = "tennis"
+        default_command = "get_player_stats"
+    elif sport == "golf":
+        module_name = "golf"
+        default_command = "get_player_stats"
+    elif sport in ("f1", "formula1", "formula-1", "motorsport"):
+        module_name = "f1"
+        default_command = "get_driver_standings"
+    elif sport == "football":
+        # Bare "football" with no league is ambiguous between American football
+        # and soccer. Guessing either way is how a wrong-module 404 gets
+        # mistaken for missing data, so say what is missing instead.
+        return {
+            "status": False,
+            "message": (
+                "invoke_sports_skills: sport='football' is ambiguous without a league. "
+                "Pass league='NFL' or 'CFB' for American football, or sport='soccer' "
+                "(or league='MLS'/'NWSL'/'LALIGA'/'PREMIER LEAGUE') for association football."
+            ),
+        }
+    else:
+        return {
+            "status": False,
+            "message": (
+                "invoke_sports_skills: no sports-skills module matches "
+                "sport={0!r} league={1!r}. Call the specific invoke_<module> command "
+                "directly, or add a branch here. Refusing rather than defaulting, "
+                "because a wrong-module call returns an upstream 404 that reads "
+                "exactly like 'no data for this athlete'."
+            ).format(sport or None, league or None),
+        }
 
     # Inject resolved default command if not already provided
     if "command" not in params or not params.get("command"):
