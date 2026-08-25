@@ -218,17 +218,17 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         # whole run.
         "social_pulse": {
             "search_answer": [
-                {"provider": "xai", "model": "grok-4.3"},
+                {"provider": "xai", "model": "grok-4.6"},
                 {"provider": "vertex_ai", "model": "gemini-3.7-flash"},
             ],
             "chat": [
-                {"provider": "xai", "model": "grok-4.3"},
+                {"provider": "xai", "model": "grok-4.6"},
                 {"provider": "vertex_ai", "model": "gemini-3.7-flash"},
             ],
         },
         "live_search": {
             "search_answer": [
-                {"provider": "xai", "model": "grok-4.3"},
+                {"provider": "xai", "model": "grok-4.6"},
                 {"provider": "vertex_ai", "model": "gemini-3.7-flash"},
             ],
         },
@@ -347,11 +347,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "credential_env_aliases": ["MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"],
             "endpoint": "https://api.x.ai/v1",
             "allowed_models": {
-                # grok-4.3 first because it is the model this tenant's shipped
-                # fan-sentiment workflow already calls successfully; the -fast
-                # and -latest aliases stay allowed but are not the default.
-                "chat": ["grok-4.3", "grok-4-fast", "grok-4-latest"],
-                "search_answer": ["grok-4.3", "grok-4-fast", "grok-4-latest"],
+                # grok-4.6 is the model xAI documents for the Agent Tools API
+                # that `invoke_search` calls; the older ids stay allowed so a
+                # workflow pinning one keeps working.
+                "chat": ["grok-4.6", "grok-4-fast", "grok-4-latest", "grok-4.3"],
+                "search_answer": ["grok-4.6", "grok-4-fast", "grok-4-latest", "grok-4.3"],
             },
         },
         "perplexity": {
@@ -531,11 +531,32 @@ def _thaw(value: Any) -> Any:
     return value
 
 
+def _log_provider_error(status_code: Any, error: Exception) -> None:
+    """Record what the provider actually said, for the pod log only.
+
+    Callers get a typed, non-leaking message, which is right for them and
+    useless for an operator: "The provider rejected the request parameters"
+    does not say which parameter. Only the response body is logged — it is the
+    provider's own error text, never the request or its headers.
+    """
+    body = None
+    response = getattr(error, "response", None)
+    if response is not None:
+        body = getattr(response, "text", None)
+    if body in (None, ""):
+        body = str(error)
+    try:
+        print(f"[machina-ai] provider error status={status_code} body={str(body)[:500]}")
+    except Exception:  # logging must never mask the original failure
+        pass
+
+
 def _safe_exception(error: Exception) -> Tuple[str, str]:
     status_code = getattr(error, "status_code", None)
     response = getattr(error, "response", None)
     if status_code is None and response is not None:
         status_code = getattr(response, "status_code", None)
+    _log_provider_error(status_code, error)
     name = error.__class__.__name__.lower()
     if isinstance(error, TimeoutError) or "timeout" in name or status_code == 408:
         return "provider_timeout", "The provider did not respond before the route timeout."
@@ -1150,11 +1171,32 @@ class PolicyEngine:
         request_credential = request.security.get("api_key") or request.security.get("credential")
         if (provider == "cerebras" or _as_bool(conf.get("reject_request_credentials"))) and request_credential:
             raise RouterError("policy_credential_not_allowed", "This route credential is controlled by runtime policy.")
-        if request_credential and not credential:
+        if request_credential:
             trusted = _as_bool(request.security.get("_credential_trusted"))
-            if not (trusted or _as_bool(policy.get("allow_workflow_credentials"))):
+            allowed = _as_bool(policy.get("allow_workflow_credentials"))
+            # Whether a supplied credential was accepted, and if not why, is
+            # otherwise invisible: a refused one silently leaves the configured
+            # value in place and the provider blames the key. Names and flags
+            # only, never values.
+            try:
+                print(
+                    f"[machina-ai] workflow credential for {provider}: "
+                    f"trusted={trusted} allow_workflow_credentials={allowed} "
+                    f"env_credential_present={bool(credential)}"
+                )
+            except Exception:
+                pass
+            if trusted or allowed:
+                # An allowed workflow credential outranks the environment. The
+                # pod environment is baked when the project is provisioned, so
+                # a key rotated or added since is stale there while the vault —
+                # which is what a workflow context-variable resolves against —
+                # is current. Preferring the environment made that staleness
+                # invisible: the provider reports a bad key for a credential the
+                # operator had just saved correctly.
+                credential = request_credential
+            elif not credential:
                 raise RouterError("credential_missing", "Workflow-supplied credentials are disabled by runtime policy.")
-            credential = request_credential
         if not credential and _as_bool(conf.get("require_credential")):
             raise RouterError("credential_missing", "The provider credential is not configured for this runtime.")
         credentials = {

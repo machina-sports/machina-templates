@@ -27,11 +27,13 @@ class FakeAdapter:
     def __init__(self, failures=None):
         self.failures = failures or {}
         self.calls = []
+        self.routes = []
         self.factory = object()
         self.embedding_factory = object()
 
     def _call(self, name, route, request, data):
         self.calls.append((name, route.provider, route.model, request))
+        self.routes.append(route)
         failure = self.failures.get(name)
         if failure:
             if callable(failure):
@@ -282,6 +284,77 @@ class TestRoutingAndReceipts:
         assert module._bare_credential("endpoint", "Bearer https://x") == "Bearer https://x"
         # A value that is nothing but a scheme is kept rather than emptied.
         assert module._bare_credential("api_key", "Bearer ") == "Bearer "
+
+    def test_allowed_workflow_credential_outranks_a_stale_environment(self, monkeypatch):
+        # The pod environment is baked when the project is provisioned, so a key
+        # rotated or added since is stale there while the vault — what a workflow
+        # context-variable resolves against — is current. Preferring the
+        # environment made that staleness invisible: the provider reported a bad
+        # key for a credential the operator had just saved correctly.
+        monkeypatch.setenv("GROQ_STALE_ENV_KEY", "stale-from-env")
+        groq = FakeAdapter()
+        runtime = FakeRuntime(
+            config={
+                "policy": {"allow_workflow_credentials": True},
+                "providers": {"groq": {
+                    "enabled": True,
+                    "credential_env": "GROQ_STALE_ENV_KEY",
+                    "allowed_models": {"chat": ["groq-chat"]},
+                }},
+                "profiles": {"fast": {"chat": [{"provider": "groq", "model": "groq-chat"}]}},
+            },
+            adapters={"vertex_ai": FakeAdapter(), "groq": groq},
+        )
+        result = router.invoke_chat({
+            "_runtime": runtime, "provider": "groq", "model": "groq-chat",
+            "prompt": "hello", "headers": {"api_key": "fresh-from-vault"},
+        })
+
+        assert result["status"] is True
+        assert groq.routes[-1].credentials["api_key"] == "fresh-from-vault"
+
+    def test_workflow_credential_is_refused_when_policy_disallows_it(self, monkeypatch):
+        # With the default policy the configured credential stands and the
+        # workflow's is ignored — it must not be able to swap in its own.
+        monkeypatch.setenv("GROQ_STALE_ENV_KEY", "configured-secret")
+        groq = FakeAdapter()
+        runtime = FakeRuntime(
+            config={
+                "providers": {"groq": {
+                    "enabled": True,
+                    "credential_env": "GROQ_STALE_ENV_KEY",
+                    "allowed_models": {"chat": ["groq-chat"]},
+                }},
+                "profiles": {"fast": {"chat": [{"provider": "groq", "model": "groq-chat"}]}},
+            },
+            adapters={"vertex_ai": FakeAdapter(), "groq": groq},
+        )
+        result = router.invoke_chat({
+            "_runtime": runtime, "provider": "groq", "model": "groq-chat",
+            "prompt": "hello", "headers": {"api_key": "workflow-supplied"},
+        })
+
+        assert result["status"] is True
+        assert groq.routes[-1].credentials["api_key"] == "configured-secret"
+
+        # And with nothing configured it is a typed refusal, not a silent pass.
+        monkeypatch.delenv("GROQ_STALE_ENV_KEY", raising=False)
+        refused = router.invoke_chat({
+            "_runtime": runtime, "provider": "groq", "model": "groq-chat",
+            "prompt": "hello", "headers": {"api_key": "workflow-supplied"},
+        })
+        assert refused["status"] is False
+        assert refused["metadata"]["error_class"] == "credential_missing"
+
+    def test_workflow_credential_stays_gated_by_policy(self):
+        # Default policy is allow_workflow_credentials: False. A workflow must
+        # not be able to swap in its own credential unless an operator opted in
+        # or the runtime marked the header trusted.
+        assert router.DEFAULT_CONFIG["policy"]["allow_workflow_credentials"] is False
+        # The canonical fields are the ones the normalizer already accepts, so
+        # there is exactly one workflow-credential path, not a parallel one.
+        assert "api_key" in router.HEADER_FIELDS
+        assert "credential" in router.HEADER_FIELDS
 
     def test_social_profiles_fall_back_to_vertex(self):
         # An absent XAI credential must cost recency, not the whole workflow.
