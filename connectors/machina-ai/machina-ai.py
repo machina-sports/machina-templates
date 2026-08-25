@@ -125,6 +125,23 @@ PATH_FIELDS = {"task_id", "id", "operation"}
 SAFE_FILENAME = re.compile(r"[^A-Za-z0-9._-]+")
 
 
+# A credential is sometimes stored as a whole Authorization header value
+# ("Bearer xai-...") because that is what a restapi connector's securityScheme
+# asks for, and sometimes as the bare token because that is what an SDK client
+# wants. The same secret then cannot serve both paths: every client here does
+# `Bearer {api_key}`, so a stored scheme produces "Bearer Bearer ..." and the
+# provider rejects it with a message that says nothing about the real cause.
+# Accept either form and hand the adapters the bare token.
+_AUTH_SCHEME = re.compile(r"^\s*(?:bearer|token)\s+", re.IGNORECASE)
+_CREDENTIAL_FIELDS = {"credential", "api_key"}
+
+
+def _bare_credential(field_name: str, value: Any) -> Any:
+    if field_name not in _CREDENTIAL_FIELDS or not isinstance(value, str):
+        return value
+    return _AUTH_SCHEME.sub("", value).strip() or value
+
+
 DEFAULT_CONFIG: Dict[str, Any] = {
     "version": 1,
     "policy": {
@@ -1052,13 +1069,13 @@ class PolicyEngine:
     def _read_env(self, conf: Mapping[str, Any], field_name: str) -> Any:
         direct = conf.get(field_name)
         if direct not in (None, ""):
-            return direct
+            return _bare_credential(field_name, direct)
         env_name = conf.get(f"{field_name}_env") or conf.get(f"{field_name}_ref")
         if env_name and os.getenv(str(env_name)) not in (None, ""):
-            return os.getenv(str(env_name))
+            return _bare_credential(field_name, os.getenv(str(env_name)))
         for alias in conf.get(f"{field_name}_env_aliases") or []:
             if os.getenv(str(alias)) not in (None, ""):
-                return os.getenv(str(alias))
+                return _bare_credential(field_name, os.getenv(str(alias)))
         return None
 
     def _allowed_models(self, provider: str, conf: MutableMapping[str, Any], capability: str) -> List[str]:

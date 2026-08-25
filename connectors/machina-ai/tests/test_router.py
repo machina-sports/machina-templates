@@ -267,6 +267,22 @@ class TestRoutingAndReceipts:
             assert entry["capabilities"], f"profile {name} advertises no routes"
         assert "multimodal" not in profiles
 
+    def test_credential_accepts_either_storage_form(self):
+        # The same secret is stored as a whole Authorization header value for a
+        # restapi connector and as a bare token for an SDK client. Every client
+        # here does `Bearer {api_key}`, so a stored scheme would double up and
+        # the provider rejects it with a message that hides the real cause.
+        module = router
+        assert module._bare_credential("api_key", "Bearer xai-abc123") == "xai-abc123"
+        assert module._bare_credential("api_key", "bearer  xai-abc123") == "xai-abc123"
+        assert module._bare_credential("credential", "Token xai-abc123") == "xai-abc123"
+        # A bare token is untouched.
+        assert module._bare_credential("api_key", "xai-abc123") == "xai-abc123"
+        # Non-credential fields are never rewritten.
+        assert module._bare_credential("endpoint", "Bearer https://x") == "Bearer https://x"
+        # A value that is nothing but a scheme is kept rather than emptied.
+        assert module._bare_credential("api_key", "Bearer ") == "Bearer "
+
     def test_social_profiles_fall_back_to_vertex(self):
         # An absent XAI credential must cost recency, not the whole workflow.
         config = router.DEFAULT_CONFIG
