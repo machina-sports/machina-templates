@@ -1,0 +1,35 @@
+workflow:
+  name: "machina-ai-smoke-xai-social"
+  title: "Machina AI Router - Smoke: xAI social pulse"
+  description: >-
+    Non-production probe for the social_pulse route through xAI's Agent Tools
+    API. The credential is supplied as a context-variable so it resolves from
+    the vault when the task runs; the router prefers that over credential_env,
+    whose pod environment is baked at provisioning time and goes stale.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_XAI_API_KEY"
+  inputs:
+    prompt: "$.get('prompt', 'What are people saying about Arsenal right now? Summarise the mood in two sentences.')"
+  outputs:
+    result: "$.get('smoke_result', {})"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+    - type: connector
+      name: machina-ai-smoke-xai-social-search
+      description: Route a social_pulse search answer through xAI with the x_search tool.
+      connector:
+        name: machina-ai
+        command: invoke_search
+        profile: social_pulse
+      inputs:
+        prompt: "$.get('prompt')"
+        tools: "$.get('tools', [{'type': 'x_search'}])"
+        # Agentic search runs several retrievals server-side; the 30s default
+        # times out well before xAI finishes.
+        timeout: "$.get('timeout', 120000)"
+      outputs:
+        smoke_result: "$"
+        workflow-status: "'executed'"

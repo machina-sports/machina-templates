@@ -26,3 +26,6 @@ datasets:
 
   - type: "workflow"
     path: "test-smoke-gemini-35-flash-lite.yml"
+
+  - type: "workflow"
+    path: "test-smoke-xai-social.yml"
