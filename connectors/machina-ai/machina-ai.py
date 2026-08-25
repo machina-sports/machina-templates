@@ -201,17 +201,17 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         # whole run.
         "social_pulse": {
             "search_answer": [
-                {"provider": "xai", "model": "grok-4-fast"},
+                {"provider": "xai", "model": "grok-4.3"},
                 {"provider": "vertex_ai", "model": "gemini-3.7-flash"},
             ],
             "chat": [
-                {"provider": "xai", "model": "grok-4-fast"},
+                {"provider": "xai", "model": "grok-4.3"},
                 {"provider": "vertex_ai", "model": "gemini-3.7-flash"},
             ],
         },
         "live_search": {
             "search_answer": [
-                {"provider": "xai", "model": "grok-4-fast"},
+                {"provider": "xai", "model": "grok-4.3"},
                 {"provider": "vertex_ai", "model": "gemini-3.7-flash"},
             ],
         },
@@ -330,8 +330,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "credential_env_aliases": ["MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"],
             "endpoint": "https://api.x.ai/v1",
             "allowed_models": {
-                "chat": ["grok-4-fast", "grok-4-latest"],
-                "search_answer": ["grok-4-fast", "grok-4-latest"],
+                # grok-4.3 first because it is the model this tenant's shipped
+                # fan-sentiment workflow already calls successfully; the -fast
+                # and -latest aliases stay allowed but are not the default.
+                "chat": ["grok-4.3", "grok-4-fast", "grok-4-latest"],
+                "search_answer": ["grok-4.3", "grok-4-fast", "grok-4-latest"],
             },
         },
         "perplexity": {

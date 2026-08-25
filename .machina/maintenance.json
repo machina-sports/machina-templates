@@ -1,0 +1,236 @@
+{
+  "schema_version": 1,
+  "design_log": "030",
+  "repository": "machina-templates",
+  "authorized_base_sha": "3a020f67b43aea2babf3c1808f2e89659d100bc8",
+  "mode": "shadow",
+  "approved_by": "Andre",
+  "approved_at": "2026-08-14",
+  "pilot_context": {
+    "selected_by": "Andre",
+    "selected_at": "2026-08-14",
+    "reviewed_at_base_sha": "3a020f67b43aea2babf3c1808f2e89659d100bc8",
+    "active_conflict": false
+  },
+  "reviewers": [
+    "@antonelli182"
+  ],
+  "allowed_routines": [
+    "dead_code_evidence",
+    "flaky_test_evidence"
+  ],
+  "runtime": {
+    "network_allowed": false,
+    "secrets_required": false
+  },
+  "authority": {
+    "repository_writes": false,
+    "fix": false,
+    "stage": false,
+    "commit": false,
+    "push": false,
+    "merge": false,
+    "deploy": false,
+    "rollback": false,
+    "external_post": false
+  },
+  "concurrency": {
+    "writer_limit_repo": 0,
+    "writer_limit_fleet": 0
+  },
+  "repair_pass_limit": 0,
+  "evidence": {
+    "destination": {
+      "os_temp_only": true,
+      "repository_paths_allowed": false
+    },
+    "required_fields": [
+      "argv",
+      "base_sha",
+      "duration",
+      "exit_code",
+      "interpreter",
+      "normalized_failure_signature",
+      "stderr_sha256",
+      "stdout_sha256"
+    ]
+  },
+  "prohibited_paths": [
+    "**"
+  ],
+  "setup": {
+    "automatic": false,
+    "operator_only_argv": [
+      "python3",
+      "-m",
+      "pip",
+      "install",
+      "--disable-pip-version-check",
+      "-r",
+      "requirements-iptc-validator.txt",
+      "-r",
+      "requirements-iptc-build.txt"
+    ],
+    "network_required": true
+  },
+  "workflow_policy": {
+    "reviewed_at_base_sha": "3a020f67b43aea2babf3c1808f2e89659d100bc8",
+    "human_merge_required": true,
+    "main_push_side_effects": [
+      "subscriber_webhook"
+    ],
+    "release_tag_publish": true,
+    "workflow_changes_allowed": false
+  },
+  "verification": [
+    {
+      "name": "ai-command-inventory",
+      "category": "static_inventory",
+      "argv": [
+        "python3",
+        "scripts/check-ai-command-inventory.py"
+      ],
+      "network_required": false,
+      "secrets_required": false,
+      "timeout_seconds": 30,
+      "enabled": true
+    },
+    {
+      "name": "iptc-suite-list",
+      "category": "manifest",
+      "argv": [
+        "python3",
+        "tools/iptc/run_test_suites.py",
+        "--list"
+      ],
+      "network_required": false,
+      "secrets_required": false,
+      "timeout_seconds": 30,
+      "enabled": true
+    },
+    {
+      "name": "agent-builder-compat",
+      "category": "generated_compatibility",
+      "argv": [
+        "python3",
+        "scripts/sync-machina-agent-builder-compat.py",
+        "--check"
+      ],
+      "network_required": false,
+      "secrets_required": false,
+      "timeout_seconds": 60,
+      "enabled": true
+    },
+    {
+      "name": "machina-ai-policy",
+      "category": "policy",
+      "argv": [
+        "python3",
+        "scripts/check-machina-ai-policy.py",
+        "all",
+        "--require-semantic"
+      ],
+      "network_required": false,
+      "secrets_required": false,
+      "timeout_seconds": 120,
+      "enabled": true
+    },
+    {
+      "name": "agent-builder-unit",
+      "category": "unit",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests/test_machina_agent_builder_validator.py"
+      ],
+      "network_required": false,
+      "secrets_required": false,
+      "timeout_seconds": 120,
+      "enabled": true
+    },
+    {
+      "name": "agent-builder-validation",
+      "category": "validation",
+      "argv": [
+        "python3",
+        "scripts/validate-machina-agent-builder.py"
+      ],
+      "network_required": false,
+      "secrets_required": false,
+      "timeout_seconds": 300,
+      "enabled": true
+    },
+    {
+      "name": "iptc-pin",
+      "category": "dependency_pin",
+      "argv": [
+        "python3",
+        "-m",
+        "tools.iptc",
+        "--verify-pin"
+      ],
+      "network_required": false,
+      "secrets_required": false,
+      "timeout_seconds": 300,
+      "enabled": true
+    },
+    {
+      "name": "machina-ai-connector-pytest",
+      "category": "connector_tests",
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "connectors/machina-ai/tests"
+      ],
+      "network_required": false,
+      "secrets_required": false,
+      "timeout_seconds": 300,
+      "enabled": false,
+      "reason": "exact_dependencies_not_pinned"
+    },
+    {
+      "name": "nvidia-nim-connector-pytest",
+      "category": "connector_tests",
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "connectors/nvidia-nim/tests"
+      ],
+      "network_required": false,
+      "secrets_required": false,
+      "timeout_seconds": 300,
+      "enabled": false,
+      "reason": "exact_dependencies_not_pinned"
+    },
+    {
+      "name": "iptc-test-suites",
+      "category": "test_suite",
+      "argv": [
+        "python3",
+        "tools/iptc/run_test_suites.py",
+        "--verbose"
+      ],
+      "network_required": false,
+      "secrets_required": false,
+      "timeout_seconds": 1800,
+      "enabled": true
+    },
+    {
+      "name": "iptc-check",
+      "category": "conformance",
+      "argv": [
+        "python3",
+        "-m",
+        "tools.iptc",
+        "--check"
+      ],
+      "network_required": false,
+      "secrets_required": false,
+      "timeout_seconds": 1800,
+      "enabled": true
+    }
+  ]
+}
