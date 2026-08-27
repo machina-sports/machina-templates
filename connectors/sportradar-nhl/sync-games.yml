@@ -6,7 +6,13 @@ workflow:
     debugger:
       enabled: true
     sportradar-nhl:
-      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_NHL_API_KEY
+    # Same key the NFL sync uses. Sportradar issues one key per account whose
+    # entitlements span the licensed sports, and sportradar-nfl/sync-games.yml
+    # already reads SPORTRADAR_SOCCER_V4_API_KEY, so the "soccer" name is
+    # historical, not a scope. Only fall back to a dedicated
+    # $TEMP_CONTEXT_VARIABLE_SPORTRADAR_NHL_API_KEY if this one comes back 403
+    # for NHL — that would mean the account is not entitled to NHL v7.
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
     google-genai:
       credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
