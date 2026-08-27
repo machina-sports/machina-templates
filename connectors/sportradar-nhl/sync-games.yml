@@ -1,0 +1,164 @@
+workflow:
+  name: sportradar-nhl-sync-games
+  title: Sportradar NHL Sync Games
+  description: Workflow to sync NHL games.
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nhl:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_NHL_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    # In the NHL the season_year is the OPENING year: 2025 == the 2025-26
+    # season. season_type is REG | PRE | PST.
+    season_year: $.get('season_year', '2025')
+    season_type: $.get('season_type', 'REG')
+  outputs:
+    events: $.get('events')
+    workflow-status: $.get('events', []) is None and 'skipped' or 'executed'
+  tasks:
+
+    # task-load-games
+    - type: connector
+      name: task-load-games
+      description: Get a season games from SportRadar
+      connector:
+        name: sportradar-nhl
+        command: get-games/{season_year}/{season_type}/{data_type}
+        command_attribute:
+          season_year: $.get('season_year')
+          season_type: $.get('season_type')
+          data_type: "'schedule.json'"
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        games: $
+        # SHAPE NOT YET OBSERVED. This was authored without a live NHL response
+        # (the Sportradar NHL key was not confirmed in the vault at the time), so
+        # the comprehension tolerates BOTH shapes this Sportradar family uses:
+        # a flat `games` array, and the NFL-style `weeks[].games`. Confirm
+        # against a real payload on the first run and then simplify this to the
+        # one that is true — a wrong guess here fails silently as "0 games".
+        games_parsed: |
+          [
+            {
+              **game,
+              'metadata': {
+                'event_code': game.get('id', ''),
+                'team_ids': [game.get('home', {}).get('id', ''), game.get('away', {}).get('id', '')],
+              },
+              'start_time': datetime.strptime(game.get('scheduled').replace('+00:00', 'Z'), '%Y-%m-%dT%H:%M:%SZ'),
+              'title': f"{game.get('home', {}).get('name', '')} v {game.get('away', {}).get('name', '')}",
+              'selected': False
+            }
+            for game in (
+              $.get('games')
+              or [g for week in $.get('weeks', []) for g in week.get('games', [])]
+            )
+            if game.get('scheduled')
+          ]
+
+    # iptc-sportradar-event-nhl-mapping
+    - type: mapping
+      name: iptc-sportradar-event-nhl-mapping
+      title: IPTC | Sportradar Event NHL Mapping
+      description: Mapping data from sportradar to IPTC events
+      condition: len($.get('games_parsed')) > 0
+      inputs:
+        schedules: $.get('games_parsed')
+        season_year: $.get('season_year')
+      outputs:
+        all_events: $.get('sport_schema_events')
+        all_events_ids: |
+          [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
+
+    # load-events-by-ids
+    - type: document
+      name: load-events-by-ids
+      condition: $.get('all_events_ids') is not None
+      description: Load existing events by IDs.
+      config:
+        action: search
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.event_code: |
+          {'$in': $.get('all_events_ids', [])}
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        existing_events_ids: |
+          [
+            fixture.get('metadata', {}).get('event_code', '')
+            for fixture in $.get('documents', [])
+          ]
+        existing_events_map: |
+          {
+            fixture.get('metadata', {}).get('event_code', ''): {
+              'name': fixture.get('value', {}).get('name', ''),
+              'status': fixture.get('value', {}).get('sport:status', ''),
+              'abbrs': [
+                (c or {}).get('sport:abbreviation')
+                for c in (fixture.get('value', {}).get('sport:competitors') or [])
+              ],
+              'version_control': fixture.get('value', {}).get('version_control')
+            }
+            for fixture in $.get('documents', [])
+          }
+
+    # task-bulk-save-events
+    - type: document
+      name: task-bulk-save-events
+      description: Bulk save or update events (new events or events with changed names).
+      condition: len($.get('new_or_updated_events_list', [])) > 0
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: true
+      connector:
+        name: google-genai
+        command: invoke_embedding
+        model: text-embedding-004
+        location: "global"
+        provider: "vertex_ai"
+      document_name: "'sport:Event'"
+      documents:
+        items: $.get('new_or_updated_events_list')
+      inputs:
+        new_or_updated_events_list: |
+          [
+            {
+              **f,
+              # Full-value replace: without carrying version_control over, a re-sync
+              # clears the forecast flags and the whole slate is re-forecast and
+              # re-billed. This is not theoretical — the equivalent replace wiped
+              # 242 scores in MLB before it was caught.
+              **(
+                {'version_control': ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('version_control')}
+                if ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('version_control')
+                else {}
+              ),
+              'metadata': {
+                'event_code': str(f.get('@id', '')),
+                'sport_name': str(f.get('schema:sportName', ''))
+              },
+              'title': f"{(f.get('sport:competition') or {}).get('name', '')} - {f.get('name', '')}"
+            }
+            for f in ($.get('all_events') or [])
+            if (
+              str(f.get('@id', '')) not in $.get('existing_events_ids', []) or
+              ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('name', '') != f.get('name', '') or
+              ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('status', '') != f.get('sport:status', '') or
+              '(win)' in ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('name', '') or
+              'TBD' in ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('name', '') or
+              # The diff must include abbreviations: comparing only name and
+              # status meant a mapping change rewrote NOTHING, because stored
+              # fixtures already carried both.
+              ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('abbrs', []) != [
+                (c or {}).get('sport:abbreviation') for c in (f.get('sport:competitors') or [])
+              ]
+            )
+          ]

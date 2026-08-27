@@ -12,7 +12,7 @@ setup:
     - Favorite players season stats
     - In-depth subjective statistics
     - All game data feeds update in real-time as games are played
-    - All NFL games - including preseason - feature full play-by-play coverage
+    - All NHL games - including preseason - feature full play-by-play coverage
   integrations:
     - sportradar
   status: available
@@ -25,5 +25,15 @@ datasets:
 
   - type: "workflow"
     path: "test-credentials.yml"
+
+  # mappings
+
+  - type: "mappings"
+    path: "mappings/iptc-sport-event.yml"
+
+  # workflows
+
+  - type: "workflow"
+    path: "sync-games.yml"
 
 
