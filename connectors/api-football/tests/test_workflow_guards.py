@@ -620,3 +620,106 @@ def test_event_synchronize_rejects_a_different_fixture_id():
 
     assert state["provider-response-valid"] is True
     assert state["fixture_exists"] is False
+
+
+def test_event_synchronize_accepts_equivalent_string_and_integer_fixture_ids():
+    workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    fetch_outputs = task(workflow, "fetch-fixture-details")["outputs"]
+
+    for response_id, provider_fixture_id in (
+        (1570353, "1570353"),
+        ("1570353", 1570353),
+    ):
+        state = evaluate_outputs(
+            fetch_outputs,
+            {
+                "response": [provider_fixture(response_id)],
+                "errors": [],
+                "results": 1,
+                "provider_fixture_id": provider_fixture_id,
+            },
+        )
+
+        assert state["provider-response-valid"] is True
+        assert state["fixture_exists"] is True
+
+
+def test_event_synchronize_rejects_empty_boolean_and_invalid_fixture_ids():
+    workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    fetch_outputs = task(workflow, "fetch-fixture-details")["outputs"]
+
+    for response_id, provider_fixture_id in (
+        (None, "1570353"),
+        ("", ""),
+        ("   ", "   "),
+        (True, "True"),
+        ("True", True),
+        ([], "[]"),
+        ({}, "{}"),
+        (1570353, []),
+        (1570353, {}),
+    ):
+        state = evaluate_outputs(
+            fetch_outputs,
+            {
+                "response": [provider_fixture(response_id)],
+                "errors": [],
+                "results": 1,
+                "provider_fixture_id": provider_fixture_id,
+            },
+        )
+
+        assert state["provider-response-valid"] is True
+        assert state["fixture_exists"] is False
+
+
+def test_event_synchronize_requires_exactly_one_well_formed_fixture():
+    workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    fetch_outputs = task(workflow, "fetch-fixture-details")["outputs"]
+
+    for response in (
+        [],
+        [provider_fixture(1570353), provider_fixture(1570353)],
+        ["not-a-fixture"],
+        [{"fixture": []}],
+    ):
+        state = evaluate_outputs(
+            fetch_outputs,
+            {
+                "response": response,
+                "errors": [],
+                "results": len(response),
+                "provider_fixture_id": "1570353",
+            },
+        )
+
+        assert state["fixture_exists"] is False
+
+
+def test_event_synchronize_provider_response_validation_stays_bounded():
+    workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    fetch_outputs = task(workflow, "fetch-fixture-details")["outputs"]
+
+    valid_payloads = (
+        {"response": [], "errors": [], "results": 0},
+        {"response": [provider_fixture()], "errors": {}, "results": 1},
+    )
+    invalid_payloads = (
+        {
+            "response": [provider_fixture(1), provider_fixture(2)],
+            "errors": [],
+            "results": 2,
+        },
+        {"response": [provider_fixture()], "errors": [], "results": True},
+        {"response": [provider_fixture()], "errors": [], "results": 0},
+        {"response": {}, "errors": [], "results": 0},
+    )
+
+    assert all(
+        evaluate_outputs(fetch_outputs, payload)["provider-response-valid"] is True
+        for payload in valid_payloads
+    )
+    assert all(
+        evaluate_outputs(fetch_outputs, payload)["provider-response-valid"] is False
+        for payload in invalid_payloads
+    )
