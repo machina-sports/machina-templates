@@ -5,6 +5,7 @@ workflow:
   outputs:
     leagues_config: "$.get('leagues_config', [])"
     enabled_leagues: "$.get('enabled_leagues', [])"
+    enabled_league_ids: "[league.get('league_id') for league in $.get('enabled_leagues', [])]"
     workflow-status: "'executed'"
   tasks:
 
@@ -17,6 +18,29 @@ workflow:
       inputs:
         name: "'api-football-leagues-config'"
       outputs:
-        leagues_config: "$.get('documents')[0].get('value', {}).get('leagues', []) if len($.get('documents', [])) > 0 else []"
-        enabled_leagues: "[league for league in ($.get('documents')[0].get('value', {}).get('leagues', []) if len($.get('documents', [])) > 0 else []) if league.get('enabled', True)]"
-
+        leagues_config: "$.get('documents')[0].get('value', {}).get('leagues', []) if isinstance($.get('documents'), list) and len($.get('documents')) > 0 and isinstance($.get('documents')[0], dict) and isinstance($.get('documents')[0].get('value'), dict) and isinstance($.get('documents')[0].get('value', {}).get('leagues'), list) else []"
+        # Invalid identifiers or date-window overrides disable that league.
+        # This keeps a malformed config from reopening an unbounded sync.
+        enabled_leagues: |
+          [
+            {
+              **league,
+              'lookback_days': league.get('lookback_days', 3),
+              'lookahead_days': league.get('lookahead_days', 30),
+            }
+            for league in ($.get('documents')[0].get('value', {}).get('leagues', []) if isinstance($.get('documents'), list) and len($.get('documents')) > 0 and isinstance($.get('documents')[0], dict) and isinstance($.get('documents')[0].get('value'), dict) and isinstance($.get('documents')[0].get('value', {}).get('leagues'), list) else [])
+            if isinstance(league, dict)
+            and league.get('enabled') is True
+            and isinstance(league.get('league_id'), int)
+            and not isinstance(league.get('league_id'), bool)
+            and league.get('league_id') > 0
+            and isinstance(league.get('season'), int)
+            and not isinstance(league.get('season'), bool)
+            and league.get('season') > 0
+            and isinstance(league.get('lookback_days', 3), int)
+            and not isinstance(league.get('lookback_days', 3), bool)
+            and 0 <= league.get('lookback_days', 3) <= 30
+            and isinstance(league.get('lookahead_days', 30), int)
+            and not isinstance(league.get('lookahead_days', 30), bool)
+            and 0 <= league.get('lookahead_days', 30) <= 90
+          ]

@@ -9,9 +9,6 @@ workflow:
       enabled: true
     api-football:
       x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
-    google-genai:
-      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
-      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     id: "$.get('id')"
     ids: "$.get('ids')"
@@ -108,15 +105,10 @@ workflow:
       condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and len($.get('provider-fixtures', [])) > 0 and len($.get('fixtures', [])) == len($.get('provider-fixtures', [])) and len($.get('canonical-envelopes', [])) == len($.get('provider-fixtures', [])) and len($.get('canonical-envelope-validity', [])) == len($.get('provider-fixtures', [])) and all($.get('canonical-envelope-validity', []))"
       config:
         action: "bulk-update"
-        embed-selector: "$.get('title')"
-        embed-vector: true
+        # Structured events are queried by fields, not semantic similarity.
+        # Avoid one embedding call per fixture in this bounded scheduler lane.
+        embed-vector: false
         force-update: true
-      connector:
-        name: "google-genai"
-        command: "invoke_embedding"
-        model: "text-embedding-004"
-        location: "global"
-        provider: "vertex_ai"
       document_name: "'sport:Event'"
       documents:
         items: |

@@ -14,6 +14,7 @@ workflow:
       x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
   inputs:
     event_code: $.get('event_code')
+    enabled-league-ids: $.get('enabled-league-ids', [])
   outputs:
     event_document_id: $.get('event_document_id')
     event_exists: $.get('event_exists')
@@ -92,6 +93,10 @@ workflow:
               {'value.sport:competition.@id': {'$in': $.get('coverage-events-live')}},
               {'value.event_view.competition.id': {'$in': $.get('coverage-events-live')}},
             ]} or {'_id': {'$exists': True}}),
+            {'$or': [
+              {'value.machina_sports_schema.event_view.provider.raw.league.id': {'$in': $.get('enabled-league-ids', [])}},
+              {'value.event_view.provider.raw.league.id': {'$in': $.get('enabled-league-ids', [])}},
+            ]},
           ]
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
@@ -114,6 +119,11 @@ workflow:
         value.version_control.processing: "True"
         value.version_control.finished: "{'$ne': True}"
         updated: "{'$lt': datetime.utcnow() - timedelta(minutes=5)}"
+        '$or': |
+          [
+            {'value.machina_sports_schema.event_view.provider.raw.league.id': {'$in': $.get('enabled-league-ids', [])}},
+            {'value.event_view.provider.raw.league.id': {'$in': $.get('enabled-league-ids', [])}},
+          ]
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0

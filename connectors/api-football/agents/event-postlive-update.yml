@@ -31,11 +31,19 @@ agent:
     event_code: $.get('event_code')
   workflows:
 
+    # Load the shared enabled-league allowlist for automatic claims.
+    - name: api-football-load-leagues-config
+      description: Load API-Football leagues configuration
+      condition: "$.get('event_code') is None"
+      outputs:
+        enabled-league-ids: $.get('enabled_league_ids', [])
+
     # Workflow Event Consumer - Post-Live
     - name: api-football-event-consumer-postlive
       description: API Football Event Consumer (Post-Live / Terminal)
       inputs:
         event_code: $.get('event_code')
+        enabled-league-ids: $.get('enabled-league-ids', [])
       outputs:
         event_document_id: $.get('event_document_id')
         event_exists: $.get('event_exists')
