@@ -32,7 +32,7 @@ def evaluate(expression, response, workflow_context=None):
     if expression.strip() == "$":
         return response
     namespace = {
-        "__builtins__": {},
+        "__builtins__": {"__import__": __import__},
         **SAFE_BUILTINS,
         "datetime": datetime,
         "timedelta": timedelta,
@@ -374,15 +374,23 @@ def test_populate_passes_utc_date_window_to_each_league_sync():
         for item in agent["workflows"]
         if item["name"] == "api-football-sync-fixtures"
     )
+    assert sync["inputs"]["from"] == (
+        "(datetime.utcnow() - timedelta(days=$.get('league').get('lookback_days', 3)))"
+        '.strftime("%Y-%m-%d")'
+    )
+    assert sync["inputs"]["to"] == (
+        "(datetime.utcnow() + timedelta(days=$.get('league').get('lookahead_days', 30)))"
+        '.strftime("%Y-%m-%d")'
+    )
     today = datetime.now(timezone.utc).date()
 
     defaults = {"league": {"league_id": 39, "season": 2026}}
-    assert evaluate(sync["inputs"]["from"], defaults) == (
-        today - timedelta(days=3)
-    ).isoformat()
-    assert evaluate(sync["inputs"]["to"], defaults) == (
-        today + timedelta(days=30)
-    ).isoformat()
+    default_from = evaluate(sync["inputs"]["from"], defaults)
+    default_to = evaluate(sync["inputs"]["to"], defaults)
+    assert default_from == (today - timedelta(days=3)).isoformat()
+    assert default_to == (today + timedelta(days=30)).isoformat()
+    datetime.strptime(default_from, "%Y-%m-%d")
+    datetime.strptime(default_to, "%Y-%m-%d")
 
     overrides = {
         "league": {
@@ -392,12 +400,12 @@ def test_populate_passes_utc_date_window_to_each_league_sync():
             "lookahead_days": 45,
         }
     }
-    assert evaluate(sync["inputs"]["from"], overrides) == (
-        today - timedelta(days=7)
-    ).isoformat()
-    assert evaluate(sync["inputs"]["to"], overrides) == (
-        today + timedelta(days=45)
-    ).isoformat()
+    override_from = evaluate(sync["inputs"]["from"], overrides)
+    override_to = evaluate(sync["inputs"]["to"], overrides)
+    assert override_from == (today - timedelta(days=7)).isoformat()
+    assert override_to == (today + timedelta(days=45)).isoformat()
+    datetime.strptime(override_from, "%Y-%m-%d")
+    datetime.strptime(override_to, "%Y-%m-%d")
     assert evaluate(sync["inputs"]["timezone"], overrides) == "UTC"
 
 
