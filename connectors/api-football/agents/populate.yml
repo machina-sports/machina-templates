@@ -37,8 +37,8 @@ agent:
       inputs:
         league: $.get('league').get('league_id')
         season: $.get('league').get('season')
-        from: (datetime.utcnow() - timedelta(days=$.get('league').get('lookback_days', 3))).strftime("%Y-%m-%d")
-        to: (datetime.utcnow() + timedelta(days=$.get('league').get('lookahead_days', 30))).strftime("%Y-%m-%d")
+        lookback_days: $.get('league').get('lookback_days')
+        lookahead_days: $.get('league').get('lookahead_days')
         timezone: "'UTC'"
       outputs:
         fixtures_sync_status: $.get('workflow-status', 'skipped')

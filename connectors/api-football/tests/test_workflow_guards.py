@@ -367,46 +367,61 @@ def test_leagues_config_fails_closed_for_malformed_document_containers():
         assert state["enabled_leagues"] == []
 
 
-def test_populate_passes_utc_date_window_to_each_league_sync():
-    agent = load_yaml("agents/populate.yml")["agent"]
+def test_populate_passes_date_window_configuration_without_datetime_expressions():
+    agent_path = CONNECTOR_ROOT / "agents/populate.yml"
+    agent_text = agent_path.read_text(encoding="utf-8")
+    agent = yaml.safe_load(agent_text)["agent"]
     sync = next(
         item
         for item in agent["workflows"]
         if item["name"] == "api-football-sync-fixtures"
     )
-    assert sync["inputs"]["from"] == (
-        "(datetime.utcnow() - timedelta(days=$.get('league').get('lookback_days', 3)))"
-        '.strftime("%Y-%m-%d")'
-    )
-    assert sync["inputs"]["to"] == (
-        "(datetime.utcnow() + timedelta(days=$.get('league').get('lookahead_days', 30)))"
-        '.strftime("%Y-%m-%d")'
-    )
+
+    assert sync["inputs"] == {
+        "league": "$.get('league').get('league_id')",
+        "season": "$.get('league').get('season')",
+        "lookback_days": "$.get('league').get('lookback_days')",
+        "lookahead_days": "$.get('league').get('lookahead_days')",
+        "timezone": "'UTC'",
+    }
+    assert "datetime" not in agent_text
+    assert "timedelta" not in agent_text
+
+
+def test_sync_fixtures_computes_default_and_override_utc_date_windows():
+    inputs = load_yaml("sync-fixtures.yml")["workflow"]["inputs"]
+
+    assert inputs["lookback_days"] == "$.get('lookback_days', 3)"
+    assert inputs["lookahead_days"] == "$.get('lookahead_days', 30)"
     today = datetime.now(timezone.utc).date()
 
-    defaults = {"league": {"league_id": 39, "season": 2026}}
-    default_from = evaluate(sync["inputs"]["from"], defaults)
-    default_to = evaluate(sync["inputs"]["to"], defaults)
+    default_from = evaluate(inputs["from"], {})
+    default_to = evaluate(inputs["to"], {})
     assert default_from == (today - timedelta(days=3)).isoformat()
     assert default_to == (today + timedelta(days=30)).isoformat()
     datetime.strptime(default_from, "%Y-%m-%d")
     datetime.strptime(default_to, "%Y-%m-%d")
 
-    overrides = {
-        "league": {
-            "league_id": 140,
-            "season": 2026,
-            "lookback_days": 7,
-            "lookahead_days": 45,
-        }
-    }
-    override_from = evaluate(sync["inputs"]["from"], overrides)
-    override_to = evaluate(sync["inputs"]["to"], overrides)
+    overrides = {"lookback_days": "7", "lookahead_days": "45"}
+    override_from = evaluate(inputs["from"], overrides)
+    override_to = evaluate(inputs["to"], overrides)
     assert override_from == (today - timedelta(days=7)).isoformat()
     assert override_to == (today + timedelta(days=45)).isoformat()
     datetime.strptime(override_from, "%Y-%m-%d")
     datetime.strptime(override_to, "%Y-%m-%d")
-    assert evaluate(sync["inputs"]["timezone"], overrides) == "UTC"
+
+
+def test_sync_fixtures_honors_explicit_date_window():
+    inputs = load_yaml("sync-fixtures.yml")["workflow"]["inputs"]
+    context = {
+        "from": "2026-09-01",
+        "to": "2026-09-09",
+        "lookback_days": 7,
+        "lookahead_days": 45,
+    }
+
+    assert evaluate(inputs["from"], context) == "2026-09-01"
+    assert evaluate(inputs["to"], context) == "2026-09-09"
 
 
 def test_event_synchronize_never_updates_without_a_provider_fixture():
