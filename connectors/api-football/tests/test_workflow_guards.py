@@ -1,5 +1,7 @@
 """Regression tests for API-Football workflow safety and observability."""
 
+from datetime import datetime, timedelta, timezone
+
 from pathlib import Path
 
 import yaml
@@ -32,6 +34,8 @@ def evaluate(expression, response, workflow_context=None):
     namespace = {
         "__builtins__": {},
         **SAFE_BUILTINS,
+        "datetime": datetime,
+        "timedelta": timedelta,
         "context": workflow_context if workflow_context is not None else response,
     }
     expression = expression.replace("$.context", "context")
@@ -282,12 +286,119 @@ def test_sync_fixtures_bulk_update_fails_closed_on_canonical_drift():
     assert not evaluate(save["condition"], {**base, "fixtures": []})
 
 
+def test_sync_fixtures_persists_structured_events_without_embeddings():
+    workflow = load_yaml("sync-fixtures.yml")["workflow"]
+    save = task(workflow, "task-bulk-save-fixtures")
+
+    assert save["config"]["embed-vector"] is False
+    assert "embed-selector" not in save["config"]
+    assert "connector" not in save
+    assert "google-genai" not in workflow.get("context-variables", {})
+
+
 def test_populate_is_inactive_with_a_bounded_recurring_frequency():
     agent = load_yaml("agents/populate.yml")["agent"]
 
     assert agent["context"]["status"] == "inactive"
     assert agent["context"]["config-frequency"] == 360
     assert 0 < agent["context"]["config-frequency"] <= 1440
+
+
+def test_leagues_config_defaults_and_bounds_each_enabled_sync_window():
+    workflow = load_yaml("load-leagues-config.yml")["workflow"]
+    outputs = task(workflow, "load-config")["outputs"]
+    leagues = [
+        {"league_id": 39, "name": "Premier League", "season": 2026, "enabled": True},
+        {
+            "league_id": 140,
+            "name": "La Liga",
+            "season": 2026,
+            "enabled": True,
+            "lookback_days": 7,
+            "lookahead_days": 45,
+        },
+        {"league_id": 78, "name": "Bundesliga", "season": 2026, "enabled": False},
+        {
+            "league_id": 135,
+            "name": "Serie A",
+            "season": 2026,
+            "enabled": True,
+            "lookback_days": -1,
+        },
+        {
+            "league_id": 61,
+            "name": "Ligue 1",
+            "season": 2026,
+            "enabled": True,
+            "lookahead_days": 91,
+        },
+        {
+            "league_id": "2",
+            "name": "Champions League",
+            "season": 2026,
+            "enabled": True,
+        },
+    ]
+
+    state = evaluate_outputs(outputs, {"documents": [{"value": {"leagues": leagues}}]})
+
+    assert state["enabled_leagues"] == [
+        {**leagues[0], "lookback_days": 3, "lookahead_days": 30},
+        leagues[1],
+    ]
+    assert evaluate(
+        workflow["outputs"]["enabled_league_ids"], state
+    ) == [39, 140]
+
+
+def test_leagues_config_fails_closed_for_malformed_document_containers():
+    outputs = task(
+        load_yaml("load-leagues-config.yml")["workflow"], "load-config"
+    )["outputs"]
+
+    for payload in (
+        {"documents": [{"value": None}]},
+        {"documents": [{"value": {"leagues": None}}]},
+        {"documents": [{"value": {"leagues": {"league_id": 39}}}]},
+        {"documents": [{"value": {"leagues": "39"}}]},
+    ):
+        state = evaluate_outputs(outputs, payload)
+        assert state["leagues_config"] == []
+        assert state["enabled_leagues"] == []
+
+
+def test_populate_passes_utc_date_window_to_each_league_sync():
+    agent = load_yaml("agents/populate.yml")["agent"]
+    sync = next(
+        item
+        for item in agent["workflows"]
+        if item["name"] == "api-football-sync-fixtures"
+    )
+    today = datetime.now(timezone.utc).date()
+
+    defaults = {"league": {"league_id": 39, "season": 2026}}
+    assert evaluate(sync["inputs"]["from"], defaults) == (
+        today - timedelta(days=3)
+    ).isoformat()
+    assert evaluate(sync["inputs"]["to"], defaults) == (
+        today + timedelta(days=30)
+    ).isoformat()
+
+    overrides = {
+        "league": {
+            "league_id": 140,
+            "season": 2026,
+            "lookback_days": 7,
+            "lookahead_days": 45,
+        }
+    }
+    assert evaluate(sync["inputs"]["from"], overrides) == (
+        today - timedelta(days=7)
+    ).isoformat()
+    assert evaluate(sync["inputs"]["to"], overrides) == (
+        today + timedelta(days=45)
+    ).isoformat()
+    assert evaluate(sync["inputs"]["timezone"], overrides) == "UTC"
 
 
 def test_event_synchronize_never_updates_without_a_provider_fixture():

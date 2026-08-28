@@ -97,7 +97,7 @@ def _and_clauses(schedule, ctx=None):
         "ctx": ctx or {"coverage-config-exists": False},
     }
     clauses = raw_eval(expression, namespace)
-    assert isinstance(clauses, list) and len(clauses) == 4
+    assert isinstance(clauses, list) and len(clauses) == 5
     return clauses
 
 
@@ -326,6 +326,7 @@ def test_postlive_agent_chains_synchronize_enrichment_and_terminal_update():
     names = [item["name"] for item in agent["workflows"]]
 
     assert names == [
+        "api-football-load-leagues-config",
         "api-football-event-consumer-postlive",
         "api-football-event-synchronize",
         "api-football-enrich-event-data",
@@ -470,6 +471,94 @@ def test_all_consumers_coverage_allowlist_never_resolves_to_none():
             {"value.sport:competition.@id": {"$in": ["urn:x"]}},
             {"value.event_view.competition.id": {"$in": ["urn:x"]}},
         ]}
+
+
+def test_all_event_agents_load_and_pass_the_shared_enabled_league_ids():
+    for agent_filename, consumer_name in (
+        ("event-prelive-update.yml", "api-football-event-consumer-prelive"),
+        ("event-live-update.yml", "api-football-event-consumer-live"),
+        ("event-postlive-update.yml", "api-football-event-consumer-postlive"),
+    ):
+        agent = load_yaml(f"agents/{agent_filename}")["agent"]
+        loader = agent["workflows"][0]
+        consumer = next(
+            item for item in agent["workflows"] if item["name"] == consumer_name
+        )
+
+        assert loader["name"] == "api-football-load-leagues-config"
+        assert loader["condition"] == "$.get('event_code') is None"
+        assert evaluate(loader["condition"], {})
+        assert not evaluate(loader["condition"], {"event_code": "urn:event:repair"})
+        assert loader["outputs"]["enabled-league-ids"] == "$.get('enabled_league_ids', [])"
+        assert consumer["inputs"]["enabled-league-ids"] == "$.get('enabled-league-ids', [])"
+
+
+def test_all_scheduled_claims_require_an_enabled_raw_provider_league():
+    expected = {"$or": [
+        {
+            "value.machina_sports_schema.event_view.provider.raw.league.id": {
+                "$in": [39, 140]
+            }
+        },
+        {"value.event_view.provider.raw.league.id": {"$in": [39, 140]}},
+    ]}
+
+    for filename in (
+        "event-consumer-prelive.yml",
+        "event-consumer-live.yml",
+        "event-consumer-postlive.yml",
+    ):
+        workflow = load_yaml(f"workflows/{filename}")["workflow"]
+        schedule = task(workflow, "load-event-by-schedule")
+
+        clauses = _and_clauses(schedule, {"enabled-league-ids": [39, 140]})
+        assert clauses[4] == expected
+        assert _and_clauses(schedule, {"enabled-league-ids": []})[4] == {
+            "$or": [
+                {
+                    "value.machina_sports_schema.event_view.provider.raw.league.id": {
+                        "$in": []
+                    }
+                },
+                {"value.event_view.provider.raw.league.id": {"$in": []}},
+            ]
+        }
+
+
+def test_stuck_event_claims_require_an_enabled_raw_provider_league():
+    expected = [
+        {
+            "value.machina_sports_schema.event_view.provider.raw.league.id": {
+                "$in": [39]
+            }
+        },
+        {"value.event_view.provider.raw.league.id": {"$in": [39]}},
+    ]
+
+    for filename in ("event-consumer-live.yml", "event-consumer-postlive.yml"):
+        workflow = load_yaml(f"workflows/{filename}")["workflow"]
+        stuck = task(workflow, "load-stuck-events")
+        assert evaluate(
+            stuck["filters"]["$or"], {"enabled-league-ids": [39]}
+        ) == expected
+
+
+def test_explicit_event_code_repairs_bypass_the_scheduled_league_filter():
+    for filename in (
+        "event-consumer-prelive.yml",
+        "event-consumer-live.yml",
+        "event-consumer-postlive.yml",
+    ):
+        workflow = load_yaml(f"workflows/{filename}")["workflow"]
+        by_code = task(workflow, "load-event-by-code")
+        schedule = task(workflow, "load-event-by-schedule")
+
+        assert by_code["condition"] == "$.get('event_code') is not None"
+        assert by_code["filters"] == {
+            "name": "{'$in': ['sport:Event']}",
+            "metadata.event_code": "$.get('event_code')",
+        }
+        assert not evaluate(schedule["condition"], {"event_exists": True})
 
 
 def test_terminal_finished_gate_accepts_canonical_shape_events():
