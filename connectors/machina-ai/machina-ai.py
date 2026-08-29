@@ -2277,12 +2277,27 @@ class Router:
                         )
                         if result.extensions:
                             metadata["provider_extensions"] = result.extensions
+                        data = result.data
+                        if request.command == "invoke_search" and isinstance(data, Mapping):
+                            data = dict(data)
+                            provider_extensions = _as_dict(data.get("provider_extensions"))
+                            provider_extensions["router_receipt"] = {
+                                key: metadata[key]
+                                for key in (
+                                    "selected_provider",
+                                    "selected_model",
+                                    "route_reason",
+                                    "fallback_used",
+                                    "provider_request_id",
+                                )
+                            }
+                            data["provider_extensions"] = provider_extensions
                         message = "Route completed."
                         if request.operation_mode == "factory":
                             message = "Model loaded."
                         elif request.capability == "video":
                             message = "Video task operation completed."
-                        return self._success(result.data, message, metadata)
+                        return self._success(data, message, metadata)
                     except RouterError as error:
                         self.runtime.circuit_record(route_id, False, error.error_class)
                         attempts.append({

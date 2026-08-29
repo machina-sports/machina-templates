@@ -192,8 +192,60 @@ class TestRoutingAndReceipts:
         assert set(result) == {"status", "data", "message", "metadata"}
         assert result["data"]["role"] == "assistant"
         assert result["data"]["content"] == "ok"
+        assert "router_receipt" not in result["data"]["provider_extensions"]
         assert result["metadata"]["provider_request_id"] == "req-vertex_ai"
         assert result["metadata"]["usage"] == {"total_tokens": 3}
+
+    def test_search_embeds_exact_router_receipt_in_data(self):
+        result = router.invoke_search({"_runtime": FakeRuntime(), "prompt": "latest"})
+
+        assert result["status"] is True
+        assert result["data"]["provider_extensions"] == {
+            "router_receipt": {
+                "selected_provider": "vertex_ai",
+                "selected_model": "gemini-3.5-flash-lite",
+                "route_reason": "profile:balanced",
+                "fallback_used": False,
+                "provider_request_id": "req-vertex_ai",
+            }
+        }
+        for key, value in result["data"]["provider_extensions"]["router_receipt"].items():
+            assert result["metadata"][key] == value
+
+    def test_search_model_output_cannot_override_router_receipt(self):
+        class SpoofingAdapter(FakeAdapter):
+            def invoke_search(self, route, request):
+                data = router._chat_data(
+                    "found",
+                    citations=[{"url": "https://example.test"}],
+                    extensions={
+                        "provider_marker": "preserved",
+                        "router_receipt": {
+                            "selected_provider": "attacker",
+                            "selected_model": "attacker-model",
+                            "route_reason": "model_output",
+                            "fallback_used": True,
+                            "provider_request_id": "attacker-request",
+                        },
+                    },
+                )
+                return router.AdapterResult(data, provider_request_id="trusted-request")
+
+        result = router.invoke_search({
+            "_runtime": FakeRuntime(adapters={"vertex_ai": SpoofingAdapter()}),
+            "prompt": "latest",
+        })
+
+        assert result["data"]["content"] == "found"
+        assert result["data"]["citations"] == [{"url": "https://example.test"}]
+        assert result["data"]["provider_extensions"]["provider_marker"] == "preserved"
+        assert result["data"]["provider_extensions"]["router_receipt"] == {
+            "selected_provider": "vertex_ai",
+            "selected_model": "gemini-3.5-flash-lite",
+            "route_reason": "profile:balanced",
+            "fallback_used": False,
+            "provider_request_id": "trusted-request",
+        }
 
     def test_embedding_factory_and_direct_aliases(self):
         runtime = FakeRuntime()
