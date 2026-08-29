@@ -1760,18 +1760,20 @@ def merge_official_and_provisional_performance(request_data: dict[str, Any]) -> 
         quality = provisional.get("source_quality") or player.get("source_quality") or "unavailable"
         fallback_path = [] if quality == "unavailable" else [quality]
 
+    player_context = {
+        "player_id": player.get("player_id"),
+        "name": player.get("name"),
+        "team_id": player.get("team_id"),
+        "team_name": player.get("team_name"),
+        "position": player.get("position"),
+        "is_goalkeeper": bool(player.get("is_goalkeeper")),
+        "minutes_played": int(_to_float(player.get("minutes_played"))),
+        "eligible_for_power_ranking": bool(player.get("eligible_for_power_ranking", int(_to_float(player.get("minutes_played"))) >= FIFA_POWER_MIN_MINUTES)),
+    } if player else {}
+
     context = {
         "event": event,
-        "player": {
-            "player_id": player.get("player_id"),
-            "name": player.get("name"),
-            "team_id": player.get("team_id"),
-            "team_name": player.get("team_name"),
-            "position": player.get("position"),
-            "is_goalkeeper": bool(player.get("is_goalkeeper")),
-            "minutes_played": int(_to_float(player.get("minutes_played"))),
-            "eligible_for_power_ranking": bool(player.get("eligible_for_power_ranking", int(_to_float(player.get("minutes_played"))) >= FIFA_POWER_MIN_MINUTES)),
-        },
+        "player": player_context,
         "official_fifa_power_ranking": official_context,
         "machina_provisional_performance_signal": provisional or {
             "status": "unavailable",
@@ -4220,6 +4222,190 @@ def _aggregate_audit(audits: list[dict[str, Any]]) -> dict[str, Any]:
         "calibration": {"avg_calibration_error": avg_cal_error, "curve": curve},
         "recommendation": rec,
         "disclaimer": DISCLAIMER,
+    }
+
+
+def _normalize_score_pair(score: dict[str, Any]) -> dict[str, int] | None:
+    """Return a complete non-negative integer score pair, or reject malformed data."""
+    home, away = score.get("home"), score.get("away")
+    if home is None and away is None:
+        return None
+    if home is None or away is None:
+        raise ValueError("incomplete score")
+
+    normalized = []
+    for value in (home, away):
+        if isinstance(value, bool):
+            raise ValueError("invalid score")
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            raise ValueError("invalid score") from None
+        if not math.isfinite(numeric) or numeric < 0 or not numeric.is_integer():
+            raise ValueError("invalid score")
+        normalized.append(int(numeric))
+    return {"home": normalized[0], "away": normalized[1]}
+
+
+def select_backtest_finished_fixtures(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Prefer live finals and safely adapt World Cup 2026 cached event documents."""
+    params = _params(request_data)
+    live_fixtures = [
+        fixture for fixture in _as_list(params.get("live_fixtures"))
+        if isinstance(fixture, dict)
+        and _text(((fixture.get("fixture") or {}).get("status") or {}).get("short")).upper() in _FINAL_STATUS
+    ]
+    if live_fixtures:
+        return {
+            "status": True,
+            "data": {
+                "finished_fixtures": live_fixtures,
+                "fixture_status": "available",
+                "provenance": "api-football-live",
+                "warnings": [],
+            },
+        }
+
+    cached_candidates: dict[str, list[dict[str, Any]]] = {}
+    conflicted_fixture_ids: set[str] = set()
+    for event in _as_list(params.get("cached_events")):
+        if not isinstance(event, dict) or event.get("machina_competition_slug") != "world-cup-2026":
+            continue
+        status = _text(event.get("sport:status") or event.get("status")).upper()
+        provider_ids = event.get("provider_ids") if isinstance(event.get("provider_ids"), dict) else {}
+        fixture_id = _text(provider_ids.get("api_football"))
+        if not fixture_id or status not in _FINAL_STATUS:
+            continue
+
+        raw_score = event.get("score") if isinstance(event.get("score"), dict) else {}
+        live_score = event.get("live_score") if isinstance(event.get("live_score"), dict) else {}
+        extra_time = raw_score.get("extratime") if isinstance(raw_score.get("extratime"), dict) else {}
+        full_time = raw_score.get("fulltime") if isinstance(raw_score.get("fulltime"), dict) else {}
+        if status in {"AET", "PEN"}:
+            score_candidates = (extra_time, live_score, raw_score, full_time)
+        else:
+            score_candidates = (full_time, live_score, raw_score)
+        try:
+            goals = None
+            for score in score_candidates:
+                goals = _normalize_score_pair(score)
+                if goals is not None:
+                    break
+            penalty = raw_score.get("penalty") if isinstance(raw_score.get("penalty"), dict) else {}
+            penalty_goals = _normalize_score_pair(penalty) if status == "PEN" else None
+        except ValueError:
+            continue
+        if goals is None:
+            continue
+
+        adapted = {
+            "fixture": {"id": fixture_id, "status": {"short": status}},
+            "goals": goals,
+        }
+        if penalty_goals is not None:
+            adapted["score"] = {"penalty": penalty_goals}
+
+        elapsed = live_score.get("elapsed")
+        elapsed = float(elapsed) if isinstance(elapsed, (int, float)) else None
+        candidate = {
+            "fixture": adapted,
+            "elapsed": elapsed,
+            "richness": (
+                1 if "score" in adapted else 0,
+                {"FT": 0, "AET": 1, "PEN": 2}.get(status, 0),
+                elapsed is not None,
+                elapsed if elapsed is not None else -1.0,
+                sum(
+                    1 for score in (live_score, raw_score, full_time, extra_time, penalty)
+                    if isinstance(score, dict) and score
+                ),
+            ),
+        }
+        cached_candidates.setdefault(fixture_id, []).append(candidate)
+
+    cached_by_fixture: dict[str, dict[str, Any]] = {}
+    for fixture_id, candidates in cached_candidates.items():
+        by_goals: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
+        for candidate in candidates:
+            goals = candidate["fixture"]["goals"]
+            by_goals.setdefault((goals["home"], goals["away"]), []).append(candidate)
+
+        if len(by_goals) > 1:
+            newest_by_goals = {
+                score: max(
+                    (candidate["elapsed"] for candidate in score_candidates if candidate["elapsed"] is not None),
+                    default=None,
+                )
+                for score, score_candidates in by_goals.items()
+            }
+            known_elapsed = [elapsed for elapsed in newest_by_goals.values() if elapsed is not None]
+            if len(known_elapsed) != len(newest_by_goals) or known_elapsed.count(max(known_elapsed)) != 1:
+                conflicted_fixture_ids.add(fixture_id)
+                continue
+            newest_score = next(score for score, elapsed in newest_by_goals.items() if elapsed == max(known_elapsed))
+            candidates = by_goals[newest_score]
+
+        penalty_candidates: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
+        for candidate in candidates:
+            penalty = (candidate["fixture"].get("score") or {}).get("penalty")
+            if penalty is not None:
+                penalty_candidates.setdefault((penalty["home"], penalty["away"]), []).append(candidate)
+        if len(penalty_candidates) > 1:
+            newest_by_penalty = {
+                score: max(
+                    (candidate["elapsed"] for candidate in score_candidates if candidate["elapsed"] is not None),
+                    default=None,
+                )
+                for score, score_candidates in penalty_candidates.items()
+            }
+            known_elapsed = [elapsed for elapsed in newest_by_penalty.values() if elapsed is not None]
+            if len(known_elapsed) != len(newest_by_penalty) or known_elapsed.count(max(known_elapsed)) != 1:
+                conflicted_fixture_ids.add(fixture_id)
+                continue
+            newest_penalty = next(
+                score for score, elapsed in newest_by_penalty.items() if elapsed == max(known_elapsed)
+            )
+            candidates = [
+                candidate for candidate in candidates
+                if (candidate["fixture"].get("score") or {}).get("penalty") in (
+                    None,
+                    {"home": newest_penalty[0], "away": newest_penalty[1]},
+                )
+            ]
+
+        cached_by_fixture[fixture_id] = max(candidates, key=lambda candidate: candidate["richness"])
+
+    cached_fixtures = [
+        cached_by_fixture[fixture_id]["fixture"]
+        for fixture_id in sorted(cached_by_fixture)
+    ]
+
+    warnings = []
+    if cached_fixtures:
+        warnings.append(
+            "Live API-Football returned no usable final fixtures or was unavailable; "
+            "using cached World Cup 2026 final events."
+        )
+    else:
+        warnings.append("No usable final fixtures were returned live or found in the World Cup 2026 cache.")
+    if conflicted_fixture_ids:
+        warnings.append(
+            "Excluded cached fixtures with conflicting final scores and no trustworthy freshness "
+            "discriminator: %s." % ", ".join(sorted(conflicted_fixture_ids))
+        )
+    if params.get("cached_search_limit_reached"):
+        warnings.append(
+            "Cached World Cup 2026 event search reached its document limit; "
+            "cached fallback may be incomplete."
+        )
+    return {
+        "status": True,
+        "data": {
+            "finished_fixtures": cached_fixtures,
+            "fixture_status": "partial" if cached_fixtures else "unavailable",
+            "provenance": "worldcup-event-cache" if cached_fixtures else "none",
+            "warnings": warnings,
+        },
     }
 
 

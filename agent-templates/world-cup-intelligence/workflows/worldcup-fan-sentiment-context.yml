@@ -16,7 +16,9 @@ workflow:
   outputs:
     fan_sentiment: "$.get('fan_sentiment', {})"
     citations: "$.get('citations', [])"
-    workflow-status: "$.get('fan_sentiment', {}) != {} and 'executed' or 'skipped'"
+    status: "'available' if isinstance($.get('fan_sentiment'), dict) and $.get('fan_sentiment') else 'unavailable'"
+    warnings: "[] if isinstance($.get('fan_sentiment'), dict) and $.get('fan_sentiment') else ['Fan sentiment is unavailable because live search returned no usable data. Possible causes include no relevant recent posts or news, provider access or rate limits, a transient provider error, or an invalid response.']"
+    workflow-status: "isinstance($.get('fan_sentiment'), dict) and $.get('fan_sentiment') and 'executed' or 'skipped'"
   tasks:
     - type: document
       name: lookup-event
@@ -103,7 +105,7 @@ workflow:
     - type: document
       name: save-social-cache
       description: Cache social pulse in same-pod document state for reuse.
-      condition: "$.get('event_urn', '') != '' and $.get('fan_sentiment', {}) != {}"
+      condition: "$.get('event_urn', '') != '' and isinstance($.get('fan_sentiment'), dict) and $.get('fan_sentiment') != {}"
       config:
         action: update
         embed-vector: false

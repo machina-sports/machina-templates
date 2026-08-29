@@ -22,6 +22,10 @@ workflow:
     league: "$.get('league', '1')"
     season: "$.get('season', '2026')"
   outputs:
+    finished_fixtures: "$.get('finished_fixtures', [])"
+    status: "$.get('fixture_status', 'unavailable')"
+    provenance: "$.get('fixture_provenance', 'none')"
+    warnings: "$.get('fixture_warnings', [])"
     audited_count: "len($.get('audits', []))"
     track_record: "$.get('backtesting_report', {})"
     clv_settled_count: "len($.get('clv_settled', []))"
@@ -30,7 +34,8 @@ workflow:
   tasks:
     - type: connector
       name: fetch-finished-fixtures
-      description: Finished fixtures supply the actual results.
+      description: Prefer live API-Football final results when the provider is available.
+      continue_on_error: true
       connector:
         name: api-football
         command: get-fixtures
@@ -38,7 +43,38 @@ workflow:
         league: "$.get('league', '1')"
         season: "$.get('season', '2026')"
       outputs:
-        finished_fixtures: "[f for f in $.get('response', []) if ((f.get('fixture', {}) or {}).get('status', {}) or {}).get('short') in ('FT', 'AET', 'PEN')]"
+        api_finished_fixtures: "[f for f in $.get('response', []) if ((f.get('fixture', {}) or {}).get('status', {}) or {}).get('short') in ('FT', 'AET', 'PEN')]"
+
+    - type: document
+      name: load-cached-final-events
+      description: Load only cached World Cup 2026 events for explicit fallback selection.
+      condition: "len($.get('api_finished_fixtures', [])) == 0"
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value.machina_competition_slug: "'world-cup-2026'"
+      outputs:
+        cached_events: "[document.get('value', {}) for document in ($.get('documents', []) or []) if isinstance(document, dict) and isinstance(document.get('value'), dict)]"
+        cached_event_search_limit_reached: "len($.get('documents', []) or []) >= 500"
+
+    - type: connector
+      name: select-finished-fixtures
+      description: Prefer live finals; otherwise adapt cached finals and expose fallback provenance.
+      connector:
+        name: worldcup-market-intelligence
+        command: select_backtest_finished_fixtures
+      inputs:
+        live_fixtures: "$.get('api_finished_fixtures', [])"
+        cached_events: "$.get('cached_events', [])"
+        cached_search_limit_reached: "$.get('cached_event_search_limit_reached', False)"
+      outputs:
+        finished_fixtures: "$.get('finished_fixtures', [])"
+        fixture_status: "$.get('fixture_status', 'unavailable')"
+        fixture_provenance: "$.get('provenance', 'none')"
+        fixture_warnings: "$.get('warnings', [])"
 
     - type: document
       name: load-forecasts
@@ -69,7 +105,7 @@ workflow:
     - type: document
       name: save-audits
       description: Persist per-event audit docs.
-      condition: "len($.get('audits', [])) > 0"
+      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('audits', [])) > 0"
       config:
         action: bulk-update
         embed-vector: false
@@ -83,7 +119,7 @@ workflow:
     - type: connector
       name: aggregate-audit
       description: Roll up audits into the Brier/calibration track record.
-      condition: "len($.get('audits', [])) > 0"
+      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('audits', [])) > 0"
       connector:
         name: worldcup-market-intelligence
         command: compute_forecast_audit
@@ -98,7 +134,7 @@ workflow:
     - type: document
       name: save-aggregate
       description: Persist the singleton aggregate track-record doc.
-      condition: "$.get('backtesting_report', {}) != {}"
+      condition: "$.get('fixture_provenance') == 'api-football-live' and $.get('backtesting_report', {}) != {}"
       config:
         action: bulk-update
         embed-vector: false
@@ -139,7 +175,7 @@ workflow:
     - type: connector
       name: settle-clv
       description: Capture the closing line + compute CLV for newly-final entries.
-      condition: "len($.get('ledger_rows', [])) > 0"
+      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('ledger_rows', [])) > 0"
       connector:
         name: worldcup-market-intelligence
         command: compute_clv
@@ -154,7 +190,7 @@ workflow:
     - type: document
       name: save-clv-settled
       description: Persist newly-settled ledger rows (closing line + CLV).
-      condition: "len($.get('clv_settled', [])) > 0"
+      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('clv_settled', [])) > 0"
       config:
         action: bulk-update
         embed-vector: false
@@ -168,7 +204,7 @@ workflow:
     - type: connector
       name: aggregate-clv
       description: Two-proportion Z-test on CLV+ vs CLV- win rates.
-      condition: "len($.get('ledger_rows', [])) > 0"
+      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('clv_ledger', [])) > 0"
       connector:
         name: worldcup-market-intelligence
         command: compute_clv_report
@@ -182,7 +218,7 @@ workflow:
     - type: document
       name: save-clv-report
       description: Persist the singleton CLV track-record doc.
-      condition: "$.get('clv_report', {}) != {}"
+      condition: "$.get('fixture_provenance') == 'api-football-live' and $.get('clv_report', {}) != {}"
       config:
         action: bulk-update
         embed-vector: false
