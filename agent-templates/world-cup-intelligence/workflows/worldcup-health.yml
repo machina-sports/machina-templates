@@ -1,14 +1,27 @@
 workflow:
   name: worldcup-health
   title: World Cup Intelligence - Health
-  description: Cheap smoke test for the World Cup Intelligence template; proves the same-pod document store responds.
+  description: Cheap same-pod smoke test with opt-in, provider-aware probes.
+  context-variables:
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
   inputs:
     include_connectors: "$.get('include_connectors', False)"
+    probe_providers: "$.get('probe_providers', [])"
+    league: "$.get('league', '1')"
+    season: "$.get('season', '2026')"
   outputs:
     product: "'world_cup_market_intelligence'"
     version: "'0.1.0'"
     store_reachable: "$.get('store_reachable', False)"
     connectors: "$.get('connectors', [])"
+    status: "$.get('response_status', 'unavailable')"
+    availability: "$.get('response_availability', {})"
+    evidence: "$.get('response_evidence', [])"
+    provenance: "$.get('response_provenance', [])"
+    warnings: "$.get('response_warnings', [])"
+    required_evidence: "$.get('response_required_evidence', [])"
+    unavailable_reason: "$.get('response_unavailable_reason')"
     workflow-status: "'executed'"
   tasks:
     - type: document
@@ -23,3 +36,57 @@ workflow:
       outputs:
         store_reachable: "True"
         connectors: "['api-football', 'sports-skills', 'kalshi', 'polymarket', 'google-genai', 'grok'] if $.get('include_connectors') else []"
+
+    - type: connector
+      name: probe-api-football
+      description: Optional one-row World Cup fixture probe; never runs unless explicitly selected.
+      condition: "'api-football' in ($.get('probe_providers', []) or [])"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        league: "$.get('league', '1')"
+        season: "$.get('season', '2026')"
+        date: "'2026-06-20'"
+      outputs:
+        api_football_probe_ok: "isinstance($.get('response'), list) and not $.get('errors') and len([row for row in $.get('response', []) if isinstance(row, dict) and isinstance(row.get('fixture'), dict) and row.get('fixture', {}).get('id')]) > 0"
+        api_football_probe_status: "'provider_error' if $.get('errors') else ('available' if isinstance($.get('response'), list) and len([row for row in $.get('response', []) if isinstance(row, dict) and isinstance(row.get('fixture'), dict) and row.get('fixture', {}).get('id')]) > 0 else 'unavailable')"
+        api_football_probe_count: "len([row for row in $.get('response', []) if isinstance(row, dict) and isinstance(row.get('fixture'), dict) and row.get('fixture', {}).get('id')]) if isinstance($.get('response'), list) else 0"
+
+    - type: connector
+      name: probe-sports-skills
+      description: Optional World Cup schedule probe through sports-skills; never runs unless explicitly selected.
+      condition: "'sports-skills' in ($.get('probe_providers', []) or [])"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_daily_schedule'"
+        date: "'2026-06-20'"
+      outputs:
+        sports_skills_probe_ok: "not $.get('error') and not $.get('errors') and not $.get('message') and isinstance($.get('data'), dict) and isinstance($.get('data', {}).get('events'), list) and len([event for event in $.get('data', {}).get('events', []) if isinstance(event, dict) and event.get('id') and isinstance(event.get('competitors'), list) and len(event.get('competitors', [])) >= 2]) > 0"
+        sports_skills_probe_status: "'provider_error' if ($.get('error') or $.get('errors') or $.get('message')) else ('available' if isinstance($.get('data'), dict) and isinstance($.get('data', {}).get('events'), list) and len([event for event in $.get('data', {}).get('events', []) if isinstance(event, dict) and event.get('id') and isinstance(event.get('competitors'), list) and len(event.get('competitors', [])) >= 2]) > 0 else 'unavailable')"
+        sports_skills_probe_count: "len([event for event in $.get('data', {}).get('events', []) if isinstance(event, dict) and event.get('id') and isinstance(event.get('competitors'), list) and len(event.get('competitors', [])) >= 2]) if isinstance($.get('data'), dict) and isinstance($.get('data', {}).get('events'), list) else 0"
+
+    - type: connector
+      name: build-response-envelope
+      description: Expose store and requested-provider probe availability without probing unrequested providers.
+      connector:
+        name: worldcup-market-intelligence
+        command: build_response_envelope
+      inputs:
+        capabilities: "{'document_store': ('available' if $.get('store_reachable', False) else 'unavailable'), 'api-football': ($.get('api_football_probe_status', 'unavailable') if 'api-football' in ($.get('probe_providers', []) or []) else 'not_requested'), 'sports-skills': ($.get('sports_skills_probe_status', 'unavailable') if 'sports-skills' in ($.get('probe_providers', []) or []) else 'not_requested'), 'kalshi': ('unavailable' if 'kalshi' in ($.get('probe_providers', []) or []) else 'not_requested'), 'polymarket': ('unavailable' if 'polymarket' in ($.get('probe_providers', []) or []) else 'not_requested'), 'google-genai': ('unavailable' if 'google-genai' in ($.get('probe_providers', []) or []) else 'not_requested'), 'grok': ('unavailable' if 'grok' in ($.get('probe_providers', []) or []) else 'not_requested')}"
+        required_capabilities: "['document_store'] + ($.get('probe_providers', []) or [])"
+        evidence: "[{'kind': 'document-store-read', 'available': $.get('store_reachable', False)}] + ([{'kind': 'provider-health-probe', 'provider': 'api-football', 'available': $.get('api_football_probe_ok', False), 'result_count': $.get('api_football_probe_count', 0)}] if 'api-football' in ($.get('probe_providers', []) or []) else []) + ([{'kind': 'provider-health-probe', 'provider': 'sports-skills', 'available': $.get('sports_skills_probe_ok', False), 'result_count': $.get('sports_skills_probe_count', 0)}] if 'sports-skills' in ($.get('probe_providers', []) or []) else [])"
+        provenance: "[{'provider': provider, 'role': 'optional-health-probe'} for provider in ($.get('probe_providers', []) or [])]"
+        warnings: "[provider + ' health probe was unavailable.' for provider in ($.get('probe_providers', []) or []) if (provider == 'api-football' and not $.get('api_football_probe_ok', False)) or (provider == 'sports-skills' and not $.get('sports_skills_probe_ok', False)) or provider not in ('api-football', 'sports-skills')]"
+      outputs:
+        response_status: "$.get('status', 'unavailable')"
+        response_availability: "$.get('availability', {})"
+        response_evidence: "$.get('evidence', [])"
+        response_provenance: "$.get('provenance', [])"
+        response_warnings: "$.get('warnings', [])"
+        response_required_evidence: "$.get('required_evidence', [])"
+        response_unavailable_reason: "$.get('unavailable_reason')"

@@ -23,6 +23,7 @@ agent:
       outputs:
         has_live: "$.get('has_live')"
         live_count: "$.get('live_count')"
+        terminal_reconciliation_pending: "$.get('terminal_reconciliation_pending', False)"
 
     - name: worldcup-sync-market-sources
       condition: "$.get('has_live') is True"
@@ -37,7 +38,7 @@ agent:
         markets_count: "$.get('markets_count')"
 
     - name: worldcup-refresh-live-status
-      condition: "$.get('has_live') is True"
+      condition: "$.get('has_live') is True or $.get('terminal_reconciliation_pending') is True"
       inputs:
         league: "1"
         season: "2026"

@@ -20,12 +20,18 @@ workflow:
     date: "$.get('date', '')"
     force_regen: "$.get('force_regen', False)"
   outputs:
-    skill_card: "dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('recap', {})), event_urn=$.get('event_urn', ''))"
+    skill_card: "$.get('response_skill_card', {})"
     event_urn: "$.get('event_urn', '')"
     resolved_fixture: "$.get('resolved_fixture', {})"
-    served_from: "'cache' if $.get('cached') else 'generated'"
-    warnings: "[] if $.get('event_urn', '') else ['No fixture resolved -- pass event_urn, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.']"
-    workflow-status: "($.get('cached') or $.get('recap', {})) and 'executed' or 'skipped'"
+    served_from: "$.get('response_served_from', 'unavailable')"
+    status: "$.get('response_status', 'unavailable')"
+    availability: "$.get('response_availability', {})"
+    evidence: "$.get('response_evidence', [])"
+    provenance: "$.get('response_provenance', [])"
+    warnings: "$.get('response_warnings', [])"
+    required_evidence: "$.get('response_required_evidence', [])"
+    unavailable_reason: "$.get('response_unavailable_reason')"
+    workflow-status: "$.get('response_served_from', 'unavailable') != 'unavailable' and 'executed' or 'skipped'"
   tasks:
     - type: document
       name: resolve-load-events
@@ -71,12 +77,12 @@ workflow:
         value.subject_urn: "$.get('event_urn', '')"
         value.expires_at: "{'$gte': ((datetime.utcnow() + timedelta(days=3650)) if (str($.get('force_regen', False)).strip().lower() in ('true', '1', 'yes')) else datetime.utcnow()).isoformat() + 'Z'}"
       outputs:
-        cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) else {}"
+        cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) and isinstance(($.get('documents', []) or [{}])[0].get('value', {}).get('body'), dict) and ($.get('documents', []) or [{}])[0].get('value', {}).get('body', {}) and not ($.get('documents', []) or [{}])[0].get('value', {}).get('body', {}).get('provider_error') and not ($.get('documents', []) or [{}])[0].get('value', {}).get('body', {}).get('error') else {}"
 
     - type: document
       name: load-event
       description: Event doc (final status + score live merged).
-      condition: "not $.get('cached')"
+      condition: "$.get('event_urn', '') != ''"
       config:
         action: search
         search-limit: 1
@@ -86,7 +92,7 @@ workflow:
         value._id: "$.get('event_urn', '')"
       outputs:
         event: "($.get('documents', []) or [{}])[0].get('value', {})"
-        is_final: "($.get('documents', []) or [{}])[0].get('value', {}).get('sport:status') in ('FT', 'AET', 'PEN')"
+        is_final: "($.get('documents', []) or [{}])[0].get('value', {}).get('sport:status') in ('FT', 'AET', 'PEN') and ($.get('documents', []) or [{}])[0].get('value', {}).get('final_data_status') == 'provider_confirmed' and ($.get('documents', []) or [{}])[0].get('value', {}).get('final_score_complete') is True"
 
     - type: document
       name: load-forecast
@@ -125,6 +131,7 @@ workflow:
       name: worldcup-match-recap
       description: Author the structured recap card (final fixtures only).
       condition: "not $.get('cached') and $.get('is_final') is True"
+      continue_on_error: true
       connector:
         name: google-genai
         command: invoke_prompt
@@ -139,10 +146,38 @@ workflow:
       outputs:
         recap: "$"
 
+    - type: connector
+      name: build-response-envelope
+      description: Report recap inputs and provider-confirmed finality separately.
+      connector:
+        name: worldcup-market-intelligence
+        command: build_skill_response_envelope
+      inputs:
+        cached_card: "$.get('cached', {}).get('body', {}) if $.get('is_final') is True else {}"
+        generated_card: "$.get('recap', {})"
+        subject_urn: "$.get('event_urn', '')"
+        subject_key: "'event_urn'"
+        cached_provider: "'worldcup:skill-match-recap-cache'"
+        generated_provider: "'google-genai'"
+        generated_research: "$.get('research', '')"
+        capabilities: "{'provider_confirmed_final': ('available' if $.get('is_final') is True else 'unavailable'), 'forecast': ('available' if $.get('forecast', {}) else 'unavailable'), 'grounded_research': ('available' if $.get('research', '') else 'unavailable')}"
+        required_capabilities: "['skill_card', 'provider_confirmed_final']"
+        warnings: "([] if $.get('event_urn', '') else ['No fixture resolved -- pass event_urn, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.']) + ([] if not $.get('event_urn', '') or $.get('is_final') is True else ['A provider-confirmed final with complete score evidence is required before recap generation.'])"
+      outputs:
+        response_skill_card: "$.get('skill_card', {})"
+        response_served_from: "$.get('served_from', 'unavailable')"
+        response_status: "$.get('status', 'unavailable')"
+        response_availability: "$.get('availability', {})"
+        response_evidence: "$.get('evidence', [])"
+        response_provenance: "$.get('provenance', [])"
+        response_warnings: "$.get('warnings', [])"
+        response_required_evidence: "$.get('required_evidence', [])"
+        response_unavailable_reason: "$.get('unavailable_reason')"
+
     - type: document
       name: save-candidate
       description: Cache the recap EVERGREEN (one per match).
-      condition: "not $.get('cached') and $.get('recap', {}) != {}"
+      condition: "$.get('response_served_from') == 'generated'"
       config:
         action: bulk-update
         embed-vector: false

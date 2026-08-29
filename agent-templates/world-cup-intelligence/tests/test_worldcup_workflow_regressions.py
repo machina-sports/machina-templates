@@ -84,6 +84,7 @@ def test_backtest_uses_scoped_cached_final_events_when_live_provider_is_unavaila
                 "machina_competition_slug": "world-cup-2026",
                 "provider_ids": {"api_football": "101"},
                 "sport:status": "FT",
+                "final_data_status": "provider_confirmed",
                 "live_score": {"home": 0, "away": 2},
             }
         },
@@ -92,6 +93,7 @@ def test_backtest_uses_scoped_cached_final_events_when_live_provider_is_unavaila
                 "machina_competition_slug": "world-cup-2026",
                 "provider_ids": {"api_football": "102"},
                 "sport:status": "AET",
+                "final_data_status": "provider_confirmed",
                 "score": {
                     "fulltime": {"home": 1, "away": 1},
                     "extratime": {"home": 2, "away": 1},
@@ -103,6 +105,7 @@ def test_backtest_uses_scoped_cached_final_events_when_live_provider_is_unavaila
                 "machina_competition_slug": "world-cup-2026",
                 "provider_ids": {"api_football": "103"},
                 "sport:status": "PEN",
+                "final_data_status": "provider_confirmed",
                 "score": {
                     "fulltime": {"home": 1, "away": 1},
                     "extratime": {"home": 2, "away": 2},
@@ -123,8 +126,7 @@ def test_backtest_uses_scoped_cached_final_events_when_live_provider_is_unavaila
     assert fetch["continue_on_error"] is True
     assert cached["filters"]["name"] == "'worldcup:event'"
     assert cached["filters"]["value.machina_competition_slug"] == "'world-cup-2026'"
-    assert evaluate(cached["condition"], {"api_finished_fixtures": []}) is True
-    assert evaluate(cached["condition"], {"api_finished_fixtures": [{}]}) is False
+    assert "condition" not in cached
     assert "$.context" not in str(workflow)
     cached_events = evaluate(cached["outputs"]["cached_events"], {"documents": documents})
     result = MODULE.select_backtest_finished_fixtures({
@@ -177,6 +179,19 @@ def test_backtest_uses_scoped_cached_final_events_when_live_provider_is_unavaila
         }
     )["data"]
     assert audit["count"] == 1
+    cached_context = {
+        "fixture_provenance": result["provenance"],
+        "audits": audit["audits"],
+        "backtesting_report": {"sample_size": 1},
+        "ledger_rows": [{}],
+        "clv_settled": [{}],
+        "clv_ledger": [{}],
+        "clv_report": {"sample_size": 1},
+    }
+    for task_name in ("save-audits", "aggregate-audit", "save-aggregate"):
+        assert evaluate(task(workflow, task_name)["condition"], cached_context) is True
+    for task_name in ("settle-clv", "save-clv-settled", "aggregate-clv", "save-clv-report"):
+        assert evaluate(task(workflow, task_name)["condition"], cached_context) is True
 
 
 def test_cached_final_events_dedupe_same_score_to_richest_final_state():
@@ -185,12 +200,14 @@ def test_cached_final_events_dedupe_same_score_to_richest_final_state():
             "machina_competition_slug": "world-cup-2026",
             "provider_ids": {"api_football": 201},
             "sport:status": "FT",
+            "final_data_status": "provider_confirmed",
             "live_score": {"home": "2", "away": "2"},
         },
         {
             "machina_competition_slug": "world-cup-2026",
             "provider_ids": {"api_football": "201"},
             "sport:status": "AET",
+            "final_data_status": "provider_confirmed",
             "score": {
                 "fulltime": {"home": 1, "away": 1},
                 "extratime": {"home": 2, "away": 2},
@@ -200,6 +217,7 @@ def test_cached_final_events_dedupe_same_score_to_richest_final_state():
             "machina_competition_slug": "world-cup-2026",
             "provider_ids": {"api_football": "201"},
             "sport:status": "PEN",
+            "final_data_status": "provider_confirmed",
             "score": {
                 "fulltime": {"home": 1, "away": 1},
                 "extratime": {"home": "2", "away": "2"},
@@ -210,6 +228,7 @@ def test_cached_final_events_dedupe_same_score_to_richest_final_state():
             "machina_competition_slug": "world-cup-2026",
             "provider_ids": {"api_football": "201"},
             "sport:status": "PEN",
+            "final_data_status": "provider_confirmed",
             "score": {
                 "extratime": {"home": 2, "away": 2},
                 "penalty": {"home": 10, "away": 9},
@@ -241,6 +260,7 @@ def test_cached_aet_prefers_authoritative_extratime_over_stale_live_score():
                 "machina_competition_slug": "world-cup-2026",
                 "provider_ids": {"api_football": "204"},
                 "sport:status": "AET",
+                "final_data_status": "provider_confirmed",
                 "live_score": {"home": 1, "away": 1},
                 "score": {
                     "fulltime": {"home": 1, "away": 1},
@@ -261,6 +281,7 @@ def test_cached_ft_prefers_fulltime_and_does_not_emit_penalties_as_goals():
                 "machina_competition_slug": "world-cup-2026",
                 "provider_ids": {"api_football": "206"},
                 "sport:status": "FT",
+                "final_data_status": "provider_confirmed",
                 "live_score": {"home": 1, "away": 0},
                 "score": {
                     "fulltime": {"home": "2", "away": "0"},
@@ -284,6 +305,7 @@ def test_cached_final_events_fail_closed_on_nonnumeric_scores():
                 "machina_competition_slug": "world-cup-2026",
                 "provider_ids": {"api_football": "205"},
                 "sport:status": "PEN",
+                "final_data_status": "provider_confirmed",
                 "score": {
                     "extratime": {"home": "two", "away": 1},
                     "penalty": {"home": "5", "away": "4"},
@@ -301,12 +323,14 @@ def test_cached_final_events_fail_closed_on_conflicting_scores_without_freshness
             "machina_competition_slug": "world-cup-2026",
             "provider_ids": {"api_football": "202"},
             "sport:status": "FT",
+            "final_data_status": "provider_confirmed",
             "live_score": {"home": 1, "away": 0},
         },
         {
             "machina_competition_slug": "world-cup-2026",
             "provider_ids": {"api_football": "202"},
             "sport:status": "FT",
+            "final_data_status": "provider_confirmed",
             "score": {"home": 2, "away": 0},
         },
     ]
@@ -329,12 +353,14 @@ def test_cached_final_events_prefer_provably_newer_elapsed_score():
             "machina_competition_slug": "world-cup-2026",
             "provider_ids": {"api_football": "203"},
             "sport:status": "FT",
+            "final_data_status": "provider_confirmed",
             "live_score": {"home": 1, "away": 1, "elapsed": 90},
         },
         {
             "machina_competition_slug": "world-cup-2026",
             "provider_ids": {"api_football": "203"},
             "sport:status": "AET",
+            "final_data_status": "provider_confirmed",
             "live_score": {"home": 2, "away": 1, "elapsed": 120},
         },
     ]
@@ -362,6 +388,7 @@ def test_cached_final_events_ignore_unproduced_sport_score_shape():
                 "machina_competition_slug": "world-cup-2026",
                 "provider_ids": {"api_football": "999"},
                 "sport:status": "FT",
+                "final_data_status": "provider_confirmed",
                 "sport:score": {"sport:homeScore": 3, "sport:awayScore": 0},
             }],
         }
@@ -388,8 +415,10 @@ def test_stale_inferred_cached_final_cannot_persist_audit_or_drive_clv():
     })["data"]
     workflow = load_yaml("workflows/worldcup-backtest-forecasts.yml")["workflow"]
 
-    assert selected["finished_fixtures"][0]["goals"] == {"home": 1, "away": 0}
-    assert selected["provenance"] == "worldcup-event-cache"
+    assert selected["finished_fixtures"] == []
+    assert selected["fixture_status"] == "unavailable"
+    assert selected["provenance"] == "none"
+    assert any("provider-confirmed" in warning for warning in selected["warnings"])
     audit = MODULE.compute_forecast_audit({
         "params": {
             "mode": "batch",
@@ -401,7 +430,7 @@ def test_stale_inferred_cached_final_cannot_persist_audit_or_drive_clv():
             "finished_fixtures": selected["finished_fixtures"],
         }
     })["data"]
-    assert audit["count"] == 1
+    assert audit["count"] == 0
     cached_context = {
         "fixture_provenance": selected["provenance"],
         "audits": audit["audits"],
@@ -415,6 +444,58 @@ def test_stale_inferred_cached_final_cannot_persist_audit_or_drive_clv():
         assert evaluate(task(workflow, task_name)["condition"], cached_context) is False
     for task_name in ("settle-clv", "save-clv-settled", "aggregate-clv", "save-clv-report"):
         assert evaluate(task(workflow, task_name)["condition"], cached_context) is False
+
+
+def test_backtest_excludes_pending_and_legacy_unconfirmed_cached_finals():
+    events = [
+        {
+            "machina_competition_slug": "world-cup-2026",
+            "provider_ids": {"api_football": "301"},
+            "sport:status": "FT",
+            "final_data_status": "pending_confirmation",
+            "live_score": {"home": 2, "away": 0},
+        },
+        {
+            "machina_competition_slug": "world-cup-2026",
+            "provider_ids": {"api_football": "302"},
+            "sport:status": "FT",
+            "live_score": {"home": 1, "away": 0},
+        },
+    ]
+
+    result = MODULE.select_backtest_finished_fixtures({
+        "params": {"live_fixtures": [], "cached_events": events}
+    })["data"]
+
+    assert result["finished_fixtures"] == []
+    assert result["fixture_status"] == "unavailable"
+    assert any("provider-confirmed" in warning for warning in result["warnings"])
+
+
+def test_backtest_uses_confirmed_cache_when_live_final_score_is_incomplete():
+    cached = {
+        "machina_competition_slug": "world-cup-2026",
+        "provider_ids": {"api_football": "401"},
+        "sport:status": "FT",
+        "final_data_status": "provider_confirmed",
+        "score": {"fulltime": {"home": 2, "away": 1}},
+    }
+    live = [{
+        "fixture": {"id": 400, "status": {"short": "FT"}},
+        "goals": {"home": 1, "away": None},
+    }]
+
+    result = MODULE.select_backtest_finished_fixtures({
+        "params": {"live_fixtures": live, "cached_events": [cached]}
+    })["data"]
+
+    assert result["finished_fixtures"] == [{
+        "fixture": {"id": "401", "status": {"short": "FT"}},
+        "goals": {"home": 2, "away": 1},
+    }]
+    assert result["fixture_status"] == "partial"
+    assert result["provenance"] == "worldcup-event-cache"
+    assert any("incomplete score evidence" in warning for warning in result["warnings"])
 
 
 def test_backtest_prefers_live_final_fixtures_and_reuses_selection_downstream():
@@ -466,6 +547,15 @@ def _player_workflow():
     return load_yaml("workflows/worldcup-get-player-performance-context.yml")["workflow"]
 
 
+def test_player_stats_provider_uses_supported_inputs_and_filters_player_locally():
+    workflow = _player_workflow()
+    fetch = task(workflow, "fetch-player-stats-af")
+    normalize = task(workflow, "normalize-player-match-stats")
+
+    assert set(fetch["inputs"]) == {"fixture", "team"}
+    assert normalize["inputs"]["player_id"] == "$.get('player_id')"
+
+
 def test_player_context_returns_structured_unavailable_status_and_warnings():
     workflow = _player_workflow()
     merge = task(workflow, "merge-player-performance-context")
@@ -511,6 +601,20 @@ def test_player_context_returns_available_status_from_normalized_players():
 
     assert evaluate(workflow["outputs"]["status"], context) == "available"
     assert evaluate(workflow["outputs"]["warnings"], context) == []
+
+
+def test_match_preview_cache_hit_loads_event_without_regeneration():
+    workflow = load_yaml("workflows/worldcup-match-preview.yml")["workflow"]
+    context = {
+        "cached": {"body": {"headline": "Cached preview"}},
+        "event_urn": "urn:event:cached-preview",
+        "event": {},
+    }
+
+    assert evaluate(task(workflow, "load-event")["condition"], context) is True
+    assert evaluate(task(workflow, "grounded-preview-research")["condition"], context) is False
+    assert evaluate(task(workflow, "worldcup-match-preview")["condition"], context) is False
+    assert evaluate(task(workflow, "save-candidate")["condition"], context) is False
 
 
 def test_fan_sentiment_reports_grok_unavailability_in_successful_response():

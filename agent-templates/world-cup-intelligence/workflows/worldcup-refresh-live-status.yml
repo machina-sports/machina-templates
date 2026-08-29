@@ -2,9 +2,9 @@ workflow:
   name: worldcup-refresh-live-status
   title: World Cup Intelligence - Refresh Live Status
   description: |
-    Refresh in-play fixture status + score onto the cached event docs from
-    api-football live fixtures, and finalize stale regular-time docs that got
-    stuck at 90'. Driven by the hot coverage agent during matches so
+    Reconcile in-play and recently completed fixture status + score onto the
+    cached event docs from api-football, and explicitly classify stale
+    regular-time docs that got stuck at 90'. Driven by the hot coverage agent so
     get-event-context / standings reflect live scores between daily ingests.
 
   context-variables:
@@ -16,9 +16,34 @@ workflow:
     league: "$.get('league', '1')"
     season: "$.get('season', '2026')"
   outputs:
-    updated_count: "len(($.get('normalized_items', []) or []) + ($.get('stale_final_items', []) or []))"
-    workflow-status: "len(($.get('normalized_items', []) or []) + ($.get('stale_final_items', []) or [])) > 0 and 'executed' or 'skipped'"
+    updated_count: "len($.get('normalized_items', []) or [])"
+    workflow-status: "len($.get('normalized_items', []) or []) > 0 and 'executed' or 'skipped'"
   tasks:
+    - type: document
+      name: load-events
+      description: Load cached events before deciding which exact fixtures are due for terminal reconciliation.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: select-terminal-reconciliation
+      description: Select only cached API-Football fixture ids whose bounded terminal retry is due.
+      condition: "len($.get('events', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: select_terminal_reconciliation
+      inputs:
+        events: "$.get('events', [])"
+        observed_at: "datetime.utcnow().isoformat() + 'Z'"
+      outputs:
+        terminal_fixture_ids: "$.get('fixture_ids', [])"
+
     - type: connector
       name: fetch-live-fixtures
       description: api-football live fixtures for the World Cup league.
@@ -33,53 +58,50 @@ workflow:
       outputs:
         live_fixtures: "{'response': $.get('response', [])}"
 
-    - type: document
-      name: load-events
-      description: Load event docs to merge live status/score onto and finalize stale live docs.
-      config:
-        action: search
-        search-limit: 500
-        search-vector: false
-      filters:
-        name: "'worldcup:event'"
-      outputs:
-        events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
-
     - type: connector
-      name: apply-live-status
-      description: Merge live status + score onto matching event docs (by fixture id).
-      condition: "len($.get('events', [])) > 0 and len(($.get('live_fixtures', {}) or {}).get('response', [])) > 0"
+      name: fetch-terminal-fixtures
+      description: Fetch each due terminal candidate by its exact API-Football fixture id.
+      condition: "len($.get('terminal_fixture_ids', [])) > 0"
+      continue_on_error: true
       connector:
-        name: worldcup-market-intelligence
-        command: apply_live_status
+        name: api-football
+        command: get-fixtures
+      foreach:
+        concurrent: false
+        name: terminal_fixture_id
+        expr: $
+        value: "$.get('terminal_fixture_ids', [])"
       inputs:
-        events: "$.get('events', [])"
-        live_fixtures: "$.get('live_fixtures', {})"
+        id: "$.get('terminal_fixture_id')"
       outputs:
-        normalized_items: "$.get('normalized_items', [])"
+        terminal_fixtures: "[{'response': $.get('response', []), 'errors': $.get('errors', {})}]"
 
     - type: connector
-      name: finalize-stale-live-events
-      description: Mark stale regular-time live docs as full-time.
+      name: reconcile-fixture-status
+      description: Apply exact provider observations first, then mark unmatched stale finals as inferred with bounded retries.
       condition: "len($.get('events', [])) > 0"
       connector:
         name: worldcup-market-intelligence
-        command: finalize_stale_live_events
+        command: reconcile_fixture_status
       inputs:
         events: "$.get('events', [])"
+        live_fixtures: "$.get('live_fixtures', {})"
+        terminal_fixtures: "$.get('terminal_fixtures', [])"
+        attempted_fixture_ids: "$.get('terminal_fixture_ids', [])"
+        observed_at: "datetime.utcnow().isoformat() + 'Z'"
       outputs:
-        stale_final_items: "$.get('normalized_items', [])"
+        normalized_items: "$.get('normalized_items', [])"
 
     - type: document
       name: save-live-events
       description: Persist the updated live/final event docs.
-      condition: "len(($.get('normalized_items', []) or []) + ($.get('stale_final_items', []) or [])) > 0"
+      condition: "len($.get('normalized_items', []) or []) > 0"
       config:
         action: bulk-update
         embed-vector: false
         force-update: true
       document_name: "'worldcup:event'"
       documents:
-        items: "($.get('normalized_items', []) or []) + ($.get('stale_final_items', []) or [])"
+        items: "$.get('normalized_items', [])"
       inputs:
-        normalized_items: "($.get('normalized_items', []) or []) + ($.get('stale_final_items', []) or [])"
+        normalized_items: "$.get('normalized_items', [])"

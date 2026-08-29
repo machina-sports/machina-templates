@@ -15,6 +15,13 @@ workflow:
     limit: "$.get('limit', 100)"
   outputs:
     schedule: "$.get('schedule', {})"
+    status: "$.get('schedule', {}).get('status', 'unavailable')"
+    availability: "$.get('schedule', {}).get('availability', {})"
+    evidence: "$.get('schedule', {}).get('evidence', [])"
+    provenance: "$.get('schedule', {}).get('provenance', [])"
+    warnings: "$.get('schedule', {}).get('warnings', [])"
+    required_evidence: "$.get('schedule', {}).get('required_evidence', [])"
+    unavailable_reason: "$.get('schedule', {}).get('unavailable_reason')"
     workflow-status: "$.get('schedule', {}).get('events') is not None and 'executed' or 'skipped'"
   tasks:
     - type: document

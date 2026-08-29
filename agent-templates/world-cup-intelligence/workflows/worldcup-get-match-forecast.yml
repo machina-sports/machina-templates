@@ -22,7 +22,13 @@ workflow:
     forecast: "$.get('forecast', {})"
     model_vs_market: "$.get('model_vs_market', {})"
     analysis: "$.get('analysis', {})"
-    warnings: "$.get('forecast_warnings', [])"
+    status: "$.get('response_status', 'unavailable')"
+    availability: "$.get('response_availability', {})"
+    evidence: "$.get('response_evidence', [])"
+    provenance: "$.get('response_provenance', [])"
+    warnings: "$.get('response_warnings', $.get('forecast_warnings', []))"
+    required_evidence: "$.get('response_required_evidence', [])"
+    unavailable_reason: "$.get('response_unavailable_reason')"
     workflow-status: "$.get('forecast', {}) and 'executed' or 'skipped'"
   tasks:
     - type: document
@@ -86,3 +92,24 @@ workflow:
         timeout: 120
       outputs:
         analysis: "$"
+
+    - type: connector
+      name: build-response-envelope
+      description: Report forecast, market-context, and optional reasoning availability independently.
+      connector:
+        name: worldcup-market-intelligence
+        command: build_response_envelope
+      inputs:
+        capabilities: "{'forecast': ('available' if $.get('forecast', {}) else 'unavailable'), 'market_context': ('available' if $.get('model_vs_market', {}) else 'unavailable'), 'reasoning': (('available' if $.get('analysis', {}) else 'unavailable') if $.get('include_reasoning', False) else 'not_requested')}"
+        required_capabilities: "['forecast']"
+        evidence: "[{'kind': 'document-cache', 'source': 'worldcup:model-forecast', 'available': bool($.get('forecast', {}))}, {'kind': 'document-cache', 'source': 'worldcup:market-cache', 'outcome_count': len($.get('market_outcomes', []))}]"
+        provenance: "[{'provider': 'machina-dixon-coles', 'role': 'forecast'}, {'provider': 'kalshi-polymarket-cache', 'role': 'market-context'}]"
+        warnings: "$.get('forecast_warnings', [])"
+      outputs:
+        response_status: "$.get('status', 'unavailable')"
+        response_availability: "$.get('availability', {})"
+        response_evidence: "$.get('evidence', [])"
+        response_provenance: "$.get('provenance', [])"
+        response_warnings: "$.get('warnings', [])"
+        response_required_evidence: "$.get('required_evidence', [])"
+        response_unavailable_reason: "$.get('unavailable_reason')"

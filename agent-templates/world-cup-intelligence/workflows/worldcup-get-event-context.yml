@@ -17,9 +17,15 @@ workflow:
     include_social_pulse: "$.get('include_social_pulse', False)"
   outputs:
     event_context: "$.get('event_context', {})"
-    event_urn: "$.get('event_urn', '')"
+    event_urn: "$.get('resolved_event_code', '') or $.get('event_urn', '')"
     resolved_fixture: "$.get('resolved_fixture', {})"
-    warnings: "[] if ($.get('event_urn', '') or $.get('provider_event_id', '')) else ['No fixture resolved -- pass event_urn, provider_event_id, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.']"
+    status: "$.get('event_context_status', 'unavailable')"
+    availability: "$.get('event_context_availability', {'event': 'unavailable', 'actions': 'unavailable', 'lineups': 'unavailable', 'team_statistics': 'unavailable', 'player_statistics': 'unavailable'})"
+    evidence: "$.get('event_context_evidence', [])"
+    provenance: "$.get('event_context_provenance', [])"
+    warnings: "$.get('event_context_warnings', []) or ([] if ($.get('event_urn', '') or $.get('provider_event_id', '')) else ['No fixture resolved -- pass event_urn, provider_event_id, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.'])"
+    required_evidence: "$.get('event_context_required_evidence', [])"
+    unavailable_reason: "$.get('event_context_unavailable_reason')"
     workflow-status: "$.get('event_context', {}) != {} and 'executed' or 'skipped'"
   tasks:
     - type: document
@@ -67,7 +73,73 @@ workflow:
         value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
         value.provider_ids.api_football: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
       outputs:
-        event_document: "($.get('documents', []) or [{}])[0].get('value', {})"
+        event_document: "($.get('documents', []) or [{}])[0]"
+        source_event_document_id: "($.get('documents', []) or [{}])[0].get('_id', '')"
+        resolved_event_code: "(($.get('documents', []) or [{}])[0].get('metadata', {}) or {}).get('event_code') or (((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('machina_sports_schema', {}) or {}).get('event_view', {}) or {}).get('event_id') or (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('_id') or (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('@id', '')"
+
+    - type: document
+      name: load-event-actions
+      description: Load the latest actions projection bound to this exact canonical event document.
+      condition: "$.get('resolved_event_code', '') != '' and $.get('source_event_document_id', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: [["metadata.observed_at", -1], ["_id", -1]]
+      filters:
+        name: "'api-football-event-actions'"
+        metadata.event_code: "$.get('resolved_event_code')"
+        metadata.source_event_document_id: "$.get('source_event_document_id')"
+      outputs:
+        actions_documents: "$.get('documents', [])"
+
+    - type: document
+      name: load-event-lineups
+      description: Load the latest exact fixture-lineups projection; squad documents are never used.
+      condition: "$.get('resolved_event_code', '') != '' and $.get('source_event_document_id', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: [["metadata.observed_at", -1], ["_id", -1]]
+      filters:
+        name: "'api-football-event-lineups'"
+        metadata.event_code: "$.get('resolved_event_code')"
+        metadata.source_event_document_id: "$.get('source_event_document_id')"
+      outputs:
+        lineups_documents: "$.get('documents', [])"
+
+    - type: document
+      name: load-event-team-statistics
+      description: Load the latest team-statistics projection bound to this exact canonical event document.
+      condition: "$.get('resolved_event_code', '') != '' and $.get('source_event_document_id', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: [["metadata.observed_at", -1], ["_id", -1]]
+      filters:
+        name: "'api-football-event-team-statistics'"
+        metadata.event_code: "$.get('resolved_event_code')"
+        metadata.source_event_document_id: "$.get('source_event_document_id')"
+      outputs:
+        team_statistics_documents: "$.get('documents', [])"
+
+    - type: document
+      name: load-event-player-statistics
+      description: Load the latest player-statistics projection bound to this exact canonical event document.
+      condition: "$.get('resolved_event_code', '') != '' and $.get('source_event_document_id', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: [["metadata.observed_at", -1], ["_id", -1]]
+      filters:
+        name: "'api-football-event-player-statistics'"
+        metadata.event_code: "$.get('resolved_event_code')"
+        metadata.source_event_document_id: "$.get('source_event_document_id')"
+      outputs:
+        player_statistics_documents: "$.get('documents', [])"
 
     - type: connector
       name: fetch-event-summary
@@ -83,11 +155,25 @@ workflow:
       outputs:
         sports_context: "$.get('data', {}) if $.get('status') else {}"
 
-    - type: mapping
-      name: worldcup-iptc-event-to-api-response
-      title: World Cup | Event Context Envelope
+    - type: connector
+      name: assemble-event-context
+      description: Assemble canonical event identity with only latest exact-bound provider projections.
+      connector:
+        name: worldcup-market-intelligence
+        command: assemble_event_context
       inputs:
         event_document: "$.get('event_document', {})"
         sports_context: "$.get('sports_context', {})"
+        actions_documents: "$.get('actions_documents', [])"
+        lineups_documents: "$.get('lineups_documents', [])"
+        team_statistics_documents: "$.get('team_statistics_documents', [])"
+        player_statistics_documents: "$.get('player_statistics_documents', [])"
       outputs:
-        event_context: "$.get('event_context', {'event': $.get('event_document', {}), 'sports_context': $.get('sports_context', {})})"
+        event_context: "$.get('event_context', {})"
+        event_context_status: "$.get('status', 'unavailable')"
+        event_context_availability: "$.get('availability', {})"
+        event_context_evidence: "$.get('evidence', [])"
+        event_context_provenance: "$.get('provenance', [])"
+        event_context_warnings: "$.get('warnings', [])"
+        event_context_required_evidence: "$.get('required_evidence', [])"
+        event_context_unavailable_reason: "$.get('unavailable_reason')"

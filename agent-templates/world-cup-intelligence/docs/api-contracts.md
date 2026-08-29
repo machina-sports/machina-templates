@@ -31,6 +31,31 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
 
 **Coverage note (provider-availability capped):** teams 100% on all 5 providers; events 100% on api_football/sportradar/opta/entain (ESPN event ids unavailable pre-tournament); players 100% api_football, ~92% espn, ~86% sportradar, ~27% opta (rises via the daily sync); no entain player ids exist.
 
+### Response evidence envelope
+
+Provider-backed reads expose the same additive metadata fields alongside their existing payload:
+
+- `status`: `available`, `partial`, or `unavailable` for the required capabilities of that response.
+- `availability`: per-capability status. Optional capabilities may also be `not_requested`; upstream failures remain `provider_error`.
+- `evidence`: bounded records describing the cache/provider material actually observed.
+- `provenance`: source and role records for material actually used.
+- `warnings`: explicit degradation and missing-data notes.
+- `required_evidence`: required capability names and their observed statuses.
+- `unavailable_reason`: why required evidence is missing, otherwise `null`.
+
+This envelope is used by schedule, event context, injuries, squads, player performance, match forecasts/backtests, and match preview/recap skills. Event context preserves the canonical `worldcup:event` value and adds only the latest actions, lineups, team-statistics, and player-statistics projections whose `metadata.event_code` and `metadata.source_event_document_id` both match that event document. Every projection reports `observed_at`, `status`, and `unavailable_reason`; mismatched projections are rejected. An empty successful injuries response is available evidence of zero reported absences; a missing or failed provider response is unavailable. Squad records are roster pools (`kind: squad`) and `availability.lineups` remains `unavailable`; squads are never promoted into confirmed lineups.
+
+### Terminal fixture truth
+
+The live refresh loads cached events first, retains `live=all` for in-play fixtures, and requests terminal reconciliation only by exact API-Football fixture id. API-Football terminal codes are `FT`, `AET`, `PEN`, `CANC`, `ABD`, `AWD`, and `WO`. Provider observations preserve the exact short code, `goals`, and each supplied `score` phase (`halftime`, `fulltime`, `extratime`, `penalty`). `FT`/`AET` require a complete final score pair, while `PEN` additionally requires a complete penalty pair, before recording:
+
+- `final_data_status: provider_confirmed`
+- `final_score_complete: true`
+- `terminal_observed_at`: the provider observation time
+- `version_control.terminal-reconciled: true`
+
+A stale `2H`/`LIVE` cache record may be displayed as `FT`, but is labeled `final_data_status: inferred_stale` and never receives `terminal_observed_at`. A recently elapsed fixture, stale nonterminal provider row, or terminal row with incomplete required score evidence is labeled `pending_confirmation`; prior cached scores are preserved. These states retry at most five times, ten minutes apart, through `version_control.terminal-retry-count` and persisted `version_control.next_retry_at`; exhaustion is explicit and is not treated as provider confirmation. Match recap generation requires provider-confirmed finality and complete score evidence. Backtests exclude inferred, pending, legacy-unconfirmed, and incomplete finals.
+
 **Alternate key:** reads accept the canonical `event_urn` OR `provider_event_id` (the API-Football fixture id, e.g. `1489417`, stored at `provider_ids.api_football`) — the latter is the stable, simple handle for clients. Markets are keyed by `{source}:{source_market_id}` (e.g. `polymarket:2415458`).
 
 ## Public (allowlisted) workflow set
@@ -96,6 +121,8 @@ Candidate docs live in `worldcup:skill-<skill>` (upsert key `metadata{skill, sub
 - `worldcup-log-signals` — append-only CLV ledger writer: logs each value pick's entry price/model prob/edge (insert-only, keyed `{event_urn}:{outcome}`) so the closing line can be scored later (daily, after the forecast sync)
 - `worldcup-refresh-prematch-enrichment` — grounded prematch research onto event docs
 - `worldcup-health` — ops health check
+
+`worldcup-health` always checks the same-pod document store. Provider calls are opt-in through `probe_providers`; currently `api-football` and `sports-skills` have bounded read probes. Other requested providers are reported unavailable with a warning rather than being invoked through a costly AI or market operation.
 
 ## Freshness tiers
 

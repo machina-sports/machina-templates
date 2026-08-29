@@ -17,7 +17,12 @@ workflow:
   outputs:
     player_performance_context: "$.get('player_performance_context', {}) or {'event': $.get('event_document', {}), 'player': {}, 'official_fifa_power_ranking': ($.get('official_fifa_power_ranking', {}) or {'status': 'pending', 'source': 'fifa.com', 'scores': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}}), 'machina_provisional_performance_signal': {'status': 'unavailable', 'source_quality': 'unavailable', 'confidence': 0.0, 'scores_0_10': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}, 'drivers': [], 'warnings': ['No normalized player data supplied.']}, 'context_and_evidence': {'fallback_path': [], 'citations': [], 'missing_info_flags': ($.get('normalize_warnings', []) or []), 'freshness': {'provider_stats_fetched': False, 'official_fifa_expected_lag_hours': 4}}}"
     status: "'available' if len($.get('normalized_players', [])) > 0 and ($.get('normalized_players', []) or [{}])[0].get('eligible_for_power_ranking', False) and ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else ('partial' if len($.get('normalized_players', [])) > 0 or ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else 'unavailable')"
+    availability: "$.get('performance_availability', {'provider_player_statistics': ('available' if len($.get('normalized_players', [])) > 0 else 'unavailable'), 'provisional_performance': ('available' if len($.get('normalized_players', [])) > 0 else 'unavailable'), 'official_fifa_power_ranking': ('available' if ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else 'unavailable')})"
+    evidence: "$.get('performance_evidence', [])"
+    provenance: "$.get('performance_provenance', [{'provider': 'api-football', 'role': 'player-performance'}])"
     warnings: "($.get('normalize_warnings', []) or []) + (((($.get('normalized_players', []) or [{}])[0].get('warnings', [])) or []) if len($.get('normalized_players', [])) > 0 else []) + ([] if ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else ['Official FIFA Power Ranking is pending or unavailable.'])"
+    required_evidence: "$.get('performance_required_evidence', [{'capability': 'provider_player_statistics', 'status': ('available' if len($.get('normalized_players', [])) > 0 else 'unavailable')}, {'capability': 'provisional_performance', 'status': ('available' if len($.get('normalized_players', [])) > 0 else 'unavailable')}, {'capability': 'official_fifa_power_ranking', 'status': ('available' if ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else 'unavailable')}])"
+    unavailable_reason: "$.get('performance_unavailable_reason') or (None if len($.get('normalized_players', [])) > 0 else 'Missing required capabilities: provider_player_statistics (unavailable), provisional_performance (unavailable).')"
     workflow-status: "$.get('player_performance_context', {}) != {} and 'executed' or 'skipped'"
   tasks:
     - type: document
@@ -46,7 +51,6 @@ workflow:
         command: get-fixtures/players
       inputs:
         fixture: "$.get('resolved_fixture_id') or $.get('fixture_id')"
-        player: "$.get('player_id') if $.get('player_id') else None"
         team: "$.get('team_id') if $.get('team_id') else None"
       outputs:
         api_football_player_stats: "$"
@@ -97,3 +101,8 @@ workflow:
         freshness: "{'provider_stats_fetched': $.get('api_football_player_stats', {}) != {}, 'official_fifa_expected_lag_hours': 4}"
       outputs:
         player_performance_context: "$.get('player_performance_context', {})"
+        performance_availability: "$.get('availability', {})"
+        performance_evidence: "$.get('evidence', [])"
+        performance_provenance: "$.get('provenance', [])"
+        performance_required_evidence: "$.get('required_evidence', [])"
+        performance_unavailable_reason: "$.get('unavailable_reason')"

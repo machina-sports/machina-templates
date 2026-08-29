@@ -15,6 +15,13 @@ workflow:
     season: "$.get('season', '')"
   outputs:
     injuries: "$.get('injuries', {})"
+    status: "$.get('injuries', {}).get('status', 'unavailable')"
+    availability: "$.get('injuries', {}).get('availability', {})"
+    evidence: "$.get('injuries', {}).get('evidence', [])"
+    provenance: "$.get('injuries', {}).get('provenance', [])"
+    warnings: "$.get('injuries', {}).get('warnings', [])"
+    required_evidence: "$.get('injuries', {}).get('required_evidence', [])"
+    unavailable_reason: "$.get('injuries', {}).get('unavailable_reason')"
     workflow-status: "$.get('injuries', {}).get('teams') and 'executed' or 'skipped'"
   tasks:
     - type: document

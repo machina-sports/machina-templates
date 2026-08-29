@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import difflib
 import hashlib
+import json
 import math
 import re
 import unicodedata
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -39,6 +41,307 @@ def _params(request_data: dict[str, Any]) -> dict[str, Any]:
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+_AVAILABILITY_STATUSES = {
+    "available",
+    "partial",
+    "unavailable",
+    "not_requested",
+    "provider_error",
+}
+
+
+def _has_provider_error(value: Any) -> bool:
+    if value == "provider_error":
+        return True
+    if not isinstance(value, dict):
+        return False
+    return bool(
+        value.get("provider_error")
+        or value.get("error")
+        or value.get("errors")
+        or value.get("status") == "provider_error"
+        or value.get("status") is False
+    )
+
+
+def _response_envelope(
+    capabilities: dict[str, Any],
+    required_capabilities: list[str] | None = None,
+    evidence: list[Any] | None = None,
+    provenance: list[Any] | None = None,
+    warnings: list[str] | None = None,
+    unavailable_reason: str | None = None,
+) -> dict[str, Any]:
+    """Build the common read-response metadata without changing payload fields."""
+    availability: dict[str, str] = {}
+    for name, value in (capabilities or {}).items():
+        if isinstance(value, str) and value in _AVAILABILITY_STATUSES:
+            availability[name] = value
+        elif _has_provider_error(value):
+            availability[name] = "provider_error"
+        else:
+            availability[name] = "available" if value not in (None, "", [], {}) else "unavailable"
+
+    required = required_capabilities or list(availability)
+    for name in required:
+        availability.setdefault(name, "unavailable")
+    required_statuses = [availability.get(name, "unavailable") for name in required]
+    usable = [status for status in required_statuses if status in {"available", "partial"}]
+    if required_statuses and all(status == "available" for status in required_statuses):
+        status = "available"
+    elif usable:
+        status = "partial"
+    else:
+        status = "unavailable"
+    required_evidence = [
+        {"capability": name, "status": availability.get(name, "unavailable")}
+        for name in required
+    ]
+    missing = [
+        f"{item['capability']} ({item['status']})"
+        for item in required_evidence
+        if item["status"] not in {"available", "partial"}
+    ]
+    if unavailable_reason is None and missing:
+        unavailable_reason = "Missing required capabilities: " + ", ".join(missing) + "."
+    return {
+        "status": status,
+        "availability": availability,
+        "evidence": list(evidence or []),
+        "provenance": list(provenance or []),
+        "warnings": list(warnings or []),
+        "required_evidence": required_evidence,
+        "unavailable_reason": unavailable_reason,
+    }
+
+
+def build_response_envelope(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Connector command for workflows that need the common response metadata."""
+    params = _params(request_data)
+    return {
+        "status": True,
+        "data": _response_envelope(
+            params.get("capabilities") if isinstance(params.get("capabilities"), dict) else {},
+            _as_list(params.get("required_capabilities")),
+            _as_list(params.get("evidence")),
+            _as_list(params.get("provenance")),
+            [str(item) for item in _as_list(params.get("warnings"))],
+            _text(params.get("unavailable_reason")) or None,
+        ),
+    }
+
+
+def _usable_skill_card(value: Any) -> bool:
+    return isinstance(value, dict) and bool(value) and not _has_provider_error(value)
+
+
+def build_skill_response_envelope(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Select one real skill card and attribute only the path that produced it."""
+    params = _params(request_data)
+    cached_card = params.get("cached_card")
+    generated_card = params.get("generated_card")
+    subject_urn = _text(params.get("subject_urn"))
+    subject_key = _text(params.get("subject_key")) or "subject_urn"
+    evidence: list[dict[str, Any]] = []
+    provenance: list[dict[str, Any]] = []
+
+    if _usable_skill_card(cached_card):
+        card = deepcopy(cached_card)
+        served_from = "cache"
+        evidence.append({"kind": "cached-skill-card", "subject_urn": subject_urn})
+        cached_provider = _text(params.get("cached_provider")) or "skill-card-cache"
+        provenance.append({"provider": cached_provider, "role": "cache"})
+        card_status = "available"
+    elif _usable_skill_card(generated_card):
+        card = deepcopy(generated_card)
+        served_from = "generated"
+        evidence.append({"kind": "generated-skill-card", "subject_urn": subject_urn})
+        generated_provider = _text(params.get("generated_provider"))
+        if generated_provider:
+            provenance.append({"provider": generated_provider, "role": "synthesis"})
+            if params.get("generated_research") not in (None, "", [], {}):
+                provenance.append({"provider": generated_provider, "role": "grounded-research"})
+        card_status = "available"
+    else:
+        card = {}
+        served_from = "unavailable"
+        card_status = "provider_error" if _has_provider_error(generated_card) else "unavailable"
+
+    if card and subject_urn:
+        card[subject_key] = subject_urn
+    capabilities = dict(params.get("capabilities") or {})
+    capabilities["skill_card"] = card_status
+    required = _as_list(params.get("required_capabilities")) or ["skill_card"]
+    envelope = _response_envelope(
+        capabilities,
+        required,
+        evidence,
+        provenance,
+        [str(item) for item in _as_list(params.get("warnings"))],
+        _text(params.get("unavailable_reason")) or None,
+    )
+    return {
+        "status": True,
+        "data": {"skill_card": card, "served_from": served_from, **envelope},
+    }
+
+
+_EVENT_CONTEXT_PROJECTIONS = (
+    ("actions", "api-football-event-actions"),
+    ("lineups", "api-football-event-lineups"),
+    ("team_statistics", "api-football-event-team-statistics"),
+    ("player_statistics", "api-football-event-player-statistics"),
+)
+
+
+def _event_context_projection(
+    documents: Any,
+    capability: str,
+    document_name: str,
+    event_code: str,
+    source_event_document_id: str,
+) -> tuple[dict[str, Any], list[str]]:
+    exact: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for document in _as_list(documents):
+        if not isinstance(document, dict) or document.get("name") != document_name:
+            continue
+        metadata = document.get("metadata") if isinstance(document.get("metadata"), dict) else {}
+        if _text(metadata.get("event_code")) != event_code:
+            warnings.append(
+                f"Rejected {capability} projection: metadata.event_code does not match the selected event."
+            )
+            continue
+        if _text(metadata.get("source_event_document_id")) != source_event_document_id:
+            warnings.append(
+                f"Rejected {capability} projection: metadata.source_event_document_id does not match the selected event document."
+            )
+            continue
+        value = document.get("value") if isinstance(document.get("value"), dict) else {}
+        if value.get("event_code") not in (None, "", event_code):
+            warnings.append(f"Rejected {capability} projection: value.event_code conflicts with metadata.")
+            continue
+        if value.get("source_event_document_id") not in (None, "", source_event_document_id):
+            warnings.append(
+                f"Rejected {capability} projection: value.source_event_document_id conflicts with metadata."
+            )
+            continue
+        exact.append(document)
+
+    def freshness(document: dict[str, Any]) -> tuple[datetime, str]:
+        metadata = document.get("metadata") or {}
+        observed_at = _parse_iso(metadata.get("observed_at"))
+        return observed_at or datetime.min.replace(tzinfo=timezone.utc), _text(document.get("_id"))
+
+    if not exact:
+        return {
+            "facts": [],
+            "observed_at": None,
+            "status": "unavailable",
+            "unavailable_reason": f"No exact-bound {capability} projection is available.",
+        }, warnings
+
+    selected = max(exact, key=freshness)
+    metadata = selected.get("metadata") or {}
+    projection = deepcopy(selected.get("value") or {})
+    status = metadata.get("status")
+    if status not in _AVAILABILITY_STATUSES:
+        status = "available" if projection.get("facts") else "unavailable"
+    projection.update({
+        "observed_at": metadata.get("observed_at"),
+        "status": status,
+        "unavailable_reason": projection.get("unavailable_reason"),
+    })
+    return projection, warnings
+
+
+def assemble_event_context(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Assemble one canonical event with exact-bound provider projections."""
+    params = _params(request_data)
+    event_document = params.get("event_document")
+    event_document = event_document if isinstance(event_document, dict) else {}
+    event_value = event_document.get("value") if isinstance(event_document.get("value"), dict) else {}
+    event_metadata = (
+        event_document.get("metadata") if isinstance(event_document.get("metadata"), dict) else {}
+    )
+    source_event_document_id = _text(event_document.get("_id"))
+    canonical = event_value.get("machina_sports_schema")
+    canonical = canonical if isinstance(canonical, dict) else {}
+    event_view = canonical.get("event_view") if isinstance(canonical.get("event_view"), dict) else {}
+    event_code = _text(
+        event_metadata.get("event_code")
+        or event_view.get("event_id")
+        or event_value.get("_id")
+        or event_value.get("@id")
+    )
+
+    context: dict[str, Any] = {
+        "event": deepcopy(event_value),
+        "sports_context": deepcopy(params.get("sports_context") or {}),
+    }
+    availability = {"event": "available" if event_value and event_code and source_event_document_id else "unavailable"}
+    evidence: list[dict[str, Any]] = []
+    provenance: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    if availability["event"] == "available":
+        evidence.append({
+            "kind": "document-cache",
+            "source": "worldcup:event",
+            "document_id": source_event_document_id,
+            "event_code": event_code,
+        })
+        provenance.append({"provider": "worldcup:event", "role": "canonical-event"})
+        event_provenance = canonical.get("provenance") or event_metadata.get("provenance")
+        if isinstance(event_provenance, dict) and event_provenance:
+            provenance.append(deepcopy(event_provenance))
+    else:
+        warnings.append("No canonical worldcup:event document with stable identity was resolved.")
+
+    for capability, document_name in _EVENT_CONTEXT_PROJECTIONS:
+        projection, rejected = _event_context_projection(
+            params.get(f"{capability}_documents"),
+            capability,
+            document_name,
+            event_code,
+            source_event_document_id,
+        )
+        context[capability] = projection
+        availability[capability] = projection["status"]
+        warnings.extend(rejected)
+        if projection["observed_at"] is not None:
+            evidence.append({
+                "kind": "document-cache",
+                "source": document_name,
+                "observed_at": projection["observed_at"],
+                "status": projection["status"],
+            })
+            candidates = [
+                item
+                for item in _as_list(params.get(f"{capability}_documents"))
+                if isinstance(item, dict)
+                and item.get("name") == document_name
+                and _text((item.get("metadata") or {}).get("event_code")) == event_code
+                and _text((item.get("metadata") or {}).get("source_event_document_id"))
+                == source_event_document_id
+                and (item.get("metadata") or {}).get("observed_at") == projection["observed_at"]
+            ]
+            if candidates:
+                projection_provenance = (candidates[0].get("metadata") or {}).get("provenance")
+                if isinstance(projection_provenance, dict) and projection_provenance:
+                    provenance.append(deepcopy(projection_provenance))
+        if projection["status"] == "unavailable":
+            warnings.append(projection["unavailable_reason"])
+
+    envelope = _response_envelope(
+        availability,
+        ["event", "actions", "lineups", "team_statistics", "player_statistics"],
+        evidence,
+        provenance,
+        list(dict.fromkeys(warnings)),
+    )
+    return {"status": True, "data": {"event_context": context, **envelope}}
 
 
 def _unwrap(payload: Any) -> Any:
@@ -1204,35 +1507,54 @@ def normalize_squads(request_data: dict[str, Any]) -> dict[str, Any]:
     params = _params(request_data)
     teams: list[dict[str, Any]] = []
     warnings: list[str] = []
+    capability_statuses: list[str] = []
+    evidence: list[dict[str, Any]] = []
     for side in ("home", "away"):
         af = params.get(f"{side}_af")
         ss = params.get(f"{side}_ss")
-        if af in (None, "", {}, []) and ss in (None, "", {}, []):
+        team_id = params.get(f"{side}_team_id")
+        team_name = _text(params.get(f"{side}_team"))
+        side_requested = team_id not in (None, "") or bool(team_name)
+        if af in (None, "", {}, []) and ss in (None, "", {}, []) and not side_requested:
             continue
         players = _squad_players_af(af)
         source = "api-football" if players else "none"
         if not players:
             players = _squad_players_ss(ss)
             source = "sports-skills" if players else "none"
-        team_id = params.get(f"{side}_team_id")
-        team_name = _text(params.get(f"{side}_team"))
         if not team_id or not team_name:
             ident = _squad_team_af(af) or _squad_team_ss(ss)
             team_id = team_id or ident.get("id")
             team_name = team_name or _text(ident.get("name"))
         if not players:
             warnings.append(f"No squad returned for {team_name or team_id or side}.")
+        capability_statuses.append("available" if players else "unavailable")
         teams.append({
             "side": side,
             "team_id": team_id,
             "team": team_name,
+            "kind": "squad",
             "source": source,
             "count": len(players),
             "players": players,
         })
+        evidence.append({"kind": "provider-roster", "side": side, "source": source, "count": len(players)})
     if not teams:
         warnings.append("No squad payloads provided.")
-    return {"status": True, "data": {"teams": teams, "warnings": warnings}}
+    if teams and all(status == "available" for status in capability_statuses):
+        squads_status = "available"
+    elif any(status == "available" for status in capability_statuses):
+        squads_status = "partial"
+    else:
+        squads_status = "unavailable"
+    envelope = _response_envelope(
+        {"squads": squads_status, "lineups": "unavailable"},
+        ["squads"],
+        evidence,
+        [{"provider": source, "role": "squad-roster"} for source in sorted({t["source"] for t in teams if t["source"] != "none"})],
+        warnings,
+    )
+    return {"status": True, "data": {"teams": teams, **envelope}}
 
 
 def _injuries_items(af: Any) -> list[dict[str, Any]]:
@@ -1305,7 +1627,79 @@ def normalize_injuries(request_data: dict[str, Any]) -> dict[str, Any]:
             "No injuries/suspensions reported for these teams yet (api-football). "
             "Expect data closer to matchday."
         )
-    return {"status": True, "data": {"source": "api-football", "teams": teams, "warnings": warnings}}
+    af_payload = _unwrap(params.get("af"))
+    provider_available = (
+        isinstance(af_payload, dict)
+        and isinstance(af_payload.get("response"), list)
+        and not af_payload.get("errors")
+    ) or isinstance(af_payload, list)
+    envelope = _response_envelope(
+        {"injuries": "available" if provider_available and teams else "unavailable"},
+        ["injuries"],
+        [{"kind": "provider-response", "source": "api-football", "count": len(items)}] if provider_available else [],
+        [{"provider": "api-football", "role": "injuries"}],
+        warnings,
+    )
+    return {"status": True, "data": {"source": "api-football", "teams": teams, **envelope}}
+
+
+def _schedule_event_preference(event: dict[str, Any]) -> tuple[Any, ...]:
+    round_raw = _first(event, "round", "stage", "competition_stage", "sport:round")
+    if isinstance(round_raw, dict):
+        round_raw = _first(round_raw, "name", "label")
+
+    live_score = event.get("live_score") if isinstance(event.get("live_score"), dict) else {}
+    score = event.get("score") if isinstance(event.get("score"), dict) else {}
+    complete_score = _complete_score_pair(live_score) or _complete_score_pair(score) or any(
+        _complete_score_pair(score.get(phase))
+        for phase in ("penalty", "extratime", "fulltime")
+    )
+    elapsed_present = live_score.get("elapsed") is not None or score.get("elapsed") is not None
+
+    metadata = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+    version = event.get("version_control") if isinstance(event.get("version_control"), dict) else {}
+    freshness_values = (
+        event.get("updated_at"), event.get("last_update_time"), event.get("last_updated"),
+        event.get("observed_at"), event.get("terminal_observed_at"), metadata.get("observed_at"),
+        metadata.get("updated_at"), version.get("terminal-reconciled-timestamp"),
+    )
+    freshness = max(
+        (parsed.timestamp() for value in freshness_values if (parsed := _parse_iso(value)) is not None),
+        default=0.0,
+    )
+
+    names = [_text(event.get("name"))]
+    names.extend(
+        _text(team.get("name"))
+        for team in event.get("teams") or event.get("sport:competitors") or []
+        if isinstance(team, dict)
+    )
+    canonical_czechia = any(
+        re.search(r"\bczechia\b", name, flags=re.IGNORECASE) is not None for name in names
+    )
+    stable_value = json.dumps(event, sort_keys=True, default=str, separators=(",", ":"))
+    return (
+        bool(_text(round_raw)), complete_score, elapsed_present,
+        bool(_text(metadata.get("event_urn"))), freshness, canonical_czechia, stable_value,
+    )
+
+
+def _deduplicate_schedule_events(events: list[Any]) -> list[Any]:
+    selected: dict[str, dict[str, Any]] = {}
+    unkeyed: list[Any] = []
+    for event in events:
+        if not isinstance(event, dict):
+            unkeyed.append(event)
+            continue
+        provider_ids = event.get("provider_ids") if isinstance(event.get("provider_ids"), dict) else {}
+        fixture_id = _text(provider_ids.get("api_football"))
+        if not fixture_id:
+            unkeyed.append(event)
+            continue
+        current = selected.get(fixture_id)
+        if current is None or _schedule_event_preference(event) > _schedule_event_preference(current):
+            selected[fixture_id] = event
+    return [*unkeyed, *selected.values()]
 
 
 def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
@@ -1324,7 +1718,7 @@ def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
     among the competitors), which is how callers resolve "X vs Y" to an event_urn.
     """
     params = _params(request_data)
-    events = _as_list(params.get("events"))
+    events = _deduplicate_schedule_events(_as_list(params.get("events")))
     team = _lower(params.get("team"))
     opponent = _lower(params.get("opponent"))
     event_text = _lower(params.get("event"))
@@ -1382,13 +1776,16 @@ def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
         if isinstance(round_raw, dict):
             round_raw = _first(round_raw, "name", "label")
         round_label = _text(round_raw) or None
+        metadata = ev.get("metadata") if isinstance(ev.get("metadata"), dict) else {}
         out.append({
-            "event_urn": _first(ev, "_id", "id", "event_urn"),
+            "event_urn": _first(ev, "_id", "id", "event_urn") or metadata.get("event_urn"),
             "name": _text(ev.get("name")),
             "start_date": start,
             "status": st,
+            "provider_status": _text(_first(ev, "status", "sport:status")).upper() or None,
             "competition": _text(ev.get("competition")) or _text(competition.get("name")) or "World Cup",
             "score": score,
+            "score_phases": _fixture_score_phases(ev) or None,
             "round": round_label,
             "stage": round_label,
             "teams": [
@@ -1401,12 +1798,34 @@ def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
             ],
             "venue": _text(venue.get("name")) or None,
             "fixture_id": (ev.get("provider_ids") or {}).get("api_football"),
+            "final_data_status": ev.get("final_data_status"),
+            "final_score_complete": ev.get("final_score_complete") is True,
+            "terminal_observed_at": ev.get("terminal_observed_at"),
         })
 
     out.sort(key=lambda e: e.get("start_date") or "")
     out = out[:limit]
     warnings = [] if out else ["No events matched the schedule filters."]
-    return {"status": True, "data": {"events": out, "count": len(out), "warnings": warnings}}
+    finals = [event for event in out if _text(event.get("status")).upper() in _FINAL_STATUS]
+    confirmed = [
+        event for event in finals
+        if event.get("final_data_status") == "provider_confirmed"
+        and event.get("final_score_complete") is True
+    ]
+    if not finals:
+        terminal_status = "unavailable"
+    elif len(confirmed) == len(finals):
+        terminal_status = "available"
+    else:
+        terminal_status = "partial"
+    envelope = _response_envelope(
+        {"schedule": "available" if out else "unavailable", "terminal_results": terminal_status},
+        ["schedule"],
+        [{"kind": "document-cache", "source": "worldcup:event", "count": len(out)}],
+        [{"provider": "api-football", "role": "match-data", "via": "worldcup:event-cache"}],
+        warnings,
+    )
+    return {"status": True, "data": {"events": out, "count": len(out), **envelope}}
 
 
 def resolve_player(request_data: dict[str, Any]) -> dict[str, Any]:
@@ -1634,7 +2053,14 @@ def normalize_player_match_stats(request_data: dict[str, Any]) -> dict[str, Any]
         players.append(player)
 
     warnings = [] if players else ["No provider player match statistics supplied."]
-    return {"status": True, "data": {"players": players, "count": len(players), "warnings": warnings}}
+    envelope = _response_envelope(
+        {"player_statistics": "available" if players else "unavailable"},
+        ["player_statistics"],
+        [{"kind": "provider-response", "source": "api-football", "count": len(players)}] if players else [],
+        [{"provider": "api-football", "role": "player-statistics"}],
+        warnings,
+    )
+    return {"status": True, "data": {"players": players, "count": len(players), **envelope}}
 
 
 def score_provisional_player_performance(request_data: dict[str, Any]) -> dict[str, Any]:
@@ -1790,7 +2216,24 @@ def merge_official_and_provisional_performance(request_data: dict[str, Any]) -> 
             "freshness": params.get("freshness") or {},
         },
     }
-    return {"status": True, "data": {"player_performance_context": context}}
+    provisional_status = _text((context.get("machina_provisional_performance_signal") or {}).get("status"))
+    official_status = _text(official_context.get("status"))
+    warnings = list(params.get("missing_info_flags") or [])
+    warnings.extend((context.get("machina_provisional_performance_signal") or {}).get("warnings") or [])
+    if official_status != "available":
+        warnings.append("Official FIFA Power Ranking is pending or unavailable.")
+    envelope = _response_envelope(
+        {
+            "provider_player_statistics": "available" if player else "unavailable",
+            "provisional_performance": provisional_status if provisional_status in _AVAILABILITY_STATUSES else "unavailable",
+            "official_fifa_power_ranking": "available" if official_status == "available" else "unavailable",
+        },
+        ["provider_player_statistics", "provisional_performance", "official_fifa_power_ranking"],
+        [{"kind": "player-match-statistics", "source": source} for source in fallback_path],
+        [{"provider": source, "role": "player-performance"} for source in fallback_path],
+        list(dict.fromkeys(warnings)),
+    )
+    return {"status": True, "data": {"player_performance_context": context, **envelope}}
 
 
 def normalize_identity_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
@@ -2040,6 +2483,40 @@ def _event_date(value: Any) -> str:
     return f"{year.group(1)}0000" if year else "00000000"
 
 
+def _fixture_score_phases(fixture: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Copy API-Football's exact score phases without deriving one from another."""
+    score = fixture.get("score") if isinstance(fixture.get("score"), dict) else {}
+    return {
+        phase: dict(score[phase])
+        for phase in ("halftime", "fulltime", "extratime", "penalty")
+        if isinstance(score.get(phase), dict)
+    }
+
+
+def _complete_score_pair(score: Any) -> bool:
+    if not isinstance(score, dict):
+        return False
+    for value in (score.get("home"), score.get("away")):
+        if isinstance(value, bool):
+            return False
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return False
+        if not math.isfinite(numeric) or numeric < 0 or not numeric.is_integer():
+            return False
+    return True
+
+
+def _provider_terminal_score_complete(provider_fixture: dict[str, Any], status: str) -> bool:
+    if status not in _FINAL_STATUS:
+        return status in _TERMINAL_STATUS
+    if not _complete_score_pair(provider_fixture.get("goals")):
+        return False
+    score = provider_fixture.get("score") if isinstance(provider_fixture.get("score"), dict) else {}
+    return status != "PEN" or _complete_score_pair(score.get("penalty"))
+
+
 def _stable_disambiguator(provider_ids: dict[str, Any]) -> str:
     verified = [(k, str(v)) for k, v in sorted((provider_ids or {}).items()) if v not in (None, "", [], {})]
     if not verified:
@@ -2067,6 +2544,7 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
                    "opta_event_id": "opta", "espn_event_id": "espn"}
     event_providers = {"sportradar", "opta", "entain", "espn"}
     carry: dict[str, dict[str, str]] = {}
+    existing_by_fixture: dict[str, dict[str, Any]] = {}
     for ev in _as_list(params.get("existing_events")):
         d = _unwrap(ev)
         pids = d.get("provider_ids") if isinstance(d, dict) else None
@@ -2075,6 +2553,7 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
         fid = _text(pids.get("api_football") or pids.get("api_football_fixture_id"))
         if not fid:
             continue
+        existing_by_fixture[fid] = d
         keep = {}
         for k, v in pids.items():
             nk = event_alias.get(k, k)
@@ -2122,6 +2601,7 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
                 f"{_to_iso3(venue.get('city') or venue.get('country') or '')}"
             )
 
+        provider_status = _text((fixture.get("status") or {}).get("short")).upper()
         doc = {
             "metadata": {"event_urn": event_urn},
             "@context": {
@@ -2135,7 +2615,7 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
             "@type": ["sport:Event", "schema:SportsEvent"],
             "name": f"{home_name} vs {away_name} - {comp_name}",
             "schema:startDate": date_iso or None,
-            "sport:status": _text((fixture.get("status") or {}).get("short")) or None,
+            "sport:status": provider_status or None,
             "sport:competition": {"@id": comp_urn, "@type": "sport:Competition", "name": comp_name},
             "sport:venue": venue_block,
             "sport:competitors": [
@@ -2159,14 +2639,98 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
         # score, so a match never seen in-play stayed scoreless — and its
         # scoreless ingest doc competed with the live-captured one). Only set
         # when both goals are present (unplayed NS fixtures have null goals).
+        previous = existing_by_fixture.get(fixture_id, {})
         goals = f.get("goals") if isinstance(f.get("goals"), dict) else {}
         gh, ga = goals.get("home"), goals.get("away")
-        if gh is not None and ga is not None:
+        terminal_score_complete = _provider_terminal_score_complete(f, provider_status)
+        if provider_status in _TERMINAL_STATUS and not terminal_score_complete:
+            if isinstance(previous.get("live_score"), dict):
+                doc["live_score"] = deepcopy(previous["live_score"])
+        elif gh is not None and ga is not None:
             doc["live_score"] = {
                 "home": gh,
                 "away": ga,
                 "elapsed": (fixture.get("status") or {}).get("elapsed"),
             }
+        score_phases = _fixture_score_phases(f)
+        if provider_status in _TERMINAL_STATUS and not terminal_score_complete:
+            if isinstance(previous.get("score"), dict):
+                doc["score"] = deepcopy(previous["score"])
+        elif score_phases:
+            doc["score"] = score_phases
+        if provider_status in _TERMINAL_STATUS:
+            observed_at = _text(params.get("observed_at")) or _now_iso()
+            version = dict(previous.get("version_control") or {})
+            if terminal_score_complete:
+                first_observed_at = (
+                    _text(previous.get("terminal_observed_at"))
+                    if previous.get("final_data_status") == "provider_confirmed"
+                    else ""
+                ) or observed_at
+                version.update({
+                    "terminal-reconciled": True,
+                    "terminal-reconciled-status": "available",
+                    "terminal-reconciled-timestamp": first_observed_at,
+                    "terminal-retry-count": 0,
+                    "terminal-retry-exhausted": False,
+                })
+                version.pop("next_retry_at", None)
+                doc["final_data_status"] = "provider_confirmed"
+                doc["final_score_complete"] = True
+                doc["terminal_observed_at"] = first_observed_at
+            elif (
+                previous.get("final_data_status") == "provider_confirmed"
+                and previous.get("final_score_complete") is True
+            ):
+                doc["sport:status"] = previous.get("sport:status") or provider_status
+                doc["final_data_status"] = "provider_confirmed"
+                doc["final_score_complete"] = True
+                doc["terminal_observed_at"] = previous.get("terminal_observed_at")
+            else:
+                now = _utc_datetime(observed_at) or datetime.now(timezone.utc)
+                retry_count = _retry_count(version)
+                if _terminal_retry_due(previous, now):
+                    retry_count = min(_TERMINAL_RETRY_LIMIT, retry_count + 1)
+                    version["next_retry_at"] = (
+                        now + _TERMINAL_RETRY_SPACING
+                    ).isoformat().replace("+00:00", "Z")
+                version.update({
+                    "terminal-reconciled": False,
+                    "terminal-reconciled-status": (
+                        "retry-exhausted" if retry_count >= _TERMINAL_RETRY_LIMIT else "pending-retry"
+                    ),
+                    "terminal-reconciled-timestamp": observed_at,
+                    "terminal-retry-count": retry_count,
+                    "terminal-retry-exhausted": retry_count >= _TERMINAL_RETRY_LIMIT,
+                })
+                doc["final_data_status"] = "pending_confirmation"
+                doc["final_score_complete"] = False
+            doc["version_control"] = version
+        elif previous.get("final_data_status") in {"inferred_stale", "pending_confirmation"}:
+            now = _utc_datetime(_text(params.get("observed_at")) or _now_iso()) or datetime.now(timezone.utc)
+            if _needs_terminal_reconciliation(doc, now):
+                if isinstance(previous.get("live_score"), dict) and "live_score" not in doc:
+                    doc["live_score"] = deepcopy(previous["live_score"])
+                if isinstance(previous.get("score"), dict) and "score" not in doc:
+                    doc["score"] = deepcopy(previous["score"])
+                version = dict(previous.get("version_control") or {})
+                retry_count = _retry_count(version)
+                if _terminal_retry_due(previous, now):
+                    retry_count = min(_TERMINAL_RETRY_LIMIT, retry_count + 1)
+                    version["next_retry_at"] = (
+                        now + _TERMINAL_RETRY_SPACING
+                    ).isoformat().replace("+00:00", "Z")
+                version.update({
+                    "terminal-reconciled": False,
+                    "terminal-reconciled-status": (
+                        "retry-exhausted" if retry_count >= _TERMINAL_RETRY_LIMIT else "pending-retry"
+                    ),
+                    "terminal-retry-count": retry_count,
+                    "terminal-retry-exhausted": retry_count >= _TERMINAL_RETRY_LIMIT,
+                })
+                doc["final_data_status"] = "pending_confirmation"
+                doc["final_score_complete"] = False
+                doc["version_control"] = version
         # API-Football tags knockout fixtures via league.round (e.g. "Semi-finals",
         # "Final"). Carry it into the canonical doc as top-level round/stage so the
         # schedule view can read it back — but never add null keys for group games
@@ -3149,7 +3713,81 @@ def compute_market_stability(request_data: dict[str, Any]) -> dict[str, Any]:
 # Live status set — fixtures considered in-play for coverage cadence.
 _LIVE_STATUS = {"1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT", "LIVE"}
 _FINAL_STATUS = {"FT", "AET", "PEN"}
+_TERMINAL_STATUS = _FINAL_STATUS | {"CANC", "ABD", "AWD", "WO"}
 _REGULAR_TIME_STALE_STATUSES = {"2H", "LIVE"}
+_TERMINAL_RETRY_LIMIT = 5
+_TERMINAL_RETRY_SPACING = timedelta(minutes=10)
+_TERMINAL_GRACE_PERIOD = timedelta(minutes=60)
+
+
+def _utc_datetime(value: Any) -> datetime | None:
+    text = _text(value)
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
+
+
+def _retry_count(version: dict[str, Any]) -> int:
+    try:
+        return max(0, int(version.get("terminal-retry-count") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _terminal_retry_due(event: dict[str, Any], now: datetime) -> bool:
+    version = event.get("version_control") if isinstance(event.get("version_control"), dict) else {}
+    if version.get("terminal-retry-exhausted") is True or _retry_count(version) >= _TERMINAL_RETRY_LIMIT:
+        return False
+    next_retry_at = _utc_datetime(version.get("next_retry_at"))
+    return next_retry_at is None or now >= next_retry_at
+
+
+def _needs_terminal_reconciliation(event: dict[str, Any], now: datetime) -> bool:
+    if not _text((event.get("provider_ids") or {}).get("api_football")):
+        return False
+    status = _text(event.get("sport:status")).upper()
+    kickoff = _utc_datetime(event.get("schema:startDate"))
+    elapsed = _first(event.get("live_score") or {}, "elapsed")
+    expected_end = kickoff + timedelta(minutes=150) if kickoff is not None else None
+    stale_regular_time = (
+        status in _REGULAR_TIME_STALE_STATUSES
+        and expected_end is not None
+        and now > expected_end
+        and (elapsed is None or (isinstance(elapsed, (int, float)) and elapsed >= 90))
+    )
+    stale_nonterminal = (
+        expected_end is not None
+        and expected_end < now
+        and status not in _TERMINAL_STATUS
+        and status not in _LIVE_STATUS
+    )
+    already_pending = event.get("final_data_status") in {"inferred_stale", "pending_confirmation"}
+    return stale_regular_time or stale_nonterminal or already_pending
+
+
+def select_terminal_reconciliation(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Select exact API-Football fixture ids whose terminal retry is due."""
+    params = _params(request_data)
+    now = _utc_datetime(params.get("observed_at")) or datetime.now(timezone.utc)
+    fixture_ids: list[str] = []
+    seen: set[str] = set()
+    for event in _as_list(params.get("events")):
+        if not isinstance(event, dict):
+            continue
+        fixture_id = _text((event.get("provider_ids") or {}).get("api_football"))
+        if (
+            fixture_id
+            and fixture_id not in seen
+            and _needs_terminal_reconciliation(event, now)
+            and _terminal_retry_due(event, now)
+        ):
+            seen.add(fixture_id)
+            fixture_ids.append(fixture_id)
+    return {"status": True, "data": {"fixture_ids": fixture_ids, "count": len(fixture_ids)}}
 
 
 def compute_coverage_signals(request_data: dict[str, Any]) -> dict[str, Any]:
@@ -3166,6 +3804,7 @@ def compute_coverage_signals(request_data: dict[str, Any]) -> dict[str, Any]:
     live: list[str] = []
     upcoming_24h = 0
     recent_done = 0
+    terminal_reconciliation_count = 0
     for ev in _as_list(params.get("events")):
         if not isinstance(ev, dict):
             continue
@@ -3188,6 +3827,8 @@ def compute_coverage_signals(request_data: dict[str, Any]) -> dict[str, Any]:
             and ko is not None
             and now > ko + timedelta(minutes=150)
         )
+        if _needs_terminal_reconciliation(ev, now) and _terminal_retry_due(ev, now):
+            terminal_reconciliation_count += 1
         explicit_live = (
             status in _LIVE_STATUS
             and not stale_regular_time
@@ -3208,94 +3849,211 @@ def compute_coverage_signals(request_data: dict[str, Any]) -> dict[str, Any]:
             "live_count": len(live),
             "upcoming_24h": upcoming_24h,
             "recent_done": recent_done,
+            "terminal_reconciliation_pending": terminal_reconciliation_count > 0,
+            "terminal_reconciliation_count": terminal_reconciliation_count,
         },
     }
 
 
-def apply_live_status(request_data: dict[str, Any]) -> dict[str, Any]:
-    """Merge live api-football fixture status + score onto matching event docs.
+def _fixture_rows(payloads: Any) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    values = payloads if isinstance(payloads, list) else [payloads]
+    for value in values:
+        data = _unwrap(value)
+        if isinstance(data, dict) and isinstance(data.get("response"), list):
+            candidates = data["response"]
+        elif isinstance(data, list):
+            candidates = data
+        else:
+            candidates = []
+        rows.extend(item for item in candidates if isinstance(item, dict))
+    return rows
 
-    Params: events (worldcup:event values), live_fixtures (api-football get-fixtures
-    response(s), e.g. live=all). Returns only the events that have a live match,
-    as full docs (status + live_score updated) ready for bulk-update.
-    """
-    params = _params(request_data)
-    by_fid: dict[str, dict[str, Any]] = {}
-    for resp in _flatten_foreach(params.get("live_fixtures")):
-        data = _unwrap(resp)
-        for f in (data.get("response", []) if isinstance(data, dict) else []):
-            if not isinstance(f, dict):
-                continue
-            fixture = f.get("fixture") or {}
+
+def _reconcile_fixture_status(params: dict[str, Any], infer_stale: bool) -> dict[str, Any]:
+    observed_at = _text(params.get("observed_at")) or _now_iso()
+    now = _utc_datetime(observed_at) or datetime.now(timezone.utc)
+    live_by_fid: dict[str, dict[str, Any]] = {}
+    exact_by_fid: dict[str, dict[str, Any]] = {}
+
+    def collect(payloads: Any, target: dict[str, dict[str, Any]]) -> None:
+        for f in _fixture_rows(payloads):
+            fixture = f.get("fixture") if isinstance(f.get("fixture"), dict) else {}
             fid = _text(fixture.get("id"))
             if not fid:
                 continue
-            goals = f.get("goals") or {}
-            by_fid[fid] = {
-                "status": _text((fixture.get("status") or {}).get("short")),
+            status = _text((fixture.get("status") or {}).get("short")).upper()
+            candidate = {"fixture": f, "status": status}
+            current = target.get(fid)
+            if current is None or (status in _TERMINAL_STATUS and current["status"] not in _TERMINAL_STATUS):
+                target[fid] = candidate
+
+    collect(params.get("live_fixtures"), live_by_fid)
+    collect(params.get("terminal_fixtures"), exact_by_fid)
+    attempted_fixture_ids = {
+        _text(value) for value in _as_list(params.get("attempted_fixture_ids")) if _text(value)
+    }
+
+    def apply_observation(event: dict[str, Any], info: dict[str, Any]) -> dict[str, Any]:
+        provider_fixture = info["fixture"]
+        fixture = provider_fixture.get("fixture") or {}
+        goals = provider_fixture.get("goals") if isinstance(provider_fixture.get("goals"), dict) else {}
+        next_event = dict(event)
+        next_event["metadata"] = {"event_urn": _text(_first(event, "_id", "@id", "id"))}
+        if info["status"]:
+            next_event["sport:status"] = info["status"]
+        score_complete = _provider_terminal_score_complete(provider_fixture, info["status"])
+        if info["status"] in _TERMINAL_STATUS and not score_complete:
+            return next_event
+        if goals.get("home") is not None and goals.get("away") is not None:
+            next_event["live_score"] = {
+                "home": goals["home"],
+                "away": goals["away"],
                 "elapsed": (fixture.get("status") or {}).get("elapsed"),
-                "home": goals.get("home"),
-                "away": goals.get("away"),
             }
+        elif info["status"] in _TERMINAL_STATUS:
+            next_event.pop("live_score", None)
+        score_phases = _fixture_score_phases(provider_fixture)
+        if score_phases:
+            next_event["score"] = score_phases
+        return next_event
+
     out: list[dict[str, Any]] = []
     for ev in _as_list(params.get("events")):
         if not isinstance(ev, dict):
             continue
         fid = _text((ev.get("provider_ids") or {}).get("api_football"))
-        info = by_fid.get(fid)
-        if not info:
+        exact_info = exact_by_fid.get(fid)
+        live_info = live_by_fid.get(fid)
+        info = exact_info or live_info
+        if live_info and _provider_terminal_score_complete(
+            live_info["fixture"], live_info["status"]
+        ) and not (
+            exact_info
+            and _provider_terminal_score_complete(exact_info["fixture"], exact_info["status"])
+        ):
+            info = live_info
+        terminal_score_complete = bool(
+            info
+            and info["status"] in _TERMINAL_STATUS
+            and _provider_terminal_score_complete(info["fixture"], info["status"])
+        )
+        if terminal_score_complete:
+            next_ev = apply_observation(ev, info)
+            version = dict(next_ev.get("version_control") or {})
+            first_observed_at = (
+                _text(next_ev.get("terminal_observed_at"))
+                if next_ev.get("final_data_status") == "provider_confirmed"
+                else ""
+            ) or observed_at
+            version.update({
+                "terminal-reconciled": True,
+                "terminal-reconciled-status": "available",
+                "terminal-reconciled-timestamp": first_observed_at,
+                "terminal-retry-count": 0,
+                "terminal-retry-exhausted": False,
+            })
+            version.pop("next_retry_at", None)
+            next_ev["version_control"] = version
+            next_ev["final_data_status"] = "provider_confirmed"
+            next_ev["final_score_complete"] = True
+            next_ev["terminal_observed_at"] = first_observed_at
+            out.append(next_ev)
             continue
-        # Overwrite (not setdefault): the doc-store upsert keys on (metadata, name),
-        # so every writer MUST emit the SAME metadata or a stray/empty metadata on
-        # the loaded value forks a duplicate event doc under a different key.
-        ev["metadata"] = {"event_urn": _text(_first(ev, "_id", "@id", "id"))}
-        if info["status"]:
-            ev["sport:status"] = info["status"]
-        ev["live_score"] = {"home": info["home"], "away": info["away"], "elapsed": info["elapsed"]}
-        out.append(ev)
+
+        if (
+            info
+            and info["status"] in _TERMINAL_STATUS
+            and ev.get("final_data_status") == "provider_confirmed"
+            and ev.get("final_score_complete") is True
+        ):
+            continue
+
+        attempted = fid in attempted_fixture_ids or bool(
+            info and info["status"] in _TERMINAL_STATUS and not terminal_score_complete
+        )
+        incomplete_terminal = bool(
+            info and info["status"] in _TERMINAL_STATUS and not terminal_score_complete
+        )
+        if attempted and infer_stale and _terminal_retry_due(ev, now):
+            next_ev = apply_observation(ev, info) if info else dict(ev)
+            status = _text(next_ev.get("sport:status")).upper()
+            prior_final_data_status = ev.get("final_data_status")
+            should_infer_final = info is None and (
+                prior_final_data_status == "inferred_stale"
+                or (
+                    status in _REGULAR_TIME_STALE_STATUSES
+                    and _needs_terminal_reconciliation(next_ev, now)
+                )
+            )
+            version = dict(next_ev.get("version_control") or {})
+            retry_count = min(_TERMINAL_RETRY_LIMIT, _retry_count(version) + 1)
+            if should_infer_final:
+                next_ev["sport:status"] = "FT"
+                next_ev["final_data_status"] = "inferred_stale"
+                score = next_ev.get("live_score") if isinstance(next_ev.get("live_score"), dict) else {}
+                next_ev["live_score"] = {
+                    key: score.get(key) for key in ("home", "away") if score.get(key) is not None
+                }
+            else:
+                next_ev["final_data_status"] = "pending_confirmation"
+            next_ev["final_score_complete"] = False
+            next_ev.pop("terminal_observed_at", None)
+            version.update({
+                "terminal-reconciled": False,
+                "terminal-reconciled-status": (
+                    "retry-exhausted" if retry_count >= _TERMINAL_RETRY_LIMIT else "pending-retry"
+                ),
+                "terminal-reconciled-timestamp": observed_at,
+                "terminal-retry-count": retry_count,
+                "terminal-retry-exhausted": retry_count >= _TERMINAL_RETRY_LIMIT,
+                "next_retry_at": (now + _TERMINAL_RETRY_SPACING).isoformat().replace("+00:00", "Z"),
+            })
+            next_ev["version_control"] = version
+            next_ev["metadata"] = {"event_urn": _text(_first(next_ev, "_id", "@id", "id"))}
+            out.append(next_ev)
+            continue
+
+        if incomplete_terminal:
+            continue
+
+        if info:
+            next_ev = apply_observation(ev, info)
+            version = dict(next_ev.get("version_control") or {})
+            version.update({
+                "terminal-reconciled": False,
+                "terminal-reconciled-status": "not-final",
+                "terminal-retry-count": 0,
+                "terminal-retry-exhausted": False,
+            })
+            version.pop("next_retry_at", None)
+            next_ev["version_control"] = version
+            next_ev["final_data_status"] = "not_final"
+            next_ev["final_score_complete"] = False
+            next_ev.pop("terminal_observed_at", None)
+            out.append(next_ev)
+
     return {"status": True, "data": {"normalized_items": out, "count": len(out)}}
+
+
+def reconcile_fixture_status(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Reconcile live/exact provider observations and bounded stale inference."""
+    return _reconcile_fixture_status(_params(request_data), infer_stale=True)
+
+
+def apply_live_status(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Compatibility command for provider-observed fixture updates only."""
+    return _reconcile_fixture_status(_params(request_data), infer_stale=False)
 
 
 def finalize_stale_live_events(request_data: dict[str, Any]) -> dict[str, Any]:
-    """Mark stale regular-time live event docs as final.
-
-    Params: events (worldcup:event values). Returns full docs ready for bulk-update.
-    """
+    """Compatibility command for bounded, explicitly inferred stale finals."""
     params = _params(request_data)
-    now = datetime.now(timezone.utc)
-    out: list[dict[str, Any]] = []
-    for ev in _as_list(params.get("events")):
-        if not isinstance(ev, dict):
-            continue
-        status = _text(ev.get("sport:status")).upper()
-        if status not in _REGULAR_TIME_STALE_STATUSES:
-            continue
-        ko = None
-        sd = _text(ev.get("schema:startDate"))
-        if sd:
-            try:
-                ko = datetime.fromisoformat(sd.replace("Z", "+00:00"))
-            except ValueError:
-                ko = None
-            if ko is not None and ko.tzinfo is None:
-                ko = ko.replace(tzinfo=timezone.utc)
-        elapsed = _first(ev.get("live_score") or {}, "elapsed")
-        is_stale = (
-            ko is not None
-            and now > ko + timedelta(minutes=150)
-            and (elapsed is None or (isinstance(elapsed, (int, float)) and elapsed >= 90))
-        )
-        if not is_stale:
-            continue
-        next_ev = dict(ev)
-        next_ev["sport:status"] = "FT"
-        score = next_ev.get("live_score") if isinstance(next_ev.get("live_score"), dict) else {}
-        next_ev["live_score"] = {k: score.get(k) for k in ("home", "away") if score.get(k) is not None}
-        # Overwrite (not setdefault): see apply_live_status — consistent metadata
-        # keeps the bulk-update upsert idempotent instead of forking a duplicate.
-        next_ev["metadata"] = {"event_urn": _text(_first(next_ev, "_id", "@id", "id"))}
-        out.append(next_ev)
-    return {"status": True, "data": {"normalized_items": out, "count": len(out)}}
+    if "attempted_fixture_ids" not in params:
+        params["attempted_fixture_ids"] = select_terminal_reconciliation(
+            {"params": params}
+        )["data"]["fixture_ids"]
+    return _reconcile_fixture_status(params, infer_stale=True)
 
 
 # -- Quantitative forecast layer ---------------------------------------------
@@ -4250,24 +5008,38 @@ def _normalize_score_pair(score: dict[str, Any]) -> dict[str, int] | None:
 def select_backtest_finished_fixtures(request_data: dict[str, Any]) -> dict[str, Any]:
     """Prefer live finals and safely adapt World Cup 2026 cached event documents."""
     params = _params(request_data)
-    live_fixtures = [
-        fixture for fixture in _as_list(params.get("live_fixtures"))
-        if isinstance(fixture, dict)
-        and _text(((fixture.get("fixture") or {}).get("status") or {}).get("short")).upper() in _FINAL_STATUS
-    ]
+    live_fixtures: list[dict[str, Any]] = []
+    rejected_live = 0
+    for fixture in _as_list(params.get("live_fixtures")):
+        if not isinstance(fixture, dict):
+            continue
+        status = _text(((fixture.get("fixture") or {}).get("status") or {}).get("short")).upper()
+        if status not in _FINAL_STATUS:
+            continue
+        if not _provider_terminal_score_complete(fixture, status):
+            rejected_live += 1
+            continue
+        live_fixtures.append(fixture)
     if live_fixtures:
+        warnings = []
+        if rejected_live:
+            warnings.append(
+                f"Excluded {rejected_live} live final fixture(s) with incomplete score evidence."
+            )
         return {
             "status": True,
             "data": {
                 "finished_fixtures": live_fixtures,
                 "fixture_status": "available",
                 "provenance": "api-football-live",
-                "warnings": [],
+                "warnings": warnings,
             },
         }
 
     cached_candidates: dict[str, list[dict[str, Any]]] = {}
     conflicted_fixture_ids: set[str] = set()
+    rejected_unconfirmed = 0
+    rejected_incomplete = 0
     for event in _as_list(params.get("cached_events")):
         if not isinstance(event, dict) or event.get("machina_competition_slug") != "world-cup-2026":
             continue
@@ -4275,6 +5047,9 @@ def select_backtest_finished_fixtures(request_data: dict[str, Any]) -> dict[str,
         provider_ids = event.get("provider_ids") if isinstance(event.get("provider_ids"), dict) else {}
         fixture_id = _text(provider_ids.get("api_football"))
         if not fixture_id or status not in _FINAL_STATUS:
+            continue
+        if event.get("final_data_status") != "provider_confirmed":
+            rejected_unconfirmed += 1
             continue
 
         raw_score = event.get("score") if isinstance(event.get("score"), dict) else {}
@@ -4295,7 +5070,8 @@ def select_backtest_finished_fixtures(request_data: dict[str, Any]) -> dict[str,
             penalty_goals = _normalize_score_pair(penalty) if status == "PEN" else None
         except ValueError:
             continue
-        if goals is None:
+        if goals is None or (status == "PEN" and penalty_goals is None):
+            rejected_incomplete += 1
             continue
 
         adapted = {
@@ -4381,6 +5157,10 @@ def select_backtest_finished_fixtures(request_data: dict[str, Any]) -> dict[str,
     ]
 
     warnings = []
+    if rejected_live:
+        warnings.append(
+            f"Excluded {rejected_live} live final fixture(s) with incomplete score evidence."
+        )
     if cached_fixtures:
         warnings.append(
             "Live API-Football returned no usable final fixtures or was unavailable; "
@@ -4388,6 +5168,14 @@ def select_backtest_finished_fixtures(request_data: dict[str, Any]) -> dict[str,
         )
     else:
         warnings.append("No usable final fixtures were returned live or found in the World Cup 2026 cache.")
+    if rejected_unconfirmed:
+        warnings.append(
+            f"Excluded {rejected_unconfirmed} cached final fixture(s) without provider-confirmed final data."
+        )
+    if rejected_incomplete:
+        warnings.append(
+            f"Excluded {rejected_incomplete} provider-confirmed cached final fixture(s) with incomplete score evidence."
+        )
     if conflicted_fixture_ids:
         warnings.append(
             "Excluded cached fixtures with conflicting final scores and no trustworthy freshness "
