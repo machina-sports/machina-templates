@@ -23,9 +23,14 @@ workflow:
     season: "$.get('season', '2026')"
   outputs:
     finished_fixtures: "$.get('finished_fixtures', [])"
-    status: "$.get('fixture_status', 'unavailable')"
-    provenance: "$.get('fixture_provenance', 'none')"
-    warnings: "$.get('fixture_warnings', [])"
+    status: "$.get('response_status', $.get('fixture_status', 'unavailable'))"
+    availability: "$.get('response_availability', {})"
+    evidence: "$.get('response_evidence', [])"
+    provenance: "$.get('response_provenance', [])"
+    fixture_provenance: "$.get('fixture_provenance', 'none')"
+    warnings: "$.get('response_warnings', $.get('fixture_warnings', []))"
+    required_evidence: "$.get('response_required_evidence', [])"
+    unavailable_reason: "$.get('response_unavailable_reason')"
     audited_count: "len($.get('audits', []))"
     track_record: "$.get('backtesting_report', {})"
     clv_settled_count: "len($.get('clv_settled', []))"
@@ -48,7 +53,6 @@ workflow:
     - type: document
       name: load-cached-final-events
       description: Load only cached World Cup 2026 events for explicit fallback selection.
-      condition: "len($.get('api_finished_fixtures', [])) == 0"
       config:
         action: search
         search-limit: 500
@@ -105,7 +109,7 @@ workflow:
     - type: document
       name: save-audits
       description: Persist per-event audit docs.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('audits', [])) > 0"
+      condition: "$.get('fixture_provenance') in ('api-football-live', 'worldcup-event-cache') and len($.get('audits', [])) > 0"
       config:
         action: bulk-update
         embed-vector: false
@@ -119,7 +123,7 @@ workflow:
     - type: connector
       name: aggregate-audit
       description: Roll up audits into the Brier/calibration track record.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('audits', [])) > 0"
+      condition: "$.get('fixture_provenance') in ('api-football-live', 'worldcup-event-cache') and len($.get('audits', [])) > 0"
       connector:
         name: worldcup-market-intelligence
         command: compute_forecast_audit
@@ -134,7 +138,7 @@ workflow:
     - type: document
       name: save-aggregate
       description: Persist the singleton aggregate track-record doc.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and $.get('backtesting_report', {}) != {}"
+      condition: "$.get('fixture_provenance') in ('api-football-live', 'worldcup-event-cache') and $.get('backtesting_report', {}) != {}"
       config:
         action: bulk-update
         embed-vector: false
@@ -175,7 +179,7 @@ workflow:
     - type: connector
       name: settle-clv
       description: Capture the closing line + compute CLV for newly-final entries.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('ledger_rows', [])) > 0"
+      condition: "$.get('fixture_provenance') in ('api-football-live', 'worldcup-event-cache') and len($.get('ledger_rows', [])) > 0"
       connector:
         name: worldcup-market-intelligence
         command: compute_clv
@@ -190,7 +194,7 @@ workflow:
     - type: document
       name: save-clv-settled
       description: Persist newly-settled ledger rows (closing line + CLV).
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('clv_settled', [])) > 0"
+      condition: "$.get('fixture_provenance') in ('api-football-live', 'worldcup-event-cache') and len($.get('clv_settled', [])) > 0"
       config:
         action: bulk-update
         embed-vector: false
@@ -204,7 +208,7 @@ workflow:
     - type: connector
       name: aggregate-clv
       description: Two-proportion Z-test on CLV+ vs CLV- win rates.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('clv_ledger', [])) > 0"
+      condition: "$.get('fixture_provenance') in ('api-football-live', 'worldcup-event-cache') and len($.get('clv_ledger', [])) > 0"
       connector:
         name: worldcup-market-intelligence
         command: compute_clv_report
@@ -218,7 +222,7 @@ workflow:
     - type: document
       name: save-clv-report
       description: Persist the singleton CLV track-record doc.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and $.get('clv_report', {}) != {}"
+      condition: "$.get('fixture_provenance') in ('api-football-live', 'worldcup-event-cache') and $.get('clv_report', {}) != {}"
       config:
         action: bulk-update
         embed-vector: false
@@ -230,3 +234,24 @@ workflow:
         clv_report: "$.get('clv_report', {})"
         clv_report_id: "$.get('clv_report_id', 'worldcup:clv-report:aggregate')"
         clv_report_metadata: "$.get('clv_report_metadata', {})"
+
+    - type: connector
+      name: build-response-envelope
+      description: Report final-result, audit, and CLV availability without treating cached inference as provider truth.
+      connector:
+        name: worldcup-market-intelligence
+        command: build_response_envelope
+      inputs:
+        capabilities: "{'final_results': ('available' if $.get('fixture_provenance') == 'api-football-live' else ('partial' if len($.get('finished_fixtures', [])) > 0 else 'unavailable')), 'forecast_audit': ('available' if len($.get('audits', [])) > 0 else 'unavailable'), 'clv': ('available' if len($.get('clv_settled', [])) > 0 else 'unavailable')}"
+        required_capabilities: "['final_results']"
+        evidence: "[{'kind': 'fixture-results', 'count': len($.get('finished_fixtures', [])), 'source': $.get('fixture_provenance', 'none')}, {'kind': 'forecast-audits', 'count': len($.get('audits', []))}]"
+        provenance: "[{'provider': ('api-football' if $.get('fixture_provenance') == 'api-football-live' else $.get('fixture_provenance', 'none')), 'role': 'final-results'}]"
+        warnings: "$.get('fixture_warnings', [])"
+      outputs:
+        response_status: "$.get('status', 'unavailable')"
+        response_availability: "$.get('availability', {})"
+        response_evidence: "$.get('evidence', [])"
+        response_provenance: "$.get('provenance', [])"
+        response_warnings: "$.get('warnings', [])"
+        response_required_evidence: "$.get('required_evidence', [])"
+        response_unavailable_reason: "$.get('unavailable_reason')"

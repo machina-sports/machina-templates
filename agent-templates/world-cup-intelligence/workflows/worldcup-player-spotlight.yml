@@ -18,13 +18,19 @@ workflow:
     team: "$.get('team', '')"
     force_regen: "$.get('force_regen', False)"
   outputs:
-    skill_card: "dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('spotlight', {})), player_urn=$.get('player_urn', ''))"
+    skill_card: "$.get('response_skill_card', {})"
     player_urn: "$.get('player_urn', '')"
     resolved_player: "$.get('resolved_player', {})"
     candidates: "$.get('player_candidates', [])"
-    served_from: "'cache' if $.get('cached') else 'generated'"
-    warnings: "([] if $.get('player_urn', '') else (($.get('resolve_warnings', []) or []) or ['No player resolved -- pass player_urn, or player (name) + optional team.']))"
-    workflow-status: "($.get('cached') or $.get('spotlight', {})) and 'executed' or 'skipped'"
+    served_from: "$.get('response_served_from', 'unavailable')"
+    status: "$.get('response_status', 'unavailable')"
+    availability: "$.get('response_availability', {})"
+    evidence: "$.get('response_evidence', [])"
+    provenance: "$.get('response_provenance', [])"
+    warnings: "$.get('response_warnings', [])"
+    required_evidence: "$.get('response_required_evidence', [])"
+    unavailable_reason: "$.get('response_unavailable_reason')"
+    workflow-status: "$.get('response_served_from', 'unavailable') != 'unavailable' and 'executed' or 'skipped'"
   tasks:
     - type: document
       name: resolve-load-players
@@ -70,7 +76,7 @@ workflow:
         value.subject_urn: "$.get('player_urn', '')"
         value.expires_at: "{'$gte': ((datetime.utcnow() + timedelta(days=3650)) if (str($.get('force_regen', False)).strip().lower() in ('true', '1', 'yes')) else datetime.utcnow()).isoformat() + 'Z'}"
       outputs:
-        cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) else {}"
+        cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) and isinstance(($.get('documents', []) or [{}])[0].get('value', {}).get('body'), dict) and ($.get('documents', []) or [{}])[0].get('value', {}).get('body', {}) and not ($.get('documents', []) or [{}])[0].get('value', {}).get('body', {}).get('provider_error') and not ($.get('documents', []) or [{}])[0].get('value', {}).get('body', {}).get('error') else {}"
 
     - type: document
       name: load-player
@@ -108,6 +114,7 @@ workflow:
       name: worldcup-player-spotlight
       description: Author the structured player-spotlight card.
       condition: "not $.get('cached') and $.get('player', {}) != {}"
+      continue_on_error: true
       connector:
         name: google-genai
         command: invoke_prompt
@@ -121,10 +128,38 @@ workflow:
       outputs:
         spotlight: "$"
 
+    - type: connector
+      name: build-response-envelope
+      description: Attribute only a real cached or generated spotlight card.
+      connector:
+        name: worldcup-market-intelligence
+        command: build_skill_response_envelope
+      inputs:
+        cached_card: "$.get('cached', {}).get('body', {})"
+        generated_card: "$.get('spotlight', {})"
+        subject_urn: "$.get('player_urn', '')"
+        subject_key: "'player_urn'"
+        cached_provider: "'worldcup:skill-player-spotlight-cache'"
+        generated_provider: "'google-genai'"
+        generated_research: "$.get('research', '')"
+        capabilities: "{'player': ('available' if $.get('player_urn', '') else 'unavailable'), 'grounded_research': ('available' if $.get('research', '') else 'unavailable')}"
+        required_capabilities: "['skill_card', 'player']"
+        warnings: "([] if $.get('player_urn', '') else (($.get('resolve_warnings', []) or []) or ['No player resolved -- pass player_urn, or player (name) + optional team.']))"
+      outputs:
+        response_skill_card: "$.get('skill_card', {})"
+        response_served_from: "$.get('served_from', 'unavailable')"
+        response_status: "$.get('status', 'unavailable')"
+        response_availability: "$.get('availability', {})"
+        response_evidence: "$.get('evidence', [])"
+        response_provenance: "$.get('provenance', [])"
+        response_warnings: "$.get('warnings', [])"
+        response_required_evidence: "$.get('required_evidence', [])"
+        response_unavailable_reason: "$.get('unavailable_reason')"
+
     - type: document
       name: save-candidate
       description: Cache the authored spotlight as a 24h TTL candidate.
-      condition: "not $.get('cached') and $.get('spotlight', {}) != {}"
+      condition: "$.get('response_served_from') == 'generated'"
       config:
         action: bulk-update
         embed-vector: false

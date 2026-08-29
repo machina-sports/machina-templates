@@ -26,6 +26,7 @@ workflow:
     bwin_country: "$.get('bwin_country', 'gb')"
     bwin_competition_id: "$.get('bwin_competition_id', '102868')"
     opta_wc_tmcl: "$.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')"
+    observed_at: "$.get('observed_at', datetime.utcnow().isoformat() + 'Z')"
   outputs:
     fixtures_count: "$.get('fixtures_count', 0)"
     saved_count: "len($.get('normalized_items', []) or $.get('iptc_events', []))"
@@ -47,7 +48,7 @@ workflow:
 
     - type: document
       name: load-existing-events
-      description: Load existing event docs (provider_ids only) so crosswalk-added ids (sportradar/entain) carry forward across re-ingests.
+      description: Load existing event docs so crosswalk ids and the first terminal observation carry forward across re-ingests.
       config:
         action: search
         search-limit: 500
@@ -55,7 +56,7 @@ workflow:
       filters:
         name: "'worldcup:event'"
       outputs:
-        existing_events: "[{'provider_ids': d.get('value', {}).get('provider_ids', {})} for d in ($.get('documents', []) or [])]"
+        existing_events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
 
     - type: connector
       name: mint-event-identity
@@ -68,6 +69,7 @@ workflow:
         fixtures: "$.get('raw_fixtures', [])"
         competition_slug: "'world-cup-2026'"
         existing_events: "$.get('existing_events', [])"
+        observed_at: "$.get('observed_at')"
       outputs:
         # runner strips our connector's {status,data} envelope -> $ is the data.
         iptc_events: "$.get('sport_schema_events', [])"

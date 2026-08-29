@@ -34,6 +34,13 @@ skill:
       outputs:
         skill_card: "$.get('skill_card', {})"
         served_from: "$.get('served_from')"
+        status: "$.get('status', 'unavailable')"
+        availability: "$.get('availability', {})"
+        evidence: "$.get('evidence', [])"
+        provenance: "$.get('provenance', [])"
+        warnings: "$.get('warnings', [])"
+        required_evidence: "$.get('required_evidence', [])"
+        unavailable_reason: "$.get('unavailable_reason')"
     - name: "worldcup-get-signal"
       description: "Calculates the Dixon-Coles model betting signal and fractional Kelly stake for a fixture."
       inputs:

@@ -688,6 +688,20 @@ class TestNormalizeSquads:
         assert teams["home"]["players"][0]["position"] == "Midfielder"
         assert teams["home"]["source"] == "api-football"
 
+    def test_one_of_two_requested_sides_is_partial(self):
+        r = normalize_squads({"params": {
+            "home_af": _af_squad(7, "Uruguay", 3),
+            "home_team": "Uruguay", "away_team": "Spain",
+            "home_team_id": 7, "away_team_id": 9,
+        }})
+
+        teams = {t["side"]: t for t in r["data"]["teams"]}
+        assert r["data"]["status"] == "partial"
+        assert r["data"]["availability"]["squads"] == "partial"
+        assert teams["home"]["count"] == 3
+        assert teams["away"]["team"] == "Spain" and teams["away"]["count"] == 0
+        assert "No squad returned for Spain." in r["data"]["warnings"]
+
     def test_team_identity_backfilled_from_payload(self):
         # No labels passed; should read team identity from the af response.
         r = normalize_squads({"params": {"home_af": _af_squad(7, "Uruguay", 1)}})
@@ -814,9 +828,12 @@ def _event_doc(urn, name, start, status="NS", home="A", away="B", venue="Stadium
 class TestNormalizeSchedule:
     def _events(self):
         return [
-            _event_doc("urn:x:1", "Uruguay vs Spain", "2026-06-27T00:00:00+00:00", home="Uruguay", away="Spain"),
-            _event_doc("urn:x:2", "Brazil vs Serbia", "2026-06-15T18:00:00+00:00", home="Brazil", away="Serbia"),
-            _event_doc("urn:x:3", "France vs Senegal", "2026-06-16T15:00:00+00:00", status="FT", home="France", away="Senegal"),
+            _event_doc("urn:x:1", "Uruguay vs Spain", "2026-06-27T00:00:00+00:00",
+                       home="Uruguay", away="Spain", fixture="102"),
+            _event_doc("urn:x:2", "Brazil vs Serbia", "2026-06-15T18:00:00+00:00",
+                       home="Brazil", away="Serbia", fixture="100"),
+            _event_doc("urn:x:3", "France vs Senegal", "2026-06-16T15:00:00+00:00",
+                       status="FT", home="France", away="Senegal", fixture="101"),
         ]
 
     def test_sorted_by_start_and_shaped(self):
@@ -875,6 +892,103 @@ class TestNormalizeSchedule:
         assert len(r["data"]["events"]) == 1
         r2 = normalize_schedule({"params": {"events": [], "team": "nobody"}})
         assert r2["data"]["events"] == [] and r2["data"]["warnings"]
+
+    def test_deduplicates_fixture_ids_before_limit_and_prefers_czechia_alias(self):
+        duplicate_fixture_ids = ["1538999", "1539004", "1539010", "1576804"]
+        fixture_ids = duplicate_fixture_ids + [str(1600000 + index) for index in range(100)]
+        events = [
+            _event_doc(
+                f"urn:x:{fixture_id}",
+                f"Team {index} vs Opponent {index}",
+                f"2026-06-{index % 28 + 1:02d}T18:00:00+00:00",
+                home=f"Team {index}",
+                away=f"Opponent {index}",
+                fixture=fixture_id,
+            )
+            for index, fixture_id in enumerate(fixture_ids)
+        ]
+        events[0].update({
+            "name": "Czech Republic vs Ireland",
+            "teams": [
+                {"name": "Czech Republic", "sport:qualifier": "home"},
+                {"name": "Ireland", "sport:qualifier": "away"},
+            ],
+        })
+        for index, fixture_id in enumerate(duplicate_fixture_ids):
+            duplicate = dict(events[index])
+            duplicate["_id"] = f"urn:x:duplicate:{fixture_id}"
+            duplicate["teams"] = [dict(team) for team in events[index]["teams"]]
+            if fixture_id == "1538999":
+                duplicate["name"] = "Czechia vs Ireland"
+                duplicate["teams"][0]["name"] = "Czechia"
+            events.append(duplicate)
+
+        result = normalize_schedule({"params": {"events": events, "limit": 104}})["data"]
+
+        assert len(events) == 108
+        assert result["count"] == 104
+        assert len({event["fixture_id"] for event in result["events"]}) == 104
+        assert {event["fixture_id"] for event in result["events"]} == set(fixture_ids)
+        czechia = next(event for event in result["events"] if event["fixture_id"] == "1538999")
+        assert czechia["name"] == "Czechia vs Ireland"
+        assert czechia["teams"][0]["name"] == "Czechia"
+        reversed_result = normalize_schedule({
+            "params": {"events": list(reversed(events)), "limit": 104},
+        })["data"]
+        reversed_czechia = next(
+            event for event in reversed_result["events"] if event["fixture_id"] == "1538999"
+        )
+        assert reversed_czechia == czechia
+        stale_alias = normalize_schedule({"params": {"events": events, "team": "Czech Republic"}})
+        assert stale_alias["data"]["events"] == []
+
+    def test_identical_urn_duplicate_prefers_richer_newer_canonical_record(self):
+        def duplicate(name):
+            return _event_doc(
+                "urn:x:final", name, "2026-07-19T18:00:00+00:00",
+                status="FT", home="Spain", away="France", fixture="1539004",
+            )
+
+        preference_cases = [
+            ({"round": "Final"}, {}),
+            ({"live_score": {"home": 2, "away": 1}},
+             {"live_score": {"home": 2, "away": None}}),
+            ({"live_score": {"home": 2, "away": 1, "elapsed": 120}},
+             {"live_score": {"home": 2, "away": 1}}),
+            ({"metadata": {"event_urn": "urn:x:final"}}, {}),
+            ({"updated_at": "2026-07-19T20:30:00Z"},
+             {"updated_at": "2026-07-19T20:00:00Z"}),
+        ]
+        for preferred_fields, stale_fields in preference_cases:
+            preferred = duplicate("A preferred record")
+            preferred.update(preferred_fields)
+            stale = duplicate("Z stale record")
+            stale.update(stale_fields)
+            selected = normalize_schedule({"params": {"events": [preferred, stale]}})["data"]
+            assert selected["count"] == 1
+            assert selected["events"][0]["name"] == "A preferred record"
+
+        stale = duplicate("Spain vs France")
+        stale["live_score"] = {"home": 1, "away": None}
+        stale["updated_at"] = "2026-07-19T20:00:00Z"
+        canonical = duplicate("Spain vs France")
+        canonical.update({
+            "round": "Final",
+            "live_score": {"home": 2, "away": 1, "elapsed": 120},
+            "metadata": {"event_urn": "urn:x:final"},
+            "updated_at": "2026-07-19T20:30:00Z",
+        })
+        different_fixture = dict(canonical)
+        different_fixture["provider_ids"] = {"api_football": "1539010"}
+
+        result = normalize_schedule({"params": {"events": [stale, canonical, different_fixture]}})["data"]
+
+        assert result["count"] == 2
+        assert {event["fixture_id"] for event in result["events"]} == {"1539004", "1539010"}
+        chosen = next(event for event in result["events"] if event["fixture_id"] == "1539004")
+        assert chosen["event_urn"] == "urn:x:final"
+        assert chosen["stage"] == "Final"
+        assert chosen["score"] == {"home": 2, "away": 1, "elapsed": 120}
 
     def test_finished_semifinal_carries_score_and_stage(self):
         # A completed knockout fixture must surface its result (live_score) and

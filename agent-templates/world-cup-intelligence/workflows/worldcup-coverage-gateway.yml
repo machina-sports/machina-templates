@@ -18,6 +18,8 @@ workflow:
     live_count: "$.get('live_count', 0)"
     upcoming_24h: "$.get('upcoming_24h', 0)"
     recent_done: "$.get('recent_done', 0)"
+    terminal_reconciliation_pending: "$.get('terminal_reconciliation_pending', False)"
+    terminal_reconciliation_count: "$.get('terminal_reconciliation_count', 0)"
     workflow-status: "'executed'"
   tasks:
     - type: document
@@ -46,3 +48,5 @@ workflow:
         live_count: "$.get('live_count', 0)"
         upcoming_24h: "$.get('upcoming_24h', 0)"
         recent_done: "$.get('recent_done', 0)"
+        terminal_reconciliation_pending: "$.get('terminal_reconciliation_pending', False)"
+        terminal_reconciliation_count: "$.get('terminal_reconciliation_count', 0)"

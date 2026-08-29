@@ -30,11 +30,18 @@ workflow:
     lookback_hours: "$.get('lookback_hours', 48)"
     force_regen: "$.get('force_regen', False)"
   outputs:
-    skill_card: "dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('pulse_body', {})), event_urn=$.get('event_urn', ''), subject_urn=($.get('event_urn', '') or ('q:' + $.get('query', '').strip().lower().replace(' ', '-')[:60] if $.get('query', '').strip() else '') or 'global'))"
+    skill_card: "$.get('response_skill_card', {})"
     event_urn: "$.get('event_urn', '')"
     resolved_fixture: "$.get('resolved_fixture', {})"
-    served_from: "'cache' if $.get('cached') else 'generated'"
-    workflow-status: "($.get('cached') or $.get('fan_sentiment', {})) and 'executed' or 'skipped'"
+    served_from: "$.get('response_served_from', 'unavailable')"
+    status: "$.get('response_status', 'unavailable')"
+    availability: "$.get('response_availability', {})"
+    evidence: "$.get('response_evidence', [])"
+    provenance: "$.get('response_provenance', [])"
+    warnings: "$.get('response_warnings', [])"
+    required_evidence: "$.get('response_required_evidence', [])"
+    unavailable_reason: "$.get('response_unavailable_reason')"
+    workflow-status: "$.get('response_served_from', 'unavailable') != 'unavailable' and 'executed' or 'skipped'"
   tasks:
     - type: document
       name: resolve-load-events
@@ -82,7 +89,7 @@ workflow:
         value.subject_urn: "$.get('event_urn', '') or ('q:' + $.get('query', '').strip().lower().replace(' ', '-')[:60] if $.get('query', '').strip() else '') or 'global'"
         value.expires_at: "{'$gte': ((datetime.utcnow() + timedelta(days=3650)) if (str($.get('force_regen', False)).strip().lower() in ('true', '1', 'yes')) else datetime.utcnow()).isoformat() + 'Z'}"
       outputs:
-        cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) else {}"
+        cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) and isinstance(($.get('documents', []) or [{}])[0].get('value', {}).get('body'), dict) and ($.get('documents', []) or [{}])[0].get('value', {}).get('body', {}) and not ($.get('documents', []) or [{}])[0].get('value', {}).get('body', {}).get('provider_error') and not ($.get('documents', []) or [{}])[0].get('value', {}).get('body', {}).get('error') else {}"
 
     - type: document
       name: lookup-event
@@ -164,10 +171,38 @@ workflow:
         citations: "[a.get('url') for o in $.get('output', []) if o.get('type') == 'message' for c in o.get('content', []) for a in (c.get('annotations') or []) if a.get('url')]"
         pulse_body: "dict(json.loads(([c.get('text') for o in $.get('output', []) if o.get('type') == 'message' for c in o.get('content', []) if c.get('text')] or ['{}'])[0]), citations=[a.get('url') for o in $.get('output', []) if o.get('type') == 'message' for c in o.get('content', []) for a in (c.get('annotations') or []) if a.get('url')])"
 
+    - type: connector
+      name: build-response-envelope
+      description: Attribute only a real cached or generated fan-pulse card.
+      connector:
+        name: worldcup-market-intelligence
+        command: build_skill_response_envelope
+      inputs:
+        cached_card: "$.get('cached', {}).get('body', {})"
+        generated_card: "$.get('pulse_body', {}) if $.get('fan_sentiment', {}) else {}"
+        subject_urn: "$.get('event_urn', '') or ('q:' + $.get('query', '').strip().lower().replace(' ', '-')[:60] if $.get('query', '').strip() else '') or 'global'"
+        subject_key: "'subject_urn'"
+        cached_provider: "'worldcup:skill-fan-pulse-cache'"
+        generated_provider: "'xai-grok'"
+        generated_research: "$.get('fan_sentiment', {})"
+        capabilities: "{'live_social_research': ('available' if $.get('fan_sentiment', {}) else ('not_requested' if $.get('cached') else 'provider_error'))}"
+        required_capabilities: "['skill_card']"
+        warnings: "[] if ($.get('cached') or $.get('fan_sentiment', {})) else ['Live social/news search returned no usable data.']"
+      outputs:
+        response_skill_card: "dict($.get('skill_card', {}), event_urn=$.get('event_urn', '')) if $.get('skill_card', {}) else {}"
+        response_served_from: "$.get('served_from', 'unavailable')"
+        response_status: "$.get('status', 'unavailable')"
+        response_availability: "$.get('availability', {})"
+        response_evidence: "$.get('evidence', [])"
+        response_provenance: "$.get('provenance', [])"
+        response_warnings: "$.get('warnings', [])"
+        response_required_evidence: "$.get('required_evidence', [])"
+        response_unavailable_reason: "$.get('unavailable_reason')"
+
     - type: document
       name: save-candidate
       description: Cache the fan-pulse card (~1h TTL).
-      condition: "not $.get('cached') and $.get('fan_sentiment', {}) != {}"
+      condition: "$.get('response_served_from') == 'generated'"
       config:
         action: bulk-update
         embed-vector: false
