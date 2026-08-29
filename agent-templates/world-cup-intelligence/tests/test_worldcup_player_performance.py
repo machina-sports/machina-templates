@@ -147,6 +147,15 @@ def test_merge_official_and_provisional_keeps_official_separate_and_pending_by_d
     assert context["context_and_evidence"]["fallback_path"] == ["provider"]
 
 
+def test_merge_official_and_provisional_with_empty_player_is_explicitly_unavailable():
+    result = merge_official_and_provisional_performance({"params": {"player": {}}})
+
+    context = result["data"]["player_performance_context"]
+    assert context["player"] == {}
+    assert context["machina_provisional_performance_signal"]["status"] == "unavailable"
+    assert context["context_and_evidence"]["fallback_path"] == []
+
+
 def test_merge_official_and_provisional_preserves_official_scores_when_available():
     result = merge_official_and_provisional_performance({
         "params": {
