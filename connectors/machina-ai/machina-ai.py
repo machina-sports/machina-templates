@@ -2065,13 +2065,44 @@ class Router:
         self.media = MediaSecurity(self.config)
         self.registry = AdapterRegistry(self.runtime, self.media)
 
+    @staticmethod
+    def _decision_method(route_reason: Any, fallback_used: bool, capability: Optional[str]) -> str:
+        """Return a stable, UI-friendly decision class.
+
+        ``route_reason`` intentionally keeps its detailed policy value (for
+        example ``remap:profile:fast``). Consumers should not have to parse
+        that free-form detail to group decisions, though. This mirrors the
+        explicit router contract proven by the SportingBOT chat gateway.
+        """
+        if capability == "management":
+            return "management"
+        if fallback_used:
+            return "fallback"
+        reason = str(route_reason or "")
+        if reason == "explicit_provider":
+            return "explicit_override"
+        if reason.startswith("remap:capability:"):
+            return "capability_remap"
+        if reason.startswith("remap:family:"):
+            return "family_remap"
+        if reason.startswith("remap:profile:"):
+            return "profile_remap"
+        if reason.startswith("profile:"):
+            return "profile"
+        if reason.startswith("default:"):
+            return "capability_default"
+        return "unresolved"
+
     def _metadata(self, request: Optional[NormalizedRequest], started: float, **updates: Any) -> Dict[str, Any]:
         metadata = {
             "contract_version": CONTRACT_VERSION,
             "capability": request.capability if request else None,
             "operation_mode": request.operation_mode if request else None,
+            "requested_profile": request.profile if request else None,
             "selected_provider": None,
             "selected_model": None,
+            "resolved_route": None,
+            "decision_method": "unresolved",
             "route_reason": None,
             "latency_ms": max(0, int((time.monotonic() - started) * 1000)),
             "fallback_used": False,
@@ -2083,6 +2114,19 @@ class Router:
         if request and request.conflicts:
             metadata["normalization_conflicts"] = list(request.conflicts)
         metadata.update(updates)
+        selected_provider = metadata.get("selected_provider")
+        if selected_provider:
+            metadata["resolved_route"] = {
+                "provider": selected_provider,
+                "model": metadata.get("selected_model"),
+                "capability": request.capability if request else None,
+                "operation_mode": request.operation_mode if request else None,
+            }
+        metadata["decision_method"] = self._decision_method(
+            metadata.get("route_reason"),
+            bool(metadata.get("fallback_used")),
+            request.capability if request else None,
+        )
         return metadata
 
     def _success(self, data: Any, message: str, metadata: Mapping[str, Any]) -> Dict[str, Any]:
@@ -2286,6 +2330,9 @@ class Router:
                                 for key in (
                                     "selected_provider",
                                     "selected_model",
+                                    "resolved_route",
+                                    "decision_method",
+                                    "requested_profile",
                                     "route_reason",
                                     "fallback_used",
                                     "provider_request_id",

@@ -99,7 +99,7 @@ To pin the exact validated ids for this env, also set
 
 The authoritative check is a direct connector call: the router returns the full
 envelope, so you can read `metadata.selected_provider` / `selected_model` /
-`route_reason`. Payload:
+`resolved_route` / `decision_method` / `route_reason`. Payload:
 
 ```json
 { "command": "invoke_prompt", "provider": "vertex_anthropic",
@@ -112,6 +112,12 @@ Run once for `claude-haiku-4-5` and once for `claude-sonnet-5`. Expected receipt
 { "status": true, "message": "Model loaded.",
   "metadata": { "selected_provider": "vertex_anthropic",
                 "selected_model": "claude-haiku-4-5",
+                "requested_profile": "balanced",
+                "resolved_route": { "provider": "vertex_anthropic",
+                                    "model": "claude-haiku-4-5",
+                                    "capability": "chat",
+                                    "operation_mode": "factory" },
+                "decision_method": "explicit_override",
                 "route_reason": "explicit_provider", "fallback_used": false } }
 ```
 
