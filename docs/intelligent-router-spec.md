@@ -452,8 +452,16 @@ Every router command MUST return:
     "contract_version": "v1",
     "capability": "chat",
     "operation_mode": "execute",
+    "requested_profile": "balanced",
     "selected_provider": "vertex_ai",
     "selected_model": "gemini-2.5-flash",
+    "resolved_route": {
+      "provider": "vertex_ai",
+      "model": "gemini-2.5-flash",
+      "capability": "chat",
+      "operation_mode": "execute"
+    },
+    "decision_method": "profile",
     "route_reason": "profile:balanced",
     "latency_ms": 241,
     "fallback_used": false,
@@ -507,8 +515,11 @@ Streaming is out of scope for v1. `stream: true` MUST return `unsupported_option
 - `contract_version`
 - `capability`
 - `operation_mode`
+- `requested_profile`
 - `selected_provider`
 - `selected_model`
+- `resolved_route`, as an explicit provider/model/capability/mode object
+- `decision_method`, using a stable enum instead of requiring consumers to parse `route_reason`
 - `route_reason`
 - `latency_ms`
 - `fallback_used`
@@ -518,6 +529,14 @@ Streaming is out of scope for v1. `stream: true` MUST return `unsupported_option
 - `error_class` on failure
 
 The router MUST NOT log or return secrets, raw authorization headers, service-account JSON, or raw prompts by default.
+
+`decision_method` MUST be one of `explicit_override`, `capability_remap`,
+`family_remap`, `profile_remap`, `profile`, `capability_default`, `fallback`,
+`management`, or `unresolved`. `route_reason` remains the detailed policy
+evidence. This separation lets Studio, inspectors, and metrics group decisions
+without reverse-engineering a display string. A fallback receipt MUST name the
+route that actually answered in `resolved_route`; failed candidates remain in
+`fallback_attempts`.
 
 ### 9.4 Error envelope
 

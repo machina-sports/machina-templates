@@ -185,6 +185,14 @@ class TestRoutingAndReceipts:
         assert result["metadata"]["selected_provider"] == "vertex_ai"
         assert result["metadata"]["selected_model"] == "gemini-3.5-flash-lite"
         assert result["metadata"]["route_reason"] == "profile:balanced"
+        assert result["metadata"]["requested_profile"] == "balanced"
+        assert result["metadata"]["decision_method"] == "profile"
+        assert result["metadata"]["resolved_route"] == {
+            "provider": "vertex_ai",
+            "model": "gemini-3.5-flash-lite",
+            "capability": "chat",
+            "operation_mode": "factory",
+        }
 
     def test_direct_chat_returns_canonical_envelope_and_receipt(self):
         result = router.invoke_chat({"_runtime": FakeRuntime(), "prompt": "hello"})
@@ -204,6 +212,14 @@ class TestRoutingAndReceipts:
             "router_receipt": {
                 "selected_provider": "vertex_ai",
                 "selected_model": "gemini-3.5-flash-lite",
+                "resolved_route": {
+                    "provider": "vertex_ai",
+                    "model": "gemini-3.5-flash-lite",
+                    "capability": "search_answer",
+                    "operation_mode": "execute",
+                },
+                "decision_method": "profile",
+                "requested_profile": "balanced",
                 "route_reason": "profile:balanced",
                 "fallback_used": False,
                 "provider_request_id": "req-vertex_ai",
@@ -242,6 +258,14 @@ class TestRoutingAndReceipts:
         assert result["data"]["provider_extensions"]["router_receipt"] == {
             "selected_provider": "vertex_ai",
             "selected_model": "gemini-3.5-flash-lite",
+            "resolved_route": {
+                "provider": "vertex_ai",
+                "model": "gemini-3.5-flash-lite",
+                "capability": "search_answer",
+                "operation_mode": "execute",
+            },
+            "decision_method": "profile",
+            "requested_profile": "balanced",
             "route_reason": "profile:balanced",
             "fallback_used": False,
             "provider_request_id": "trusted-request",
@@ -269,6 +293,7 @@ class TestRoutingAndReceipts:
         assert result["status"] is True
         assert result["metadata"]["selected_provider"] == "groq"
         assert result["metadata"]["route_reason"] == "explicit_provider"
+        assert result["metadata"]["decision_method"] == "explicit_override"
 
     def test_profile_and_global_remap(self):
         groq = FakeAdapter()
@@ -284,6 +309,7 @@ class TestRoutingAndReceipts:
         assert result["status"] is True
         assert result["metadata"]["selected_provider"] == "groq"
         assert result["metadata"]["route_reason"] == "remap:profile:fast"
+        assert result["metadata"]["decision_method"] == "profile_remap"
 
     def test_disallowed_provider_and_model_are_typed(self):
         provider = router.invoke_chat({"_runtime": FakeRuntime(), "provider": "perplexity", "prompt": "hello"})
@@ -492,6 +518,7 @@ class TestFallbacks:
         assert result["status"] is True
         assert result["metadata"]["fallback_used"] is True
         assert result["metadata"]["selected_provider"] == "groq"
+        assert result["metadata"]["decision_method"] == "fallback"
         assert result["metadata"]["fallback_attempts"][0]["error_class"] == "provider_timeout"
 
     def test_authentication_and_invalid_request_do_not_fallback(self):
