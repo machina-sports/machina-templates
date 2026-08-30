@@ -1,0 +1,5 @@
+connector:
+  name: "sportradar-golf"
+  description: "Sportradar Golf API v3"
+  filename: "sportradar-golf.json"
+  filetype: "restapi"
