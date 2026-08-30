@@ -1,0 +1,85 @@
+workflow:
+  name: market-sector-tips
+  title: Market Sector Tips
+  description: Fetches sports markets from Polymarket, organizes them by sector, and generates AI-powered tips per sector.
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    tag_id: $.get('tag_id', 1)
+    limit: $.get('limit', 100)
+  outputs:
+    sector_tips: $.get('sector_tips', [])
+    sectors_summary: $.get('sectors_summary', '')
+    workflow-status: "$.get('sector_tips') and 'executed' or 'skipped'"
+  tasks:
+
+    # 1 fetch-markets — Load active sports markets from Polymarket
+    - type: connector
+      name: fetch-markets
+      description: Fetch active sports markets from Polymarket API.
+      connector:
+        name: polymarket
+        command: get_sports_markets
+      inputs:
+        tag_id: $.get('tag_id', 1)
+        limit: $.get('limit', 100)
+        active: true
+        closed: false
+      outputs:
+        markets: $.get('markets', [])
+        markets_count: len($.get('markets', []))
+
+    # 2 group-by-sector — Apply mapping to organize markets into sectors
+    - type: mapping
+      name: market-sector-grouping
+      description: Group markets by sector (sport market type).
+      condition: $.get('markets') is not None and len($.get('markets', [])) > 0
+      inputs:
+        markets: $.get('markets', [])
+      outputs:
+        sector_names: $.get('sector_names', [])
+        sectors: $.get('sectors', [])
+        sectors_text: $.get('sectors_text', '')
+
+    # 3 sector-tips-prompt — Generate AI tips per sector
+    - type: prompt
+      name: sector-tips-analysis-prompt
+      description: Analyze sectors and generate market tips using AI.
+      condition: $.get('sectors') is not None and len($.get('sectors', [])) > 0
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        sectors_text: $.get('sectors_text', '')
+        sectors_data: $.get('sectors', [])
+      outputs:
+        sector_tips: "$.get('sector_tips', [])"
+        sectors_summary: "$.get('sectors_summary', '')"
+
+    # 4 save-sector-tips — Persist results as a document
+    - type: document
+      name: save-sector-tips
+      description: Save sector tips analysis to documents.
+      condition: $.get('sector_tips') is not None and len($.get('sector_tips', [])) > 0
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        market-sector-tips: |-
+          {
+            "title": "Market Sector Tips",
+            "sector_tips": $.get('sector_tips', []),
+            "sectors_summary": $.get('sectors_summary', ''),
+            "sector_names": $.get('sector_names', []),
+            "markets_count": $.get('markets_count', 0)
+          }
+      metadata:
+        name: market-sector-tips

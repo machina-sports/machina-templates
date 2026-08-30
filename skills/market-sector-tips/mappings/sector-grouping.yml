@@ -1,0 +1,79 @@
+mappings:
+
+  - type: mapping
+    name: market-sector-grouping
+    title: Market Sector Grouping
+    description: "Groups Polymarket sports markets by sector (market type) and produces a text summary per sector."
+    inputs:
+      markets: $.get('markets', [])
+    outputs:
+      sector_names: |-
+        sorted(list(set([
+          market.get('sports_market_type', 'other') or 'other'
+          for market in $.get('markets', [])
+        ])))
+      sectors: |-
+        [
+          {
+            'sector': sector_name,
+            'market_count': len([
+              m for m in $.get('markets', [])
+              if (m.get('sports_market_type', 'other') or 'other') == sector_name
+            ]),
+            'markets': [
+              {
+                'id': str(m.get('id', '')),
+                'title': m.get('question', m.get('title', '')),
+                'slug': m.get('slug', ''),
+                'status': m.get('status', ''),
+                'sportsMarketType': m.get('sports_market_type', 'other'),
+                'outcomes': m.get('outcomes', []),
+                'volume': m.get('volume', 0),
+                'volume24h': m.get('volume_24h', 0),
+                'liquidity': m.get('liquidity', 0),
+                'spread': m.get('spread', 0),
+                'startDate': m.get('start_date', ''),
+                'endDate': m.get('end_date', ''),
+                'gameId': m.get('game_id', ''),
+                'eventId': m.get('event_id', ''),
+                'tags': m.get('tags', [])
+              }
+              for m in $.get('markets', [])
+              if (m.get('sports_market_type', 'other') or 'other') == sector_name
+            ]
+          }
+          for sector_name in sorted(list(set([
+            market.get('sports_market_type', 'other') or 'other'
+            for market in $.get('markets', [])
+          ])))
+        ]
+      sectors_text: |-
+        "\n\n".join([
+          "## Sector: {sector}\nMarkets: {count}\n{lines}".format(
+            sector=(sector_name),
+            count=len([
+              m for m in $.get('markets', [])
+              if (m.get('sports_market_type', 'other') or 'other') == sector_name
+            ]),
+            lines="\n".join([
+              " | ".join(filter(None, [
+                str(m.get('id', '')),
+                m.get('question', m.get('title', '')),
+                f"status: {m.get('status', '')}",
+                f"volume: {m.get('volume', 0)}",
+                f"vol24h: {m.get('volume_24h', 0)}",
+                f"liquidity: {m.get('liquidity', 0)}",
+                f"spread: {m.get('spread', 0)}",
+                f"outcomes: {m.get('outcomes', [])}",
+                f"start: {m.get('start_date', '')}",
+                f"end: {m.get('end_date', '')}"
+              ]))
+              for m in $.get('markets', [])
+              if (m.get('sports_market_type', 'other') or 'other') == sector_name
+            ])
+          )
+          for sector_name in sorted(list(set([
+            market.get('sports_market_type', 'other') or 'other'
+            for market in $.get('markets', [])
+          ])))
+        ])
