@@ -1,0 +1,38 @@
+setup:
+  title: ProphetX Affiliate API
+  description: Authenticated read-only access to ProphetX betting-exchange market data (tournaments, sport events, markets with odds and liquidity levels) and official Auto-Fill handoff links for odds-screen integrations. Machina never places wagers.
+  category:
+    - sports-data
+    - betting-exchange
+    - odds
+  estimatedTime: 5 minutes
+  features:
+    - Tournaments and sport events discovery (sandbox and production environments)
+    - Markets with odds, lines, and per-level liquidity (Affiliate API v1-v4; v3 default, v4 CFTC naming)
+    - Batch markets for up to 50 events per call
+    - Official Auto-Fill deep links (app, OneLink, web) for bet-slip handoff with partner attribution
+    - Read-only by design - no wager, order, or balance operations
+  integrations:
+    - prophetx
+  requirements:
+    - MACHINA_CONTEXT_VARIABLE_PROPHETX_API_KEY (mode A - single Affiliate API key; leave empty when using mode B)
+    - MACHINA_CONTEXT_VARIABLE_PROPHETX_ACCESS_KEY (mode B - access key for /auth/login session flow)
+    - MACHINA_CONTEXT_VARIABLE_PROPHETX_SECRET_KEY (mode B - secret key for /auth/login session flow)
+    - MACHINA_CONTEXT_VARIABLE_PROPHETX_PARTNER_ID (Auto-Fill attribution identifier)
+  status: available
+  value: connectors/prophetx
+  version: 0.1.0
+
+datasets:
+
+  - type: connector
+    path: prophetx.yml
+
+  - type: workflow
+    path: test-credentials.yml
+
+  - type: workflow
+    path: workflows/market-discovery.yml
+
+  - type: workflow
+    path: workflows/demo-autofill-handoff.yml
