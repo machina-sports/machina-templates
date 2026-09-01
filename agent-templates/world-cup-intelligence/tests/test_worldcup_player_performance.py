@@ -15,6 +15,7 @@ classify_fifa_power_categories = _module.classify_fifa_power_categories
 apply_power_ranking_eligibility = _module.apply_power_ranking_eligibility
 score_provisional_player_performance = _module.score_provisional_player_performance
 merge_official_and_provisional_performance = _module.merge_official_and_provisional_performance
+select_official_player_power_ranking = _module.select_official_player_power_ranking
 
 
 def _player_stats(**overrides):
@@ -179,3 +180,56 @@ def test_merge_official_and_provisional_preserves_official_scores_when_available
     context = result["data"]["player_performance_context"]
     assert context["official_fifa_power_ranking"]["scores"]["attacking"] == 8.4
     assert context["machina_provisional_performance_signal"]["scores_0_10"]["attacking"] == 6.0
+
+
+def test_select_official_ranking_matches_persisted_record_by_canonical_name():
+    record = {
+        "_id": "world-cup-2026:player-power-ranking:vinicius",
+        "canonical_name": "Vinicius Junior",
+        "status": "available",
+        "source": "fifa.com",
+        "classification": {"tournament_rank": 7},
+        "scores": {"attacking": 6.99, "creativity": 6.83, "defending": 4.66},
+    }
+    result = select_official_player_power_ranking({"params": {
+        "player_name": "Vinícius Júnior",
+        "records": [record],
+    }})["data"]["official_fifa_power_ranking"]
+
+    assert result == record
+
+
+def test_select_official_ranking_matches_persisted_record_by_player_urn():
+    record = {
+        "_id": "world-cup-2026:player-power-ranking:someone",
+        "player_urn": "urn:machina:sport:soccer:player:someone:20000101:bra",
+        "canonical_name": "Different Display Name",
+        "status": "available",
+    }
+    result = select_official_player_power_ranking({"params": {
+        "player_urn": record["player_urn"], "player_name": "Someone", "records": [record],
+    }})["data"]["official_fifa_power_ranking"]
+
+    assert result == record
+
+
+def test_select_official_ranking_preserves_explicit_override():
+    override = {"status": "available", "source": "caller", "scores": {"attacking": 9.5}}
+    stored = {"canonical_name": "Vinicius Junior", "status": "available", "scores": {"attacking": 6.99}}
+
+    result = select_official_player_power_ranking({"params": {
+        "override": override, "player_name": "Vinicius Junior", "records": [stored],
+    }})["data"]["official_fifa_power_ranking"]
+
+    assert result is override
+
+
+def test_select_official_ranking_is_pending_when_no_verified_record_exists():
+    result = select_official_player_power_ranking({"params": {
+        "player_name": "Alisson",
+        "records": [{"canonical_name": "Alisson", "player_type": "goalkeeper", "status": "pending"}],
+    }})["data"]["official_fifa_power_ranking"]
+
+    assert result["status"] == "pending"
+    assert result["classification"]["tournament_rank"] is None
+    assert all(value is None for value in result["scores"].values())

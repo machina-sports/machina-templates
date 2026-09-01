@@ -69,7 +69,6 @@ workflow:
         team: "$.get('home_team_id') or $.get('home_team')"
       outputs:
         home_af: "$"
-        home_af_count: "len(((($.get('response') or [{}])[0] or {}).get('players', []) or []))"
 
     - type: connector
       name: fetch-away-squad-af
@@ -83,7 +82,23 @@ workflow:
         team: "$.get('away_team_id') or $.get('away_team')"
       outputs:
         away_af: "$"
-        away_af_count: "len(((($.get('response') or [{}])[0] or {}).get('players', []) or []))"
+
+    - type: connector
+      name: inspect-api-football-squads
+      description: Normalize runner output so bare lists and response envelopes produce the same fallback counts.
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_squads
+      inputs:
+        home_af: "$.get('home_af', {})"
+        away_af: "$.get('away_af', {})"
+        home_team_id: "$.get('home_team_id') or $.get('home_team')"
+        away_team_id: "$.get('away_team_id') or $.get('away_team')"
+        home_team: "$.get('home_team_name', '')"
+        away_team: "$.get('away_team_name', '')"
+      outputs:
+        home_af_count: "([t.get('count', 0) for t in ($.get('teams', []) or []) if t.get('side') == 'home' and t.get('source') == 'api-football'] or [0])[0]"
+        away_af_count: "([t.get('count', 0) for t in ($.get('teams', []) or []) if t.get('side') == 'away' and t.get('source') == 'api-football'] or [0])[0]"
 
     - type: connector
       name: resolve-home-ss

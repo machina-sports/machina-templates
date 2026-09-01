@@ -94,7 +94,7 @@ def test_all_archive_outputs_parse_and_evaluate_with_required_constants():
         "worldcup-get-standings": {"standings": {"groups": [{"group": "A"}], "source": "api-football"}},
         "worldcup-get-squads": {"squads": {"teams": [{"source": "api-football"}]}},
         "worldcup-get-injuries": {"injuries": {"teams": [], "source": "api-football"}},
-        "worldcup-get-player-performance-context": {"normalized_players": [{"eligible_for_power_ranking": True}], "official_fifa_power_ranking": {"status": "available", "as_of": "2026-07-19T23:00:00Z"}},
+        "worldcup-get-player-performance-context": {"normalized_players": [{"eligible_for_power_ranking": True}], "resolved_official_fifa_power_ranking": {"status": "available", "as_of": "2026-07-19T23:00:00Z"}},
         "worldcup-get-match-forecast": {"forecast": {"data_source": "seed", "model": {"computed_at": "2026-07-19T12:00:00Z"}}},
         "worldcup-backtest-forecasts": {"backtesting_report": {"sample_size": 104, "sample_size_sufficient": True}, "audits": [{"audited_at": "2026-07-20T01:00:00Z"}], "fixture_provenance": "api-football-live", "forecasts": [{}]},
         "worldcup-match-recap": {"cached": {"body": {}, "generated_at": "2026-07-20T02:00:00Z"}},
@@ -151,15 +151,15 @@ def test_injuries_do_not_infer_complete_coverage_from_an_empty_feed():
 def test_performance_remains_partial_while_official_fifa_ranking_is_pending():
     pending = archive("worldcup-get-player-performance-context", {
         "normalized_players": [{"eligible_for_power_ranking": True}],
-        "official_fifa_power_ranking": {"status": "pending"},
+        "resolved_official_fifa_power_ranking": {"status": "pending"},
     })
     ineligible = archive("worldcup-get-player-performance-context", {
         "normalized_players": [{"eligible_for_power_ranking": False}],
-        "official_fifa_power_ranking": {"status": "available"},
+        "resolved_official_fifa_power_ranking": {"status": "available"},
     })
     official_only = archive("worldcup-get-player-performance-context", {
         "normalized_players": [],
-        "official_fifa_power_ranking": {"status": "available"},
+        "resolved_official_fifa_power_ranking": {"status": "available"},
     })
 
     assert pending["capability_status"] == "partial"
@@ -168,6 +168,12 @@ def test_performance_remains_partial_while_official_fifa_ranking_is_pending():
     assert "eligible_player_sample" in ineligible["missing_capabilities"]
     assert official_only["capability_status"] == "partial"
     assert "provider_player_statistics" in official_only["missing_capabilities"]
+
+    no_player = archive("worldcup-get-player-performance-context", {
+        "normalized_players": [],
+        "resolved_official_fifa_power_ranking": {"status": "pending"},
+    })
+    assert no_player["capability_status"] == "unavailable"
 
 
 def test_forecast_is_historical_and_uses_only_stored_model_time():
@@ -245,3 +251,33 @@ def test_cached_editorial_statuses_expose_generated_at_without_fabrication():
     assert spotlight["snapshot_as_of"] == "2026-07-20T03:00:00Z"
     assert generated_recap["snapshot_as_of"] is None
     assert generated_spotlight["snapshot_as_of"] is None
+
+
+def test_final_player_ranking_import_contains_only_verified_values():
+    workflow = yaml.safe_load(
+        (WORKFLOW_DIR / "worldcup-import-final-fifa-player-rankings.yml").read_text(encoding="utf-8")
+    )["workflow"]
+    items = evaluate(task(workflow, "import-final-player-rankings")["documents"]["items"], {})
+    by_name = {item["canonical_name"]: item for item in items}
+
+    vinicius = by_name["Vinicius Junior"]
+    assert vinicius["status"] == "available"
+    assert vinicius["classification"]["tournament_rank"] == 7
+    assert vinicius["scores"] == {
+        "attacking": 6.99,
+        "creativity": 6.83,
+        "defending": 4.66,
+        "in_possession": None,
+        "defending_goal": None,
+    }
+    alisson = by_name["Alisson"]
+    assert alisson["player_type"] == "goalkeeper"
+    assert alisson["status"] == "pending"
+    assert alisson["classification"]["tournament_rank"] is None
+    assert all(value is None for value in alisson["scores"].values())
+
+
+def test_spotlight_adds_tournament_overview_without_removing_legacy_outputs():
+    workflow = load_workflow("worldcup-player-spotlight")
+    assert "player_overview" in workflow["outputs"]
+    assert LEGACY_OUTPUTS["worldcup-player-spotlight"] <= workflow["outputs"].keys()

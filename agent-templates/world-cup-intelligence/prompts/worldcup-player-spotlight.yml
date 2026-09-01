@@ -4,11 +4,13 @@ prompts:
     title: World Cup Player Spotlight
     description: Author a structured, grounded spotlight card for a World Cup player.
     instruction: |
-      Write a factual spotlight card for the player in `player` (identity-crosswalk doc:
-      name, country/team, provider ids). Ground it in `research` (grounded web search:
-      recent form, role, status) and, when present, `fixture` (their team's next/last
-      fixture context). Use ONLY facts present in the inputs — never invent stats,
-      transfers, or quotes. Neutral, informational tone. Always include the disclaimer.
+      Write a factual FIFA World Cup 2026 tournament spotlight for `player`, which is
+      derived only from the persisted tournament squad identity record. Use ONLY facts
+      present in that input. Never mention club contracts, club form, transfers,
+      managers, or post-tournament events. Treat `position` as authoritative when it is
+      present; never infer a different position. If a tournament fact is absent, omit it
+      or say it is unavailable rather than filling it from general football knowledge.
+      Neutral, informational tone. Always include the disclaimer.
     schema:
       title: WorldCupPlayerSpotlight
       type: object
@@ -23,8 +25,6 @@ prompts:
         position:
           type: string
         narrative:
-          type: string
-        recent_form:
           type: string
         performance_signals:
           type: object

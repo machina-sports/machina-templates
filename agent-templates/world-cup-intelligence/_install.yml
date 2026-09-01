@@ -84,6 +84,8 @@ datasets:
   - type: workflow
     path: workflows/worldcup-get-player-performance-context.yml
   - type: workflow
+    path: workflows/worldcup-import-final-fifa-player-rankings.yml
+  - type: workflow
     path: workflows/worldcup-sync-identity-crosswalk.yml
   - type: workflow
     path: workflows/worldcup-sync-team-crosswalk.yml

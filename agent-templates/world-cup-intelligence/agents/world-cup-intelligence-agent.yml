@@ -159,6 +159,7 @@ agent:
       outputs:
         skill_card: "$.get('skill_card', {})"
         player_urn: "$.get('player_urn', '')"
+        player_overview: "$.get('player_overview', {})"
         candidates: "$.get('candidates', [])"
 
     - name: worldcup-fan-pulse

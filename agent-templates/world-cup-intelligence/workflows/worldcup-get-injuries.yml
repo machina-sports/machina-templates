@@ -41,7 +41,7 @@ workflow:
         away_team_urn: "([t.get('@id') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
         home_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
         away_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
-        resolved_year: "((($.get('documents', []) or [{}])[0].get('value', {}).get('schema:startDate') or '2026'))[:4]"
+        resolved_fixture_id: "((($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football') or $.get('provider_event_id'))"
 
     - type: document
       name: lookup-teams
@@ -60,25 +60,26 @@ workflow:
 
     - type: connector
       name: fetch-injuries-af
-      description: League-wide World Cup injuries/suspensions from api-football.
+      description: Fixture-scoped World Cup injuries/suspensions from api-football.
+      condition: "($.get('resolved_fixture_id') or $.get('provider_event_id')) not in (None, '')"
       continue_on_error: true
       connector:
         name: api-football
         command: get-injuries
       inputs:
-        league: "$.get('resolved_league') or $.get('league') or '1'"
-        season: "$.get('resolved_year') or $.get('season') or '2026'"
+        fixture: "$.get('resolved_fixture_id') or $.get('provider_event_id')"
       outputs:
         injuries_af: "$"
 
     - type: connector
       name: normalize-injuries
-      description: Filter league-wide injuries to the fixture's two teams and dedup per player.
+      description: Validate fixture-scoped injuries against the resolved fixture and split them by team.
       connector:
         name: worldcup-market-intelligence
         command: normalize_injuries
       inputs:
         af: "$.get('injuries_af', {})"
+        fixture_id: "$.get('resolved_fixture_id') or $.get('provider_event_id')"
         home_team_id: "$.get('home_team_id')"
         away_team_id: "$.get('away_team_id')"
         home_team: "$.get('home_team_name', '')"

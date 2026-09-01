@@ -20,6 +20,7 @@ normalize_squads = _module.normalize_squads
 normalize_injuries = _module.normalize_injuries
 normalize_schedule = _module.normalize_schedule
 resolve_player = _module.resolve_player
+build_tournament_player_overview = _module.build_tournament_player_overview
 normalize_identity_crosswalk = _module.normalize_identity_crosswalk
 mint_event_identity = _module.mint_event_identity
 merge_provider_entities = _module.merge_provider_entities
@@ -694,6 +695,16 @@ class TestNormalizeSquads:
         team = r["data"]["teams"][0]
         assert team["team"] == "Uruguay" and team["team_id"] == 7
 
+    def test_bare_list_is_api_football_squad_not_fallback(self):
+        bare = _af_squad(7, "Uruguay", 2)["response"]
+        ss_profile = {"team": {"id": "212", "name": "Uruguay"},
+                      "players": [{"id": "fallback", "name": "Fallback Player"}]}
+        team = normalize_squads({"params": {"home_af": bare, "home_ss": ss_profile}})["data"]["teams"][0]
+
+        assert team["source"] == "api-football"
+        assert team["count"] == 2
+        assert all(player["id"] != "fallback" for player in team["players"])
+
     def test_empty_payload_skipped(self):
         r = normalize_squads({"params": {"home_af": {}, "away_af": {}}})
         assert r["data"]["teams"] == []
@@ -773,6 +784,39 @@ class TestNormalizeInjuries:
         assert team["count"] == 1
         assert team["missing"][0]["fixture_id"] == 2  # most recent kept
         assert "_ts" not in team["missing"][0]         # helper field stripped
+
+    def test_fixture_scoped_response_preserves_neymar_calf_injury(self):
+        af = {"response": [
+            _af_injury("bra", "Brazil", 10, "Neymar", "Calf Injury", fixture_id=1489371, ts=1000),
+            _af_injury("bra", "Brazil", 10, "Neymar", "Knock", fixture_id=1489999, ts=2000),
+        ]}
+        result = normalize_injuries({"params": {
+            "af": af,
+            "fixture_id": "1489371",
+            "home_team_id": None,
+            "home_team": "Brazil",
+        }})["data"]
+
+        assert result["teams"][0]["missing"] == [{
+            "name": "Neymar",
+            "player_id": 10,
+            "photo": "af://p10.png",
+            "type": "Missing Fixture",
+            "reason": "Calf Injury",
+            "fixture_id": 1489371,
+            "fixture_date": "2026-06-26T18:00:00+00:00",
+        }]
+
+    def test_fixture_mismatch_warns_instead_of_claiming_verified_empty(self):
+        result = normalize_injuries({"params": {
+            "af": {"response": [_af_injury(6, "Brazil", 10, "Neymar", "Calf Injury", fixture_id=999)]},
+            "fixture_id": "1489371",
+            "home_team_id": 6,
+            "home_team": "Brazil",
+        }})["data"]
+
+        assert result["teams"][0]["count"] == 0
+        assert any("none matched fixture 1489371" in warning for warning in result["warnings"])
 
     def test_empty_injuries_warns(self):
         r = normalize_injuries({"params": {
@@ -964,6 +1008,29 @@ class TestResolvePlayer:
         r = resolve_player({"params": {"players": self._players(), "player": ""}})
         assert r["data"]["player"] == {} and r["data"]["warnings"]
 
+
+class TestTournamentPlayerOverview:
+    def test_provider_tournament_position_precedes_identity_fallback(self):
+        overview = build_tournament_player_overview({"params": {"player": {
+            "_id": "urn:p:vinicius",
+            "name": "Vinicius Junior",
+            "team": {"name": "Brazil"},
+            "position": "Midfielder",
+            "provider_position": "Forward",
+            "club": "Do not expose",
+            "contract": "Do not expose",
+        }}})["data"]["player_overview"]
+
+        assert overview["position"] == "Forward"
+        assert overview["scope"] == "tournament_squad"
+        assert "club" not in overview and "contract" not in overview
+
+    def test_identity_position_is_used_as_fallback(self):
+        overview = build_tournament_player_overview({"params": {"player": {
+            "_id": "urn:p:keeper", "name": "Keeper", "position": "Goalkeeper",
+        }}})["data"]["player_overview"]
+        assert overview["position"] == "Goalkeeper"
+
     def test_real_iptc_doc_shape(self):
         # The actual worldcup:event value is raw IPTC: schema:startDate,
         # sport:status, sport:competitors, sport:venue, sport:competition.
@@ -1020,6 +1087,15 @@ class TestNormalizeIdentityCrosswalk:
             "urn:machina:sport:soccer:team:georgia:geo",
             "urn:machina:sport:soccer:team:georgia:usa",
         ]
+
+    def test_czech_republic_alias_mints_czechia_canonical_urn(self):
+        result = normalize_identity_crosswalk({"params": {"items": [
+            {"type": "team", "name": "Czech Republic", "country": "Czech Republic"},
+            {"type": "team", "name": "Czechia", "country": "Czechia"},
+        ]}})["data"]
+        assert {item["_id"] for item in result["normalized_items"]} == {
+            "urn:machina:sport:soccer:team:czechia:cze"
+        }
 
     def test_event_and_competition_documents_use_standard_metadata_keys(self):
         result = normalize_identity_crosswalk({"params": {"items": [
@@ -1124,6 +1200,19 @@ class TestMintEventIdentity:
         # When league.round is absent, no null round/stage keys are added.
         d2 = mint_event_identity({"params": {"fixtures": [_af_fixture()]}})["data"]["events"][0]
         assert "round" not in d2 and "stage" not in d2
+
+    def test_czech_aliases_mint_the_same_canonical_event_and_team_urn(self):
+        republic = _af_fixture()
+        republic["teams"]["home"]["name"] = "Czech Republic"
+        czechia = _af_fixture()
+        czechia["teams"]["home"]["name"] = "Czechia"
+
+        first = mint_event_identity({"params": {"fixtures": [republic]}})["data"]["events"][0]
+        second = mint_event_identity({"params": {"fixtures": [czechia]}})["data"]["events"][0]
+
+        assert first["_id"] == second["_id"]
+        assert first["_id"].startswith("urn:machina:sport:soccer:event:czechia-vs-")
+        assert first["sport:competitors"][0]["@id"] == "urn:machina:sport:soccer:team:czechia:cze"
 
 
 # -- Provider entity merge (identity crosswalk producer) ---------------------
@@ -1254,6 +1343,8 @@ class TestBuildPlayerCrosswalk:
         assert d["_id"] == "urn:machina:sport:soccer:player:lamine-yamal:20070713:esp"
         assert d["provider_ids"] == {"api_football": "386828", "opta": "o-yamal"}
         assert d["team"]["@id"] == "urn:machina:sport:soccer:team:spain:esp"
+        assert d["tournament_position"] == "Attacker"
+        assert d["position_source"] == "api-football-tournament-squad"
         assert "sport:Player" in d["@type"]
 
     def test_unmatched_opta_name_leaves_af_only(self):
@@ -1445,7 +1536,7 @@ class TestLinkMarketEntities:
     def test_alias_czechia_matches_czech_republic(self):
         markets = [{"cache_id": "k:z", "title": "Will Czechia advance?", "slug": "", "outcomes": []}]
         r = link_market_entities({"params": {"markets": markets, "teams": self._teams(), "events": self._events()}})["data"]
-        assert r["normalized_markets"][0]["related_team_urns"] == ["urn:machina:sport:soccer:team:czech-republic:cze"]
+        assert r["normalized_markets"][0]["related_team_urns"] == ["urn:machina:sport:soccer:team:czechia:cze"]
 
     def test_no_team_market_empty(self):
         markets = [{"cache_id": "k:w", "title": "2026 World Cup - Top Goalscorer", "slug": "", "outcomes": []}]
@@ -1726,6 +1817,21 @@ class TestForecastAudit:
                                                "finished_fixtures": fixtures}})["data"]
         assert r["count"] == 1
 
+    def test_batch_dedupes_legacy_czech_alias_forecasts_by_fixture(self):
+        forecasts = [
+            dict(self.PERFECT, _id="urn:machina:sport:soccer:event:czech-republic-vs-spain:20260612:wor",
+                 provider_ids={"api_football": "111"}),
+            dict(self.PERFECT, _id="urn:machina:sport:soccer:event:czechia-vs-spain:20260612:wor",
+                 provider_ids={"api_football": "111"}),
+        ]
+        fixtures = [{"fixture": {"id": 111, "status": {"short": "FT"}}, "goals": {"home": 2, "away": 0}}]
+        result = compute_forecast_audit({"params": {
+            "mode": "batch", "forecasts": forecasts, "finished_fixtures": fixtures,
+        }})["data"]
+
+        assert result["count"] == 1
+        assert result["audits"][0]["_id"] == "urn:machina:sport:soccer:event:czechia-vs-spain:20260612:wor"
+
     def test_aggregate_baseline_and_sample_gate(self):
         audits = []
         for _ in range(3):
@@ -1734,6 +1840,29 @@ class TestForecastAudit:
         rep = compute_forecast_audit({"params": {"mode": "aggregate", "audit_results": audits}})["data"]["backtesting_report"]
         assert rep["brier_scores"]["is_better_than_random"] is True
         assert rep["sample_size_sufficient"] is False  # only 3 < 50
+
+    def test_aggregate_dedupes_legacy_alias_audits_by_fixture(self):
+        canonical = compute_forecast_audit({"params": {
+            "mode": "single",
+            "forecast": dict(self.PERFECT,
+                             _id="urn:machina:sport:soccer:event:czechia-vs-spain:20260612:wor",
+                             provider_ids={"api_football": "111"}),
+            "actual_result": {"home_goals": 2, "away_goals": 0},
+        }})["data"]["audit_result"]
+        legacy = dict(canonical, _id="urn:machina:sport:soccer:event:czech-republic-vs-spain:20260612:wor",
+                      event_urn="urn:machina:sport:soccer:event:czech-republic-vs-spain:20260612:wor",
+                      brier_scores=dict(canonical["brier_scores"], combined_1x2=0.5))
+
+        forward = compute_forecast_audit({"params": {
+            "mode": "aggregate", "audit_results": [legacy, canonical],
+        }})["data"]["backtesting_report"]
+        reverse = compute_forecast_audit({"params": {
+            "mode": "aggregate", "audit_results": [canonical, legacy],
+        }})["data"]["backtesting_report"]
+
+        assert forward == reverse
+        assert forward["sample_size"] == 1
+        assert forward["brier_scores"]["avg_1x2"] == 0.0
 
 
 class TestModelVsMarketEdge:
@@ -1805,6 +1934,38 @@ def test_build_event_forecasts_from_index():
     assert fc["disclaimer"]
 
 
+def test_build_event_forecasts_dedupes_czech_alias_events_deterministically():
+    old_urn = "urn:machina:sport:soccer:event:czech-republic-vs-spain:20260612:wor"
+    new_urn = "urn:machina:sport:soccer:event:czechia-vs-spain:20260612:wor"
+    old_team = "urn:machina:sport:soccer:team:czech-republic:cze"
+    new_team = "urn:machina:sport:soccer:team:czechia:cze"
+    spain = "urn:machina:sport:soccer:team:spain:esp"
+    events = [
+        {"_id": old_urn, "provider_ids": {"api_football": "555"}, "sport:competitors": [
+            {"@id": old_team, "name": "Czech Republic", "sport:qualifier": "home"},
+            {"@id": spain, "name": "Spain", "sport:qualifier": "away"},
+        ]},
+        {"_id": new_urn, "provider_ids": {"api_football": "555"}, "sport:competitors": [
+            {"@id": new_team, "name": "Czechia", "sport:qualifier": "home"},
+            {"@id": spain, "name": "Spain", "sport:qualifier": "away"},
+        ]},
+    ]
+    team_index = {new_team: _ranking(0.7), spain: _ranking(0.6)}
+
+    forward = build_event_forecasts({"params": {"events": events, "team_index": team_index}})["data"]
+    reverse = build_event_forecasts({"params": {"events": list(reversed(events)), "team_index": team_index}})["data"]
+
+    assert forward["count"] == reverse["count"] == 1
+    assert forward["forecasts"][0]["_id"] == reverse["forecasts"][0]["_id"] == new_urn
+    assert forward["forecasts"][0]["home_team"]["urn"] == new_team
+
+
+def test_event_alias_canonicalization_uses_shared_alias_map_for_both_sides():
+    assert _module._canonical_event_urn(
+        "urn:machina:sport:soccer:event:korea-republic-vs-czech-republic:20260612:wor"
+    ) == "urn:machina:sport:soccer:event:south-korea-vs-czechia:20260612:wor"
+
+
 def test_normalize_fifa_seed_band_and_order():
     r = normalize_fifa_seed({"params": {"rankings": [
         {"team_name": "Strongland", "points": 2000},
@@ -1836,7 +1997,7 @@ def test_normalize_fifa_seed_resolves_canonical_urn_from_teams():
         "teams": [{"team_name": "South Korea", "team_urn": "urn:machina:sport:soccer:team:korea-republic:kor"},
                   {"team_name": "Japan", "team_urn": "urn:machina:sport:soccer:team:japan:jpn"}]}})["data"]
     urns = {s["team_name"]: s["team_urn"] for s in r["seed_ratings"]}
-    assert urns["South Korea"] == "urn:machina:sport:soccer:team:korea-republic:kor"
+    assert urns["South Korea"] == "urn:machina:sport:soccer:team:south-korea:kor"
 
 
 NOW = "2026-06-13T12:00:00Z"
