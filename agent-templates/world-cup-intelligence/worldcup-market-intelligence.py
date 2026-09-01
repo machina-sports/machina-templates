@@ -2069,6 +2069,12 @@ _ISO3_MAP = {
 
 _TEAM_SLUG_ALIASES = {
     "czech-republic": "czechia",
+    "korea": "south-korea", "korea-republic": "south-korea",
+    "turkey": "turkiye",
+    "cote-d-ivoire": "ivory-coast", "cote-divoire": "ivory-coast",
+    "dr-congo": "congo-dr", "drc": "congo-dr", "democratic-republic-of-congo": "congo-dr",
+    "united-states": "usa", "united-states-of-america": "usa",
+    "bosnia": "bosnia-herzegovina", "bosnia-and-herzegovina": "bosnia-herzegovina",
 }
 
 # Backwards-compatible alias for normalize_identity_crosswalk's body.

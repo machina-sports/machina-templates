@@ -1961,15 +1961,9 @@ def test_build_event_forecasts_dedupes_czech_alias_events_deterministically():
 
 
 def test_event_alias_canonicalization_uses_shared_alias_map_for_both_sides():
-    original = _module._TEAM_SLUG_ALIASES.copy()
-    try:
-        _module._TEAM_SLUG_ALIASES["korea-republic"] = "south-korea"
-        assert _module._canonical_event_urn(
-            "urn:machina:sport:soccer:event:korea-republic-vs-czech-republic:20260612:wor"
-        ) == "urn:machina:sport:soccer:event:south-korea-vs-czechia:20260612:wor"
-    finally:
-        _module._TEAM_SLUG_ALIASES.clear()
-        _module._TEAM_SLUG_ALIASES.update(original)
+    assert _module._canonical_event_urn(
+        "urn:machina:sport:soccer:event:korea-republic-vs-czech-republic:20260612:wor"
+    ) == "urn:machina:sport:soccer:event:south-korea-vs-czechia:20260612:wor"
 
 
 def test_normalize_fifa_seed_band_and_order():
@@ -2003,7 +1997,7 @@ def test_normalize_fifa_seed_resolves_canonical_urn_from_teams():
         "teams": [{"team_name": "South Korea", "team_urn": "urn:machina:sport:soccer:team:korea-republic:kor"},
                   {"team_name": "Japan", "team_urn": "urn:machina:sport:soccer:team:japan:jpn"}]}})["data"]
     urns = {s["team_name"]: s["team_urn"] for s in r["seed_ratings"]}
-    assert urns["South Korea"] == "urn:machina:sport:soccer:team:korea-republic:kor"
+    assert urns["South Korea"] == "urn:machina:sport:soccer:team:south-korea:kor"
 
 
 NOW = "2026-06-13T12:00:00Z"
