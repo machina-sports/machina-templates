@@ -20,7 +20,7 @@ workflow:
        'competition_status': 'completed', 'live': False,
        'snapshot_as_of': $.get('schedule_snapshot_as_of'),
        'capability_status': 'complete' if $.get('schedule', {}).get('events') else 'unavailable',
-       'provenance': ['worldcup:event'] if $.get('events', []) else [],
+       'provenance': ['worldcup:event'] if $.get('schedule', {}).get('events') else [],
        'missing_capabilities': [] if $.get('schedule', {}).get('events') else ['schedule'],
        'notes': ['Archived fixtures and final results from the normalized event cache.']}
     workflow-status: "$.get('schedule', {}).get('events') is not None and 'executed' or 'skipped'"

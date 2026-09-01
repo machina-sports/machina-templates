@@ -157,11 +157,17 @@ def test_performance_remains_partial_while_official_fifa_ranking_is_pending():
         "normalized_players": [{"eligible_for_power_ranking": False}],
         "official_fifa_power_ranking": {"status": "available"},
     })
+    official_only = archive("worldcup-get-player-performance-context", {
+        "normalized_players": [],
+        "official_fifa_power_ranking": {"status": "available"},
+    })
 
     assert pending["capability_status"] == "partial"
     assert "official_fifa_power_ranking" in pending["missing_capabilities"]
     assert ineligible["capability_status"] == "partial"
     assert "eligible_player_sample" in ineligible["missing_capabilities"]
+    assert official_only["capability_status"] == "partial"
+    assert "provider_player_statistics" in official_only["missing_capabilities"]
 
 
 def test_forecast_is_historical_and_uses_only_stored_model_time():
@@ -183,7 +189,7 @@ def test_forecast_is_historical_and_uses_only_stored_model_time():
     assert "current market price" not in workflow_text + prompt_text
 
 
-def test_backtest_exposes_historical_sample_and_latest_audit_cutoff():
+def test_backtest_exposes_historical_sample_without_fabricating_cutoff():
     result = archive("worldcup-backtest-forecasts", {
         "backtesting_report": {"sample_size": 2, "sample_size_sufficient": False},
         "audits": [
@@ -196,9 +202,20 @@ def test_backtest_exposes_historical_sample_and_latest_audit_cutoff():
 
     assert result["capability_status"] == "historical_aggregate"
     assert result["sample_size"] == 2
-    assert result["cutoff"] == "2026-07-20T10:00:00Z"
-    assert result["snapshot_as_of"] == result["cutoff"]
+    assert result["cutoff"] is None
+    assert result["snapshot_as_of"] is None
     assert result["missing_capabilities"] == ["statistically_sufficient_sample"]
+
+    stored = archive("worldcup-backtest-forecasts", {
+        "backtesting_report": {
+            "sample_size": 2,
+            "sample_size_sufficient": False,
+            "cutoff": "2026-07-20T10:00:00Z",
+        },
+        "audits": [{"audited_at": "2026-08-31T23:59:59Z"}],
+    })
+    assert stored["cutoff"] == "2026-07-20T10:00:00Z"
+    assert stored["snapshot_as_of"] == stored["cutoff"]
 
 
 def test_document_snapshot_outputs_use_stored_evidence_and_never_request_time():
