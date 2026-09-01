@@ -56,8 +56,8 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
 - `worldcup-fan-sentiment-context` — social/news pulse (AI, grok)
 
 **Forecast & accuracy**
-- `worldcup-get-match-forecast` — model-implied 1X2/O-U/scoreline probabilities (Dixon-Coles) for one event + the live model-vs-market gap. Informational only.
-- `worldcup-backtest-forecasts` — post-match Brier/calibration audit; publishes the `worldcup:forecast-audit:aggregate` track record (read the aggregate doc to surface accuracy). Also settles **CLV** (closing line value) for logged signals and publishes `worldcup:clv-report:aggregate`.
+- `worldcup-get-match-forecast` — archived model-implied 1X2/O-U/scoreline probabilities (Dixon-Coles) for one event + a comparison with preserved market-cache evidence. Informational only.
+- `worldcup-backtest-forecasts` — historical post-match Brier/calibration aggregate with an explicit sample and cutoff; publishes the `worldcup:forecast-audit:aggregate` track record. Also settles **CLV** (closing line value) for logged signals and publishes `worldcup:clv-report:aggregate`.
 
 **Signals (decision support)**
 - `worldcup-get-signal` — structured betting signal for one fixture (1X2). Fuses the model forecast
@@ -85,6 +85,43 @@ Candidate docs live in `worldcup:skill-<skill>` (upsert key `metadata{skill, sub
 
 **Agents (conversational)** — `world-cup-intelligence-agent` (full read+market), `world-cup-market-analyst-agent` (market-focused). Activate before exposing.
 
+## Final archive metadata
+
+The following 11 workflows preserve their existing response fields and add an `archive` object: `worldcup-resolve`, `worldcup-get-schedule`, `worldcup-get-event-context`, `worldcup-get-standings`, `worldcup-get-squads`, `worldcup-get-injuries`, `worldcup-get-player-performance-context`, `worldcup-get-match-forecast`, `worldcup-backtest-forecasts`, `worldcup-match-recap`, and `worldcup-player-spotlight`.
+
+Every `archive` object contains:
+
+```json
+{
+  "mode": "final_archive",
+  "competition": "FIFA World Cup 2026",
+  "competition_status": "completed",
+  "live": false,
+  "snapshot_as_of": "stored evidence timestamp or null",
+  "capability_status": "endpoint-specific status",
+  "provenance": ["sources actually represented in this response"],
+  "missing_capabilities": [],
+  "notes": []
+}
+```
+
+`snapshot_as_of` never uses request time. It is taken from stored document evidence, a model `computed_at`, an audit cutoff, or a cached editorial `generated_at`; it is `null` when the source shape has no stored timestamp.
+
+Capability semantics:
+
+| Workflow | `capability_status` |
+| --- | --- |
+| resolve, schedule, standings, squads | `complete` when their data collection exists; otherwise `unavailable` |
+| event context | `complete` with enrichment, `partial` when event truth exists without enrichment, otherwise `unavailable` |
+| injuries | `partial` by default; `complete` only when the response explicitly carries `coverage_complete: true` |
+| player performance | `complete` only with eligible provider statistics and available official FIFA ranking; `partial` while official FIFA ranking is pending; otherwise `unavailable` |
+| match forecast | `historical_model` when the stored model exists; otherwise `unavailable` |
+| forecast backtest | `historical_aggregate` when the aggregate exists; otherwise `unavailable`. The archive object also exposes `sample_size` and `cutoff`. |
+| match recap | `evergreen_editorial` when cached or generated; cached responses expose `generated_at` as `snapshot_as_of` |
+| player spotlight | `archived_editorial` when cached or generated; cached responses expose `generated_at` as `snapshot_as_of` |
+
+`missing_capabilities` records gaps without changing the existing endpoint payload. In particular, an empty injury list is not evidence of complete historical coverage, and a provisional player-performance score is not an official FIFA ranking.
+
 ## Internal/admin workflow set (cron-driven, not exposed)
 
 - `worldcup-ingest-fixtures` — fetch fixtures + mint events + inline event crosswalk (cron `0 5 * * *`)
@@ -103,7 +140,7 @@ Candidate docs live in `worldcup:skill-<skill>` (upsert key `metadata{skill, sub
 - **Market cache** (`search-markets`) — refreshed every 30 min; responses carry a staleness warning past 15 min.
 - **`get-market-state`** — live from the source (current price, order book, history, trades).
 - **`market-movers`** — computed from the hourly `worldcup:market-snapshot` time series; needs ≥2 hourly buckets to show movement.
-- **`get-match-forecast`** — probabilities from the daily `worldcup:model-forecast`; the model-vs-market gap is recomputed live against the market cache on every read.
+- **`get-match-forecast`** — archived probabilities from `worldcup:model-forecast`; the model-vs-market comparison uses preserved market-cache evidence.
 - **Stores added by this layer:** `worldcup:model-forecast` (`_id` = event URN), `worldcup:forecast-audit` (`_id` = event URN; `…:aggregate` singleton), `worldcup:fifa-ranking` (`_id` = team URN), `worldcup:signal-ledger` (`_id` = `{event_urn}:{outcome}`; one row per logged value pick), `worldcup:clv-report` (`…:aggregate` singleton).
 
 ## AI models
@@ -219,14 +256,14 @@ Ranked by absolute price move vs the earliest snapshot in the window. Needs ≥2
 
 ## `worldcup-get-match-forecast`
 
-Serve the precomputed model forecast for one event + the live model-vs-market gap.
+Serve the archived precomputed model forecast for one event + its preserved model-vs-market comparison.
 
 Request: `{ "event_urn": "urn:…event:brazil-vs-haiti:20260620:wor", "include_reasoning": false, "min_gap_bps": 100 }`
 
 Response: `{ forecast {home_team, away_team, home_expected_goals, away_expected_goals, probabilities{home_win,draw,away_win,over_2_5,under_2_5}, most_likely_score, exact_scorelines, confidence, data_source, flags, model, caveats, disclaimer}, model_vs_market {gaps[{outcome,model_prob,market_price,gap,gap_bps,model_richer}], max_gap_bps, caveats, disclaimer}, analysis?, warnings }`
 
 - The forecast is a **Dixon-Coles** statistical estimate (deterministic, stdlib): power ranking (team form, min-max normalized) blended with a FIFA-ranking seed → expected goals → 1X2/O-U/scoreline probabilities. `data_source` ∈ `results|blend|seed`; pre-tournament it is `seed` with low `confidence` (`flags: ["bootstrap_seeded"]`).
-- Probabilities come from the cached `worldcup:model-forecast`; the **gap is computed at read time** against `worldcup:market-cache` (markets move intraday).
+- Probabilities come from the cached `worldcup:model-forecast`; the comparison uses the preserved `worldcup:market-cache` evidence available to the archive.
 - **Informational only.** A gap is not a value/bet signal — fields are `gap`/`model_prob`/`market_price` (never stake/EV/Kelly). Missing forecast → empty `forecast` + a warning to run `worldcup-sync-model-forecasts`.
 
 ## `worldcup-backtest-forecasts` (accuracy track record)

@@ -25,6 +25,14 @@ workflow:
     resolved_fixture: "$.get('resolved_fixture', {})"
     served_from: "'cache' if $.get('cached') else 'generated'"
     warnings: "[] if $.get('event_urn', '') else ['No fixture resolved -- pass event_urn, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.']"
+    archive: >-
+      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+       'competition_status': 'completed', 'live': False,
+       'snapshot_as_of': ($.get('cached', {}) or {}).get('generated_at'),
+       'capability_status': 'evergreen_editorial' if ($.get('cached') or $.get('recap', {})) else 'unavailable',
+       'provenance': ((['worldcup:skill-match-recap'] if $.get('cached') else []) + (['worldcup:event'] if not $.get('cached') and $.get('event', {}) else []) + (['worldcup:model-forecast'] if not $.get('cached') and $.get('forecast', {}) else []) + (['google-genai-grounded-search'] if not $.get('cached') and $.get('research', '') else [])),
+       'missing_capabilities': [] if ($.get('cached') or $.get('recap', {})) else ['evergreen_match_recap'],
+       'notes': ['Evergreen post-match editorial; cached generated_at is exposed when stored evidence is served.']}
     workflow-status: "($.get('cached') or $.get('recap', {})) and 'executed' or 'skipped'"
   tasks:
     - type: document

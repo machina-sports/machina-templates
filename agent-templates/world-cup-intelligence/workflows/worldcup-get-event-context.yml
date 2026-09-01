@@ -19,6 +19,14 @@ workflow:
     event_context: "$.get('event_context', {})"
     event_urn: "$.get('event_urn', '')"
     resolved_fixture: "$.get('resolved_fixture', {})"
+    archive: >-
+      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+       'competition_status': 'completed', 'live': False,
+       'snapshot_as_of': $.get('event_snapshot_as_of'),
+       'capability_status': ('unavailable' if not ($.get('event_context', {}).get('event') or $.get('event_document', {})) else ('complete' if ($.get('event_context', {}).get('sports_context') or $.get('event_context', {}).get('prematch_research') or $.get('event_context', {}).get('social_pulse')) else 'partial')),
+       'provenance': ((['worldcup:event'] if ($.get('event_context', {}).get('event') or $.get('event_document', {})) else []) + (['sports-skills'] if $.get('event_context', {}).get('sports_context') else []) + (['google-genai-grounded-search'] if $.get('event_context', {}).get('prematch_research') else []) + (['grok'] if $.get('event_context', {}).get('social_pulse') else [])),
+       'missing_capabilities': (['event_context'] if not ($.get('event_context', {}).get('event') or $.get('event_document', {})) else (['event_enrichment'] if not ($.get('event_context', {}).get('sports_context') or $.get('event_context', {}).get('prematch_research') or $.get('event_context', {}).get('social_pulse')) else [])),
+       'notes': ['Archived event truth is complete independently of optional enrichment.']}
     warnings: "[] if ($.get('event_urn', '') or $.get('provider_event_id', '')) else ['No fixture resolved -- pass event_urn, provider_event_id, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.']"
     workflow-status: "$.get('event_context', {}) != {} and 'executed' or 'skipped'"
   tasks:
@@ -68,6 +76,7 @@ workflow:
         value.provider_ids.api_football: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
       outputs:
         event_document: "($.get('documents', []) or [{}])[0].get('value', {})"
+        event_snapshot_as_of: "((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('updated_at') or (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('fetched_at') or ($.get('documents', []) or [{}])[0].get('updated') or ($.get('documents', []) or [{}])[0].get('created'))"
 
     - type: connector
       name: fetch-event-summary

@@ -30,6 +30,16 @@ workflow:
     track_record: "$.get('backtesting_report', {})"
     clv_settled_count: "len($.get('clv_settled', []))"
     clv_report: "$.get('clv_report', {})"
+    archive: >-
+      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+       'competition_status': 'completed', 'live': False,
+       'snapshot_as_of': ($.get('backtesting_report', {}) or {}).get('cutoff'),
+       'capability_status': 'historical_aggregate' if $.get('backtesting_report', {}) else 'unavailable',
+       'provenance': (([$.get('fixture_provenance')] if $.get('fixture_provenance') not in (None, '', 'none') else []) + (['worldcup:model-forecast'] if $.get('forecasts', []) else []) + (['worldcup:signal-ledger'] if $.get('ledger_rows', []) else []) + (['worldcup:market-snapshot'] if $.get('snapshots', []) else [])),
+       'missing_capabilities': ((['historical_forecast_aggregate'] if not $.get('backtesting_report', {}) else []) + (['statistically_sufficient_sample'] if $.get('backtesting_report', {}) and not $.get('backtesting_report', {}).get('sample_size_sufficient', False) else [])),
+       'notes': ['Historical aggregate only; sample_size defines the evidence set. cutoff is null when the aggregate has no stored source-backed boundary.'],
+       'sample_size': ($.get('backtesting_report', {}) or {}).get('sample_size', len($.get('audits', []))),
+       'cutoff': ($.get('backtesting_report', {}) or {}).get('cutoff')}
     workflow-status: "len($.get('audits', [])) > 0 and 'executed' or 'skipped'"
   tasks:
     - type: connector

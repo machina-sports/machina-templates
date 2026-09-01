@@ -18,6 +18,14 @@ workflow:
     entities: "$.get('entities', [])"
     count: "len($.get('entities', []))"
     warnings: "([] if $.get('entities', []) else (['No id supplied -- pass any provider id (api_football, sportradar, opta, entain, espn, transfermarkt) or a canonical urn:machina identity.'] if not $.get('id', '') else ['No entity matched ' + repr($.get('id', '')) + ' -- resolve takes EXACT provider ids or canonical URNs, not names. To find a fixture by team name use worldcup-get-schedule (returns event_urn); for players by name, worldcup-player-spotlight accepts player + team.']))"
+    archive: >-
+      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+       'competition_status': 'completed', 'live': False,
+       'snapshot_as_of': $.get('resolution_snapshot_as_of'),
+       'capability_status': 'complete' if len($.get('entities', [])) > 0 else 'unavailable',
+       'provenance': $.get('resolution_provenance', []),
+       'missing_capabilities': [] if len($.get('entities', [])) > 0 else ['entity_resolution'],
+       'notes': ['Exact-id resolution over archived identity and event records.']}
     workflow-status: "len($.get('entities', [])) > 0 and 'executed' or 'skipped'"
   tasks:
     - type: document
@@ -33,3 +41,5 @@ workflow:
         "$or": "[{'value._id': $.get('id')}, {'value.provider_ids.api_football': $.get('id')}, {'value.provider_ids.sportradar': $.get('id')}, {'value.provider_ids.opta': $.get('id')}, {'value.provider_ids.entain': $.get('id')}, {'value.provider_ids.espn': $.get('id')}, {'value.provider_ids.transfermarkt': $.get('id')}]"
       outputs:
         entities: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+        resolution_snapshot_as_of: "max([str(d.get('value', {}).get('updated_at') or d.get('value', {}).get('fetched_at') or d.get('updated') or d.get('created')) for d in ($.get('documents', []) or []) if d.get('value', {}).get('updated_at') or d.get('value', {}).get('fetched_at') or d.get('updated') or d.get('created')], default=None)"
+        resolution_provenance: "(['worldcup:identity-crosswalk'] if [d for d in ($.get('documents', []) or []) if d.get('name') == 'worldcup:identity-crosswalk'] else []) + (['worldcup:event'] if [d for d in ($.get('documents', []) or []) if d.get('name') == 'worldcup:event'] else [])"
