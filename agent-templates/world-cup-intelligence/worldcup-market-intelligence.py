@@ -1551,6 +1551,10 @@ _FIFA_CATEGORY_FIELDS = {
 }
 
 
+class _UnresolvedFifaIdentityError(ValueError):
+    """Raised only when complete matching finds no canonical player."""
+
+
 def _clean_percent(value: Any) -> float:
     if isinstance(value, str) and value.strip().endswith("%"):
         return _to_float(value.strip().rstrip("%")) / 100
@@ -1732,7 +1736,10 @@ def _source_surname_tokens(source_names: set[str]) -> set[str]:
 
 
 def _resolve_fifa_player_identity(
-    row: dict[str, Any], players: list[dict[str, Any]], detail: dict[str, Any] | None = None,
+    row: dict[str, Any],
+    players: list[dict[str, Any]],
+    detail: dict[str, Any] | None = None,
+    reserved_urns: set[str] | None = None,
 ) -> tuple[dict[str, Any], str]:
     fifa_id = _text(row.get("playerId"))
     detail = detail if isinstance(detail, dict) else {}
@@ -1741,6 +1748,7 @@ def _resolve_fifa_player_identity(
         if isinstance(player, dict)
         and "sport:Player" in (player.get("@type") if isinstance(player.get("@type"), list) else [])
         and player.get("machina_competition_slug") == "world-cup-2026"
+        and _text(player.get("_id") or player.get("@id") or player.get("id")) not in (reserved_urns or set())
     ]
 
     id_matches = []
@@ -1809,36 +1817,26 @@ def _resolve_fifa_player_identity(
         return fuzzy[0][1], "name_team_high_confidence_fuzzy"
     if fuzzy:
         raise ValueError(f"ambiguous FIFA identity (name_team_high_confidence_fuzzy) for {sorted(source_names)}")
-    raise ValueError(
+    raise _UnresolvedFifaIdentityError(
         f"unresolved FIFA identity playerId={fifa_id} name={_localized_description(row.get('playerName'))!r} "
         f"team_iso={team_iso}"
     )
 
 
 def _resolve_fifa_player_identity_without_detail(
-    row: dict[str, Any], players: list[dict[str, Any]],
+    row: dict[str, Any], players: list[dict[str, Any]], reserved_urns: set[str] | None = None,
 ) -> tuple[dict[str, Any], str] | None:
     """Resolve only identities that are provably unique without a detail call."""
-    fifa_id = _text(row.get("playerId"))
     player_docs = [
         player for player in players
         if isinstance(player, dict)
         and "sport:Player" in (player.get("@type") if isinstance(player.get("@type"), list) else [])
         and player.get("machina_competition_slug") == "world-cup-2026"
+        and _identity_urn(player) not in (reserved_urns or set())
     ]
-    id_matches = []
-    for player in player_docs:
-        provider_ids = player.get("provider_ids") if isinstance(player.get("provider_ids"), dict) else {}
-        if fifa_id and fifa_id in {
-            _text(provider_ids.get("fifa")),
-            _text(provider_ids.get("fifa_player_id")),
-            _text(provider_ids.get("fifa_id")),
-        }:
-            id_matches.append(player)
-    if len(id_matches) == 1:
-        return id_matches[0], "fifa_id"
-    if len(id_matches) > 1:
-        raise ValueError(f"ambiguous exact FIFA playerId {fifa_id}")
+    resolved_by_id = _resolve_fifa_player_identity_by_id(row, player_docs)
+    if resolved_by_id:
+        return resolved_by_id
 
     source_names = _source_names(row, {})
     team_iso = _fifa_team_iso(row)
@@ -1851,6 +1849,137 @@ def _resolve_fifa_player_identity_without_detail(
     if len(exact_name_team) == 1:
         return exact_name_team[0], "name_team"
     return None
+
+
+def _resolve_fifa_player_identity_by_id(
+    row: dict[str, Any], players: list[dict[str, Any]],
+) -> tuple[dict[str, Any], str] | None:
+    fifa_id = _text(row.get("playerId"))
+    id_matches = []
+    for player in players:
+        if (
+            not isinstance(player, dict)
+            or "sport:Player" not in (player.get("@type") if isinstance(player.get("@type"), list) else [])
+            or player.get("machina_competition_slug") != "world-cup-2026"
+        ):
+            continue
+        if fifa_id and fifa_id in _identity_fifa_ids(player):
+            id_matches.append(player)
+    if len(id_matches) == 1:
+        return id_matches[0], "fifa_id"
+    if len(id_matches) > 1:
+        raise ValueError(f"ambiguous exact FIFA playerId {fifa_id}")
+    return None
+
+
+def _identity_fifa_ids(player: dict[str, Any]) -> set[str]:
+    provider_ids = player.get("provider_ids") if isinstance(player.get("provider_ids"), dict) else {}
+    return {
+        value for value in (
+            _text(provider_ids.get("fifa")),
+            _text(provider_ids.get("fifa_player_id")),
+            _text(provider_ids.get("fifa_id")),
+        ) if value
+    }
+
+
+def _resolve_fifa_exact_name_team_identity(
+    row: dict[str, Any], players: list[dict[str, Any]],
+) -> tuple[dict[str, Any], str] | None:
+    source_names = _source_names(row, {})
+    team_iso = _fifa_team_iso(row)
+    if team_iso == "unk":
+        return None
+    exact_name_team = [
+        player for player in players
+        if isinstance(player, dict)
+        and "sport:Player" in (player.get("@type") if isinstance(player.get("@type"), list) else [])
+        and player.get("machina_competition_slug") == "world-cup-2026"
+        and _crosswalk_team_iso(player) == team_iso
+        and _identity_names(player) & source_names
+    ]
+    return (exact_name_team[0], "name_team") if len(exact_name_team) == 1 else None
+
+
+def _identity_urn(player: dict[str, Any]) -> str:
+    return _text(player.get("_id") or player.get("@id") or player.get("id"))
+
+
+def _mint_fifa_player_identity(
+    row: dict[str, Any],
+    detail: dict[str, Any],
+    players: list[dict[str, Any]],
+    source_snapshot: dict[str, Any],
+) -> dict[str, Any]:
+    """Mint an identity only from a complete, internally consistent FIFA detail."""
+    fifa_id = _text(row.get("playerId"))
+    detail_id = _text(detail.get("IdPlayer"))
+    source_name = _localized_description(row.get("playerName"))
+    detail_names = _source_names({}, detail)
+    source_slug = _slugify(source_name)
+    raw_birth_date = _text(detail.get("BirthDate"))
+    birth_date = _parse_birth_date(raw_birth_date)
+    try:
+        complete_birth_date = bool(re.match(r"^\d{4}-\d{2}-\d{2}(?:T|$)", raw_birth_date))
+        datetime.strptime(raw_birth_date[:10], "%Y-%m-%d")
+    except ValueError:
+        complete_birth_date = False
+    team_iso = _fifa_team_iso(row)
+    if (
+        not fifa_id
+        or detail_id != fifa_id
+        or not source_name
+        or source_slug not in detail_names
+        or not complete_birth_date
+        or team_iso == "unk"
+    ):
+        raise ValueError(f"incomplete FIFA player detail for playerId={fifa_id}")
+
+    team_urns: set[str] = set()
+    for player in players:
+        team = player.get("team") if isinstance(player, dict) and isinstance(player.get("team"), dict) else {}
+        team_urn = _text(team.get("@id") or team.get("id"))
+        if team_urn and _crosswalk_team_iso(player) == team_iso:
+            team_urns.add(team_urn)
+    if len(team_urns) != 1:
+        raise ValueError(f"ambiguous or missing canonical team for FIFA playerId={fifa_id}")
+    team_urn = next(iter(team_urns))
+    team_name = _localized_description(row.get("teamName"))
+    urn = f"urn:machina:sport:soccer:player:{source_slug}:{birth_date}:{team_iso}"
+    existing_urns = {_identity_urn(player) for player in players if isinstance(player, dict)}
+    if urn in existing_urns:
+        raise ValueError(f"ambiguous FIFA identity: minted URN already exists for playerId={fifa_id}")
+
+    return {
+        "metadata": {"entity_urn": urn},
+        "@context": {
+            "sport": "https://www.sportschema.org/ontologies/sport#",
+            "schema": "https://schema.org/",
+            "machina": "https://schema.machina.gg/sports#",
+        },
+        "@id": urn,
+        "id": urn,
+        "_id": urn,
+        "@type": ["sport:IdentityCrosswalk", "sport:Player"],
+        "name": source_name,
+        "birth_date": f"{birth_date[:4]}-{birth_date[4:6]}-{birth_date[6:]}",
+        "nationality": _to_iso3(detail.get("IdCountry")),
+        "team": {"@id": team_urn, "name": team_name},
+        "provider_ids": {"fifa": fifa_id},
+        "machina_competition_slug": "world-cup-2026",
+        "mapping_status": {
+            "verified_ids_only": True,
+            "notes": ["Minted from complete official FIFA player detail after safe tournament crosswalk resolution."],
+        },
+        "source_evidence": [{
+            "provider": "fifa",
+            "id": fifa_id,
+            "detail_url": FIFA_PLAYER_DETAIL_URL.format(player_id=fifa_id),
+            "leaderboard_url": source_snapshot["url"],
+            "leaderboard_sha256": source_snapshot["sha256"],
+            "leaderboard_message_time": source_snapshot["messageTimeUtc"],
+        }],
+    }
 
 
 def _validate_fifa_category(row: dict[str, Any], category_fields: tuple[Any, ...]) -> dict[str, Any]:
@@ -1952,12 +2081,57 @@ def import_final_fifa_player_power_rankings(request_data: dict[str, Any]) -> dic
     players = [_unwrap(item) for item in _as_list(params.get("players") or params.get("identity_crosswalk"))]
     supplied_details = dict(params.get("player_details")) if isinstance(params.get("player_details"), dict) else {}
     no_detail_resolutions: dict[str, tuple[dict[str, Any], str]] = {}
+    exact_name_resolutions: dict[str, tuple[dict[str, Any], str]] = {}
+    reserved_urns: dict[str, str] = {}
+
+    # Reserve every exact FIFA leaderboard name+team match before considering
+    # any detail-based candidate. This prevents a missing player from consuming
+    # an existing identity that belongs to another ranked row.
+    for _, row in rows:
+        fifa_id = _text(row["playerId"])
+        resolved = _resolve_fifa_exact_name_team_identity(row, players)
+        if resolved:
+            persisted_fifa_ids = _identity_fifa_ids(resolved[0])
+            if persisted_fifa_ids and persisted_fifa_ids != {fifa_id}:
+                raise ValueError(
+                    f"conflicting exact FIFA name+team identity for playerId={fifa_id}: "
+                    f"persisted FIFA ids={sorted(persisted_fifa_ids)}"
+                )
+            exact_name_resolutions[fifa_id] = resolved
+            urn = _identity_urn(resolved[0])
+            if urn in reserved_urns and reserved_urns[urn] != fifa_id:
+                raise ValueError(
+                    f"FIFA final snapshot produces duplicate canonical player_urn values: {[urn]}"
+                )
+            reserved_urns[urn] = fifa_id
+
     missing_detail_ids = []
     for _, row in rows:
         fifa_id = _text(row["playerId"])
-        resolved = _resolve_fifa_player_identity_without_detail(row, players)
+        resolved_by_id = _resolve_fifa_player_identity_by_id(row, players)
+        if resolved_by_id:
+            urn = _identity_urn(resolved_by_id[0])
+            if urn in reserved_urns and reserved_urns[urn] != fifa_id:
+                raise ValueError(
+                    f"conflicting exact FIFA playerId {fifa_id}: canonical URN is reserved for "
+                    f"playerId={reserved_urns[urn]}"
+                )
+            no_detail_resolutions[fifa_id] = resolved_by_id
+            reserved_urns[urn] = fifa_id
+            continue
+        reserved_for_other_rows = set(reserved_urns)
+        exact_resolution = exact_name_resolutions.get(fifa_id)
+        if exact_resolution:
+            reserved_for_other_rows.discard(_identity_urn(exact_resolution[0]))
+        resolved = _resolve_fifa_player_identity_without_detail(row, players, reserved_for_other_rows)
         if resolved:
             no_detail_resolutions[fifa_id] = resolved
+            urn = _identity_urn(resolved[0])
+            if urn in reserved_urns and reserved_urns[urn] != fifa_id:
+                raise ValueError(
+                    f"FIFA final snapshot produces duplicate canonical player_urn values: {[urn]}"
+                )
+            reserved_urns[urn] = fifa_id
         elif fifa_id not in supplied_details and row["playerId"] not in supplied_details:
             missing_detail_ids.append(fifa_id)
 
@@ -2007,6 +2181,7 @@ def import_final_fifa_player_power_rankings(request_data: dict[str, Any]) -> dic
     }
 
     records: list[dict[str, Any]] = []
+    identity_documents: list[dict[str, Any]] = []
     resolution_counts: dict[str, int] = {}
     detail_fetch_count = 0
     for player_type, row in rows:
@@ -2015,9 +2190,24 @@ def import_final_fifa_player_power_rankings(request_data: dict[str, Any]) -> dic
         detail = supplied_details.get(fifa_id) or supplied_details.get(row["playerId"]) or {}
         if fifa_id in missing_detail_ids:
             detail_fetch_count += 1
-        identity, resolution_method = no_detail_resolutions.get(fifa_id) or _resolve_fifa_player_identity(
-            row, players, detail,
-        )
+        resolved = no_detail_resolutions.get(fifa_id)
+        if resolved:
+            identity, resolution_method = resolved
+        else:
+            try:
+                identity, resolution_method = _resolve_fifa_player_identity(
+                    row, players, detail, set(reserved_urns),
+                )
+            except _UnresolvedFifaIdentityError:
+                identity = _mint_fifa_player_identity(row, detail, players, source_snapshot)
+                identity_documents.append(identity)
+                resolution_method = "fifa_official_detail_mint"
+        persisted_fifa_ids = _identity_fifa_ids(identity)
+        if persisted_fifa_ids and persisted_fifa_ids != {fifa_id}:
+            raise ValueError(
+                f"conflicting resolved FIFA identity for playerId={fifa_id}: "
+                f"persisted FIFA ids={sorted(persisted_fifa_ids)}"
+            )
         resolution_counts[resolution_method] = resolution_counts.get(resolution_method, 0) + 1
 
         canonical_name = _text(identity.get("name"))
@@ -2065,6 +2255,9 @@ def import_final_fifa_player_power_rankings(request_data: dict[str, Any]) -> dic
     if len(set(player_urns)) != len(player_urns):
         duplicate_urns = sorted({player_urn for player_urn in player_urns if player_urns.count(player_urn) > 1})
         raise ValueError(f"FIFA final snapshot produces duplicate canonical player_urn values: {duplicate_urns}")
+    identity_urns = [_identity_urn(identity) for identity in identity_documents]
+    if any(not identity_urn for identity_urn in identity_urns) or len(set(identity_urns)) != len(identity_urns):
+        raise ValueError("FIFA final snapshot produces duplicate or empty minted identity URNs")
     if len(records) != FIFA_FINAL_OUTFIELD_COUNT + FIFA_FINAL_GOALKEEPER_COUNT:
         raise ValueError("FIFA final snapshot did not produce exactly 230 published records")
 
@@ -2084,6 +2277,7 @@ def import_final_fifa_player_power_rankings(request_data: dict[str, Any]) -> dic
             "source_rows": len(rows),
             "published_rows": len(records),
             "resolved_identities": len(records),
+            "minted_identities": len(identity_documents),
             "unresolved_identities": 0,
             "ambiguous_identities": 0,
             "detail_fetches": detail_fetch_count,
@@ -2096,6 +2290,7 @@ def import_final_fifa_player_power_rankings(request_data: dict[str, Any]) -> dic
             "records": records,
             "manifest": manifest,
             "documents": records + [manifest],
+            "identity_documents": identity_documents,
             "published_count": len(records),
             "source_accounting": manifest["source_accounting"],
         },

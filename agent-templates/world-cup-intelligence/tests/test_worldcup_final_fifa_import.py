@@ -95,7 +95,7 @@ def _snapshot():
     }, identities
 
 
-def _import(snapshot, identities):
+def _import(snapshot, identities, player_details=None):
     raw = json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return MODULE.import_final_fifa_player_power_rankings({"params": {
         "source_payload": snapshot,
@@ -103,6 +103,7 @@ def _import(snapshot, identities):
         "expected_sha256": hashlib.sha256(raw).hexdigest(),
         "fetched_at": "2026-08-31T12:00:00Z",
         "players": identities,
+        "player_details": player_details or {},
     }})["data"]
 
 
@@ -214,6 +215,53 @@ def test_final_import_rejects_non_injective_player_urn_resolution():
         _import(snapshot, identities)
 
 
+def test_final_import_rejects_fifa_id_owned_by_another_exact_name_reservation():
+    snapshot, identities = _snapshot()
+    first_id = snapshot["outfieldPlayers"][0]["playerId"]
+    second_id = snapshot["outfieldPlayers"][1]["playerId"]
+    identities[0]["provider_ids"] = {"fifa": str(second_id)}
+    identities[1]["provider_ids"] = {}
+
+    with pytest.raises(ValueError, match=f"conflicting exact FIFA name[+]team identity for playerId={first_id}"):
+        _import(snapshot, identities)
+
+
+def test_final_import_rejects_exact_name_identity_with_foreign_fifa_id():
+    snapshot, identities = _snapshot()
+    fifa_id = snapshot["outfieldPlayers"][0]["playerId"]
+    identities[0]["provider_ids"] = {"fifa": "999999"}
+
+    with pytest.raises(ValueError, match=f"conflicting exact FIFA name[+]team identity for playerId={fifa_id}"):
+        _import(snapshot, identities)
+
+
+def test_final_import_rejects_conflicting_fifa_id_alias_on_exact_identity():
+    snapshot, identities = _snapshot()
+    fifa_id = snapshot["outfieldPlayers"][0]["playerId"]
+    identities[0]["provider_ids"]["fifa_player_id"] = "999999"
+
+    with pytest.raises(ValueError, match=f"conflicting exact FIFA name[+]team identity for playerId={fifa_id}"):
+        _import(snapshot, identities)
+
+
+def test_final_import_rejects_foreign_fifa_id_after_detail_resolution():
+    snapshot, identities = _snapshot()
+    row = snapshot["outfieldPlayers"][0]
+    fifa_id = row["playerId"]
+    identities[0] = _identity(
+        fifa_id, "Outfield Player 0 Full", "bra", birth_date="1999-01-01", fifa_id=False,
+    )
+    identities[0]["provider_ids"] = {"fifa": "999999"}
+
+    with pytest.raises(ValueError, match=f"conflicting resolved FIFA identity for playerId={fifa_id}"):
+        _import(snapshot, identities, {str(fifa_id): {
+            "IdPlayer": str(fifa_id),
+            "Name": _names("Outfield Player 0"),
+            "BirthDate": "1999-01-01T00:00:00Z",
+            "IdCountry": "BRA",
+        }})
+
+
 @pytest.mark.parametrize("fifa_iso,canonical_iso", [
     ("GER", "deu"), ("SUI", "che"), ("CRO", "hrv"), ("POR", "prt"),
     ("NED", "nld"), ("ALG", "dza"), ("RSA", "zaf"), ("PAR", "pry"),
@@ -309,6 +357,106 @@ def test_identity_resolution_disambiguates_birth_date_collision_by_name():
 
     assert resolved is players[0]
     assert method == "birth_date_country_name_surname_initial"
+
+
+def test_real_fixture_reserves_lisandro_and_mints_missing_lautaro_without_collision():
+    with gzip.open(FIXTURE_PATH, "rt", encoding="utf-8") as fixture:
+        snapshot = json.load(fixture)
+    rows = snapshot["outfieldPlayers"] + snapshot["goalkeepers"]
+    identities = []
+    for row in rows:
+        fifa_id = row["playerId"]
+        if fifa_id == 402920:
+            continue
+        iso = MODULE._fifa_team_iso(row)
+        team_name = MODULE._localized_description(row["teamName"])
+        birth_date = "1997-08-22" if fifa_id == 402921 else "2000-01-01"
+        identity = _identity(
+            fifa_id, MODULE._localized_description(row["playerName"]), iso, birth_date=birth_date,
+        )
+        identity["team"] = {
+            "@id": f"urn:machina:sport:soccer:team:{MODULE._slugify(team_name)}:{iso}",
+            "name": team_name,
+        }
+        if fifa_id == 402921:
+            identity["provider_ids"] = {}
+        identities.append(identity)
+
+    result = _import(snapshot, identities, {
+        "402920": {
+            "IdPlayer": "402920",
+            "Name": _names("Lautaro MARTINEZ"),
+            "Alias": _names("Lautaro MARTINEZ"),
+            "BirthDate": "1997-08-22T00:00:00Z",
+            "IdCountry": "ARG",
+        },
+    })
+
+    lisandro = next(record for record in result["records"] if record["source_player_name"] == "Lisandro MARTINEZ")
+    lautaro = next(record for record in result["records"] if record["source_player_name"] == "Lautaro MARTINEZ")
+    assert len(result["records"]) == len({record["player_urn"] for record in result["records"]}) == 230
+    assert lisandro["identity_resolution"]["method"] == "name_team"
+    assert lisandro["player_urn"].endswith(":lisandro-martinez:19970822:arg")
+    assert lautaro["identity_resolution"]["method"] == "fifa_official_detail_mint"
+    assert lautaro["player_urn"] == "urn:machina:sport:soccer:player:lautaro-martinez:19970822:arg"
+    assert lautaro["player_urn"] != lisandro["player_urn"]
+
+    assert len(result["identity_documents"]) == 1
+    minted = result["identity_documents"][0]
+    assert minted["metadata"] == {"entity_urn": lautaro["player_urn"]}
+    assert minted["_id"] == minted["id"] == minted["@id"] == lautaro["player_urn"]
+    assert minted["provider_ids"] == {"fifa": "402920"}
+    assert minted["birth_date"] == "1997-08-22"
+    assert minted["name"] == "Lautaro MARTINEZ"
+    assert minted["team"] == {
+        "@id": "urn:machina:sport:soccer:team:argentina:arg",
+        "name": "Argentina",
+    }
+    assert minted["source_evidence"] == [{
+        "provider": "fifa",
+        "id": "402920",
+        "detail_url": "https://api.fifa.com/api/v3/players/402920",
+        "leaderboard_url": MODULE.FIFA_FINAL_POWER_RANKING_URL,
+        "leaderboard_sha256": hashlib.sha256(json.dumps(
+            snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")).hexdigest(),
+        "leaderboard_message_time": snapshot["messageTimeUtc"],
+    }]
+    assert result["source_accounting"]["minted_identities"] == 1
+
+
+def test_complete_detail_does_not_mint_when_crosswalk_match_is_ambiguous():
+    snapshot, identities = _snapshot()
+    row = snapshot["outfieldPlayers"][0]
+    fifa_id = row["playerId"]
+    identities = [identity for identity in identities if identity["provider_ids"].get("fifa") != str(fifa_id)]
+    identities.extend([
+        _identity(900001, "Outfield Player 0", "bra", birth_date="1999-01-01", fifa_id=False),
+        _identity(900002, "Outfield Player 0", "bra", birth_date="2001-01-01", fifa_id=False),
+    ])
+
+    with pytest.raises(ValueError, match="ambiguous FIFA identity"):
+        _import(snapshot, identities, {str(fifa_id): {
+            "IdPlayer": str(fifa_id),
+            "Name": _names("Outfield Player 0"),
+            "BirthDate": "2000-01-01T00:00:00Z",
+            "IdCountry": "BRA",
+        }})
+
+
+def test_unresolved_player_does_not_mint_from_incomplete_official_detail():
+    snapshot, identities = _snapshot()
+    row = snapshot["outfieldPlayers"][0]
+    fifa_id = row["playerId"]
+    identities = [identity for identity in identities if identity["provider_ids"].get("fifa") != str(fifa_id)]
+
+    with pytest.raises(ValueError, match="incomplete FIFA player detail"):
+        _import(snapshot, identities, {str(fifa_id): {
+            "IdPlayer": str(fifa_id),
+            "Name": _names("Outfield Player 0"),
+            "BirthDate": "2000",
+            "IdCountry": "BRA",
+        }})
 
 
 def test_identity_resolution_fails_closed_when_name_and_team_are_ambiguous():

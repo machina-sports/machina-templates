@@ -258,10 +258,16 @@ def test_final_player_ranking_import_is_source_backed_and_atomic():
         (WORKFLOW_DIR / "worldcup-import-final-fifa-player-rankings.yml").read_text(encoding="utf-8")
     )["workflow"]
     prepare = task(workflow, "prepare-final-player-rankings")
+    save_identities = task(workflow, "upsert-missing-player-identities")
     save = task(workflow, "import-final-player-rankings")
 
     assert prepare["connector"]["command"] == "import_final_fifa_player_power_rankings"
     assert prepare["inputs"]["source_url"] == "'https://fdh-api.fifa.com/v1/powerranking/season/285023.json'"
+    assert workflow["tasks"].index(save_identities) < workflow["tasks"].index(save)
+    assert save_identities["document_name"] == "'worldcup:identity-crosswalk'"
+    assert save_identities["documents"]["items"] == "$.get('identity_documents', [])"
+    assert "published_count" in save_identities["condition"]
+    assert "231" in save_identities["condition"]
     assert save["documents"]["items"] == "$.get('final_ranking_documents', [])"
     assert "published_count" in save["condition"]
     assert "231" in save["condition"]
