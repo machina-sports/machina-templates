@@ -24,6 +24,14 @@ workflow:
     candidates: "$.get('player_candidates', [])"
     served_from: "'cache' if $.get('cached') else 'generated'"
     warnings: "([] if $.get('player_urn', '') else (($.get('resolve_warnings', []) or []) or ['No player resolved -- pass player_urn, or player (name) + optional team.']))"
+    archive: >-
+      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+       'competition_status': 'completed', 'live': False,
+       'snapshot_as_of': ($.get('cached', {}) or {}).get('generated_at'),
+       'capability_status': 'archived_editorial' if ($.get('cached') or $.get('spotlight', {})) else 'unavailable',
+       'provenance': ((['worldcup:skill-player-spotlight'] if $.get('cached') else []) + (['worldcup:identity-crosswalk'] if not $.get('cached') and $.get('player', {}) else []) + (['google-genai-grounded-search'] if not $.get('cached') and $.get('research', '') else [])),
+       'missing_capabilities': [] if ($.get('cached') or $.get('spotlight', {})) else ['archived_player_spotlight'],
+       'notes': ['Archived player editorial; cached generated_at is exposed when stored evidence is served.']}
     workflow-status: "($.get('cached') or $.get('spotlight', {})) and 'executed' or 'skipped'"
   tasks:
     - type: document

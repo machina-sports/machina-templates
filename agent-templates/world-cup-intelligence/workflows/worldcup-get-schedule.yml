@@ -15,6 +15,14 @@ workflow:
     limit: "$.get('limit', 100)"
   outputs:
     schedule: "$.get('schedule', {})"
+    archive: >-
+      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+       'competition_status': 'completed', 'live': False,
+       'snapshot_as_of': $.get('schedule_snapshot_as_of'),
+       'capability_status': 'complete' if $.get('schedule', {}).get('events') else 'unavailable',
+       'provenance': ['worldcup:event'] if $.get('events', []) else [],
+       'missing_capabilities': [] if $.get('schedule', {}).get('events') else ['schedule'],
+       'notes': ['Archived fixtures and final results from the normalized event cache.']}
     workflow-status: "$.get('schedule', {}).get('events') is not None and 'executed' or 'skipped'"
   tasks:
     - type: document
@@ -28,6 +36,7 @@ workflow:
         name: "'worldcup:event'"
       outputs:
         events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+        schedule_snapshot_as_of: "max([str(d.get('value', {}).get('updated_at') or d.get('value', {}).get('fetched_at') or d.get('updated') or d.get('created')) for d in ($.get('documents', []) or []) if d.get('value', {}).get('updated_at') or d.get('value', {}).get('fetched_at') or d.get('updated') or d.get('created')], default=None)"
 
     - type: connector
       name: normalize-schedule

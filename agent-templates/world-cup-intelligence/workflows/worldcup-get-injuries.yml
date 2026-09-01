@@ -15,6 +15,13 @@ workflow:
     season: "$.get('season', '')"
   outputs:
     injuries: "$.get('injuries', {})"
+    archive: >-
+      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+       'competition_status': 'completed', 'live': False, 'snapshot_as_of': None,
+       'capability_status': 'complete' if $.get('injuries', {}).get('coverage_complete') is True else 'partial',
+       'provenance': [$.get('injuries', {}).get('source')] if $.get('injuries', {}).get('source') not in (None, '', 'none') else [],
+       'missing_capabilities': [] if $.get('injuries', {}).get('coverage_complete') is True else ['verified_complete_injury_coverage'],
+       'notes': ['Absence feeds do not prove a complete historical injury record unless coverage_complete is explicitly true.']}
     workflow-status: "$.get('injuries', {}).get('teams') and 'executed' or 'skipped'"
   tasks:
     - type: document

@@ -18,6 +18,14 @@ workflow:
     player_performance_context: "$.get('player_performance_context', {}) or {'event': $.get('event_document', {}), 'player': {}, 'official_fifa_power_ranking': ($.get('official_fifa_power_ranking', {}) or {'status': 'pending', 'source': 'fifa.com', 'scores': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}}), 'machina_provisional_performance_signal': {'status': 'unavailable', 'source_quality': 'unavailable', 'confidence': 0.0, 'scores_0_10': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}, 'drivers': [], 'warnings': ['No normalized player data supplied.']}, 'context_and_evidence': {'fallback_path': [], 'citations': [], 'missing_info_flags': ($.get('normalize_warnings', []) or []), 'freshness': {'provider_stats_fetched': False, 'official_fifa_expected_lag_hours': 4}}}"
     status: "'available' if len($.get('normalized_players', [])) > 0 and ($.get('normalized_players', []) or [{}])[0].get('eligible_for_power_ranking', False) and ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else ('partial' if len($.get('normalized_players', [])) > 0 or ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else 'unavailable')"
     warnings: "($.get('normalize_warnings', []) or []) + (((($.get('normalized_players', []) or [{}])[0].get('warnings', [])) or []) if len($.get('normalized_players', [])) > 0 else []) + ([] if ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else ['Official FIFA Power Ranking is pending or unavailable.'])"
+    archive: >-
+      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+       'competition_status': 'completed', 'live': False,
+       'snapshot_as_of': (($.get('official_fifa_power_ranking', {}) or {}).get('as_of') or $.get('event_snapshot_as_of')),
+       'capability_status': ('complete' if len($.get('normalized_players', [])) > 0 and ($.get('normalized_players', []) or [{}])[0].get('eligible_for_power_ranking', False) and ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else ('partial' if len($.get('normalized_players', [])) > 0 or ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'pending' else 'unavailable')),
+       'provenance': ((['api-football'] if len($.get('normalized_players', [])) > 0 else []) + (['fifa.com'] if ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else [])),
+       'missing_capabilities': ((['provider_player_statistics'] if len($.get('normalized_players', [])) == 0 else []) + (['eligible_player_sample'] if len($.get('normalized_players', [])) > 0 and not ($.get('normalized_players', []) or [{}])[0].get('eligible_for_power_ranking', False) else []) + (['official_fifa_power_ranking'] if ($.get('official_fifa_power_ranking', {}) or {}).get('status') != 'available' else [])),
+       'notes': ['Machina provisional scores remain separate from official FIFA Power Ranking fields.']}
     workflow-status: "$.get('player_performance_context', {}) != {} and 'executed' or 'skipped'"
   tasks:
     - type: document
@@ -35,6 +43,7 @@ workflow:
       outputs:
         event_document: "($.get('documents', []) or [{}])[0].get('value', {})"
         resolved_fixture_id: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football') or $.get('fixture_id')"
+        event_snapshot_as_of: "((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('updated_at') or (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('fetched_at') or ($.get('documents', []) or [{}])[0].get('updated') or ($.get('documents', []) or [{}])[0].get('created'))"
 
     - type: connector
       name: fetch-player-stats-af

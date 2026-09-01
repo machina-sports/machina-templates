@@ -15,6 +15,13 @@ workflow:
     season: "$.get('season', '')"
   outputs:
     standings: "$.get('standings', {})"
+    archive: >-
+      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+       'competition_status': 'completed', 'live': False, 'snapshot_as_of': None,
+       'capability_status': 'complete' if $.get('standings', {}).get('groups') else 'unavailable',
+       'provenance': [$.get('standings', {}).get('source')] if $.get('standings', {}).get('source') not in (None, '', 'none') else [],
+       'missing_capabilities': [] if $.get('standings', {}).get('groups') else ['standings'],
+       'notes': ['Final group tables; no stored source timestamp is available.']}
     workflow-status: "$.get('standings', {}).get('groups') and 'executed' or 'skipped'"
   tasks:
     - type: document

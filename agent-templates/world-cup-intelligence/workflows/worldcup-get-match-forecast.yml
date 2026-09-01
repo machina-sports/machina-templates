@@ -2,11 +2,10 @@ workflow:
   name: worldcup-get-match-forecast
   title: World Cup Intelligence - Get Match Forecast
   description: |
-    Serve the precomputed model forecast for one event and compute the live
-    model-vs-market gap (model 1X2 probability vs current market price). The gap is
-    computed at read time because markets move intraday; the probabilities come from
-    the cached worldcup:model-forecast. Read-only and informational — gaps are not
-    value/bet signals.
+    Serve the archived precomputed model forecast for one event and compare its
+    model 1X2 probabilities with the preserved market-cache evidence. The
+    probabilities come from the cached worldcup:model-forecast. Read-only and
+    informational — gaps are not value/bet signals.
 
   context-variables:
     debugger:
@@ -23,6 +22,14 @@ workflow:
     model_vs_market: "$.get('model_vs_market', {})"
     analysis: "$.get('analysis', {})"
     warnings: "$.get('forecast_warnings', [])"
+    archive: >-
+      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+       'competition_status': 'completed', 'live': False,
+       'snapshot_as_of': ($.get('forecast', {}).get('model', {}) or {}).get('computed_at'),
+       'capability_status': 'historical_model' if $.get('forecast', {}) else 'unavailable',
+       'provenance': ((['worldcup:model-forecast'] if $.get('forecast', {}) else []) + (['api-football'] if $.get('forecast', {}).get('data_source') in ('results', 'blend') else []) + (['fifa-ranking-seed'] if $.get('forecast', {}).get('data_source') in ('seed', 'blend') else []) + (['worldcup:market-cache'] if $.get('market_outcomes', []) else [])),
+       'missing_capabilities': ((['historical_model_forecast'] if not $.get('forecast', {}) else []) + (['archived_market_comparison'] if $.get('forecast', {}) and not $.get('model_vs_market', {}) else [])),
+       'notes': ['Historical pre-match model output; no real-time refresh is performed.']}
     workflow-status: "$.get('forecast', {}) and 'executed' or 'skipped'"
   tasks:
     - type: document
@@ -41,7 +48,7 @@ workflow:
 
     - type: document
       name: load-event-markets
-      description: Cached markets linked to this event (for the model-vs-market gap).
+      description: Preserved market-cache records linked to this event for the historical model-vs-market comparison.
       condition: "$.get('forecast', {}) != {}"
       config:
         action: search
@@ -55,7 +62,7 @@ workflow:
 
     - type: connector
       name: compute-gap
-      description: Model 1X2 probability vs current market price (informational).
+      description: Historical model 1X2 probability vs preserved market-cache price (informational).
       condition: "$.get('forecast', {}) != {}"
       connector:
         name: worldcup-market-intelligence

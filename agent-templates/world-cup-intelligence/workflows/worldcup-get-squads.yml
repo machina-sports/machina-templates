@@ -15,6 +15,13 @@ workflow:
     away_team: "$.get('away_team', '')"
   outputs:
     squads: "$.get('squads', {})"
+    archive: >-
+      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+       'competition_status': 'completed', 'live': False, 'snapshot_as_of': None,
+       'capability_status': 'complete' if $.get('squads', {}).get('teams') else 'unavailable',
+       'provenance': ((['api-football'] if [team for team in ($.get('squads', {}).get('teams') or []) if team.get('source') == 'api-football'] else []) + (['sports-skills'] if [team for team in ($.get('squads', {}).get('teams') or []) if team.get('source') == 'sports-skills'] else [])),
+       'missing_capabilities': [] if $.get('squads', {}).get('teams') else ['squads'],
+       'notes': ['Tournament squad records; no stored source timestamp is available.']}
     workflow-status: "$.get('squads', {}).get('teams') and 'executed' or 'skipped'"
   tasks:
     - type: document
