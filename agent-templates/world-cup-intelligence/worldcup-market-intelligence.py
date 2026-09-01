@@ -1140,7 +1140,7 @@ def normalize_standings(request_data: dict[str, Any]) -> dict[str, Any]:
 
 def _squad_team_af(af: Any) -> dict[str, Any]:
     data = _unwrap(af)
-    response = data.get("response", []) if isinstance(data, dict) else []
+    response = data.get("response", []) if isinstance(data, dict) else data
     if response and isinstance(response[0], dict):
         team = response[0].get("team", {})
         return team if isinstance(team, dict) else {}
@@ -1149,7 +1149,7 @@ def _squad_team_af(af: Any) -> dict[str, Any]:
 
 def _squad_players_af(af: Any) -> list[dict[str, Any]]:
     data = _unwrap(af)
-    response = data.get("response", []) if isinstance(data, dict) else []
+    response = data.get("response", []) if isinstance(data, dict) else data
     players: list[dict[str, Any]] = []
     for entry in response if isinstance(response, list) else []:
         if not isinstance(entry, dict):
@@ -1245,19 +1245,27 @@ def _injuries_items(af: Any) -> list[dict[str, Any]]:
 
 
 def normalize_injuries(request_data: dict[str, Any]) -> dict[str, Any]:
-    """Per-team injuries/suspensions, filtered to a fixture's two teams.
+    """Per-team injuries/suspensions, filtered to one fixture and its teams.
 
-    api-football /injuries returns league-wide rows of the shape
+    api-football /injuries returns rows of the shape
     {player:{id,name,photo,type,reason}, team:{id,name}, fixture:{id,date,timestamp}}.
-    A player out for several upcoming fixtures appears once per fixture, so we
-    dedup per player and keep the most recent fixture.
+    The fixture filter protects archived results from a league-wide response where
+    the same player can have a different reason on a later fixture.
 
     Params:
-      - af: api-football /injuries response (league-wide; body or list)
+      - af: api-football /injuries response (fixture-scoped; body or list)
+      - fixture_id: resolved API-Football fixture id
       - home_team_id, away_team_id, home_team, away_team
     """
     params = _params(request_data)
     items = _injuries_items(params.get("af"))
+    fixture_id = _text(params.get("fixture_id"))
+    if fixture_id:
+        items = [
+            item for item in items
+            if isinstance(item, dict)
+            and _text((item.get("fixture") or {}).get("id")) == fixture_id
+        ]
     teams: list[dict[str, Any]] = []
     warnings: list[str] = []
     for side in ("home", "away"):
@@ -1270,7 +1278,9 @@ def normalize_injuries(request_data: dict[str, Any]) -> dict[str, Any]:
             if not isinstance(it, dict):
                 continue
             team = it.get("team", {}) if isinstance(it.get("team"), dict) else {}
-            if str(team.get("id")) != str(tid):
+            team_id_matches = tid not in (None, "") and str(team.get("id")) == str(tid)
+            team_name_matches = bool(tname) and _slugify(team.get("name")) == _slugify(tname)
+            if not (team_id_matches or team_name_matches):
                 continue
             player = it.get("player", {}) if isinstance(it.get("player"), dict) else {}
             fixture = it.get("fixture", {}) if isinstance(it.get("fixture"), dict) else {}
@@ -1465,6 +1475,32 @@ def resolve_player(request_data: dict[str, Any]) -> dict[str, Any]:
         + " -- check spelling or run worldcup-sync-player-crosswalk."]
     return {"status": True, "data": {"player": candidates[0] if candidates else {},
                                      "candidates": candidates, "warnings": warnings}}
+
+
+def build_tournament_player_overview(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Expose only persisted World Cup squad identity facts for a spotlight."""
+    params = _params(request_data)
+    player = params.get("player") if isinstance(params.get("player"), dict) else {}
+    team = player.get("team") if isinstance(player.get("team"), dict) else {}
+    position = _text(
+        player.get("provider_position")
+        or player.get("tournament_position")
+        or player.get("squad_position")
+        or player.get("position")
+    ) or None
+    overview = {
+        "player_urn": _text(_first(player, "_id", "@id", "id")) or None,
+        "name": _text(player.get("name")) or None,
+        "team": {"@id": _text(team.get("@id")) or None, "name": _text(team.get("name")) or None},
+        "position": position,
+        "nationality": _text(player.get("nationality")) or None,
+        "birth_date": _text(player.get("birth_date")) or None,
+        "provider_ids": dict(player.get("provider_ids") or {}),
+        "competition": "FIFA World Cup 2026",
+        "scope": "tournament_squad",
+    } if player else {}
+    warnings = [] if overview else ["No persisted World Cup tournament player record supplied."]
+    return {"status": True, "data": {"player_overview": overview, "warnings": warnings}}
 
 
 FIFA_POWER_SCORE_KEYS = ["attacking", "creativity", "defending", "in_possession", "defending_goal"]
@@ -1793,6 +1829,43 @@ def merge_official_and_provisional_performance(request_data: dict[str, Any]) -> 
     return {"status": True, "data": {"player_performance_context": context}}
 
 
+def select_official_player_power_ranking(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Prefer an explicit override, otherwise select a persisted final FIFA record."""
+    params = _params(request_data)
+    override = params.get("override")
+    if isinstance(override, dict) and override:
+        return {"status": True, "data": {"official_fifa_power_ranking": override}}
+
+    player_urn = _text(params.get("player_urn"))
+    player_name = _text(params.get("player_name"))
+    player_name_slug = _slugify(player_name) if player_name else ""
+    matches: list[dict[str, Any]] = []
+    for raw in _as_list(params.get("records")):
+        record = _unwrap(raw)
+        if not isinstance(record, dict) or record.get("status") != "available":
+            continue
+        metadata = record.get("metadata") if isinstance(record.get("metadata"), dict) else {}
+        record_urn = _text(record.get("player_urn") or metadata.get("player_urn"))
+        record_name = _text(record.get("canonical_name") or record.get("player_name") or record.get("name"))
+        record_name_slug = _slugify(record_name) if record_name else ""
+        if (player_urn and record_urn == player_urn) or (player_name_slug and record_name_slug == player_name_slug):
+            matches.append(record)
+
+    official = sorted(
+        matches,
+        key=lambda item: (
+            _text(item.get("player_urn")) != player_urn,
+            _text(item.get("_id") or item.get("id")),
+        ),
+    )[0] if matches else {
+        "status": "pending",
+        "source": "fifa.com",
+        "scores": _empty_scores(),
+        "classification": {"match_rank": None, "tournament_rank": None, "category_rankings": []},
+    }
+    return {"status": True, "data": {"official_fifa_power_ranking": official}}
+
+
 def normalize_identity_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
     """Normalize identity crosswalk rows into document-store values."""
     params = _params(request_data)
@@ -1812,7 +1885,7 @@ def normalize_identity_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]
 
         if entity_type == "team":
             name_clean = re.sub(r"\b(FC|CF|SC|CD|Football Club)\b", "", name, flags=re.IGNORECASE).strip()
-            urn = f"urn:machina:sport:{sport}:team:{_slugify(name_clean)}:{_to_iso3(item.get('country') or item.get('nationality'))}"
+            urn = f"urn:machina:sport:{sport}:team:{_canonical_team_slug(name_clean)}:{_to_iso3(item.get('country') or item.get('nationality'))}"
         elif entity_type == "player":
             urn = (
                 f"urn:machina:sport:{sport}:player:{_slugify(name)}:"
@@ -1823,7 +1896,7 @@ def normalize_identity_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]
             date_part = _event_date(item.get("date") or item.get("start_time") or item.get("year") or "2026")
             urn = (
                 f"urn:machina:sport:{sport}:event:"
-                f"{_slugify(item.get('home_team'))}-vs-{_slugify(item.get('away_team'))}:"
+                f"{_canonical_team_slug(item.get('home_team'))}-vs-{_canonical_team_slug(item.get('away_team'))}:"
                 f"{date_part}:wor"
             )
         elif entity_type == "competition":
@@ -1987,6 +2060,10 @@ _ISO3_MAP = {
     "ITA": "ita", "ITALY": "ita", "SRB": "srb", "SERBIA": "srb", "WAL": "wal", "WALES": "wal",
 }
 
+_TEAM_SLUG_ALIASES = {
+    "czech-republic": "czechia",
+}
+
 # Backwards-compatible alias for normalize_identity_crosswalk's body.
 iso_mapping = _ISO3_MAP
 
@@ -2020,6 +2097,26 @@ def _slugify(name: Any) -> str:
     return slug or "unknown"
 
 
+def _canonical_team_slug(name: Any) -> str:
+    slug = _slugify(name)
+    return _TEAM_SLUG_ALIASES.get(slug, slug)
+
+
+def _canonical_team_urn(urn: Any, name: Any = None) -> str:
+    value = _text(urn)
+    parts = value.split(":")
+    if len(parts) >= 3 and parts[-3] == "team":
+        parts[-2] = _TEAM_SLUG_ALIASES.get(parts[-2], parts[-2])
+        return ":".join(parts)
+    return _machina_team_urn(name) if name else value
+
+
+def _canonical_event_urn(urn: Any) -> str:
+    value = _text(urn)
+    value = value.replace(":event:czech-republic-vs-", ":event:czechia-vs-")
+    return value.replace("-vs-czech-republic:", "-vs-czechia:")
+
+
 def _parse_birth_date(value: Any) -> str:
     raw = _clean_text(value)
     match = re.search(r"\b(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})\b", raw)
@@ -2049,7 +2146,7 @@ def _stable_disambiguator(provider_ids: dict[str, Any]) -> str:
 
 
 def _machina_team_urn(name: Any) -> str:
-    return f"urn:machina:sport:soccer:team:{_slugify(name)}:{_to_iso3(name)}"
+    return f"urn:machina:sport:soccer:team:{_canonical_team_slug(name)}:{_to_iso3(name)}"
 
 
 def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
@@ -2102,7 +2199,7 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
         date_iso = _text(fixture.get("date"))
         event_urn = (
             f"urn:machina:sport:soccer:event:"
-            f"{_slugify(home_name)}-vs-{_slugify(away_name)}:{_event_date(date_iso)}:wor"
+            f"{_canonical_team_slug(home_name)}-vs-{_canonical_team_slug(away_name)}:{_event_date(date_iso)}:wor"
         )
         # Canonical competition URN — must match the competition crosswalk doc and
         # the market cache (api-football's league name "World Cup" would mint a
@@ -2257,7 +2354,7 @@ def _team_maps(teams: list[Any]) -> dict[str, dict]:
             continue
         pids = t.get("provider_ids") or {}
         info = {
-            "urn": _first(t, "_id", "@id", "id"),
+            "urn": _canonical_team_urn(_first(t, "_id", "@id", "id"), t.get("name")),
             "name": _text(t.get("name")),
             "iso3": _to_iso3(t.get("country") or t.get("name")),
         }
@@ -2444,6 +2541,8 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
             "@type": ["sport:IdentityCrosswalk", "sport:Player"],
             "name": display_name,
             "position": c["position"] or None,
+            "tournament_position": c["position"] or None,
+            "position_source": "api-football-tournament-squad" if c["position"] else None,
             "birth_date": meta.get("dob") or None,
             "nationality": meta.get("nationality") or None,
             "team": {"@id": c["team"]["urn"], "name": c["team"]["name"]},
@@ -2560,7 +2659,7 @@ WC_COMPETITION_URN = "urn:machina:sport:soccer:competition:fifa-world-cup-2026:w
 
 # Market team-name variants -> canonical team name slug (as used in team URNs).
 _MARKET_TEAM_ALIASES = {
-    "czechia": "czech-republic",
+    "czech-republic": "czechia",
     "korea": "south-korea", "korea-republic": "south-korea",
     "turkey": "turkiye",
     "cote-d-ivoire": "ivory-coast", "cote-divoire": "ivory-coast",
@@ -2578,8 +2677,8 @@ def _market_team_index(teams: list[Any]) -> list[tuple]:
     for t in teams:
         if not isinstance(t, dict):
             continue
-        urn = _text(_first(t, "_id", "@id", "id"))
-        name_slug = _slugify(t.get("name"))
+        urn = _canonical_team_urn(_first(t, "_id", "@id", "id"), t.get("name"))
+        name_slug = _canonical_team_slug(t.get("name"))
         if not urn or not name_slug:
             continue
         canon_to_urn[name_slug] = urn
@@ -2655,10 +2754,10 @@ def link_market_entities(request_data: dict[str, Any]) -> dict[str, Any]:
     for ev in _as_list(params.get("events")):
         if not isinstance(ev, dict):
             continue
-        urns = [_text(c.get("@id")) for c in (ev.get("sport:competitors") or [])
+        urns = [_canonical_team_urn(c.get("@id"), c.get("name")) for c in (ev.get("sport:competitors") or [])
                 if isinstance(c, dict) and c.get("@id")]
         if len(urns) == 2:
-            by_pair[frozenset(urns)] = _text(_first(ev, "_id", "@id", "id"))
+            by_pair[frozenset(urns)] = _canonical_event_urn(_first(ev, "_id", "@id", "id"))
 
     markets = _as_list(params.get("markets"))
     summary = {"markets": len(markets), "with_team": 0, "with_event": 0}
@@ -3398,7 +3497,7 @@ def compute_power_ranking(request_data: dict[str, Any]) -> dict[str, Any]:
     for s in _as_list(params.get("seed_ratings")):
         if not isinstance(s, dict):
             continue
-        urn = _text(s.get("team_urn")) or _machina_team_urn(s.get("team_name"))
+        urn = _canonical_team_urn(s.get("team_urn"), s.get("team_name"))
         if not urn:
             continue
         seed_map[urn] = _num(s.get("seed_rating"), 0.5)
@@ -3585,7 +3684,7 @@ def normalize_fifa_seed(request_data: dict[str, Any]) -> dict[str, Any]:
         turn = _text(t.get("team_urn") or t.get("_id") or t.get("@id"))
         tname = _text(t.get("team_name") or t.get("name"))
         if turn and tname:
-            team_urn_by_slug[_slugify(tname)] = turn
+            team_urn_by_slug[_canonical_team_slug(tname)] = _canonical_team_urn(turn, tname)
 
     rows = []  # (name, points|None, rank|None)
     for r in _as_list(params.get("rankings")):
@@ -3621,7 +3720,7 @@ def normalize_fifa_seed(request_data: dict[str, Any]) -> dict[str, Any]:
     norm = _minmax([s for _, s in scored])
     seen: dict[str, dict[str, Any]] = {}
     for (name, _s), n in zip(scored, norm):
-        urn = team_urn_by_slug.get(_slugify(name)) or _machina_team_urn(name)
+        urn = team_urn_by_slug.get(_canonical_team_slug(name)) or _machina_team_urn(name)
         rating = round(0.2 + 0.6 * n, 4)
         prev = seen.get(urn)
         if prev is None or rating > prev["seed_rating"]:
@@ -3732,17 +3831,34 @@ def build_event_forecasts(request_data: dict[str, Any]) -> dict[str, Any]:
     compute_power_ranking), xg_params?, rho?, max_goals?.
     """
     params = _params(request_data)
-    team_index = params.get("team_index") or {}
+    team_index = {
+        _canonical_team_urn(urn): ranking
+        for urn, ranking in (params.get("team_index") or {}).items()
+    }
     xg_params = params.get("xg_params")
     rho = _num(params.get("rho"), -0.12)
     max_goals = int(params.get("max_goals") or 10)
 
     docs: list[dict[str, Any]] = []
     skipped: list[str] = []
+    events_by_key: dict[str, dict[str, Any]] = {}
     for ev in _as_list(params.get("events")):
         if not isinstance(ev, dict):
             continue
-        event_urn = _text(_first(ev, "_id", "@id", "id"))
+        event_urn = _canonical_event_urn(_first(ev, "_id", "@id", "id"))
+        fixture_id = _text((ev.get("provider_ids") or {}).get("api_football"))
+        key = f"fixture:{fixture_id}" if fixture_id else f"event:{event_urn}"
+        current = events_by_key.get(key)
+        current_urn = _text(_first(current or {}, "_id", "@id", "id"))
+        raw_urn = _text(_first(ev, "_id", "@id", "id"))
+        if current is None or (raw_urn == event_urn, raw_urn) > (current_urn == event_urn, current_urn):
+            events_by_key[key] = ev
+
+    for key in sorted(events_by_key):
+        ev = events_by_key[key]
+        if not isinstance(ev, dict):
+            continue
+        event_urn = _canonical_event_urn(_first(ev, "_id", "@id", "id"))
         home = away = None
         for c in ev.get("sport:competitors") or []:
             q = _lower(c.get("sport:qualifier"))
@@ -3753,8 +3869,10 @@ def build_event_forecasts(request_data: dict[str, Any]) -> dict[str, Any]:
         if not home or not away or not event_urn:
             skipped.append(event_urn or "unknown")
             continue
-        hr = team_index.get(_text(home.get("@id")))
-        ar = team_index.get(_text(away.get("@id")))
+        home_urn = _canonical_team_urn(home.get("@id"), home.get("name"))
+        away_urn = _canonical_team_urn(away.get("@id"), away.get("name"))
+        hr = team_index.get(home_urn)
+        ar = team_index.get(away_urn)
         if not hr or not ar:
             skipped.append(event_urn)
             continue
@@ -3772,8 +3890,8 @@ def build_event_forecasts(request_data: dict[str, Any]) -> dict[str, Any]:
             "_id": event_urn, "@id": event_urn, "id": event_urn,
             "provider_ids": {"api_football": _text((ev.get("provider_ids") or {}).get("api_football"))},
             "schema:startDate": ev.get("schema:startDate"),
-            "home_team": {"urn": _text(home.get("@id")), "name": _text(home.get("name"))},
-            "away_team": {"urn": _text(away.get("@id")), "name": _text(away.get("name"))},
+            "home_team": {"urn": home_urn, "name": _text(home.get("name"))},
+            "away_team": {"urn": away_urn, "name": _text(away.get("name"))},
             "home_expected_goals": probs["home_expected_goals"],
             "away_expected_goals": probs["away_expected_goals"],
             "probabilities": probs["probabilities"],
@@ -4161,10 +4279,11 @@ def _single_audit(forecast: dict[str, Any], home_goals: int, away_goals: int) ->
     predicted_prob = probs3[predicted]
     actual_outcome = _result_outcome(home_goals, away_goals)
     cbin = min(int(predicted_prob * 10), 9)
+    event_urn = _canonical_event_urn(_first(forecast, "_id", "@id", "id"))
     return {
-        "metadata": {"event_urn": _text(_first(forecast, "_id", "@id", "id"))},
-        "_id": _text(_first(forecast, "_id", "@id", "id")),
-        "event_urn": _text(_first(forecast, "_id", "@id", "id")),
+        "metadata": {"event_urn": event_urn},
+        "_id": event_urn,
+        "event_urn": event_urn,
         "fixture_id": _text((forecast.get("provider_ids") or {}).get("api_football")),
         "predicted_probabilities": {"home_win": round(hw, 4), "draw": round(dw, 4),
                                     "away_win": round(aw, 4), "over_2_5": round(ov, 4), "under_2_5": round(un, 4)},
@@ -4183,7 +4302,23 @@ def _single_audit(forecast: dict[str, Any], home_goals: int, away_goals: int) ->
 
 
 def _aggregate_audit(audits: list[dict[str, Any]]) -> dict[str, Any]:
-    audits = [a for a in audits if isinstance(a, dict) and a.get("brier_scores")]
+    deduped: dict[str, dict[str, Any]] = {}
+    for audit in audits:
+        if not isinstance(audit, dict) or not audit.get("brier_scores"):
+            continue
+        key = _text(audit.get("fixture_id")) or _canonical_event_urn(
+            audit.get("event_urn") or _first(audit, "_id", "@id", "id")
+        )
+        if not key:
+            continue
+        current = deduped.get(key)
+        event_urn = _text(audit.get("event_urn") or _first(audit, "_id", "@id", "id"))
+        current_urn = _text((current or {}).get("event_urn") or _first(current or {}, "_id", "@id", "id"))
+        if current is None or (event_urn == _canonical_event_urn(event_urn), event_urn) > (
+            current_urn == _canonical_event_urn(current_urn), current_urn
+        ):
+            deduped[key] = audit
+    audits = [deduped[key] for key in sorted(deduped)]
     n = len(audits)
     if n == 0:
         return {"sample_size": 0, "sample_size_sufficient": False,
@@ -4444,11 +4579,24 @@ def compute_forecast_audit(request_data: dict[str, Any]) -> dict[str, Any]:
             goals = f.get("goals") or {}
             if fid and goals.get("home") is not None and goals.get("away") is not None:
                 by_fid[fid] = (int(goals["home"]), int(goals["away"]))
-        audits = []
+        forecasts_by_fixture: dict[str, dict[str, Any]] = {}
         for fc in _as_list(params.get("forecasts")):
             if not isinstance(fc, dict):
                 continue
             fid = _text((fc.get("provider_ids") or {}).get("api_football"))
+            if not fid:
+                continue
+            current = forecasts_by_fixture.get(fid)
+            event_urn = _text(_first(fc, "_id", "@id", "id"))
+            canonical_urn = _canonical_event_urn(event_urn)
+            current_urn = _text(_first(current or {}, "_id", "@id", "id"))
+            if current is None or (event_urn == canonical_urn, event_urn) > (
+                current_urn == _canonical_event_urn(current_urn), current_urn
+            ):
+                forecasts_by_fixture[fid] = fc
+        audits = []
+        for fid in sorted(forecasts_by_fixture):
+            fc = forecasts_by_fixture[fid]
             res = by_fid.get(fid)
             if not res:
                 continue

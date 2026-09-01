@@ -474,7 +474,7 @@ def test_player_context_returns_structured_unavailable_status_and_warnings():
         "event_document": event_document,
         "normalized_players": [],
         "normalize_warnings": ["No provider player match statistics supplied."],
-        "official_fifa_power_ranking": {},
+        "resolved_official_fifa_power_ranking": {},
     }
 
     assert merge["condition"] == "len($.get('normalized_players', [])) > 0"
@@ -494,7 +494,7 @@ def test_player_context_returns_partial_status_from_normalized_players():
     context = {
         "normalized_players": [{"player_id": "10", "eligible_for_power_ranking": True, "warnings": []}],
         "normalize_warnings": [],
-        "official_fifa_power_ranking": {},
+        "resolved_official_fifa_power_ranking": {"status": "pending"},
     }
 
     assert evaluate(workflow["outputs"]["status"], context) == "partial"
@@ -506,11 +506,66 @@ def test_player_context_returns_available_status_from_normalized_players():
     context = {
         "normalized_players": [{"player_id": "10", "eligible_for_power_ranking": True, "warnings": []}],
         "normalize_warnings": [],
-        "official_fifa_power_ranking": {"status": "available"},
+        "resolved_official_fifa_power_ranking": {"status": "available"},
     }
 
     assert evaluate(workflow["outputs"]["status"], context) == "available"
     assert evaluate(workflow["outputs"]["warnings"], context) == []
+
+
+def test_player_context_loads_and_selects_persisted_final_fifa_ranking():
+    workflow = _player_workflow()
+    identity = task(workflow, "load-player-identity")
+    load_rankings = task(workflow, "load-final-fifa-player-rankings")
+    select = task(workflow, "select-official-fifa-player-ranking")
+    merge = task(workflow, "merge-player-performance-context")
+
+    assert identity["filters"]["value.machina_competition_slug"] == "'world-cup-2026'"
+    assert load_rankings["filters"]["name"] == "'worldcup:final-fifa-player-power-ranking'"
+    assert select["inputs"]["override"] == "$.get('official_fifa_power_ranking', {})"
+    assert select["inputs"]["player_urn"] == "$.get('player_identity', {}).get('_id', '')"
+    assert "normalized_players" in select["inputs"]["player_name"]
+    assert merge["inputs"]["official_fifa_power_ranking"] == "$.get('resolved_official_fifa_power_ranking', {})"
+
+
+def test_injuries_fetch_and_normalization_are_fixture_scoped():
+    workflow = load_yaml("workflows/worldcup-get-injuries.yml")["workflow"]
+    lookup = task(workflow, "lookup-event")
+    fetch = task(workflow, "fetch-injuries-af")
+    normalize = task(workflow, "normalize-injuries")
+
+    assert "provider_ids" in lookup["outputs"]["resolved_fixture_id"]
+    assert fetch["inputs"] == {"fixture": "$.get('resolved_fixture_id') or $.get('provider_event_id')"}
+    assert normalize["inputs"]["fixture_id"] == "$.get('resolved_fixture_id') or $.get('provider_event_id')"
+    assert "league" not in fetch["inputs"] and "season" not in fetch["inputs"]
+
+
+def test_squad_fallback_gates_use_shape_normalized_api_football_counts():
+    workflow = load_yaml("workflows/worldcup-get-squads.yml")["workflow"]
+    inspect = task(workflow, "inspect-api-football-squads")
+    home_fallback = task(workflow, "resolve-home-ss")
+    normalized = {"teams": [{"side": "home", "source": "api-football", "count": 2}]}
+
+    assert inspect["connector"]["command"] == "normalize_squads"
+    assert evaluate(inspect["outputs"]["home_af_count"], normalized) == 2
+    assert evaluate(home_fallback["condition"], {"home_af_count": 2, "home_team_name": "Brazil"}) is False
+
+
+def test_player_spotlight_is_tournament_only_and_uses_scoped_cache():
+    workflow = load_yaml("workflows/worldcup-player-spotlight.yml")["workflow"]
+    prompt = load_yaml("prompts/worldcup-player-spotlight.yml")["prompts"][0]
+    task_names = {item["name"] for item in workflow["tasks"]}
+    cached = task(workflow, "load-cached")
+    overview = task(workflow, "build-player-overview")
+    saved = task(workflow, "save-candidate")["documents"]["items"]
+
+    assert "grounded-player-research" not in task_names
+    assert cached["filters"]["value.scope"] == "'world-cup-2026-tournament'"
+    assert overview["connector"]["command"] == "build_tournament_player_overview"
+    assert "world-cup-2026-tournament" in saved
+    instructions = prompt["instruction"].lower()
+    for forbidden in ("club contracts", "club form", "transfers", "managers", "post-tournament"):
+        assert forbidden in instructions
 
 
 def test_fan_sentiment_reports_grok_unavailability_in_successful_response():

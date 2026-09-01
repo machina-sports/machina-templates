@@ -1,7 +1,7 @@
 workflow:
   name: worldcup-get-player-performance-context
   title: World Cup Intelligence - Player Performance Context
-  description: Returns a player-level performance context package for a World Cup fixture, keeping official FIFA Power Ranking fields separate from Machina provisional 0-10 signals. API-Football player match stats are the provider-backed input; official FIFA fields remain pending unless explicitly supplied.
+  description: Returns a player-level performance context package for a World Cup fixture, keeping persisted official final FIFA Power Ranking fields separate from Machina provisional 0-10 signals. An explicit official ranking input remains the highest-priority override.
 
   context-variables:
     debugger:
@@ -15,16 +15,16 @@ workflow:
     team_id: "$.get('team_id', '')"
     official_fifa_power_ranking: "$.get('official_fifa_power_ranking', {})"
   outputs:
-    player_performance_context: "$.get('player_performance_context', {}) or {'event': $.get('event_document', {}), 'player': {}, 'official_fifa_power_ranking': ($.get('official_fifa_power_ranking', {}) or {'status': 'pending', 'source': 'fifa.com', 'scores': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}}), 'machina_provisional_performance_signal': {'status': 'unavailable', 'source_quality': 'unavailable', 'confidence': 0.0, 'scores_0_10': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}, 'drivers': [], 'warnings': ['No normalized player data supplied.']}, 'context_and_evidence': {'fallback_path': [], 'citations': [], 'missing_info_flags': ($.get('normalize_warnings', []) or []), 'freshness': {'provider_stats_fetched': False, 'official_fifa_expected_lag_hours': 4}}}"
-    status: "'available' if len($.get('normalized_players', [])) > 0 and ($.get('normalized_players', []) or [{}])[0].get('eligible_for_power_ranking', False) and ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else ('partial' if len($.get('normalized_players', [])) > 0 or ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else 'unavailable')"
-    warnings: "($.get('normalize_warnings', []) or []) + (((($.get('normalized_players', []) or [{}])[0].get('warnings', [])) or []) if len($.get('normalized_players', [])) > 0 else []) + ([] if ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else ['Official FIFA Power Ranking is pending or unavailable.'])"
+    player_performance_context: "$.get('player_performance_context', {}) or {'event': $.get('event_document', {}), 'player': {}, 'official_fifa_power_ranking': ($.get('resolved_official_fifa_power_ranking', {}) or {'status': 'pending', 'source': 'fifa.com', 'scores': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}}), 'machina_provisional_performance_signal': {'status': 'unavailable', 'source_quality': 'unavailable', 'confidence': 0.0, 'scores_0_10': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}, 'drivers': [], 'warnings': ['No normalized player data supplied.']}, 'context_and_evidence': {'fallback_path': [], 'citations': [], 'missing_info_flags': ($.get('normalize_warnings', []) or []), 'freshness': {'provider_stats_fetched': False, 'official_fifa_expected_lag_hours': 4}}}"
+    status: "'available' if len($.get('normalized_players', [])) > 0 and ($.get('normalized_players', []) or [{}])[0].get('eligible_for_power_ranking', False) and ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') == 'available' else ('partial' if len($.get('normalized_players', [])) > 0 or ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') == 'available' else 'unavailable')"
+    warnings: "($.get('normalize_warnings', []) or []) + (((($.get('normalized_players', []) or [{}])[0].get('warnings', [])) or []) if len($.get('normalized_players', [])) > 0 else []) + ([] if ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') == 'available' else ['Official FIFA Power Ranking is pending or unavailable.'])"
     archive: >-
       {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
-       'snapshot_as_of': (($.get('official_fifa_power_ranking', {}) or {}).get('as_of') or $.get('event_snapshot_as_of')),
-       'capability_status': ('complete' if len($.get('normalized_players', [])) > 0 and ($.get('normalized_players', []) or [{}])[0].get('eligible_for_power_ranking', False) and ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else ('partial' if len($.get('normalized_players', [])) > 0 or ($.get('official_fifa_power_ranking', {}) or {}).get('status') in ('available', 'pending') else 'unavailable')),
-       'provenance': ((['api-football'] if len($.get('normalized_players', [])) > 0 else []) + (['fifa.com'] if ($.get('official_fifa_power_ranking', {}) or {}).get('status') == 'available' else [])),
-       'missing_capabilities': ((['provider_player_statistics'] if len($.get('normalized_players', [])) == 0 else []) + (['eligible_player_sample'] if len($.get('normalized_players', [])) > 0 and not ($.get('normalized_players', []) or [{}])[0].get('eligible_for_power_ranking', False) else []) + (['official_fifa_power_ranking'] if ($.get('official_fifa_power_ranking', {}) or {}).get('status') != 'available' else [])),
+        'snapshot_as_of': (($.get('resolved_official_fifa_power_ranking', {}) or {}).get('as_of') or $.get('event_snapshot_as_of')),
+        'capability_status': ('complete' if len($.get('normalized_players', [])) > 0 and ($.get('normalized_players', []) or [{}])[0].get('eligible_for_power_ranking', False) and ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') == 'available' else ('partial' if len($.get('normalized_players', [])) > 0 or ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') == 'available' else 'unavailable')),
+        'provenance': ((['api-football'] if len($.get('normalized_players', [])) > 0 else []) + (['fifa.com'] if ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') == 'available' else [])),
+        'missing_capabilities': ((['provider_player_statistics'] if len($.get('normalized_players', [])) == 0 else []) + (['eligible_player_sample'] if len($.get('normalized_players', [])) > 0 and not ($.get('normalized_players', []) or [{}])[0].get('eligible_for_power_ranking', False) else []) + (['official_fifa_power_ranking'] if ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') != 'available' else [])),
        'notes': ['Machina provisional scores remain separate from official FIFA Power Ranking fields.']}
     workflow-status: "$.get('player_performance_context', {}) != {} and 'executed' or 'skipped'"
   tasks:
@@ -89,6 +89,47 @@ workflow:
       outputs:
         machina_provisional_performance_signal: "$.get('machina_provisional_performance_signal', {})"
 
+    - type: document
+      name: load-player-identity
+      description: Resolve the canonical player URN/name from the persisted tournament squad crosswalk.
+      condition: "len($.get('normalized_players', [])) > 0"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        value.provider_ids.api_football: "($.get('normalized_players', []) or [{}])[0].get('player_id')"
+        value.machina_competition_slug: "'world-cup-2026'"
+      outputs:
+        player_identity: "($.get('documents', []) or [{}])[0].get('value', {})"
+
+    - type: document
+      name: load-final-fifa-player-rankings
+      description: Load persisted verified final FIFA player Power Ranking records for canonical matching.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:final-fifa-player-power-ranking'"
+      outputs:
+        final_fifa_player_rankings: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: select-official-fifa-player-ranking
+      description: Preserve an explicit override; otherwise match a verified final record by canonical player URN or name.
+      connector:
+        name: worldcup-market-intelligence
+        command: select_official_player_power_ranking
+      inputs:
+        override: "$.get('official_fifa_power_ranking', {})"
+        records: "$.get('final_fifa_player_rankings', [])"
+        player_urn: "$.get('player_identity', {}).get('_id', '')"
+        player_name: "$.get('player_identity', {}).get('name') or ($.get('normalized_players', []) or [{}])[0].get('name', '')"
+      outputs:
+        resolved_official_fifa_power_ranking: "$.get('official_fifa_power_ranking', {})"
+
     - type: connector
       name: merge-player-performance-context
       description: Return the final API package with official FIFA fields and Machina provisional fields labeled separately.
@@ -100,7 +141,7 @@ workflow:
         event: "$.get('event_document', {})"
         player: "($.get('normalized_players', []) or [{}])[0]"
         provisional_signal: "$.get('machina_provisional_performance_signal', {})"
-        official_fifa_power_ranking: "$.get('official_fifa_power_ranking', {})"
+        official_fifa_power_ranking: "$.get('resolved_official_fifa_power_ranking', {})"
         fallback_path: "['api-football']"
         missing_info_flags: "$.get('normalize_warnings', [])"
         freshness: "{'provider_stats_fetched': $.get('api_football_player_stats', {}) != {}, 'official_fifa_expected_lag_hours': 4}"

@@ -41,9 +41,9 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
 - `worldcup-get-event-context` — enriched match context (event + grounded prematch research + sports context)
 - `worldcup-get-iptc-event-context` — IPTC/semantic event shape
 - `worldcup-get-standings` — group tables
-- `worldcup-get-squads` — both teams' squads
-- `worldcup-get-injuries` — injuries/suspensions
-- `worldcup-get-player-performance-context` — player performance signals
+- `worldcup-get-squads` — both teams' tournament squads; API-Football is preferred for both bare-list and `{response:[...]}` runner shapes, with Sports Skills used only when it is empty
+- `worldcup-get-injuries` — fixture-scoped injuries/suspensions from API-Football
+- `worldcup-get-player-performance-context` — player performance signals merged with persisted final FIFA player Power Ranking records by canonical player URN/name; an explicit input override wins
 
 **Market intelligence**
 - `worldcup-search-markets` — market search (Kalshi + Polymarket, URN-linked)
@@ -74,10 +74,10 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
   `confidence_tier` (high ≥12c / medium 6–12c / low; forced low when `edge_likely_model_noise`), and —
   when `fee_bps` is supplied — `effective_price`, `gross_edge`, and net-of-fee `edge`/`ev_per_dollar`/`kelly_*`.
 
-**Composite Skills (cached editorial cards)** — each serves a fresh cached candidate (idle cost = one doc search) or authors a new one on a cache miss / `force_regen`, then caches it with a TTL. Output is `skill_card` (the structured `body`) + `served_from` (`cache`|`generated`). All read-only/informational with the standard disclaimer; market-bearing cards keep resolution/liquidity/freshness caveats.
+**Composite Skills (cached editorial cards)** — each serves a scoped cached candidate (idle cost = one doc search) or authors a new one on a cache miss / `force_regen`. Live-oriented cards use a TTL; final archive cards may be evergreen. Output is `skill_card` (the structured `body`) + `served_from` (`cache`|`generated`). All read-only/informational with the standard disclaimer; market-bearing cards keep resolution/liquidity/freshness caveats.
 - `worldcup-match-preview` (`event_urn`) — grounded preview; composes event + grounded news + optional model forecast + market snapshot. TTL 6h (FRESH).
 - `worldcup-match-recap` (`event_urn`) — grounded recap; authored ONLY once `sport:status` ∈ FT/AET/PEN, then cached EVERGREEN (once per match).
-- `worldcup-player-spotlight` (`player_urn`) — grounded player card. TTL 24h.
+- `worldcup-player-spotlight` (`player_urn`) — tournament-only player card from the persisted World Cup squad identity. It does not research or cache club contracts, club form, transfers, managers, or post-tournament claims; archive-scoped cards are reusable without a live-data TTL.
 - `worldcup-fan-pulse` (`query`/`event_urn`) — wraps `worldcup-fan-sentiment-context` (grok); caches the structured pulse. TTL 1h (HOT_SYNC).
 - `worldcup-market-watch` (global) — composes movers + informational edges into a summary card. TTL ~20min (HOT_SYNC).
 
@@ -129,6 +129,7 @@ Capability semantics:
 - `worldcup-sync-player-crosswalk` — rebuild player crosswalk (cron `0 6 * * *`)
 - `worldcup-sync-team-crosswalk`, `worldcup-sync-event-crosswalk`, `worldcup-sync-identity-crosswalk` — identity sync
 - `worldcup-seed-fifa-ranking` — bootstrap FIFA-ranking seed prior (occasional; grounded)
+- `worldcup-import-final-fifa-player-rankings` — deterministic import of verified final FIFA player Power Ranking values; unknown values remain explicitly pending
 - `worldcup-sync-model-forecasts` — precompute model forecasts for upcoming events (daily/cold)
 - `worldcup-log-signals` — append-only CLV ledger writer: logs each value pick's entry price/model prob/edge (insert-only, keyed `{event_urn}:{outcome}`) so the closing line can be scored later (daily, after the forecast sync)
 - `worldcup-refresh-prematch-enrichment` — grounded prematch research onto event docs
@@ -141,7 +142,9 @@ Capability semantics:
 - **`get-market-state`** — live from the source (current price, order book, history, trades).
 - **`market-movers`** — computed from the hourly `worldcup:market-snapshot` time series; needs ≥2 hourly buckets to show movement.
 - **`get-match-forecast`** — archived probabilities from `worldcup:model-forecast`; the model-vs-market comparison uses preserved market-cache evidence.
-- **Stores added by this layer:** `worldcup:model-forecast` (`_id` = event URN), `worldcup:forecast-audit` (`_id` = event URN; `…:aggregate` singleton), `worldcup:fifa-ranking` (`_id` = team URN), `worldcup:signal-ledger` (`_id` = `{event_urn}:{outcome}`; one row per logged value pick), `worldcup:clv-report` (`…:aggregate` singleton).
+- **Stores added by this layer:** `worldcup:model-forecast` (`_id` = canonical event URN), `worldcup:forecast-audit` (`_id` = canonical event URN; `…:aggregate` singleton), `worldcup:fifa-ranking` (`_id` = team URN), `worldcup:final-fifa-player-power-ranking` (verified or explicitly pending final player records), `worldcup:signal-ledger` (`_id` = `{event_urn}:{outcome}`; one row per logged value pick), `worldcup:clv-report` (`…:aggregate` singleton).
+
+Identity aliases are migration-safe and deterministic: both `Czech Republic` and `Czechia` resolve to `urn:machina:sport:soccer:team:czechia:cze`. Forecast and audit builders deduplicate legacy/new alias documents by API-Football fixture id and emit the canonical Czechia event URN, preventing duplicate archive records without deleting legacy source documents.
 
 ## AI models
 
@@ -323,7 +326,7 @@ Returns `fan_sentiment` (home/away narratives, breaking_news, buzz_level, narrat
 
 ## `worldcup-get-player-performance-context`
 
-Player-level context from API-Football fixture player stats + optional official FIFA Power Ranking. Official FIFA fields and Machina provisional signals are kept separate. Scale 0–10; eligibility requires `minutes_played >= 20`; the official ranking is usually pending ~4h post-match.
+Player-level context from API-Football fixture player stats plus the persisted final FIFA Power Ranking record matched by canonical player URN or name. Official FIFA fields and Machina provisional signals are kept separate. Scale 0–10; eligibility requires `minutes_played >= 20`. Passing `official_fifa_power_ranking` explicitly overrides the persisted record. `pending` is returned only when no verified official record exists; missing goalkeeper values are never inferred.
 
 ## Guardrails
 

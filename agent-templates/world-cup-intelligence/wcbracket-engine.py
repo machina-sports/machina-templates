@@ -75,7 +75,7 @@ _TEAM_SLUG_ALIASES = {
     "cote-d-ivoire": "ivory-coast", "cote-divoire": "ivory-coast", "ivory-coast-civ": "ivory-coast",
     "korea-republic": "south-korea", "republic-of-korea": "south-korea",
     "ir-iran": "iran", "iran-islamic-republic": "iran",
-    "czechia": "czech-republic", "turkey": "turkiye",
+    "czech-republic": "czechia", "turkey": "turkiye",
     "bosnia-and-herzegovina": "bosnia-herzegovina", "bosnia": "bosnia-herzegovina",
     "cape-verde": "cape-verde-islands",
     "dr-congo": "congo-dr", "democratic-republic-of-the-congo": "congo-dr",

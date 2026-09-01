@@ -1,0 +1,47 @@
+workflow:
+  name: worldcup-import-final-fifa-player-rankings
+  title: World Cup Intelligence - Import Final FIFA Player Power Rankings
+  description: |
+    Deterministically imports verified final FIFA World Cup 2026 player Power Ranking
+    records. Unknown official values remain pending and are never inferred.
+
+  context-variables:
+    debugger:
+      enabled: true
+  outputs:
+    imported_count: "2"
+    workflow-status: "'executed'"
+  tasks:
+    - type: document
+      name: import-final-player-rankings
+      description: Persist verified official values and explicit pending records by canonical player name.
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:final-fifa-player-power-ranking'"
+      documents:
+        items: |
+          [
+            {
+              '_id': 'world-cup-2026:player-power-ranking:vinicius',
+              'metadata': {'canonical_name': 'vinicius', 'competition': 'world-cup-2026'},
+              'canonical_name': 'Vinicius Junior',
+              'competition': 'FIFA World Cup 2026',
+              'status': 'available',
+              'source': 'fifa.com',
+              'classification': {'match_rank': None, 'tournament_rank': 7, 'category_rankings': []},
+              'scores': {'attacking': 6.99, 'creativity': 6.83, 'defending': 4.66, 'in_possession': None, 'defending_goal': None}
+            },
+            {
+              '_id': 'world-cup-2026:player-power-ranking:alisson',
+              'metadata': {'canonical_name': 'alisson', 'competition': 'world-cup-2026'},
+              'canonical_name': 'Alisson',
+              'competition': 'FIFA World Cup 2026',
+              'player_type': 'goalkeeper',
+              'status': 'pending',
+              'source': 'fifa.com',
+              'classification': {'match_rank': None, 'tournament_rank': None, 'category_rankings': []},
+              'scores': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}
+            }
+          ]
