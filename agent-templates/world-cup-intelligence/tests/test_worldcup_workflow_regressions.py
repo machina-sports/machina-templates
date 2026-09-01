@@ -501,6 +501,20 @@ def test_player_context_returns_partial_status_from_normalized_players():
     assert any("Official FIFA Power Ranking" in warning for warning in evaluate(workflow["outputs"]["warnings"], context))
 
 
+def test_player_context_final_not_ranked_is_terminal_not_pending():
+    workflow = _player_workflow()
+    context = {
+        "normalized_players": [{"player_id": "10", "eligible_for_power_ranking": None, "warnings": []}],
+        "normalize_warnings": [],
+        "resolved_official_fifa_power_ranking": {"status": "not_ranked"},
+    }
+
+    assert evaluate(workflow["outputs"]["status"], context) == "available"
+    warnings = evaluate(workflow["outputs"]["warnings"], context)
+    assert warnings == ["Resolved tournament player is absent from the completed FIFA leaderboard."]
+    assert all("pending" not in warning.lower() for warning in warnings)
+
+
 def test_player_context_returns_available_status_from_normalized_players():
     workflow = _player_workflow()
     context = {
@@ -523,6 +537,10 @@ def test_player_context_loads_and_selects_persisted_final_fifa_ranking():
     assert identity["filters"]["value.machina_competition_slug"] == "'world-cup-2026'"
     assert load_rankings["filters"]["name"] == "'worldcup:final-fifa-player-power-ranking'"
     assert select["inputs"]["override"] == "$.get('official_fifa_power_ranking', {})"
+    assert select["inputs"]["snapshot_manifest"] == "$.get('final_fifa_player_ranking_manifest', {})"
+    assert "tournament_minutes_played" not in workflow["inputs"]
+    assert "tournament_minutes_evidence" not in workflow["inputs"]
+    assert select["inputs"]["trusted_minutes_evidence"] == "$.get('player_identity', {}).get('tournament_minutes_evidence', {})"
     assert select["inputs"]["player_urn"] == "$.get('player_identity', {}).get('_id', '')"
     assert "normalized_players" in select["inputs"]["player_name"]
     assert merge["inputs"]["official_fifa_power_ranking"] == "$.get('resolved_official_fifa_power_ranking', {})"

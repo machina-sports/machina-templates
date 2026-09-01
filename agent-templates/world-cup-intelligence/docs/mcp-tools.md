@@ -100,7 +100,7 @@ Inputs:
 
 Returns:
 
-- `official_fifa_power_ranking`: source-labeled official FIFA fields, default `pending`
+- `official_fifa_power_ranking`: source-labeled official FIFA fields with final states `available`, `not_ranked`, `not_eligible`, or `unmatched`; `pending` only when the final snapshot is unavailable
 - `machina_provisional_performance_signal`: provider-backed 0-10 provisional scores with confidence/drivers
 - 20-minute eligibility status and warnings
 

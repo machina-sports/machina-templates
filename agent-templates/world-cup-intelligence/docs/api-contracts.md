@@ -114,7 +114,7 @@ Capability semantics:
 | resolve, schedule, standings, squads | `complete` when their data collection exists; otherwise `unavailable` |
 | event context | `complete` with enrichment, `partial` when event truth exists without enrichment, otherwise `unavailable` |
 | injuries | `partial` by default; `complete` only when the response explicitly carries `coverage_complete: true` |
-| player performance | `complete` only with eligible provider statistics and available official FIFA ranking; `partial` while official FIFA ranking is pending; otherwise `unavailable` |
+| player performance | `complete` with provider statistics and a terminal official final state (`available`, `not_ranked`, or proven `not_eligible`); unresolved identity is `partial`; `pending` is reserved for a missing final snapshot |
 | match forecast | `historical_model` when the stored model exists; otherwise `unavailable` |
 | forecast backtest | `historical_aggregate` when the aggregate exists; otherwise `unavailable`. The archive object also exposes `sample_size` and `cutoff`. |
 | match recap | `evergreen_editorial` when cached or generated; cached responses expose `generated_at` as `snapshot_as_of` |
@@ -129,7 +129,7 @@ Capability semantics:
 - `worldcup-sync-player-crosswalk` — rebuild player crosswalk (cron `0 6 * * *`)
 - `worldcup-sync-team-crosswalk`, `worldcup-sync-event-crosswalk`, `worldcup-sync-identity-crosswalk` — identity sync
 - `worldcup-seed-fifa-ranking` — bootstrap FIFA-ranking seed prior (occasional; grounded)
-- `worldcup-import-final-fifa-player-rankings` — deterministic import of verified final FIFA player Power Ranking values; unknown values remain explicitly pending
+- `worldcup-import-final-fifa-player-rankings` — deterministic, source-backed import of the completed 230-player FIFA leaderboard plus its validated snapshot manifest
 - `worldcup-sync-model-forecasts` — precompute model forecasts for upcoming events (daily/cold)
 - `worldcup-log-signals` — append-only CLV ledger writer: logs each value pick's entry price/model prob/edge (insert-only, keyed `{event_urn}:{outcome}`) so the closing line can be scored later (daily, after the forecast sync)
 - `worldcup-refresh-prematch-enrichment` — grounded prematch research onto event docs
@@ -142,7 +142,7 @@ Capability semantics:
 - **`get-market-state`** — live from the source (current price, order book, history, trades).
 - **`market-movers`** — computed from the hourly `worldcup:market-snapshot` time series; needs ≥2 hourly buckets to show movement.
 - **`get-match-forecast`** — archived probabilities from `worldcup:model-forecast`; the model-vs-market comparison uses preserved market-cache evidence.
-- **Stores added by this layer:** `worldcup:model-forecast` (`_id` = canonical event URN), `worldcup:forecast-audit` (`_id` = canonical event URN; `…:aggregate` singleton), `worldcup:fifa-ranking` (`_id` = team URN), `worldcup:final-fifa-player-power-ranking` (verified or explicitly pending final player records), `worldcup:signal-ledger` (`_id` = `{event_urn}:{outcome}`; one row per logged value pick), `worldcup:clv-report` (`…:aggregate` singleton).
+- **Stores added by this layer:** `worldcup:model-forecast` (`_id` = canonical event URN), `worldcup:forecast-audit` (`_id` = canonical event URN; `…:aggregate` singleton), `worldcup:fifa-ranking` (`_id` = team URN), `worldcup:final-fifa-player-power-ranking` (230 published final player records plus one source manifest), `worldcup:signal-ledger` (`_id` = `{event_urn}:{outcome}`; one row per logged value pick), `worldcup:clv-report` (`…:aggregate` singleton).
 
 Identity aliases are migration-safe and deterministic: both `Czech Republic` and `Czechia` resolve to `urn:machina:sport:soccer:team:czechia:cze`. Forecast and audit builders deduplicate legacy/new alias documents by API-Football fixture id and emit the canonical Czechia event URN, preventing duplicate archive records without deleting legacy source documents.
 
@@ -326,7 +326,7 @@ Returns `fan_sentiment` (home/away narratives, breaking_news, buzz_level, narrat
 
 ## `worldcup-get-player-performance-context`
 
-Player-level context from API-Football fixture player stats plus the persisted final FIFA Power Ranking record matched by canonical player URN or name. Official FIFA fields and Machina provisional signals are kept separate. Scale 0–10; eligibility requires `minutes_played >= 20`. Passing `official_fifa_power_ranking` explicitly overrides the persisted record. `pending` is returned only when no verified official record exists; missing goalkeeper values are never inferred.
+Player-level context from API-Football fixture player stats plus the persisted final FIFA Power Ranking record matched by canonical player URN or name. Official FIFA fields and Machina provisional signals are kept separate. Scale 0–10. A published official row is `available`; a resolved tournament player absent from the completed leaderboard is `not_ranked`; `not_eligible` requires trusted tournament-minute evidence loaded from the internal player identity document. Callers cannot supply that evidence, and fixture-only minutes never prove tournament ineligibility. Unresolved identity is `unmatched`; `pending` is used only when the completed snapshot manifest is unavailable. Passing `official_fifa_power_ranking` explicitly overrides the persisted record.
 
 ## Guardrails
 

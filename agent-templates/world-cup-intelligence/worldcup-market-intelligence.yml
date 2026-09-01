@@ -42,6 +42,8 @@ connector:
       value: "merge_official_and_provisional_performance"
     - name: "Select official player Power Ranking"
       value: "select_official_player_power_ranking"
+    - name: "Import final FIFA player Power Rankings"
+      value: "import_final_fifa_player_power_rankings"
     - name: "Normalize identity crosswalk"
       value: "normalize_identity_crosswalk"
     - name: "Mint event identity"
