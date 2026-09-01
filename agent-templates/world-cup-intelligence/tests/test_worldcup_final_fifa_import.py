@@ -1,5 +1,6 @@
 """Regression coverage for the immutable final FIFA player leaderboard import."""
 
+import gzip
 import hashlib
 import importlib.util
 import json
@@ -9,6 +10,8 @@ import pytest
 
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "worldcup-market-intelligence.py"
+FIXTURE_PATH = Path(__file__).resolve().parent / "fixtures" / "fifa-final-power-ranking-285023.json.gz"
+FIXTURE_SHA256 = "5192eeb55a3b9a957f1f3951a0c757b00da608a3bcb10a13641627fb14dc0735"
 SPEC = importlib.util.spec_from_file_location("worldcup_final_fifa_import", MODULE_PATH)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
@@ -103,6 +106,23 @@ def _import(snapshot, identities):
     }})["data"]
 
 
+def test_committed_live_fixture_has_exact_raw_hash_gates_counts_and_ids():
+    with gzip.open(FIXTURE_PATH, "rb") as fixture:
+        raw = fixture.read()
+    payload = json.loads(raw)
+    outfield = payload["outfieldPlayers"]
+    goalkeepers = payload["goalkeepers"]
+    player_ids = [str(row["playerId"]) for row in outfield + goalkeepers]
+
+    assert hashlib.sha256(raw).hexdigest() == FIXTURE_SHA256 == MODULE.FIFA_FINAL_SHA256
+    assert payload["competitionId"] == MODULE.FIFA_FINAL_COMPETITION_ID == 285023
+    assert payload["nMatches"] == MODULE.FIFA_FINAL_MATCH_COUNT == 104
+    assert payload["competitionStage"] == "Final"
+    assert len(outfield) == MODULE.FIFA_FINAL_OUTFIELD_COUNT == 202
+    assert len(goalkeepers) == MODULE.FIFA_FINAL_GOALKEEPER_COUNT == 28
+    assert len(player_ids) == len(set(player_ids)) == 230
+
+
 def test_final_import_maps_every_field_and_preserves_separate_player_schemas():
     snapshot, identities = _snapshot()
     result = _import(snapshot, identities)
@@ -111,7 +131,7 @@ def test_final_import_maps_every_field_and_preserves_separate_player_schemas():
     assert len(result["records"]) == 230
     assert len(result["documents"]) == 231
     vinicius = next(record for record in result["records"] if record["source_player_name"] == "VINICIUS JUNIOR")
-    assert vinicius["_id"] == "world-cup-2026:player-power-ranking:vinicius"
+    assert vinicius["_id"] == "world-cup-2026:player-power-ranking:405742"
     assert vinicius["status"] == "available"
     assert vinicius["player_type"] == "outfield"
     assert vinicius["scores"] == {
@@ -126,7 +146,7 @@ def test_final_import_maps_every_field_and_preserves_separate_player_schemas():
     ]
 
     alisson = next(record for record in result["records"] if record["source_player_name"] == "ALISSON")
-    assert alisson["_id"] == "world-cup-2026:player-power-ranking:alisson"
+    assert alisson["_id"] == "world-cup-2026:player-power-ranking:308370"
     assert alisson["status"] == "available"
     assert alisson["player_type"] == "goalkeeper"
     assert alisson["scores"] == {
@@ -160,6 +180,38 @@ def test_final_import_manifest_has_hash_counts_and_zero_identity_gaps():
     assert result["source_accounting"]["unresolved_identities"] == 0
     assert result["source_accounting"]["ambiguous_identities"] == 0
     assert result["source_accounting"]["resolution_methods"] == {"fifa_id": 230}
+    assert len({record["player_urn"] for record in result["records"]}) == 230
+    assert result["manifest"]["metadata"] == {
+        "competition": "world-cup-2026",
+        "record_type": "snapshot_manifest",
+        "snapshot_id": "fifa:285023:final",
+    }
+
+
+def test_document_metadata_upsert_keys_round_trip_without_duplicates():
+    snapshot, identities = _snapshot()
+    store = {}
+
+    for _ in range(2):
+        documents = json.loads(json.dumps(_import(snapshot, identities)["documents"]))
+        for document in documents:
+            key = (
+                "worldcup:final-fifa-player-power-ranking",
+                json.dumps(document.get("metadata", {}), sort_keys=True),
+            )
+            store[key] = document
+
+    assert len(store) == 231
+    assert len({key[1] for key in store}) == 231
+    assert sum(document["record_type"] == "snapshot_manifest" for document in store.values()) == 1
+
+
+def test_final_import_rejects_non_injective_player_urn_resolution():
+    snapshot, identities = _snapshot()
+    identities[1]["_id"] = identities[0]["_id"]
+
+    with pytest.raises(ValueError, match="duplicate canonical player_urn"):
+        _import(snapshot, identities)
 
 
 @pytest.mark.parametrize("fifa_iso,canonical_iso", [
@@ -270,6 +322,29 @@ def test_identity_resolution_fails_closed_when_name_and_team_are_ambiguous():
         MODULE._resolve_fifa_player_identity(row, players, {})
 
 
+def test_team_name_is_used_when_fifa_flag_code_is_unmapped():
+    row = _outfield(1, "Test Player", "ZZZ")
+    row["teamName"] = _names("Brazil")
+
+    assert MODULE._fifa_team_iso(row) == "bra"
+
+
+def test_import_resolves_unique_exact_name_and_team_without_detail_calls(monkeypatch):
+    snapshot, identities = _snapshot()
+    for identity in identities:
+        identity["provider_ids"] = {}
+
+    def unexpected_fetch(*_args, **_kwargs):
+        raise AssertionError("safe no-detail identity resolution should avoid detail fetches")
+
+    monkeypatch.setattr(MODULE, "_fetch_fifa_json", unexpected_fetch)
+    result = _import(snapshot, identities)
+
+    assert result["published_count"] == 230
+    assert result["source_accounting"]["detail_fetches"] == 0
+    assert result["source_accounting"]["resolution_methods"] == {"name_team": 230}
+
+
 @pytest.mark.parametrize("field,value", [
     ("competitionId", 999), ("nMatches", 103), ("competitionStage", "Semi-final"),
 ])
@@ -338,3 +413,59 @@ def test_http_fetch_has_bounded_timeout_and_explicit_user_agent(monkeypatch):
     assert payload == {"ok": True}
     assert raw == b'{"ok":true}'
     assert observed == {"user_agent": MODULE.FIFA_HTTP_USER_AGENT, "timeout": 30.0}
+
+
+def test_http_fetch_retries_with_bounded_exponential_backoff(monkeypatch):
+    attempts = []
+    sleeps = []
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b'{"ok":true}'
+
+    def flaky_urlopen(_request, timeout):
+        attempts.append(timeout)
+        if len(attempts) < 3:
+            raise TimeoutError("transient")
+        return Response()
+
+    monkeypatch.setattr(MODULE.urllib_request, "urlopen", flaky_urlopen)
+    monkeypatch.setattr(MODULE.time, "sleep", sleeps.append)
+
+    payload, _ = MODULE._fetch_fifa_json("https://example.test/data.json", 10, attempts=9, backoff_seconds=3)
+
+    assert payload == {"ok": True}
+    assert attempts == [10.0, 10.0, 10.0]
+    assert sleeps == [2.0, 2.0]
+
+
+def test_detail_fetch_failures_are_sorted_and_fail_closed(monkeypatch):
+    snapshot, identities = _snapshot()
+    failed_ids = [str(snapshot["outfieldPlayers"][1]["playerId"]), str(snapshot["outfieldPlayers"][0]["playerId"])]
+    for index in (0, 1):
+        identities[index]["provider_ids"] = {}
+        identities[index]["name"] = f"Unmatched Identity {index}"
+
+    def failed_fetch(*_args, **_kwargs):
+        raise TimeoutError("provider-specific unstable text")
+
+    monkeypatch.setattr(MODULE, "_fetch_fifa_json", failed_fetch)
+    raw = json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+    with pytest.raises(
+        RuntimeError,
+        match=f"playerIds={','.join(sorted(failed_ids, key=int))}$",
+    ):
+        MODULE.import_final_fifa_player_power_rankings({"params": {
+            "source_payload": snapshot,
+            "expected_sha256": hashlib.sha256(raw).hexdigest(),
+            "players": identities,
+            "fetch_attempts": 1,
+            "retry_backoff_seconds": 0,
+        }})

@@ -14,8 +14,6 @@ workflow:
     player_id: "$.get('player_id', '')"
     team_id: "$.get('team_id', '')"
     official_fifa_power_ranking: "$.get('official_fifa_power_ranking', {})"
-    tournament_minutes_played: "$.get('tournament_minutes_played')"
-    tournament_minutes_evidence: "$.get('tournament_minutes_evidence', False)"
   outputs:
     player_performance_context: "$.get('player_performance_context', {}) or {'event': $.get('event_document', {}), 'player': {}, 'official_fifa_power_ranking': ($.get('resolved_official_fifa_power_ranking', {}) or {'status': 'pending', 'source': 'fifa.com', 'scores': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}}), 'machina_provisional_performance_signal': {'status': 'unavailable', 'source_quality': 'unavailable', 'confidence': 0.0, 'scores_0_10': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}, 'drivers': [], 'warnings': ['No normalized player data supplied.']}, 'context_and_evidence': {'fallback_path': [], 'citations': [], 'missing_info_flags': ($.get('normalize_warnings', []) or []), 'freshness': {'provider_stats_fetched': False, 'official_fifa_expected_lag_hours': 4}}}"
     status: "'available' if len($.get('normalized_players', [])) > 0 and ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') in ('available', 'not_ranked', 'not_eligible') else ('partial' if len($.get('normalized_players', [])) > 0 or ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') in ('available', 'not_ranked', 'not_eligible', 'unmatched') else 'unavailable')"
@@ -133,9 +131,7 @@ workflow:
         player_name: "$.get('player_identity', {}).get('name') or ($.get('normalized_players', []) or [{}])[0].get('name', '')"
         identity_resolved: "$.get('player_identity', {}) != {}"
         tournament_player: "$.get('player_identity', {}).get('machina_competition_slug') == 'world-cup-2026'"
-        minutes_played: "$.get('tournament_minutes_played') if $.get('tournament_minutes_evidence', False) else ($.get('normalized_players', []) or [{}])[0].get('minutes_played')"
-        minutes_evidence: "$.get('tournament_minutes_evidence', False)"
-        minutes_evidence_scope: "'tournament' if $.get('tournament_minutes_evidence', False) else 'fixture'"
+        trusted_minutes_evidence: "$.get('player_identity', {}).get('tournament_minutes_evidence', {})"
       outputs:
         resolved_official_fifa_power_ranking: "$.get('official_fifa_power_ranking', {})"
 

@@ -47,7 +47,7 @@ workflow:
 
     - type: document
       name: import-final-player-rankings
-      description: Persist exactly 230 validated player rows plus their snapshot manifest in one bulk operation; normalized-name ids replace migration placeholders.
+      description: Persist exactly 230 validated player rows plus their snapshot manifest in one bulk operation using FIFA-ID document ids and stable per-item metadata upsert keys.
       condition: "$.get('published_count', 0) == 230 and len($.get('final_ranking_documents', [])) == 231"
       config:
         action: bulk-update
