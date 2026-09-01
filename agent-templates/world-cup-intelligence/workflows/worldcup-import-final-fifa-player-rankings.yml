@@ -2,9 +2,9 @@ workflow:
   name: worldcup-import-final-fifa-player-rankings
   title: World Cup Intelligence - Import Final FIFA Player Power Rankings
   description: |
-    Fetches, resolves, validates, and atomically imports the immutable final FIFA
-    World Cup 2026 player Power Ranking snapshot. Any source drift or unresolved
-    canonical identity aborts before persistence.
+    Fetches, resolves, validates, and imports the immutable final FIFA World Cup
+    2026 player Power Ranking snapshot. Missing ranked identities are created only
+    from complete official FIFA detail before the ranking records are persisted.
 
   context-variables:
     debugger:
@@ -41,9 +41,24 @@ workflow:
         players: "$.get('player_crosswalk', [])"
       outputs:
         final_ranking_documents: "$.get('documents', [])"
+        identity_documents: "$.get('identity_documents', [])"
         published_count: "$.get('published_count', 0)"
         source_accounting: "$.get('source_accounting', {})"
         snapshot_manifest: "$.get('manifest', {})"
+
+    - type: document
+      name: upsert-missing-player-identities
+      description: Persist safely minted FIFA player identities before any ranking record references them.
+      condition: "$.get('published_count', 0) == 230 and len($.get('final_ranking_documents', [])) == 231 and len($.get('identity_documents', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:identity-crosswalk'"
+      documents:
+        items: "$.get('identity_documents', [])"
+      inputs:
+        identity_documents: "$.get('identity_documents', [])"
 
     - type: document
       name: import-final-player-rankings
