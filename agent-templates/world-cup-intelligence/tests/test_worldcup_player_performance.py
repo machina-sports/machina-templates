@@ -314,17 +314,20 @@ def test_select_official_ranking_uses_final_terminal_states_after_snapshot():
         "player_urn": "urn:player:ineligible",
         "identity_resolved": True,
         "tournament_player": True,
-        "minutes_evidence": True,
-        "minutes_evidence_scope": "tournament",
-        "minutes_played": 19,
+        "trusted_minutes_evidence": {
+            "trusted": True,
+            "scope": "tournament",
+            "minutes_played": 19,
+        },
     }})["data"]["official_fifa_power_ranking"]
     unknown_minutes = select_official_player_power_ranking({"params": {
         **base,
         "player_urn": "urn:player:unknown-minutes",
         "identity_resolved": True,
         "tournament_player": True,
-        "minutes_evidence": False,
-        "minutes_played": None,
+        "minutes_evidence": True,
+        "minutes_evidence_scope": "tournament",
+        "minutes_played": 0,
     }})["data"]["official_fifa_power_ranking"]
 
     assert unmatched["status"] == "unmatched"
@@ -377,8 +380,7 @@ def test_published_official_record_is_available_even_with_low_match_minutes():
         "player_urn": "urn:player:alisson",
         "identity_resolved": True,
         "tournament_player": True,
-        "minutes_evidence": True,
-        "minutes_played": 0,
+        "trusted_minutes_evidence": {"trusted": True, "scope": "tournament", "minutes_played": 0},
     }})["data"]["official_fifa_power_ranking"]
 
     assert result is record

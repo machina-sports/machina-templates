@@ -538,7 +538,9 @@ def test_player_context_loads_and_selects_persisted_final_fifa_ranking():
     assert load_rankings["filters"]["name"] == "'worldcup:final-fifa-player-power-ranking'"
     assert select["inputs"]["override"] == "$.get('official_fifa_power_ranking', {})"
     assert select["inputs"]["snapshot_manifest"] == "$.get('final_fifa_player_ranking_manifest', {})"
-    assert "tournament_minutes_evidence" in select["inputs"]["minutes_evidence_scope"]
+    assert "tournament_minutes_played" not in workflow["inputs"]
+    assert "tournament_minutes_evidence" not in workflow["inputs"]
+    assert select["inputs"]["trusted_minutes_evidence"] == "$.get('player_identity', {}).get('tournament_minutes_evidence', {})"
     assert select["inputs"]["player_urn"] == "$.get('player_identity', {}).get('_id', '')"
     assert "normalized_players" in select["inputs"]["player_name"]
     assert merge["inputs"]["official_fifa_power_ranking"] == "$.get('resolved_official_fifa_power_ranking', {})"

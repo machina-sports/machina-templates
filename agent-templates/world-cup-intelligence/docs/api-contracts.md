@@ -326,7 +326,7 @@ Returns `fan_sentiment` (home/away narratives, breaking_news, buzz_level, narrat
 
 ## `worldcup-get-player-performance-context`
 
-Player-level context from API-Football fixture player stats plus the persisted final FIFA Power Ranking record matched by canonical player URN or name. Official FIFA fields and Machina provisional signals are kept separate. Scale 0–10. A published official row is `available`; a resolved tournament player absent from the completed leaderboard is `not_ranked`; `not_eligible` requires `tournament_minutes_evidence: true` with proven `tournament_minutes_played < 20`; unresolved identity is `unmatched`. Fixture-only minutes never prove tournament ineligibility. `pending` is used only when the completed snapshot manifest is unavailable. Passing `official_fifa_power_ranking` explicitly overrides the persisted record.
+Player-level context from API-Football fixture player stats plus the persisted final FIFA Power Ranking record matched by canonical player URN or name. Official FIFA fields and Machina provisional signals are kept separate. Scale 0–10. A published official row is `available`; a resolved tournament player absent from the completed leaderboard is `not_ranked`; `not_eligible` requires trusted tournament-minute evidence loaded from the internal player identity document. Callers cannot supply that evidence, and fixture-only minutes never prove tournament ineligibility. Unresolved identity is `unmatched`; `pending` is used only when the completed snapshot manifest is unavailable. Passing `official_fifa_power_ranking` explicitly overrides the persisted record.
 
 ## Guardrails
 
