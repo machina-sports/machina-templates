@@ -148,24 +148,24 @@ def test_injuries_do_not_infer_complete_coverage_from_an_empty_feed():
     assert explicit["missing_capabilities"] == []
 
 
-def test_performance_remains_partial_while_official_fifa_ranking_is_pending():
-    pending = archive("worldcup-get-player-performance-context", {
+def test_performance_exposes_completed_fifa_final_states():
+    not_ranked = archive("worldcup-get-player-performance-context", {
         "normalized_players": [{"eligible_for_power_ranking": True}],
-        "resolved_official_fifa_power_ranking": {"status": "pending"},
+        "resolved_official_fifa_power_ranking": {"status": "not_ranked"},
     })
     ineligible = archive("worldcup-get-player-performance-context", {
         "normalized_players": [{"eligible_for_power_ranking": False}],
-        "resolved_official_fifa_power_ranking": {"status": "available"},
+        "resolved_official_fifa_power_ranking": {"status": "not_eligible"},
     })
     official_only = archive("worldcup-get-player-performance-context", {
         "normalized_players": [],
         "resolved_official_fifa_power_ranking": {"status": "available"},
     })
 
-    assert pending["capability_status"] == "partial"
-    assert "official_fifa_power_ranking" in pending["missing_capabilities"]
-    assert ineligible["capability_status"] == "partial"
-    assert "eligible_player_sample" in ineligible["missing_capabilities"]
+    assert not_ranked["capability_status"] == "complete"
+    assert not_ranked["missing_capabilities"] == []
+    assert ineligible["capability_status"] == "complete"
+    assert ineligible["missing_capabilities"] == []
     assert official_only["capability_status"] == "partial"
     assert "provider_player_statistics" in official_only["missing_capabilities"]
 
@@ -253,28 +253,18 @@ def test_cached_editorial_statuses_expose_generated_at_without_fabrication():
     assert generated_spotlight["snapshot_as_of"] is None
 
 
-def test_final_player_ranking_import_contains_only_verified_values():
+def test_final_player_ranking_import_is_source_backed_and_atomic():
     workflow = yaml.safe_load(
         (WORKFLOW_DIR / "worldcup-import-final-fifa-player-rankings.yml").read_text(encoding="utf-8")
     )["workflow"]
-    items = evaluate(task(workflow, "import-final-player-rankings")["documents"]["items"], {})
-    by_name = {item["canonical_name"]: item for item in items}
+    prepare = task(workflow, "prepare-final-player-rankings")
+    save = task(workflow, "import-final-player-rankings")
 
-    vinicius = by_name["Vinicius Junior"]
-    assert vinicius["status"] == "available"
-    assert vinicius["classification"]["tournament_rank"] == 7
-    assert vinicius["scores"] == {
-        "attacking": 6.99,
-        "creativity": 6.83,
-        "defending": 4.66,
-        "in_possession": None,
-        "defending_goal": None,
-    }
-    alisson = by_name["Alisson"]
-    assert alisson["player_type"] == "goalkeeper"
-    assert alisson["status"] == "pending"
-    assert alisson["classification"]["tournament_rank"] is None
-    assert all(value is None for value in alisson["scores"].values())
+    assert prepare["connector"]["command"] == "import_final_fifa_player_power_rankings"
+    assert prepare["inputs"]["source_url"] == "'https://fdh-api.fifa.com/v1/powerranking/season/285023.json'"
+    assert save["documents"]["items"] == "$.get('final_ranking_documents', [])"
+    assert "published_count" in save["condition"]
+    assert "231" in save["condition"]
 
 
 def test_spotlight_adds_tournament_overview_without_removing_legacy_outputs():

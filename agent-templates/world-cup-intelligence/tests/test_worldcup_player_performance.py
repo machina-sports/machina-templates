@@ -79,6 +79,20 @@ def test_apply_power_ranking_eligibility_enforces_twenty_minutes():
     assert "below FIFA minimum" in ineligible["warnings"][0]
 
 
+def test_missing_minutes_do_not_prove_ineligibility():
+    eligibility = apply_power_ranking_eligibility({"params": {}})["data"]
+    player = normalize_player_match_stats({"params": {
+        "players": [_player_stats(statistics=[{"games": {"position": "F"}}])]
+    }})["data"]["players"][0]
+
+    assert eligibility["minutes_played"] is None
+    assert eligibility["minutes_evidence"] is False
+    assert eligibility["eligible_for_power_ranking"] is None
+    assert player["minutes_played"] is None
+    assert player["minutes_evidence"] is False
+    assert player["eligible_for_power_ranking"] is None
+
+
 def test_score_provisional_player_performance_returns_outfield_scores_with_drivers():
     player = normalize_player_match_stats({"params": {"players": [_player_stats()]}})["data"]["players"][0]
     result = score_provisional_player_performance({"params": {"player": player}})
@@ -185,15 +199,19 @@ def test_merge_official_and_provisional_preserves_official_scores_when_available
 def test_select_official_ranking_matches_persisted_record_by_canonical_name():
     record = {
         "_id": "world-cup-2026:player-power-ranking:vinicius",
+        "record_type": "player_power_ranking",
         "canonical_name": "Vinicius Junior",
         "status": "available",
         "source": "fifa.com",
+        "source_snapshot": {"sha256": "snapshot-hash"},
         "classification": {"tournament_rank": 7},
         "scores": {"attacking": 6.99, "creativity": 6.83, "defending": 4.66},
     }
     result = select_official_player_power_ranking({"params": {
         "player_name": "Vinícius Júnior",
-        "records": [record],
+        "identity_resolved": True,
+        "records": [record] + _complete_records()[:229],
+        "snapshot_manifest": _complete_manifest(),
     }})["data"]["official_fifa_power_ranking"]
 
     assert result == record
@@ -202,15 +220,37 @@ def test_select_official_ranking_matches_persisted_record_by_canonical_name():
 def test_select_official_ranking_matches_persisted_record_by_player_urn():
     record = {
         "_id": "world-cup-2026:player-power-ranking:someone",
+        "record_type": "player_power_ranking",
         "player_urn": "urn:machina:sport:soccer:player:someone:20000101:bra",
         "canonical_name": "Different Display Name",
         "status": "available",
+        "source_snapshot": {"sha256": "snapshot-hash"},
     }
     result = select_official_player_power_ranking({"params": {
-        "player_urn": record["player_urn"], "player_name": "Someone", "records": [record],
+        "player_urn": record["player_urn"],
+        "player_name": "Someone",
+        "records": [record] + _complete_records()[:229],
+        "snapshot_manifest": _complete_manifest(),
     }})["data"]["official_fifa_power_ranking"]
 
     assert result == record
+
+
+def test_select_official_ranking_never_name_matches_an_unresolved_identity():
+    record = {
+        "record_type": "player_power_ranking",
+        "canonical_name": "Same Name",
+        "status": "available",
+        "source_snapshot": {"sha256": "snapshot-hash"},
+    }
+    result = select_official_player_power_ranking({"params": {
+        "player_name": "Same Name",
+        "identity_resolved": False,
+        "records": [record] + _complete_records()[:229],
+        "snapshot_manifest": _complete_manifest(),
+    }})["data"]["official_fifa_power_ranking"]
+
+    assert result["status"] == "unmatched"
 
 
 def test_select_official_ranking_preserves_explicit_override():
@@ -233,3 +273,113 @@ def test_select_official_ranking_is_pending_when_no_verified_record_exists():
     assert result["status"] == "pending"
     assert result["classification"]["tournament_rank"] is None
     assert all(value is None for value in result["scores"].values())
+
+
+def _complete_manifest():
+    return {
+        "status": "complete",
+        "source_snapshot": {"messageTimeUtc": "2026-07-20T00:28:49.92294Z", "sha256": "snapshot-hash"},
+        "source_accounting": {"published_rows": 230},
+    }
+
+
+def _complete_records():
+    return [
+        {
+            "record_type": "player_power_ranking",
+            "canonical_name": f"Published Player {index}",
+            "status": "available",
+            "source_snapshot": {"sha256": "snapshot-hash"},
+        }
+        for index in range(230)
+    ]
+
+
+def test_select_official_ranking_uses_final_terminal_states_after_snapshot():
+    base = {
+        "records": _complete_records(),
+        "snapshot_manifest": _complete_manifest(),
+        "player_name": "Absent Player",
+    }
+
+    unmatched = select_official_player_power_ranking({"params": base})["data"]["official_fifa_power_ranking"]
+    not_ranked = select_official_player_power_ranking({"params": {
+        **base,
+        "player_urn": "urn:player:absent",
+        "identity_resolved": True,
+        "tournament_player": True,
+    }})["data"]["official_fifa_power_ranking"]
+    not_eligible = select_official_player_power_ranking({"params": {
+        **base,
+        "player_urn": "urn:player:ineligible",
+        "identity_resolved": True,
+        "tournament_player": True,
+        "minutes_evidence": True,
+        "minutes_evidence_scope": "tournament",
+        "minutes_played": 19,
+    }})["data"]["official_fifa_power_ranking"]
+    unknown_minutes = select_official_player_power_ranking({"params": {
+        **base,
+        "player_urn": "urn:player:unknown-minutes",
+        "identity_resolved": True,
+        "tournament_player": True,
+        "minutes_evidence": False,
+        "minutes_played": None,
+    }})["data"]["official_fifa_power_ranking"]
+
+    assert unmatched["status"] == "unmatched"
+    assert not_ranked["status"] == "not_ranked"
+    assert not_eligible["status"] == "not_eligible"
+    assert unknown_minutes["status"] == "not_ranked"
+    assert "pending" not in {unmatched["status"], not_ranked["status"], not_eligible["status"]}
+
+
+def test_incomplete_or_hash_mixed_snapshot_cannot_prove_final_absence():
+    records = _complete_records()[:229]
+    incomplete = select_official_player_power_ranking({"params": {
+        "records": records,
+        "snapshot_manifest": _complete_manifest(),
+        "player_urn": "urn:player:absent",
+        "identity_resolved": True,
+        "tournament_player": True,
+    }})["data"]["official_fifa_power_ranking"]
+    records.append({
+        "record_type": "player_power_ranking",
+        "canonical_name": "Mixed Hash",
+        "status": "available",
+        "source_snapshot": {"sha256": "other-hash"},
+    })
+    mixed = select_official_player_power_ranking({"params": {
+        "records": records,
+        "snapshot_manifest": _complete_manifest(),
+        "player_urn": "urn:player:absent",
+        "identity_resolved": True,
+        "tournament_player": True,
+    }})["data"]["official_fifa_power_ranking"]
+
+    assert incomplete["status"] == "pending"
+    assert mixed["status"] == "pending"
+
+
+def test_published_official_record_is_available_even_with_low_match_minutes():
+    record = {
+        "record_type": "player_power_ranking",
+        "player_urn": "urn:player:alisson",
+        "canonical_name": "Alisson",
+        "status": "available",
+        "player_type": "goalkeeper",
+        "source_snapshot": {"sha256": "snapshot-hash"},
+        "scores": {"in_possession": 4.4563, "defending_goal": 5.4481},
+    }
+    result = select_official_player_power_ranking({"params": {
+        "records": [record] + _complete_records()[:229],
+        "snapshot_manifest": _complete_manifest(),
+        "player_urn": "urn:player:alisson",
+        "identity_resolved": True,
+        "tournament_player": True,
+        "minutes_evidence": True,
+        "minutes_played": 0,
+    }})["data"]["official_fifa_power_ranking"]
+
+    assert result is record
+    assert result["status"] == "available"

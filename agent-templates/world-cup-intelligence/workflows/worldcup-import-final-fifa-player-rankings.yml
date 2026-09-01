@@ -2,47 +2,59 @@ workflow:
   name: worldcup-import-final-fifa-player-rankings
   title: World Cup Intelligence - Import Final FIFA Player Power Rankings
   description: |
-    Deterministically imports verified final FIFA World Cup 2026 player Power Ranking
-    records. Unknown official values remain pending and are never inferred.
+    Fetches, resolves, validates, and atomically imports the immutable final FIFA
+    World Cup 2026 player Power Ranking snapshot. Any source drift or unresolved
+    canonical identity aborts before persistence.
 
   context-variables:
     debugger:
       enabled: true
   outputs:
-    imported_count: "2"
-    workflow-status: "'executed'"
+    imported_count: "$.get('published_count', 0)"
+    source_accounting: "$.get('source_accounting', {})"
+    snapshot_manifest: "$.get('snapshot_manifest', {})"
+    workflow-status: "'executed' if $.get('published_count', 0) == 230 else 'skipped'"
   tasks:
     - type: document
+      name: load-player-crosswalk
+      description: Load the persisted World Cup tournament player identities used for fail-closed canonical resolution.
+      config:
+        action: search
+        search-limit: 5000
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        value._id: {"$regex": "^urn:machina:sport:soccer:player:"}
+        value.machina_competition_slug: "'world-cup-2026'"
+      outputs:
+        player_crosswalk: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: prepare-final-player-rankings
+      description: Direct-fetch the official snapshot and player details, resolve all identities, and validate the complete publication before any write.
+      connector:
+        name: worldcup-market-intelligence
+        command: import_final_fifa_player_power_rankings
+      inputs:
+        source_url: "'https://fdh-api.fifa.com/v1/powerranking/season/285023.json'"
+        timeout_seconds: "10"
+        players: "$.get('player_crosswalk', [])"
+      outputs:
+        final_ranking_documents: "$.get('documents', [])"
+        published_count: "$.get('published_count', 0)"
+        source_accounting: "$.get('source_accounting', {})"
+        snapshot_manifest: "$.get('manifest', {})"
+
+    - type: document
       name: import-final-player-rankings
-      description: Persist verified official values and explicit pending records by canonical player name.
+      description: Persist exactly 230 validated player rows plus their snapshot manifest in one bulk operation; normalized-name ids replace migration placeholders.
+      condition: "$.get('published_count', 0) == 230 and len($.get('final_ranking_documents', [])) == 231"
       config:
         action: bulk-update
         embed-vector: false
         force-update: true
       document_name: "'worldcup:final-fifa-player-power-ranking'"
       documents:
-        items: |
-          [
-            {
-              '_id': 'world-cup-2026:player-power-ranking:vinicius',
-              'metadata': {'canonical_name': 'vinicius', 'competition': 'world-cup-2026', 'player_urn': 'urn:machina:sport:soccer:player:vinicius:20000712:bra'},
-              'player_urn': 'urn:machina:sport:soccer:player:vinicius:20000712:bra',
-              'canonical_name': 'Vinicius Junior',
-              'competition': 'FIFA World Cup 2026',
-              'status': 'available',
-              'source': 'fifa.com',
-              'classification': {'match_rank': None, 'tournament_rank': 7, 'category_rankings': []},
-              'scores': {'attacking': 6.99, 'creativity': 6.83, 'defending': 4.66, 'in_possession': None, 'defending_goal': None}
-            },
-            {
-              '_id': 'world-cup-2026:player-power-ranking:alisson',
-              'metadata': {'canonical_name': 'alisson', 'competition': 'world-cup-2026'},
-              'canonical_name': 'Alisson',
-              'competition': 'FIFA World Cup 2026',
-              'player_type': 'goalkeeper',
-              'status': 'pending',
-              'source': 'fifa.com',
-              'classification': {'match_rank': None, 'tournament_rank': None, 'category_rankings': []},
-              'scores': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}
-            }
-          ]
+        items: "$.get('final_ranking_documents', [])"
+      inputs:
+        final_ranking_documents: "$.get('final_ranking_documents', [])"

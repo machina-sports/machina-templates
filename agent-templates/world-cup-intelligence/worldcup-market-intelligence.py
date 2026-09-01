@@ -9,11 +9,14 @@ from __future__ import annotations
 
 import difflib
 import hashlib
+import json
 import math
 import re
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib import request as urllib_request
 
 
 WORLD_CUP_TERMS = (
@@ -1514,6 +1517,37 @@ FIFA_POWER_SCORE_KEYS = ["attacking", "creativity", "defending", "in_possession"
 OUTFIELD_POWER_CATEGORIES = ["attacking", "creativity", "defending"]
 GOALKEEPER_POWER_CATEGORIES = ["in_possession", "defending_goal"]
 FIFA_POWER_MIN_MINUTES = 20
+FIFA_FINAL_POWER_RANKING_URL = "https://fdh-api.fifa.com/v1/powerranking/season/285023.json"
+FIFA_PLAYER_DETAIL_URL = "https://api.fifa.com/api/v3/players/{player_id}"
+FIFA_FINAL_COMPETITION_ID = 285023
+FIFA_FINAL_MATCH_COUNT = 104
+FIFA_FINAL_OUTFIELD_COUNT = 202
+FIFA_FINAL_GOALKEEPER_COUNT = 28
+FIFA_FINAL_SHA256 = "5192eeb55a3b9a957f1f3951a0c757b00da608a3bcb10a13641627fb14dc0735"
+FIFA_HTTP_USER_AGENT = "MachinaSports-WorldCupIntelligence/1.0"
+
+_FIFA_OUTFIELD_FIELDS = {
+    "teamId", "teamName", "teamFlag", "playerId", "playerName", "playerPicture",
+    "attackingRank", "attackingScore", "attackingRankChange", "attackingRankWithinTeam",
+    "defensiveRank", "defensiveScore", "defensiveRankChange", "defensiveRankWithinTeam",
+    "creativityRank", "creativityScore", "creativityRankChange", "creativityRankWithinTeam",
+}
+_FIFA_GOALKEEPER_FIELDS = {
+    "teamId", "teamName", "teamFlag", "playerId", "playerName", "playerPicture",
+    "inPossessionRank", "inPossessionScore", "inPossessionRankChange",
+    "defendingTheGoalRank", "defendingTheGoalScore", "defendingTheGoalRankChange",
+}
+_FIFA_CATEGORY_FIELDS = {
+    "outfield": (
+        ("attacking", "attackingRank", "attackingScore", "attackingRankChange", "attackingRankWithinTeam"),
+        ("creativity", "creativityRank", "creativityScore", "creativityRankChange", "creativityRankWithinTeam"),
+        ("defending", "defensiveRank", "defensiveScore", "defensiveRankChange", "defensiveRankWithinTeam"),
+    ),
+    "goalkeeper": (
+        ("in_possession", "inPossessionRank", "inPossessionScore", "inPossessionRankChange", None),
+        ("defending_goal", "defendingTheGoalRank", "defendingTheGoalScore", "defendingTheGoalRankChange", None),
+    ),
+}
 
 
 def _clean_percent(value: Any) -> float:
@@ -1564,11 +1598,423 @@ def classify_fifa_power_categories(request_data: dict[str, Any]) -> dict[str, An
     }
 
 
+def _fetch_fifa_json(url: str, timeout: float) -> tuple[Any, bytes]:
+    request = urllib_request.Request(url, headers={"User-Agent": FIFA_HTTP_USER_AGENT})
+    with urllib_request.urlopen(request, timeout=max(1.0, min(float(timeout), 30.0))) as response:
+        raw = response.read()
+    return json.loads(raw), raw
+
+
+def _localized_description(value: Any, locale: str = "en-GB") -> str:
+    rows = value if isinstance(value, list) else []
+    for row in rows:
+        if isinstance(row, dict) and _text(row.get("locale") or row.get("Locale")) == locale:
+            return _text(row.get("description") or row.get("Description"))
+    for row in rows:
+        if isinstance(row, dict):
+            description = _text(row.get("description") or row.get("Description"))
+            if description:
+                return description
+    return ""
+
+
+def _fifa_team_iso(row: dict[str, Any]) -> str:
+    flag_code = _text(row.get("teamFlag")).rstrip("/").rsplit("/", 1)[-1]
+    return _to_iso3(flag_code or _localized_description(row.get("teamName")))
+
+
+def _crosswalk_team_iso(player: dict[str, Any]) -> str:
+    team = player.get("team") if isinstance(player.get("team"), dict) else {}
+    team_urn = _text(team.get("@id") or team.get("id"))
+    urn_iso = team_urn.rsplit(":", 1)[-1] if team_urn else ""
+    # Tournament team binding is authoritative for this competition. Nationality
+    # can differ from the represented team and must not override the team URN.
+    for value in (urn_iso, team.get("name"), player.get("nationality")):
+        iso = _to_iso3(value)
+        if iso != "unk":
+            return iso
+    return "unk"
+
+
+def _identity_names(player: dict[str, Any]) -> set[str]:
+    names = {_slugify(player.get("name"))}
+    aliases = player.get("aliases") or player.get("alias") or []
+    if isinstance(aliases, str):
+        aliases = [aliases]
+    for alias in aliases if isinstance(aliases, list) else []:
+        value = alias.get("name") or alias.get("description") if isinstance(alias, dict) else alias
+        if _text(value):
+            names.add(_slugify(value))
+    return {name for name in names if name and name != "unknown"}
+
+
+def _source_names(row: dict[str, Any], detail: dict[str, Any]) -> set[str]:
+    values = [_localized_description(row.get("playerName"))]
+    values.extend(
+        _localized_description(detail.get(key))
+        for key in ("Name", "Alias")
+    )
+    return {_slugify(value) for value in values if _text(value)}
+
+
+def _unique_identity_match(
+    candidates: list[dict[str, Any]], source_names: set[str], method: str,
+) -> tuple[dict[str, Any] | None, str | None]:
+    exact = [candidate for candidate in candidates if _identity_names(candidate) & source_names]
+    if len(exact) == 1:
+        return exact[0], method
+    if len(exact) > 1:
+        raise ValueError(f"ambiguous FIFA identity ({method}) for {sorted(source_names)}")
+
+    if method == "birth_date_country_name":
+        source_tokens = {_name_tokens(name) for name in source_names}
+        token_matches = [
+            candidate for candidate in candidates
+            if source_tokens & {_name_tokens(name) for name in _identity_names(candidate)}
+        ]
+        if len(token_matches) == 1:
+            return token_matches[0], f"{method}_surname_initial"
+        if len(token_matches) > 1:
+            raise ValueError(f"ambiguous FIFA identity ({method}_surname_initial) for {sorted(source_names)}")
+
+    contained = [
+        candidate for candidate in candidates
+        if any(
+            source_name in identity_name or identity_name in source_name
+            for source_name in source_names
+            for identity_name in _identity_names(candidate)
+        )
+    ]
+    if len(contained) == 1:
+        return contained[0], f"{method}_containment"
+    if len(contained) > 1:
+        raise ValueError(f"ambiguous FIFA identity ({method}_containment) for {sorted(source_names)}")
+    return None, None
+
+
+def _source_surname_tokens(source_names: set[str]) -> set[str]:
+    """Return bounded surname tokens from FIFA display names.
+
+    FIFA commonly publishes a short display name while the canonical squad
+    crosswalk stores the player's full legal name (for example Raul Jimenez vs
+    Raul Alonso Jimenez Rodriguez). Matching remains team-scoped and requires
+    the FIFA first token and last token to both occur in exactly one candidate.
+    """
+    pairs = set()
+    for name in source_names:
+        tokens = tuple(token for token in name.split("-") if token)
+        if len(tokens) >= 2:
+            pairs.add((tokens[0], tokens[-1]))
+    return pairs
+
+
+def _resolve_fifa_player_identity(
+    row: dict[str, Any], players: list[dict[str, Any]], detail: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], str]:
+    fifa_id = _text(row.get("playerId"))
+    detail = detail if isinstance(detail, dict) else {}
+    player_docs = [
+        player for player in players
+        if isinstance(player, dict)
+        and "sport:Player" in (player.get("@type") if isinstance(player.get("@type"), list) else [])
+        and player.get("machina_competition_slug") == "world-cup-2026"
+    ]
+
+    id_matches = []
+    for player in player_docs:
+        provider_ids = player.get("provider_ids") if isinstance(player.get("provider_ids"), dict) else {}
+        if fifa_id and fifa_id in {
+            _text(provider_ids.get("fifa")),
+            _text(provider_ids.get("fifa_player_id")),
+            _text(provider_ids.get("fifa_id")),
+        }:
+            id_matches.append(player)
+    if len(id_matches) == 1:
+        return id_matches[0], "fifa_id"
+    if len(id_matches) > 1:
+        raise ValueError(f"ambiguous exact FIFA playerId {fifa_id}")
+
+    team_iso = _fifa_team_iso(row)
+    team_candidates = [player for player in player_docs if _crosswalk_team_iso(player) == team_iso]
+    source_names = _source_names(row, detail)
+    birth_date = _parse_birth_date(detail.get("BirthDate"))
+    # The leaderboard row's represented World Cup team is authoritative. The
+    # player-detail country can describe nationality rather than tournament team.
+    detail_iso = team_iso if team_iso != "unk" else _to_iso3(detail.get("IdCountry"))
+    if birth_date != "00000000" and detail_iso != "unk":
+        dob_candidates = [
+            player for player in player_docs
+            if _parse_birth_date(player.get("birth_date")) == birth_date
+            and _crosswalk_team_iso(player) == detail_iso
+        ]
+        if len(dob_candidates) == 1:
+            return dob_candidates[0], "birth_date_team_unique"
+        match, method = _unique_identity_match(dob_candidates, source_names, "birth_date_country_name")
+        if match:
+            return match, method or "birth_date_country_name"
+
+    match, method = _unique_identity_match(team_candidates, source_names, "name_team")
+    if match:
+        return match, method or "name_team"
+    source_pairs = _source_surname_tokens(source_names)
+    expanded = [
+        player for player in team_candidates
+        if any(
+            first in {token for identity_name in _identity_names(player) for token in identity_name.split("-") if token}
+            and last in {token for identity_name in _identity_names(player) for token in identity_name.split("-") if token}
+            for first, last in source_pairs
+        )
+    ]
+    if len(expanded) == 1:
+        return expanded[0], "name_team_first_surname"
+    if len(expanded) > 1:
+        raise ValueError(f"ambiguous FIFA identity (name_team_first_surname) for {sorted(source_names)}")
+    fuzzy = []
+    for player in team_candidates:
+        score = max(
+            (
+                difflib.SequenceMatcher(None, source_name, identity_name).ratio()
+                for source_name in source_names
+                for identity_name in _identity_names(player)
+            ),
+            default=0.0,
+        )
+        if score >= 0.92:
+            fuzzy.append((score, player))
+    fuzzy.sort(key=lambda item: item[0], reverse=True)
+    if len(fuzzy) == 1 or (len(fuzzy) > 1 and fuzzy[0][0] - fuzzy[1][0] >= 0.08):
+        return fuzzy[0][1], "name_team_high_confidence_fuzzy"
+    if fuzzy:
+        raise ValueError(f"ambiguous FIFA identity (name_team_high_confidence_fuzzy) for {sorted(source_names)}")
+    raise ValueError(
+        f"unresolved FIFA identity playerId={fifa_id} name={_localized_description(row.get('playerName'))!r} "
+        f"team_iso={team_iso}"
+    )
+
+
+def _validate_fifa_category(row: dict[str, Any], category_fields: tuple[Any, ...]) -> dict[str, Any]:
+    category, rank_key, score_key, change_key, within_key = category_fields
+    rank = row.get(rank_key)
+    score = row.get(score_key)
+    if not isinstance(rank, int) or isinstance(rank, bool) or rank <= 0:
+        raise ValueError(f"invalid positive rank {rank_key}={rank!r} for playerId={row.get('playerId')}")
+    if not isinstance(score, (int, float)) or isinstance(score, bool) or not 0 <= float(score) <= 10:
+        raise ValueError(f"invalid score {score_key}={score!r} for playerId={row.get('playerId')}")
+    rank_change = row.get(change_key)
+    if rank_change is not None and (not isinstance(rank_change, int) or isinstance(rank_change, bool)):
+        raise ValueError(f"invalid rank change {change_key} for playerId={row.get('playerId')}")
+    normalized = {
+        "category": category,
+        "rank": rank,
+        "score": score,
+        "rank_change": rank_change,
+    }
+    if within_key:
+        within = row.get(within_key)
+        if not isinstance(within, int) or isinstance(within, bool) or within <= 0:
+            raise ValueError(f"invalid positive team rank {within_key} for playerId={row.get('playerId')}")
+        normalized["rank_within_team"] = within
+    return normalized
+
+
+def import_final_fifa_player_power_rankings(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Fetch, resolve, and validate FIFA's immutable final 2026 leaderboard."""
+    params = _params(request_data)
+    source_url = _text(params.get("source_url")) or FIFA_FINAL_POWER_RANKING_URL
+    timeout = _to_float(params.get("timeout_seconds")) or 10.0
+    source_payload = params.get("source_payload")
+    if isinstance(source_payload, dict):
+        payload = source_payload
+        raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    else:
+        payload, raw = _fetch_fifa_json(source_url, timeout)
+    if not isinstance(payload, dict):
+        raise ValueError("FIFA Power Ranking source must be a JSON object")
+
+    gates = {
+        "competitionId": FIFA_FINAL_COMPETITION_ID,
+        "nMatches": FIFA_FINAL_MATCH_COUNT,
+        "competitionStage": "Final",
+    }
+    for key, expected in gates.items():
+        if payload.get(key) != expected:
+            raise ValueError(f"FIFA final snapshot drift: expected {key}={expected!r}, got {payload.get(key)!r}")
+    message_time = _text(payload.get("messageTimeUtc"))
+    if not message_time:
+        raise ValueError("FIFA final snapshot missing messageTimeUtc")
+    outfield = payload.get("outfieldPlayers")
+    goalkeepers = payload.get("goalkeepers")
+    if not isinstance(outfield, list) or len(outfield) != FIFA_FINAL_OUTFIELD_COUNT:
+        raise ValueError(f"FIFA final snapshot must contain {FIFA_FINAL_OUTFIELD_COUNT} outfield players")
+    if not isinstance(goalkeepers, list) or len(goalkeepers) != FIFA_FINAL_GOALKEEPER_COUNT:
+        raise ValueError(f"FIFA final snapshot must contain {FIFA_FINAL_GOALKEEPER_COUNT} goalkeepers")
+
+    rows = [("outfield", row) for row in outfield] + [("goalkeeper", row) for row in goalkeepers]
+    player_ids = [_text(row.get("playerId")) for _, row in rows if isinstance(row, dict)]
+    if len(player_ids) != FIFA_FINAL_OUTFIELD_COUNT + FIFA_FINAL_GOALKEEPER_COUNT or any(not value for value in player_ids):
+        raise ValueError("FIFA final snapshot contains a row without playerId")
+    if len(set(player_ids)) != len(player_ids):
+        raise ValueError("FIFA final snapshot contains duplicate playerId values")
+
+    digest = hashlib.sha256(raw).hexdigest()
+    expected_digest = _text(params.get("expected_sha256")) or FIFA_FINAL_SHA256
+    if digest != expected_digest:
+        raise ValueError(f"FIFA final snapshot sha256 drift: expected {expected_digest}, got {digest}")
+
+    players = [_unwrap(item) for item in _as_list(params.get("players") or params.get("identity_crosswalk"))]
+    supplied_details = dict(params.get("player_details")) if isinstance(params.get("player_details"), dict) else {}
+    missing_detail_ids = []
+    for _, row in rows:
+        fifa_id = _text(row["playerId"])
+        has_exact_id = any(
+            fifa_id in {
+                _text((player.get("provider_ids") or {}).get("fifa")),
+                _text((player.get("provider_ids") or {}).get("fifa_player_id")),
+                _text((player.get("provider_ids") or {}).get("fifa_id")),
+            }
+            for player in players if isinstance(player, dict) and isinstance(player.get("provider_ids"), dict)
+        )
+        if not has_exact_id and fifa_id not in supplied_details and row["playerId"] not in supplied_details:
+            missing_detail_ids.append(fifa_id)
+
+    workers = max(1, min(int(_to_float(params.get("detail_workers")) or 8), 16))
+    if missing_detail_ids:
+        def fetch_detail(player_id: str) -> tuple[str, Any]:
+            detail, _ = _fetch_fifa_json(FIFA_PLAYER_DETAIL_URL.format(player_id=player_id), timeout)
+            return player_id, detail
+
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            for player_id, detail in executor.map(fetch_detail, missing_detail_ids):
+                supplied_details[player_id] = detail
+
+    fetched_at = _text(params.get("fetched_at")) or _now_iso()
+    counts = {
+        "outfield_players": len(outfield),
+        "goalkeepers": len(goalkeepers),
+        "published_players": len(rows),
+    }
+    source_snapshot = {
+        "url": source_url,
+        "messageTimeUtc": message_time,
+        "fetched_at": fetched_at,
+        "sha256": digest,
+        "competitionId": payload["competitionId"],
+        "nMatches": payload["nMatches"],
+        "competitionStage": payload["competitionStage"],
+        "counts": counts,
+    }
+
+    records: list[dict[str, Any]] = []
+    resolution_counts: dict[str, int] = {}
+    detail_fetch_count = 0
+    for player_type, row in rows:
+        expected_fields = _FIFA_OUTFIELD_FIELDS if player_type == "outfield" else _FIFA_GOALKEEPER_FIELDS
+        if not isinstance(row, dict) or set(row) != expected_fields:
+            missing = sorted(expected_fields - set(row if isinstance(row, dict) else {}))
+            extra = sorted(set(row if isinstance(row, dict) else {}) - expected_fields)
+            raise ValueError(f"FIFA {player_type} schema drift: missing={missing}, extra={extra}")
+        categories = [
+            _validate_fifa_category(row, fields)
+            for fields in _FIFA_CATEGORY_FIELDS[player_type]
+        ]
+
+        fifa_id = _text(row["playerId"])
+        detail = supplied_details.get(fifa_id) or supplied_details.get(row["playerId"]) or {}
+        if fifa_id in missing_detail_ids:
+            detail_fetch_count += 1
+        identity, resolution_method = _resolve_fifa_player_identity(row, players, detail)
+        resolution_counts[resolution_method] = resolution_counts.get(resolution_method, 0) + 1
+
+        canonical_name = _text(identity.get("name"))
+        player_urn = _text(identity.get("_id") or identity.get("@id") or identity.get("id"))
+        source_name = _localized_description(row["playerName"])
+        document_id = f"world-cup-2026:player-power-ranking:{_slugify(source_name)}"
+        scores = {category["category"]: category["score"] for category in categories}
+        records.append({
+            "_id": document_id,
+            "record_type": "player_power_ranking",
+            "metadata": {
+                "canonical_name": _slugify(canonical_name),
+                "competition": "world-cup-2026",
+                "player_urn": player_urn,
+                "fifa_player_id": fifa_id,
+            },
+            "player_urn": player_urn,
+            "canonical_name": canonical_name,
+            "source_player_name": source_name,
+            "team": {
+                "fifa_team_id": _text(row["teamId"]),
+                "name": _localized_description(row["teamName"]),
+                "iso3": _fifa_team_iso(row),
+            },
+            "competition": "FIFA World Cup 2026",
+            "player_type": player_type,
+            "status": "available",
+            "source": "fifa.com",
+            "source_snapshot": source_snapshot,
+            "identity_resolution": {"method": resolution_method, "fifa_player_id": fifa_id},
+            "classification": {
+                "match_rank": None,
+                "tournament_rank": None,
+                "category_rankings": categories,
+            },
+            "scores": scores,
+        })
+
+    document_ids = [record["_id"] for record in records]
+    if len(set(document_ids)) != len(document_ids):
+        raise ValueError("FIFA final snapshot produces duplicate normalized document ids")
+    if len(records) != FIFA_FINAL_OUTFIELD_COUNT + FIFA_FINAL_GOALKEEPER_COUNT:
+        raise ValueError("FIFA final snapshot did not produce exactly 230 published records")
+
+    manifest = {
+        "_id": "world-cup-2026:player-power-ranking:manifest",
+        "record_type": "snapshot_manifest",
+        "status": "complete",
+        "competition": "FIFA World Cup 2026",
+        "source": "fifa.com",
+        "source_snapshot": source_snapshot,
+        "source_accounting": {
+            "source_rows": len(rows),
+            "published_rows": len(records),
+            "resolved_identities": len(records),
+            "unresolved_identities": 0,
+            "ambiguous_identities": 0,
+            "detail_fetches": detail_fetch_count,
+            "resolution_methods": resolution_counts,
+        },
+    }
+    return {
+        "status": True,
+        "data": {
+            "records": records,
+            "manifest": manifest,
+            "documents": records + [manifest],
+            "published_count": len(records),
+            "source_accounting": manifest["source_accounting"],
+        },
+    }
+
+
 def apply_power_ranking_eligibility(request_data: dict[str, Any]) -> dict[str, Any]:
     """Apply FIFA's public 20-minute minimum eligibility rule."""
     params = _params(request_data)
     min_minutes = int(params.get("min_minutes") or FIFA_POWER_MIN_MINUTES)
-    minutes = int(_to_float(params.get("minutes_played") or params.get("minutes") or 0))
+    raw_minutes = params.get("minutes_played")
+    if raw_minutes in (None, ""):
+        raw_minutes = params.get("minutes")
+    if raw_minutes in (None, ""):
+        return {
+            "status": True,
+            "data": {
+                "minutes_played": None,
+                "minimum_minutes": min_minutes,
+                "eligible_for_power_ranking": None,
+                "minutes_evidence": False,
+                "warnings": ["Player minutes evidence is unavailable; eligibility cannot be determined."],
+            },
+        }
+    minutes = int(_to_float(raw_minutes))
     eligible = minutes >= min_minutes
     warnings = [] if eligible else [
         f"Player minutes ({minutes}) below FIFA minimum ({min_minutes}) for Power Ranking score eligibility."
@@ -1579,6 +2025,7 @@ def apply_power_ranking_eligibility(request_data: dict[str, Any]) -> dict[str, A
             "minutes_played": minutes,
             "minimum_minutes": min_minutes,
             "eligible_for_power_ranking": eligible,
+            "minutes_evidence": True,
             "warnings": warnings,
         },
     }
@@ -1636,7 +2083,10 @@ def normalize_player_match_stats(request_data: dict[str, Any]) -> dict[str, Any]
         cards = _stat_section(stat, "cards")
 
         position = _text(games.get("position") or raw.get("position") or player_info.get("position"))
-        minutes = int(_to_float(games.get("minutes") or raw.get("minutes") or 0))
+        raw_minutes = games.get("minutes")
+        if raw_minutes in (None, ""):
+            raw_minutes = raw.get("minutes")
+        minutes = int(_to_float(raw_minutes)) if raw_minutes not in (None, "") else None
         is_goalkeeper = _is_goalkeeper_position(position)
         player = {
             "player_id": _text(player_info.get("id") or raw.get("player_id")),
@@ -1647,7 +2097,8 @@ def normalize_player_match_stats(request_data: dict[str, Any]) -> dict[str, Any]
             "position": position,
             "is_goalkeeper": is_goalkeeper,
             "minutes_played": minutes,
-            "eligible_for_power_ranking": minutes >= FIFA_POWER_MIN_MINUTES,
+            "eligible_for_power_ranking": minutes >= FIFA_POWER_MIN_MINUTES if minutes is not None else None,
+            "minutes_evidence": minutes is not None,
             "source_quality": "provider",
             "stats": {
                 "rating": _to_float(games.get("rating")),
@@ -1671,9 +2122,14 @@ def normalize_player_match_stats(request_data: dict[str, Any]) -> dict[str, Any]
             continue
         if requested_team_id and _text(player.get("team_id")) != requested_team_id:
             continue
-        player["warnings"] = [] if player["eligible_for_power_ranking"] else [
-            f"Player minutes ({minutes}) below FIFA minimum ({FIFA_POWER_MIN_MINUTES}) for Power Ranking score eligibility."
-        ]
+        if minutes is None:
+            player["warnings"] = ["Player minutes evidence is unavailable; eligibility cannot be determined."]
+        elif player["eligible_for_power_ranking"]:
+            player["warnings"] = []
+        else:
+            player["warnings"] = [
+                f"Player minutes ({minutes}) below FIFA minimum ({FIFA_POWER_MIN_MINUTES}) for Power Ranking score eligibility."
+            ]
         players.append(player)
 
     warnings = [] if players else ["No provider player match statistics supplied."]
@@ -1689,7 +2145,7 @@ def score_provisional_player_performance(request_data: dict[str, Any]) -> dict[s
     params = _params(request_data)
     player = params.get("player") if isinstance(params.get("player"), dict) else params
     stats = player.get("stats") if isinstance(player.get("stats"), dict) else {}
-    minutes = int(_to_float(player.get("minutes_played")))
+    minutes = player.get("minutes_played")
     eligibility = apply_power_ranking_eligibility({"params": {"minutes_played": minutes}})["data"]
     scores = _empty_scores()
     warnings = list(player.get("warnings") or []) + list(eligibility.get("warnings") or [])
@@ -1714,7 +2170,7 @@ def score_provisional_player_performance(request_data: dict[str, Any]) -> dict[s
         completeness += 0.15
     if stats:
         completeness += 0.25
-    if minutes >= 60:
+    if minutes is not None and minutes >= 60:
         completeness += 0.15
     confidence = round(max(0.2, min(0.9, completeness)), 2)
 
@@ -1791,6 +2247,8 @@ def merge_official_and_provisional_performance(request_data: dict[str, Any]) -> 
         "status": official.get("status") or "pending",
         "expected_available_at": official.get("expected_available_at"),
         "source": official.get("source") or "fifa.com",
+        "source_snapshot": official.get("source_snapshot") or {},
+        "player_type": official.get("player_type"),
         "scores": official_scores,
         "classification": official.get("classification") or {
             "match_rank": None,
@@ -1810,8 +2268,9 @@ def merge_official_and_provisional_performance(request_data: dict[str, Any]) -> 
         "team_name": player.get("team_name"),
         "position": player.get("position"),
         "is_goalkeeper": bool(player.get("is_goalkeeper")),
-        "minutes_played": int(_to_float(player.get("minutes_played"))),
-        "eligible_for_power_ranking": bool(player.get("eligible_for_power_ranking", int(_to_float(player.get("minutes_played"))) >= FIFA_POWER_MIN_MINUTES)),
+        "minutes_played": player.get("minutes_played"),
+        "eligible_for_power_ranking": player.get("eligible_for_power_ranking"),
+        "minutes_evidence": bool(player.get("minutes_evidence", player.get("minutes_played") is not None)),
     } if player else {}
 
     context = {
@@ -1844,18 +2303,38 @@ def select_official_player_power_ranking(request_data: dict[str, Any]) -> dict[s
         return {"status": True, "data": {"official_fifa_power_ranking": override}}
 
     player_urn = _text(params.get("player_urn"))
+    identity_resolved = bool(params.get("identity_resolved") or player_urn)
     player_name = _text(params.get("player_name"))
     player_name_slug = _slugify(player_name) if player_name else ""
+    records = [record for record in (_unwrap(raw) for raw in _as_list(params.get("records"))) if isinstance(record, dict)]
+    manifest = params.get("snapshot_manifest") if isinstance(params.get("snapshot_manifest"), dict) else {}
+    source_accounting = manifest.get("source_accounting") if isinstance(manifest.get("source_accounting"), dict) else {}
+    manifest_snapshot = manifest.get("source_snapshot") if isinstance(manifest.get("source_snapshot"), dict) else {}
+    manifest_hash = _text(manifest_snapshot.get("sha256"))
+    published_records = [
+        record for record in records
+        if record.get("record_type") == "player_power_ranking" and record.get("status") == "available"
+    ]
+    final_snapshot = (
+        manifest.get("status") == "complete"
+        and int(_to_float(source_accounting.get("published_rows"))) == (
+            FIFA_FINAL_OUTFIELD_COUNT + FIFA_FINAL_GOALKEEPER_COUNT
+        )
+        and len(published_records) == FIFA_FINAL_OUTFIELD_COUNT + FIFA_FINAL_GOALKEEPER_COUNT
+        and bool(manifest_hash)
+        and all(_text((record.get("source_snapshot") or {}).get("sha256")) == manifest_hash for record in published_records)
+    )
     matches: list[dict[str, Any]] = []
-    for raw in _as_list(params.get("records")):
-        record = _unwrap(raw)
-        if not isinstance(record, dict) or record.get("status") != "available":
+    for record in published_records if final_snapshot else []:
+        if record.get("status") != "available":
             continue
         metadata = record.get("metadata") if isinstance(record.get("metadata"), dict) else {}
         record_urn = _text(record.get("player_urn") or metadata.get("player_urn"))
         record_name = _text(record.get("canonical_name") or record.get("player_name") or record.get("name"))
         record_name_slug = _slugify(record_name) if record_name else ""
-        if (player_urn and record_urn == player_urn) or (player_name_slug and record_name_slug == player_name_slug):
+        if (player_urn and record_urn == player_urn) or (
+            identity_resolved and not player_urn and player_name_slug and record_name_slug == player_name_slug
+        ):
             matches.append(record)
 
     official = sorted(
@@ -1864,12 +2343,34 @@ def select_official_player_power_ranking(request_data: dict[str, Any]) -> dict[s
             _text(item.get("player_urn") or ((item.get("metadata") or {}).get("player_urn") if isinstance(item.get("metadata"), dict) else "")) != player_urn,
             _text(item.get("_id") or item.get("id")),
         ),
-    )[0] if matches else {
-        "status": "pending",
-        "source": "fifa.com",
-        "scores": _empty_scores(),
-        "classification": {"match_rank": None, "tournament_rank": None, "category_rankings": []},
-    }
+    )[0] if matches else None
+    if official is None:
+        tournament_player = bool(params.get("tournament_player"))
+        minutes_evidence = bool(params.get("minutes_evidence"))
+        minutes_evidence_scope = _text(params.get("minutes_evidence_scope"))
+        minutes = params.get("minutes_played")
+        if not final_snapshot:
+            final_status = "pending"
+        elif not identity_resolved:
+            final_status = "unmatched"
+        elif (
+            minutes_evidence
+            and minutes_evidence_scope == "tournament"
+            and minutes is not None
+            and int(_to_float(minutes)) < FIFA_POWER_MIN_MINUTES
+        ):
+            final_status = "not_eligible"
+        elif tournament_player:
+            final_status = "not_ranked"
+        else:
+            final_status = "unmatched"
+        official = {
+            "status": final_status,
+            "source": "fifa.com",
+            "source_snapshot": manifest.get("source_snapshot") or {},
+            "scores": _empty_scores(),
+            "classification": {"match_rank": None, "tournament_rank": None, "category_rankings": []},
+        }
     return {"status": True, "data": {"official_fifa_power_ranking": official}}
 
 
@@ -2136,7 +2637,7 @@ def _canonical_event_urn(urn: Any) -> str:
 
 def _parse_birth_date(value: Any) -> str:
     raw = _clean_text(value)
-    match = re.search(r"\b(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})\b", raw)
+    match = re.search(r"(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})", raw)
     if match:
         return "".join(match.groups())
     year = re.search(r"\b(19\d{2}|20\d{2})\b", raw)
