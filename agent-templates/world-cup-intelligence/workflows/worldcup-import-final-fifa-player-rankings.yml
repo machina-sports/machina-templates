@@ -25,7 +25,8 @@ workflow:
           [
             {
               '_id': 'world-cup-2026:player-power-ranking:vinicius',
-              'metadata': {'canonical_name': 'vinicius', 'competition': 'world-cup-2026'},
+              'metadata': {'canonical_name': 'vinicius', 'competition': 'world-cup-2026', 'player_urn': 'urn:machina:sport:soccer:player:vinicius:20000712:bra'},
+              'player_urn': 'urn:machina:sport:soccer:player:vinicius:20000712:bra',
               'canonical_name': 'Vinicius Junior',
               'competition': 'FIFA World Cup 2026',
               'status': 'available',

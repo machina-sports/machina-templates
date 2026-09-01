@@ -807,6 +807,17 @@ class TestNormalizeInjuries:
             "fixture_date": "2026-06-26T18:00:00+00:00",
         }]
 
+    def test_fixture_mismatch_warns_instead_of_claiming_verified_empty(self):
+        result = normalize_injuries({"params": {
+            "af": {"response": [_af_injury(6, "Brazil", 10, "Neymar", "Calf Injury", fixture_id=999)]},
+            "fixture_id": "1489371",
+            "home_team_id": 6,
+            "home_team": "Brazil",
+        }})["data"]
+
+        assert result["teams"][0]["count"] == 0
+        assert any("none matched fixture 1489371" in warning for warning in result["warnings"])
+
     def test_empty_injuries_warns(self):
         r = normalize_injuries({"params": {
             "af": {"response": []}, "home_team_id": 7, "away_team_id": 9,
@@ -1947,6 +1958,18 @@ def test_build_event_forecasts_dedupes_czech_alias_events_deterministically():
     assert forward["count"] == reverse["count"] == 1
     assert forward["forecasts"][0]["_id"] == reverse["forecasts"][0]["_id"] == new_urn
     assert forward["forecasts"][0]["home_team"]["urn"] == new_team
+
+
+def test_event_alias_canonicalization_uses_shared_alias_map_for_both_sides():
+    original = _module._TEAM_SLUG_ALIASES.copy()
+    try:
+        _module._TEAM_SLUG_ALIASES["korea-republic"] = "south-korea"
+        assert _module._canonical_event_urn(
+            "urn:machina:sport:soccer:event:korea-republic-vs-czech-republic:20260612:wor"
+        ) == "urn:machina:sport:soccer:event:south-korea-vs-czechia:20260612:wor"
+    finally:
+        _module._TEAM_SLUG_ALIASES.clear()
+        _module._TEAM_SLUG_ALIASES.update(original)
 
 
 def test_normalize_fifa_seed_band_and_order():

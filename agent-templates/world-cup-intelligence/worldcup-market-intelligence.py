@@ -1260,14 +1260,21 @@ def normalize_injuries(request_data: dict[str, Any]) -> dict[str, Any]:
     params = _params(request_data)
     items = _injuries_items(params.get("af"))
     fixture_id = _text(params.get("fixture_id"))
+    fixture_filter_warning = None
     if fixture_id:
+        unfiltered_count = len(items)
         items = [
             item for item in items
             if isinstance(item, dict)
             and _text((item.get("fixture") or {}).get("id")) == fixture_id
         ]
+        if unfiltered_count and not items:
+            fixture_filter_warning = (
+                f"Provider returned {unfiltered_count} injury rows, but none matched fixture {fixture_id}; "
+                "coverage is unavailable rather than verified empty."
+            )
     teams: list[dict[str, Any]] = []
-    warnings: list[str] = []
+    warnings: list[str] = [fixture_filter_warning] if fixture_filter_warning else []
     for side in ("home", "away"):
         tid = params.get(f"{side}_team_id")
         tname = _text(params.get(f"{side}_team"))
@@ -1854,7 +1861,7 @@ def select_official_player_power_ranking(request_data: dict[str, Any]) -> dict[s
     official = sorted(
         matches,
         key=lambda item: (
-            _text(item.get("player_urn")) != player_urn,
+            _text(item.get("player_urn") or ((item.get("metadata") or {}).get("player_urn") if isinstance(item.get("metadata"), dict) else "")) != player_urn,
             _text(item.get("_id") or item.get("id")),
         ),
     )[0] if matches else {
@@ -2113,8 +2120,12 @@ def _canonical_team_urn(urn: Any, name: Any = None) -> str:
 
 def _canonical_event_urn(urn: Any) -> str:
     value = _text(urn)
-    value = value.replace(":event:czech-republic-vs-", ":event:czechia-vs-")
-    return value.replace("-vs-czech-republic:", "-vs-czechia:")
+    if ":event:" not in value or "-vs-" not in value:
+        return value
+    for alias, canonical in _TEAM_SLUG_ALIASES.items():
+        value = value.replace(f":event:{alias}-vs-", f":event:{canonical}-vs-")
+        value = value.replace(f"-vs-{alias}:", f"-vs-{canonical}:")
+    return value
 
 
 def _parse_birth_date(value: Any) -> str:
