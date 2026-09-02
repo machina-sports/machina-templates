@@ -1,0 +1,19 @@
+setup:
+  title: "Machina FC — Bolão da Casa"
+  description: "Connector do Bolão da Casa do Machina FC: predições (P casa/empate/fora + leitura + confiança) da rodada do Brasileirão e settle de resultados, via sportsclaw (sports-skills + devig). SEM Sportradar."
+  category:
+    - custom-templates
+  estimatedTime: "2 minutes"
+  features:
+    - "gerar_boletim: predições da rodada alvo (contrato == data/bolao/rodada-atual.json)"
+    - "settle_rodada: placar real x palpite da casa (contrato == data/bolao/rodada-resultado.json)"
+    - "Fonte sportsclaw (ESPN + devig), zero Sportradar, roda in-process"
+  integrations:
+    - sports-skills
+  status: available
+  value: "agent-templates/machina-fc"
+  version: 1.0.0
+
+datasets:
+  - type: connector
+    path: connectors/mfc-bolao.yml

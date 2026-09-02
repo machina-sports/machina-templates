@@ -1,0 +1,10 @@
+connector:
+  name: "mfc-bolao"
+  description: "Bolao da Casa do Machina FC (server-side). Porta fiel do tools/gen-bolao.py: fonte SPORTSCLAW (sports-skills football=ESPN publico + betting=devig), SEM Sportradar. gerar_boletim -> predicoes da rodada alvo; settle_rodada -> placar real x palpite da casa. Roda in-process; auto-instala sports-skills no pod."
+  filename: "mfc-bolao.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Gerar boletim da rodada"
+      value: "gerar_boletim"
+    - name: "Settle (resultado) da rodada"
+      value: "settle_rodada"
