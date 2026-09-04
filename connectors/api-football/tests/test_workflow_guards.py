@@ -48,8 +48,13 @@ def task(workflow, name):
     return next(item for item in workflow["tasks"] if item["name"] == name)
 
 
-def evaluate_outputs(outputs, context):
-    return {key: evaluate(expression, context) for key, expression in outputs.items()}
+def evaluate_outputs(outputs, response, workflow_context=None):
+    # Mirrors core/workflow/context.py::_save_outputs: `$.get` reads the task's
+    # connector response, `$.context` reads accumulated workflow state.
+    return {
+        key: evaluate(expression, response, workflow_context)
+        for key, expression in outputs.items()
+    }
 
 
 def provider_fixture(fixture_id=1390823):
@@ -610,12 +615,8 @@ def test_event_synchronize_rejects_a_different_fixture_id():
 
     state = evaluate_outputs(
         fetch_outputs,
-        {
-            "response": [provider_fixture(999)],
-            "errors": [],
-            "results": 1,
-            "provider_fixture_id": 1390823,
-        },
+        {"response": [provider_fixture(999)], "errors": [], "results": 1},
+        {"provider_fixture_id": 1390823},
     )
 
     assert state["provider-response-valid"] is True
@@ -632,12 +633,8 @@ def test_event_synchronize_accepts_equivalent_string_and_integer_fixture_ids():
     ):
         state = evaluate_outputs(
             fetch_outputs,
-            {
-                "response": [provider_fixture(response_id)],
-                "errors": [],
-                "results": 1,
-                "provider_fixture_id": provider_fixture_id,
-            },
+            {"response": [provider_fixture(response_id)], "errors": [], "results": 1},
+            {"provider_fixture_id": provider_fixture_id},
         )
 
         assert state["provider-response-valid"] is True
@@ -661,12 +658,8 @@ def test_event_synchronize_rejects_empty_boolean_and_invalid_fixture_ids():
     ):
         state = evaluate_outputs(
             fetch_outputs,
-            {
-                "response": [provider_fixture(response_id)],
-                "errors": [],
-                "results": 1,
-                "provider_fixture_id": provider_fixture_id,
-            },
+            {"response": [provider_fixture(response_id)], "errors": [], "results": 1},
+            {"provider_fixture_id": provider_fixture_id},
         )
 
         assert state["provider-response-valid"] is True
@@ -685,12 +678,8 @@ def test_event_synchronize_requires_exactly_one_well_formed_fixture():
     ):
         state = evaluate_outputs(
             fetch_outputs,
-            {
-                "response": response,
-                "errors": [],
-                "results": len(response),
-                "provider_fixture_id": "1570353",
-            },
+            {"response": response, "errors": [], "results": len(response)},
+            {"provider_fixture_id": "1570353"},
         )
 
         assert state["fixture_exists"] is False
@@ -723,3 +712,31 @@ def test_event_synchronize_provider_response_validation_stays_bounded():
         evaluate_outputs(fetch_outputs, payload)["provider-response-valid"] is False
         for payload in invalid_payloads
     )
+
+
+def test_event_synchronize_reads_resolved_fixture_id_from_workflow_state_not_response():
+    # Regression for the Aug 28 - Sep 4 outage: API-Football's /fixtures response
+    # never carries `provider_fixture_id`; that value lives in workflow state from
+    # the resolve task. Reading it via `$.get` made `fixture_exists` False on every
+    # real response, so the mapping and update tasks never ran and every
+    # synchronize reported `skipped`.
+    workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    fetch_outputs = task(workflow, "fetch-fixture-details")["outputs"]
+
+    assert "$.get('provider_fixture_id')" not in fetch_outputs["fixture_exists"]
+    assert "$.context.get('provider_fixture_id')" in fetch_outputs["fixture_exists"]
+
+    real_response = {
+        "get": "fixtures",
+        "parameters": {"id": "1557404"},
+        "errors": [],
+        "results": 1,
+        "paging": {"current": 1, "total": 1},
+        "response": [provider_fixture(1557404)],
+    }
+    state = evaluate_outputs(fetch_outputs, real_response, {"provider_fixture_id": 1557404})
+    assert state["provider-response-valid"] is True
+    assert state["fixture_exists"] is True
+
+    state = evaluate_outputs(fetch_outputs, real_response, {})
+    assert state["fixture_exists"] is False
