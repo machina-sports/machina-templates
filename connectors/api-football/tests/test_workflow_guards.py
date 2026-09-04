@@ -436,10 +436,12 @@ def test_event_synchronize_never_updates_without_a_provider_fixture():
         "event_exists": True,
         "provider-response-valid": True,
         "provider-errors": [],
-        "event_updated": {"@id": "urn:apifootball:sport_event:1390823"},
+        "canonical-envelope-valid": True,
+        "event_updated": {"@id": "urn:machina:sports:event:x1390823"},
     }
 
     assert not evaluate(update["condition"], {**base, "fixture_exists": False})
+    assert not evaluate(update["condition"], {**base, "fixture_exists": True, "canonical-envelope-valid": False})
     assert evaluate(update["condition"], {**base, "fixture_exists": True})
 
     fetch_outputs = task(workflow, "fetch-fixture-details")["outputs"]
@@ -740,3 +742,69 @@ def test_event_synchronize_reads_resolved_fixture_id_from_workflow_state_not_res
 
     state = evaluate_outputs(fetch_outputs, real_response, {})
     assert state["fixture_exists"] is False
+
+
+def _canonical_envelope(event_id, fixture, observed_at):
+    return {
+        "allowed": True,
+        "refusals": [],
+        "envelope": {
+            "machina_sports_schema": {
+                "schema_version": "machina-sports-schema/1",
+                "event_view": {
+                    "event_id": event_id,
+                    "label": "Manchester United vs Manchester City",
+                    "provider": {"namespace": "api-football", "family": "licensed", "raw": fixture},
+                },
+                "provenance": {"observed_at": observed_at},
+                "rights": {"prototype_only": True, "commercial_use": False},
+            }
+        },
+    }
+
+
+def test_event_synchronize_refreshes_through_the_canonical_seam_only():
+    # The per-event refresh must write the same canonical sport:Event shape that
+    # sync-fixtures writes. The legacy IPTC mapping (urn:apifootball ids,
+    # sport:competitors) overwrote the canonical block every consumer reads.
+    workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    names = [item["name"] for item in workflow["tasks"]]
+    assert "iptc-api-football-event-mapping" not in names
+    assert all(item.get("type") != "mapping" for item in workflow["tasks"])
+
+    canonicalize = task(workflow, "canonicalize-fixture")
+    assert canonicalize["connector"] == {"name": "machina-sports-canonical", "command": "canonicalize_event"}
+    assert canonicalize["inputs"]["provider"] == "'api-football'"
+    assert canonicalize["inputs"]["payload"] == "$.get('fixture_data', {})"
+    assert canonicalize["inputs"]["observed_at"] == "$.get('observed_at')"
+    assert "$.get('observed_at'" in workflow["inputs"]["observed_at"]
+
+    event_id = "urn:machina:sports:event:xfdc8480443a2b5ffeab4c6706b3bdc50"
+    fixture = provider_fixture(1557404)
+    observed_at = "2026-09-04T23:24:08+00:00"
+    state = {
+        "event_value": {"machina_sports_schema": {"event_view": {"event_id": event_id}}},
+        "fixture_data": fixture,
+        "observed_at": observed_at,
+    }
+    outputs = evaluate_outputs(canonicalize["outputs"], _canonical_envelope(event_id, fixture, observed_at), state)
+    assert outputs["canonical-envelope-valid"] is True
+    assert outputs["canonical-refusals"] == []
+    assert outputs["event_updated"]["@id"] == event_id
+    assert outputs["event_updated"]["@type"] == "sport:Event"
+    assert outputs["event_updated"]["machina_sports_schema"]["provenance"]["observed_at"] == observed_at
+    assert "sport:competitors" not in outputs["event_updated"]
+    assert not str(outputs["event_updated"]["@id"]).startswith("urn:apifootball:")
+
+    # A canonical envelope for a different event never overwrites this document.
+    other = _canonical_envelope("urn:machina:sports:event:xother", fixture, observed_at)
+    outputs = evaluate_outputs(canonicalize["outputs"], other, state)
+    assert outputs["canonical-envelope-valid"] is False
+    assert outputs["event_updated"] is None
+
+    # A refused canonicalization produces no update and surfaces its refusals.
+    refused = {"allowed": False, "envelope": None, "refusals": [{"code": "rights-refused"}]}
+    outputs = evaluate_outputs(canonicalize["outputs"], refused, state)
+    assert outputs["canonical-envelope-valid"] is False
+    assert outputs["event_updated"] is None
+    assert outputs["canonical-refusals"] == [{"code": "rights-refused"}]
