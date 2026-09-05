@@ -1,5 +1,14 @@
 # PR 3 — consumer inventory and classification
 
+Historical planning snapshot: the counts and implementation status in sections 1–11
+describe the original PR 3 review, not the current runtime. For the current in-repo
+inventory and reviewed dispositions, use `inventory.json` and `consumer-review.json`.
+The 2026-09-05 maintenance review reconciled those files against source at `ddfbf36`:
+80 consumer files and 298 coupling findings, with six newly listed dependency paths
+reviewed. Test fixtures, legacy storage predicates, and canonical-writer alias removal
+are classified separately; ledger coverage does not imply their production migration
+is complete. No runtime, permissions, or provider-rights change follows from this update.
+
 Hand-authored. Companion to the generated `docs/iptc/INVENTORY.md` / `inventory.json`,
 which stay authoritative for *what reads an IPTC field path inside this repository*.
 This document adds the thing a generator cannot produce: a per-surface **classification**,

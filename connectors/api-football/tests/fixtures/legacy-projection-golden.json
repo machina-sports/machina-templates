@@ -1,0 +1,843 @@
+[
+  {
+    "_id": "urn:machina:sports:projection:xbd2493a8c8c3193a3746be63afd94551",
+    "name": "api-football-event-actions",
+    "key": "urn:machina:sports:projection:xbd2493a8c8c3193a3746be63afd94551",
+    "metadata": {
+      "event_code": "urn:machina:sports:event:canonical-7001",
+      "source_event_document_id": "document-7001",
+      "provider_fixture_id": 7001,
+      "provider": {
+        "namespace": "api-football",
+        "family": "licensed"
+      },
+      "rights": {
+        "terms": {
+          "data_class": "licensed-provider-data",
+          "commercial_use": true
+        },
+        "source_event_rights_ref": {
+          "kind": "source-event-document",
+          "value": "document-7001",
+          "path": "value.machina_sports_schema.rights"
+        }
+      },
+      "provenance": {
+        "provider": {
+          "namespace": "api-football",
+          "family": "licensed"
+        },
+        "observed_at": "2026-08-22T20:01:01+00:00",
+        "source_refs": [
+          {
+            "kind": "endpoint-class",
+            "value": "api-football/fixtures/events"
+          },
+          {
+            "kind": "source-event-document",
+            "value": "document-7001"
+          }
+        ]
+      },
+      "projection_capability": {
+        "name": "internal.api-football.event-actions",
+        "status": "available"
+      },
+      "status": "available",
+      "observed_at": "2026-08-22T20:01:01+00:00",
+      "projection_key": "urn:machina:sports:projection:xbd2493a8c8c3193a3746be63afd94551"
+    },
+    "value": {
+      "@id": "urn:machina:sports:projection:xbd2493a8c8c3193a3746be63afd94551",
+      "schema_version": "api-football-event-projection/2",
+      "kind": "event-actions",
+      "event_id": "urn:machina:sports:event:canonical-7001",
+      "event_code": "urn:machina:sports:event:canonical-7001",
+      "source_event_document_id": "document-7001",
+      "provider_fixture_id": 7001,
+      "request_context": {
+        "fixture": "7001"
+      },
+      "provider_envelope": {
+        "parameters": {
+          "fixture": "7001"
+        },
+        "errors": [],
+        "results": 2,
+        "response": [
+          {
+            "time": {
+              "elapsed": 25,
+              "extra": null
+            },
+            "team": {
+              "id": 40,
+              "name": "Home FC"
+            },
+            "player": {
+              "id": 101,
+              "name": "H. Scorer"
+            },
+            "assist": {
+              "id": 102,
+              "name": "H. Assist"
+            },
+            "type": "Goal",
+            "detail": "Normal Goal",
+            "comments": null
+          },
+          {
+            "time": {
+              "elapsed": 25,
+              "extra": null
+            },
+            "team": {
+              "id": 40,
+              "name": "Home FC"
+            },
+            "player": {
+              "id": 101,
+              "name": "H. Scorer"
+            },
+            "assist": {
+              "id": 102,
+              "name": "H. Assist"
+            },
+            "type": "Goal",
+            "detail": "Normal Goal",
+            "comments": null
+          }
+        ]
+      },
+      "facts": [
+        {
+          "@id": "urn:machina:sports:action:x7df621ec508f6672ef9757e0da932b92",
+          "type": "action",
+          "event_id": "urn:machina:sports:event:canonical-7001",
+          "team_id": "urn:machina:sports:team:canonical-home",
+          "provider_team_id": 40,
+          "provider_response_ordinal": 0,
+          "provider_facts": {
+            "time": {
+              "elapsed": 25,
+              "extra": null
+            },
+            "team": {
+              "id": 40,
+              "name": "Home FC"
+            },
+            "player": {
+              "id": 101,
+              "name": "H. Scorer"
+            },
+            "assist": {
+              "id": 102,
+              "name": "H. Assist"
+            },
+            "type": "Goal",
+            "detail": "Normal Goal",
+            "comments": null
+          },
+          "provider_player_id": 101,
+          "participation_id": "urn:machina:sports:participation:xab3d84005871fc26254872d7d93a1a27",
+          "provider_assist_player_id": 102,
+          "assist_participation_id": "urn:machina:sports:participation:x9cbae396234b7fc57bb5a82ec1a2e6c2"
+        },
+        {
+          "@id": "urn:machina:sports:action:x94c5970efee7dee81ed4944e68881515",
+          "type": "action",
+          "event_id": "urn:machina:sports:event:canonical-7001",
+          "team_id": "urn:machina:sports:team:canonical-home",
+          "provider_team_id": 40,
+          "provider_response_ordinal": 1,
+          "provider_facts": {
+            "time": {
+              "elapsed": 25,
+              "extra": null
+            },
+            "team": {
+              "id": 40,
+              "name": "Home FC"
+            },
+            "player": {
+              "id": 101,
+              "name": "H. Scorer"
+            },
+            "assist": {
+              "id": 102,
+              "name": "H. Assist"
+            },
+            "type": "Goal",
+            "detail": "Normal Goal",
+            "comments": null
+          },
+          "provider_player_id": 101,
+          "participation_id": "urn:machina:sports:participation:xab3d84005871fc26254872d7d93a1a27",
+          "provider_assist_player_id": 102,
+          "assist_participation_id": "urn:machina:sports:participation:x9cbae396234b7fc57bb5a82ec1a2e6c2"
+        }
+      ]
+    }
+  },
+  {
+    "_id": "urn:machina:sports:projection:xe5622abdacbb2f25c9d393867f5cc072",
+    "name": "api-football-event-lineups",
+    "key": "urn:machina:sports:projection:xe5622abdacbb2f25c9d393867f5cc072",
+    "metadata": {
+      "event_code": "urn:machina:sports:event:canonical-7001",
+      "source_event_document_id": "document-7001",
+      "provider_fixture_id": 7001,
+      "provider": {
+        "namespace": "api-football",
+        "family": "licensed"
+      },
+      "rights": {
+        "terms": {
+          "data_class": "licensed-provider-data",
+          "commercial_use": true
+        },
+        "source_event_rights_ref": {
+          "kind": "source-event-document",
+          "value": "document-7001",
+          "path": "value.machina_sports_schema.rights"
+        }
+      },
+      "provenance": {
+        "provider": {
+          "namespace": "api-football",
+          "family": "licensed"
+        },
+        "observed_at": "2026-08-22T20:01:02+00:00",
+        "source_refs": [
+          {
+            "kind": "endpoint-class",
+            "value": "api-football/fixtures/lineups"
+          },
+          {
+            "kind": "source-event-document",
+            "value": "document-7001"
+          }
+        ]
+      },
+      "projection_capability": {
+        "name": "internal.api-football.event-lineups",
+        "status": "available"
+      },
+      "status": "available",
+      "observed_at": "2026-08-22T20:01:02+00:00",
+      "projection_key": "urn:machina:sports:projection:xe5622abdacbb2f25c9d393867f5cc072"
+    },
+    "value": {
+      "@id": "urn:machina:sports:projection:xe5622abdacbb2f25c9d393867f5cc072",
+      "schema_version": "api-football-event-projection/2",
+      "kind": "event-lineups",
+      "event_id": "urn:machina:sports:event:canonical-7001",
+      "event_code": "urn:machina:sports:event:canonical-7001",
+      "source_event_document_id": "document-7001",
+      "provider_fixture_id": 7001,
+      "request_context": {
+        "fixture": "7001"
+      },
+      "provider_envelope": {
+        "parameters": {
+          "fixture": "7001"
+        },
+        "errors": [],
+        "results": 2,
+        "response": [
+          {
+            "team": {
+              "id": 40,
+              "name": "Home FC"
+            },
+            "formation": "4-3-3",
+            "coach": {
+              "id": 501,
+              "name": "Home Coach"
+            },
+            "startXI": [
+              {
+                "player": {
+                  "id": 101,
+                  "name": "H. Scorer",
+                  "number": 9,
+                  "pos": "F",
+                  "grid": "3:2"
+                }
+              }
+            ],
+            "substitutes": [
+              {
+                "player": {
+                  "id": 103,
+                  "name": "H. Bench",
+                  "number": 18,
+                  "pos": "M",
+                  "grid": null
+                }
+              }
+            ]
+          },
+          {
+            "team": {
+              "id": 47,
+              "name": "Away FC"
+            },
+            "formation": "4-4-2",
+            "coach": {
+              "id": 502,
+              "name": "Away Coach"
+            },
+            "startXI": [
+              {
+                "player": {
+                  "id": 201,
+                  "name": "A. Starter",
+                  "number": 10,
+                  "pos": "F",
+                  "grid": "2:1"
+                }
+              }
+            ],
+            "substitutes": []
+          }
+        ]
+      },
+      "facts": [
+        {
+          "@id": "urn:machina:sports:lineup:x13f909e2eed97553ce35a10070ba6d18",
+          "event_id": "urn:machina:sports:event:canonical-7001",
+          "team_id": "urn:machina:sports:team:canonical-home",
+          "provider_team_id": 40,
+          "formation": "4-3-3",
+          "coach": {
+            "id": 501,
+            "name": "Home Coach"
+          },
+          "starting": [
+            {
+              "@id": "urn:machina:sports:participation:xab3d84005871fc26254872d7d93a1a27",
+              "participation_id": "urn:machina:sports:participation:xab3d84005871fc26254872d7d93a1a27",
+              "identity_scope": "event-participation",
+              "provider_player_id": 101,
+              "name": "H. Scorer",
+              "number": 9,
+              "position": "F",
+              "grid": "3:2"
+            }
+          ],
+          "substitutes": [
+            {
+              "@id": "urn:machina:sports:participation:x449b6df37b51016b42e1ce6fc910d2bd",
+              "participation_id": "urn:machina:sports:participation:x449b6df37b51016b42e1ce6fc910d2bd",
+              "identity_scope": "event-participation",
+              "provider_player_id": 103,
+              "name": "H. Bench",
+              "number": 18,
+              "position": "M",
+              "grid": null
+            }
+          ]
+        },
+        {
+          "@id": "urn:machina:sports:lineup:xf60afb42468ed0f829b144fe2a668493",
+          "event_id": "urn:machina:sports:event:canonical-7001",
+          "team_id": "urn:machina:sports:team:canonical-away",
+          "provider_team_id": 47,
+          "formation": "4-4-2",
+          "coach": {
+            "id": 502,
+            "name": "Away Coach"
+          },
+          "starting": [
+            {
+              "@id": "urn:machina:sports:participation:x0abf7cda89cbfe5497e81aa0ea2b9709",
+              "participation_id": "urn:machina:sports:participation:x0abf7cda89cbfe5497e81aa0ea2b9709",
+              "identity_scope": "event-participation",
+              "provider_player_id": 201,
+              "name": "A. Starter",
+              "number": 10,
+              "position": "F",
+              "grid": "2:1"
+            }
+          ],
+          "substitutes": []
+        }
+      ]
+    }
+  },
+  {
+    "_id": "urn:machina:sports:projection:xba38d1e3b12f3cecca70edba6d83ce75",
+    "name": "api-football-event-team-statistics",
+    "key": "urn:machina:sports:projection:xba38d1e3b12f3cecca70edba6d83ce75",
+    "metadata": {
+      "event_code": "urn:machina:sports:event:canonical-7001",
+      "source_event_document_id": "document-7001",
+      "provider_fixture_id": 7001,
+      "provider": {
+        "namespace": "api-football",
+        "family": "licensed"
+      },
+      "rights": {
+        "terms": {
+          "data_class": "licensed-provider-data",
+          "commercial_use": true
+        },
+        "source_event_rights_ref": {
+          "kind": "source-event-document",
+          "value": "document-7001",
+          "path": "value.machina_sports_schema.rights"
+        }
+      },
+      "provenance": {
+        "provider": {
+          "namespace": "api-football",
+          "family": "licensed"
+        },
+        "observed_at": "2026-08-22T20:01:03+00:00",
+        "source_refs": [
+          {
+            "kind": "endpoint-class",
+            "value": "api-football/fixtures/statistics"
+          },
+          {
+            "kind": "source-event-document",
+            "value": "document-7001"
+          }
+        ]
+      },
+      "projection_capability": {
+        "name": "internal.api-football.event-team-statistics",
+        "status": "available"
+      },
+      "status": "available",
+      "observed_at": "2026-08-22T20:01:03+00:00",
+      "projection_key": "urn:machina:sports:projection:xba38d1e3b12f3cecca70edba6d83ce75"
+    },
+    "value": {
+      "@id": "urn:machina:sports:projection:xba38d1e3b12f3cecca70edba6d83ce75",
+      "schema_version": "api-football-event-projection/2",
+      "kind": "event-team-statistics",
+      "event_id": "urn:machina:sports:event:canonical-7001",
+      "event_code": "urn:machina:sports:event:canonical-7001",
+      "source_event_document_id": "document-7001",
+      "provider_fixture_id": 7001,
+      "request_context": {
+        "fixture": "7001"
+      },
+      "provider_envelope": {
+        "parameters": {
+          "fixture": "7001"
+        },
+        "errors": [],
+        "results": 2,
+        "response": [
+          {
+            "team": {
+              "id": 40,
+              "name": "Home FC"
+            },
+            "statistics": [
+              {
+                "type": "Shots on Goal",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "team": {
+              "id": 47,
+              "name": "Away FC"
+            },
+            "statistics": [
+              {
+                "type": "Shots on Goal",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "facts": [
+        {
+          "@id": "urn:machina:sports:team-statistics:x0e51cade884628fa05640ce2ddbaad6c",
+          "event_id": "urn:machina:sports:event:canonical-7001",
+          "team_id": "urn:machina:sports:team:canonical-home",
+          "provider_team_id": 40,
+          "statistics": [
+            {
+              "type": "Shots on Goal",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "@id": "urn:machina:sports:team-statistics:xf39c62d33c3b627be2d7abf6d1873d16",
+          "event_id": "urn:machina:sports:event:canonical-7001",
+          "team_id": "urn:machina:sports:team:canonical-away",
+          "provider_team_id": 47,
+          "statistics": [
+            {
+              "type": "Shots on Goal",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "_id": "urn:machina:sports:projection:xd590169658fea29fe02097a773cdd5b5",
+    "name": "api-football-event-player-statistics",
+    "key": "urn:machina:sports:projection:xd590169658fea29fe02097a773cdd5b5",
+    "metadata": {
+      "event_code": "urn:machina:sports:event:canonical-7001",
+      "source_event_document_id": "document-7001",
+      "provider_fixture_id": 7001,
+      "provider": {
+        "namespace": "api-football",
+        "family": "licensed"
+      },
+      "rights": {
+        "terms": {
+          "data_class": "licensed-provider-data",
+          "commercial_use": true
+        },
+        "source_event_rights_ref": {
+          "kind": "source-event-document",
+          "value": "document-7001",
+          "path": "value.machina_sports_schema.rights"
+        }
+      },
+      "provenance": {
+        "provider": {
+          "namespace": "api-football",
+          "family": "licensed"
+        },
+        "observed_at": "2026-08-22T20:01:04+00:00",
+        "source_refs": [
+          {
+            "kind": "endpoint-class",
+            "value": "api-football/fixtures/players"
+          },
+          {
+            "kind": "source-event-document",
+            "value": "document-7001"
+          }
+        ]
+      },
+      "projection_capability": {
+        "name": "internal.api-football.event-player-statistics",
+        "status": "available"
+      },
+      "status": "available",
+      "observed_at": "2026-08-22T20:01:04+00:00",
+      "projection_key": "urn:machina:sports:projection:xd590169658fea29fe02097a773cdd5b5"
+    },
+    "value": {
+      "@id": "urn:machina:sports:projection:xd590169658fea29fe02097a773cdd5b5",
+      "schema_version": "api-football-event-projection/2",
+      "kind": "event-player-statistics",
+      "event_id": "urn:machina:sports:event:canonical-7001",
+      "event_code": "urn:machina:sports:event:canonical-7001",
+      "source_event_document_id": "document-7001",
+      "provider_fixture_id": 7001,
+      "request_context": {
+        "fixture": "7001"
+      },
+      "provider_envelope": {
+        "parameters": {
+          "fixture": "7001"
+        },
+        "errors": [],
+        "results": 2,
+        "response": [
+          {
+            "team": {
+              "id": 40,
+              "name": "Home FC"
+            },
+            "players": [
+              {
+                "player": {
+                  "id": 101,
+                  "name": "H. Scorer"
+                },
+                "statistics": [
+                  {
+                    "games": {
+                      "minutes": 31
+                    },
+                    "goals": {
+                      "total": 1
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "team": {
+              "id": 47,
+              "name": "Away FC"
+            },
+            "players": [
+              {
+                "player": {
+                  "id": 201,
+                  "name": "A. Starter"
+                },
+                "statistics": [
+                  {
+                    "games": {
+                      "minutes": 31
+                    },
+                    "goals": {
+                      "total": 0
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "facts": [
+        {
+          "@id": "urn:machina:sports:player-statistics:x5eb64ee8b50d7ebc0336354f87516229",
+          "event_id": "urn:machina:sports:event:canonical-7001",
+          "team_id": "urn:machina:sports:team:canonical-home",
+          "provider_team_id": 40,
+          "players": [
+            {
+              "@id": "urn:machina:sports:participation:xab3d84005871fc26254872d7d93a1a27",
+              "participation_id": "urn:machina:sports:participation:xab3d84005871fc26254872d7d93a1a27",
+              "identity_scope": "event-participation",
+              "provider_player_id": 101,
+              "name": "H. Scorer",
+              "statistics": [
+                {
+                  "games": {
+                    "minutes": 31
+                  },
+                  "goals": {
+                    "total": 1
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "@id": "urn:machina:sports:player-statistics:x9a33f2bbb562486584ba3c28687dad8b",
+          "event_id": "urn:machina:sports:event:canonical-7001",
+          "team_id": "urn:machina:sports:team:canonical-away",
+          "provider_team_id": 47,
+          "players": [
+            {
+              "@id": "urn:machina:sports:participation:x0abf7cda89cbfe5497e81aa0ea2b9709",
+              "participation_id": "urn:machina:sports:participation:x0abf7cda89cbfe5497e81aa0ea2b9709",
+              "identity_scope": "event-participation",
+              "provider_player_id": 201,
+              "name": "A. Starter",
+              "statistics": [
+                {
+                  "games": {
+                    "minutes": 31
+                  },
+                  "goals": {
+                    "total": 0
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "_id": "urn:machina:sports:projection:xb0dc97559fe7a41ff328584d411aacbb",
+    "name": "api-football-event-head-to-head",
+    "key": "urn:machina:sports:projection:xb0dc97559fe7a41ff328584d411aacbb",
+    "metadata": {
+      "event_code": "urn:machina:sports:event:canonical-7001",
+      "source_event_document_id": "document-7001",
+      "provider_fixture_id": 7001,
+      "provider": {
+        "namespace": "api-football",
+        "family": "licensed"
+      },
+      "rights": {
+        "terms": {
+          "data_class": "licensed-provider-data",
+          "commercial_use": true
+        },
+        "source_event_rights_ref": {
+          "kind": "source-event-document",
+          "value": "document-7001",
+          "path": "value.machina_sports_schema.rights"
+        }
+      },
+      "provenance": {
+        "provider": {
+          "namespace": "api-football",
+          "family": "licensed"
+        },
+        "observed_at": "2026-08-22T20:01:05+00:00",
+        "source_refs": [
+          {
+            "kind": "endpoint-class",
+            "value": "api-football/fixtures/headtohead"
+          },
+          {
+            "kind": "source-event-document",
+            "value": "document-7001"
+          }
+        ]
+      },
+      "projection_capability": {
+        "name": "internal.api-football.event-head-to-head",
+        "status": "available"
+      },
+      "status": "available",
+      "observed_at": "2026-08-22T20:01:05+00:00",
+      "projection_key": "urn:machina:sports:projection:xb0dc97559fe7a41ff328584d411aacbb"
+    },
+    "value": {
+      "@id": "urn:machina:sports:projection:xb0dc97559fe7a41ff328584d411aacbb",
+      "schema_version": "api-football-event-projection/2",
+      "kind": "event-head-to-head",
+      "event_id": "urn:machina:sports:event:canonical-7001",
+      "event_code": "urn:machina:sports:event:canonical-7001",
+      "source_event_document_id": "document-7001",
+      "provider_fixture_id": 7001,
+      "request_context": {
+        "h2h": "40-47",
+        "last": 5
+      },
+      "provider_envelope": {
+        "parameters": {
+          "h2h": "40-47",
+          "last": "5"
+        },
+        "errors": [],
+        "results": 2,
+        "response": [
+          {
+            "fixture": {
+              "id": 6001,
+              "date": "2026-02-10T20:00:00+00:00",
+              "status": {
+                "short": "FT"
+              }
+            },
+            "teams": {
+              "home": {
+                "id": 40,
+                "name": "Home FC"
+              },
+              "away": {
+                "id": 47,
+                "name": "Away FC"
+              }
+            },
+            "goals": {
+              "home": 2,
+              "away": 1
+            }
+          },
+          {
+            "fixture": {
+              "id": 6002,
+              "date": "2025-10-02T20:00:00+00:00",
+              "status": {
+                "short": "FT"
+              }
+            },
+            "teams": {
+              "home": {
+                "id": 47,
+                "name": "Away FC"
+              },
+              "away": {
+                "id": 40,
+                "name": "Home FC"
+              }
+            },
+            "goals": {
+              "home": 0,
+              "away": 0
+            }
+          }
+        ]
+      },
+      "facts": [
+        {
+          "@id": "urn:machina:sports:head-to-head-observation:xd2a2329f01a4a7adfa3a311eb0b07de5",
+          "event_id": "urn:machina:sports:event:canonical-7001",
+          "provider_fixture_id": 6001,
+          "home_team_id": "urn:machina:sports:team:canonical-home",
+          "away_team_id": "urn:machina:sports:team:canonical-away",
+          "provider_home_team_id": 40,
+          "provider_away_team_id": 47,
+          "facts": {
+            "fixture": {
+              "id": 6001,
+              "date": "2026-02-10T20:00:00+00:00",
+              "status": {
+                "short": "FT"
+              }
+            },
+            "teams": {
+              "home": {
+                "id": 40,
+                "name": "Home FC"
+              },
+              "away": {
+                "id": 47,
+                "name": "Away FC"
+              }
+            },
+            "goals": {
+              "home": 2,
+              "away": 1
+            }
+          }
+        },
+        {
+          "@id": "urn:machina:sports:head-to-head-observation:xc60b96cacfb6f82a5fef5357d7d4ce1a",
+          "event_id": "urn:machina:sports:event:canonical-7001",
+          "provider_fixture_id": 6002,
+          "home_team_id": "urn:machina:sports:team:canonical-away",
+          "away_team_id": "urn:machina:sports:team:canonical-home",
+          "provider_home_team_id": 47,
+          "provider_away_team_id": 40,
+          "facts": {
+            "fixture": {
+              "id": 6002,
+              "date": "2025-10-02T20:00:00+00:00",
+              "status": {
+                "short": "FT"
+              }
+            },
+            "teams": {
+              "home": {
+                "id": 47,
+                "name": "Away FC"
+              },
+              "away": {
+                "id": 40,
+                "name": "Home FC"
+              }
+            },
+            "goals": {
+              "home": 0,
+              "away": 0
+            }
+          }
+        }
+      ]
+    }
+  }
+]
