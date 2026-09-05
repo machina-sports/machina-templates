@@ -86,7 +86,7 @@ workflow:
         payload: "$.get('fixture_data', {})"
       outputs:
         canonical-refusals: "$.get('refusals', [])"
-        canonical-envelope-valid: "$.get('allowed') is True and isinstance($.get('envelope'), dict) and isinstance($.get('envelope', {}).get('machina_sports_schema'), dict) and $.get('envelope', {}).get('machina_sports_schema', {}).get('schema_version') == 'machina-sports-schema/1' and isinstance($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view'), dict) and isinstance($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id'), str) and bool($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id')) and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id') == $.context.get('event_value', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id') and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('provider', {}).get('namespace') == 'api-football' and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('provider', {}).get('raw') == $.context.get('fixture_data') and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('observed_at') == $.context.get('observed_at') and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('prototype_only') is True and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('commercial_use') is False"
+        canonical-envelope-valid: "$.get('allowed') is True and isinstance($.get('refusals'), list) and not $.get('refusals') and isinstance($.get('envelope'), dict) and isinstance($.get('envelope', {}).get('machina_sports_schema'), dict) and $.get('envelope', {}).get('machina_sports_schema', {}).get('schema_version') == 'machina-sports-schema/1' and isinstance($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view'), dict) and isinstance($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id'), str) and bool($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id')) and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id') == $.context.get('event_value', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id') and isinstance($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('label'), str) and bool($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('label')) and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('provider', {}).get('namespace') == 'api-football' and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('provider', {}).get('family') == 'licensed' and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('provider', {}).get('raw') == $.context.get('fixture_data') and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('provider', {}).get('namespace') == 'api-football' and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('provider', {}).get('family') == 'licensed' and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('observed_at') == $.context.get('observed_at') and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('data_class') == 'licensed-provider-example-fixture' and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('prototype_only') is True and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('commercial_use') is False"
         event_updated: |
           (
             [
@@ -119,9 +119,31 @@ workflow:
       filters:
         document_id: $.get('event_document_id')
       documents:
+        # The canonical block owns the match's identity, kickoff, status and
+        # score. The retired IPTC mapping wrote its own aliases for the same
+        # facts; merging the stored document forward keeps those aliases alive
+        # and unrefreshed, and every one of them is a hard reject in the
+        # consumer (lib/event-evidence.ts: matchStateDeclarationsAgree reads
+        # sport:status / status / sport:score, and schema:startDate must parse
+        # equal to the canonical start_time). So drop exactly the aliases this
+        # writer now owns and keep everything else the document carries —
+        # operator fields, market data, version_control.
         sport:Event: |
           {
-            **$.get('event_value', {}),
+            **{
+              key: value
+              for key, value in $.get('event_value', {}).items()
+              if key not in (
+                '@context',
+                'schema:startDate',
+                'sport:competition',
+                'sport:competitors',
+                'sport:score',
+                'sport:status',
+                'sport:venue',
+                'status'
+              )
+            },
             **$.get('event_updated', {}),
             'version_control': {
               **$.get('event_value', {}).get('version_control', {})
