@@ -70,6 +70,10 @@ workflow:
         id: "$.get('provider-fixture-id')"
       outputs:
         fixture-envelope: "$"
+        # Owned HTTP response receipts, never caller-supplied observed_at.
+        # A replay/import caller of the projector must supply its own truthful
+        # classification; missing receipts are not inferred to be non-synthetic.
+        fixture-receipt: "{'mode': 'provider_http', 'provider_id': 'api-football', 'source_operation': 'api-football/fixtures', 'synthetic': False, 'observed_at': datetime.utcnow().isoformat() + 'Z'}"
         fixture-response: "$.get('response', []) if isinstance($.get('response'), list) else []"
         fixture-valid: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response')[0], dict) and isinstance($.get('response')[0].get('fixture'), dict) and str($.get('response')[0].get('fixture', {}).get('id')) == str($.context.get('provider-fixture-id')) and isinstance($.get('errors'), (list, dict)) and not $.get('errors') and $.get('results') == 1"
         home-team-id: "$.get('response', [])[0].get('teams', {}).get('home', {}).get('id') if isinstance($.get('response'), list) and len($.get('response')) == 1 else None"
@@ -87,6 +91,7 @@ workflow:
         fixture: "$.get('provider-fixture-id')"
       outputs:
         events-envelope: "$"
+        events-receipt: "{'mode': 'provider_http', 'provider_id': 'api-football', 'source_operation': 'api-football/fixtures/events', 'synthetic': False, 'observed_at': datetime.utcnow().isoformat() + 'Z'}"
 
     - type: connector
       name: fetch-lineups
@@ -100,6 +105,7 @@ workflow:
         fixture: "$.get('provider-fixture-id')"
       outputs:
         lineups-envelope: "$"
+        lineups-receipt: "{'mode': 'provider_http', 'provider_id': 'api-football', 'source_operation': 'api-football/fixtures/lineups', 'synthetic': False, 'observed_at': datetime.utcnow().isoformat() + 'Z'}"
 
     - type: connector
       name: fetch-team-statistics
@@ -113,6 +119,7 @@ workflow:
         fixture: "$.get('provider-fixture-id')"
       outputs:
         team-statistics-envelope: "$"
+        team-statistics-receipt: "{'mode': 'provider_http', 'provider_id': 'api-football', 'source_operation': 'api-football/fixtures/statistics', 'synthetic': False, 'observed_at': datetime.utcnow().isoformat() + 'Z'}"
 
     - type: connector
       name: fetch-player-statistics
@@ -126,6 +133,7 @@ workflow:
         fixture: "$.get('provider-fixture-id')"
       outputs:
         player-statistics-envelope: "$"
+        player-statistics-receipt: "{'mode': 'provider_http', 'provider_id': 'api-football', 'source_operation': 'api-football/fixtures/players', 'synthetic': False, 'observed_at': datetime.utcnow().isoformat() + 'Z'}"
 
     - type: connector
       name: fetch-head-to-head
@@ -140,6 +148,7 @@ workflow:
         last: 5
       outputs:
         head-to-head-envelope: "$"
+        head-to-head-receipt: "{'mode': 'provider_http', 'provider_id': 'api-football', 'source_operation': 'api-football/fixtures/headtohead', 'synthetic': False, 'observed_at': datetime.utcnow().isoformat() + 'Z'}"
 
     - type: connector
       name: project-event-data
@@ -161,7 +170,8 @@ workflow:
         provider_fixture_id: "$.get('provider-fixture-id')"
         source_event_rights: "$.get('source-event-rights', {})"
         source_event_provenance: "$.get('source-event-provenance', {})"
-        endpoint_observed_at: "{key: $.get('projection-observed-at') for key in ['events', 'lineups', 'team_statistics', 'player_statistics', 'head_to_head']}"
+        endpoint_observed_at: "{key: ($.get(key.replace('_', '-') + '-receipt') or {}).get('observed_at', $.get('projection-observed-at')) for key in ['events', 'lineups', 'team_statistics', 'player_statistics', 'head_to_head']}"
+        endpoint_provenance: "{key: $.get(key.replace('_', '-') + '-receipt') for key in ['fixture', 'events', 'lineups', 'team_statistics', 'player_statistics', 'head_to_head']}"
         request_contexts: "{'fixture': {'id': $.get('provider-fixture-id')}, 'events': {'fixture': $.get('provider-fixture-id')}, 'lineups': {'fixture': $.get('provider-fixture-id')}, 'team_statistics': {'fixture': $.get('provider-fixture-id')}, 'player_statistics': {'fixture': $.get('provider-fixture-id')}, 'head_to_head': {'h2h': str($.get('home-team-id')) + '-' + str($.get('away-team-id')), 'last': 5}}"
       outputs:
         projection-valid: "$.get('valid') is True"
