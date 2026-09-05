@@ -3,6 +3,7 @@ name: Test API-Football Evidence
 on:
   pull_request:
     paths:
+      - "connectors/machina-sports-canonical/**"
       - "connectors/api-football/**"
       - "tools/iptc/canonical/**"
       - "tests/test_iptc_canonical_evidence_phase1.py"
@@ -10,6 +11,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "connectors/machina-sports-canonical/**"
       - "connectors/api-football/**"
       - "tools/iptc/canonical/**"
       - "tests/test_iptc_canonical_evidence_phase1.py"

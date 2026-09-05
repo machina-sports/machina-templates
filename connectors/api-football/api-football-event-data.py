@@ -547,6 +547,10 @@ def _project_head_to_head(rows, identity, event_id):
         away_id = _text(away.get("id")) if isinstance(away, dict) else None
         if fixture_id is None or {home_id, away_id} != expected:
             return None, "head-to-head result is outside the exact fixture team pair"
+        # The provider's last-N pair endpoint includes the selected fixture once
+        # it starts. It is not a prior meeting and cannot corroborate itself.
+        if fixture_id == identity["fixture_id"]:
+            continue
         facts.append({
             "@id": _urn("head-to-head-observation", event_id, ordinal, fixture_id),
             "event_id": event_id,
@@ -557,7 +561,7 @@ def _project_head_to_head(rows, identity, event_id):
             "provider_away_team_id": away["id"],
             "facts": deepcopy(row),
         })
-    return facts, None
+    return facts, None if facts else "provider returned no prior meetings excluding the selected fixture"
 
 
 PROJECTORS = {
