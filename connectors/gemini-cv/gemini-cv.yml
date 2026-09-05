@@ -1,0 +1,10 @@
+connector:
+  name: gemini-cv
+  description: "Gemini computer-vision route for the Automated Highlights Agent: validates, refines and ranks SportsClaw highlight candidates against the source video (relevance, hype, editorial safety). Fail-closed; degraded runs fall back to the deterministic play-by-play ranking with an explicit flag."
+  filename: gemini-cv.py
+  filetype: pyscript
+  commands:
+    - name: Rank Highlight Candidates
+      value: rank_highlight_candidates
+    - name: Route Capabilities
+      value: route_capabilities

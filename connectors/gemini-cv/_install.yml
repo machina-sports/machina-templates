@@ -1,0 +1,20 @@
+setup:
+  title: Gemini CV (Automated Highlights)
+  description: Computer-vision validation and ranking of SportsClaw highlight candidates with Gemini video understanding on Vertex AI. The deterministic play-by-play ranking stays the baseline; the model can only keep, hold, reject, refine or re-rank what it was given.
+  category: [connectors]
+  estimatedTime: 3 minutes
+  features:
+    - Schema-validated relevance / hype / editorial-safety scores per candidate
+    - Fail-closed: malformed output, unknown candidates, refusals, timeouts and unavailable modes degrade to the PBP ranking with an explicit reason
+    - Static video understanding on Vertex AI; agentic processing capability-gated
+  integrations: [vertex-ai]
+  status: available
+  value: connectors/gemini-cv
+  version: 1.0.0
+
+datasets:
+  - type: connector
+    path: gemini-cv.yml
+
+  - type: workflow
+    path: test-route.yml

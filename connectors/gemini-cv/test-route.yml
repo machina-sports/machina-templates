@@ -1,0 +1,18 @@
+workflow:
+  name: gemini-cv-test-route
+  title: Gemini CV route capabilities
+  description: Reports what the gemini-cv route can do in this runtime (SDK version, providers, whether agentic processing is reachable). No model call, no credential needed.
+  context-variables:
+    debugger:
+      enabled: true
+  tasks:
+    - name: capabilities
+      type: connector
+      connector:
+        name: gemini-cv
+        command: route_capabilities
+      outputs:
+        capabilities: "$"
+  outputs:
+    capabilities: "$.get('capabilities', {})"
+    workflow-status: "'executed'"
