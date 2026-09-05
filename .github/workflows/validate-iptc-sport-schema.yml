@@ -265,14 +265,15 @@ jobs:
       # One authority across both matrix legs. The suite proves determinism in
       # disposable trees; this explicit build proves the interpreter selected by
       # the matrix produces the exact reviewed wheel and sdist bytes. Setuptools
-      # writes egg-info beside the checkout even when output goes to RUNNER_TEMP,
-      # so this step removes that generated directory after the digest gate.
+      # writes egg-info beside the checkout even when output goes to RUNNER_TEMP.
+      # Those fixed-point metadata files are tracked: verify they are unchanged,
+      # rather than deleting release inputs and making the clean-tree gate fail.
       - name: This interpreter builds the reviewed release digests
         run: |
           python packaging/machina_sports_canonical/release.py . "$RUNNER_TEMP/release"
           (cd "$RUNNER_TEMP/release" && sha256sum *.whl *.tar.gz) | tee "$RUNNER_TEMP/SHA256SUMS"
           diff -u docs/iptc/machina-sports-canonical-0.4.1.sha256 "$RUNNER_TEMP/SHA256SUMS"
-          rm -rf machina_sports_canonical.egg-info
+          git diff --exit-code -- machina_sports_canonical.egg-info
         env:
           SOURCE_DATE_EPOCH: "1786991693"
 

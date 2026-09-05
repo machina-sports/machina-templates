@@ -3068,7 +3068,10 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
         self.assertIn(RELEASE_CHECKSUM_FILE, comparisons[0])
         self.assertIn('SOURCE_DATE_EPOCH: "{0}"'.format(
             RELEASE_SOURCE_DATE_EPOCH), self.proof)
-        self.assertIn("rm -rf machina_sports_canonical.egg-info", commands)
+        # These fixed-point metadata files are tracked release inputs. Removing
+        # them makes an otherwise successful package proof dirty by definition.
+        self.assertNotIn("rm -rf machina_sports_canonical.egg-info", commands)
+        self.assertIn("git diff --exit-code -- machina_sports_canonical.egg-info", commands)
 
     def test_the_proof_job_keeps_its_clean_tree_gate_after_the_release_build(self):
         """The gate is what catches a build byproduct the step above did not clean
