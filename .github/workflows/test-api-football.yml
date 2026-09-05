@@ -1,0 +1,31 @@
+name: Test API-Football Evidence
+
+on:
+  pull_request:
+    paths:
+      - "connectors/api-football/**"
+      - "tools/iptc/canonical/**"
+      - "tests/test_iptc_canonical_evidence_phase1.py"
+      - ".github/workflows/test-api-football.yml"
+  push:
+    branches: [main]
+    paths:
+      - "connectors/api-football/**"
+      - "tools/iptc/canonical/**"
+      - "tests/test_iptc_canonical_evidence_phase1.py"
+      - ".github/workflows/test-api-football.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-evidence-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --disable-pip-version-check pytest pyyaml jsonschema
+      - name: Run provider ingestion and canonical evidence regressions
+        run: python -m pytest connectors/api-football/tests tests/test_iptc_canonical_evidence_phase1.py -q

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime
 import hashlib
 import json
 
@@ -186,6 +187,8 @@ def _required_context(params):
         "rights": rights,
         "provenance": provenance,
         "endpoint_observed_at": observed_at,
+        "endpoint_provenance": params.get("endpoint_provenance"),
+        "fixture_envelope": params.get("fixture_envelope"),
         "request_contexts": request_contexts,
     }, None
 
@@ -792,6 +795,48 @@ EVIDENCE_PROJECTORS = {
 }
 
 
+def _observation_provenance(context, source_key, endpoint, envelope):
+    """Only the owned HTTP workflow can attest fresh retrieval, never a default.
+
+    Importers/replayers without receipts retain unknown provenance. Source
+    synthetic declarations dominate fresh retrieval and cannot be downgraded.
+    These receipts describe transport, not commercial rights or factual truth.
+    """
+    source = context["provenance"]
+    receipts = context.get("endpoint_provenance")
+    receipts = receipts if isinstance(receipts, dict) else {}
+    fixture = receipts.get("fixture")
+    receipt = receipts.get(source_key)
+    envelopes = (context.get("fixture_envelope"), envelope)
+    nested = [item.get("provenance") for item in envelopes if isinstance(item, dict)]
+    declarations = [item["synthetic"] for item in (source, fixture, receipt, *envelopes, *nested)
+                    if isinstance(item, dict) and "synthetic" in item]
+    if any(value is True for value in declarations):
+        return {"synthetic": True}
+    if any(value is not False for value in declarations):
+        return {}
+
+    def valid(item, operation):
+        if not isinstance(item, dict) or item.get("mode") != "provider_http" \
+                or item.get("provider_id") != PROVIDER \
+                or item.get("source_operation") != operation \
+                or item.get("synthetic") is not False:
+            return False
+        try:
+            timestamp = datetime.fromisoformat(item["observed_at"].replace("Z", "+00:00"))
+            return timestamp.utcoffset() is not None
+        except (KeyError, TypeError, ValueError, AttributeError):
+            return False
+
+    if not valid(fixture, "api-football/fixtures") or not valid(receipt, endpoint):
+        return {}
+    if receipt["observed_at"] != context["endpoint_observed_at"][source_key]:
+        return {}
+    return {"synthetic": False, "retrieval": {
+        key: receipt[key] for key in ("mode", "provider_id", "source_operation", "observed_at")
+    }}
+
+
 def _document(spec, facts, reason, envelope, request_context, identity, context):
     source_key, name, kind, capability_name, endpoint = spec
     status = "available" if facts else "unavailable"
@@ -805,6 +850,7 @@ def _document(spec, facts, reason, envelope, request_context, identity, context)
         "value": source_event_document_id,
     }
     provenance = {
+        **_observation_provenance(context, source_key, endpoint, envelope),
         "provider": deepcopy(context["provider"]),
         "observed_at": context["endpoint_observed_at"][source_key],
         "source_refs": [
