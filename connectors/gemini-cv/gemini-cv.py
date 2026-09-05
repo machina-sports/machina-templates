@@ -29,20 +29,31 @@ caller configured.
 from __future__ import annotations
 
 import hashlib
+from datetime import datetime, timezone
 import json
+import math
 import os
+import re
+import stat
+import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
+import uuid
 
 ROUTE = "gemini-cv/rank_highlight_candidates"
-CONTRACT_VERSION = "1.0"
-PROMPT_VERSION = "gemini-cv/2026-09-04.v1"
-DEFAULT_MODEL = "gemini-3.7-flash"
+CONTRACT_VERSION = "1.1"
+PROMPT_VERSION = "gemini-cv/2026-09-05.v2"
+DEFAULT_MODEL = "gemini-3.8-flash"
 DEFAULT_LOCATION = "global"
 DEFAULT_MAX_OUTPUT_TOKENS = 16384  # thought tokens count against this budget (Arena 2026-09-04)
 DEFAULT_TIMEOUT_SEC = 180
 INLINE_VIDEO_LIMIT_BYTES = 20 * 1024 * 1024
+MAX_VIDEO_BYTES = 512 * 1024 * 1024
+MAX_CANDIDATES = 100
+MAX_DISCOVERIES = 100
+MAX_MODEL_TEXT = 1024 * 1024
 REFINEMENT_TOLERANCE_SEC = 10.0
 PROVIDERS = ("vertex_ai", "ai_studio")
 PROCESSING = ("static", "agentic")
@@ -125,12 +136,76 @@ def _error(code, message):
     return {"status": False, "data": {}, "error": {"code": code, "message": message}}
 
 
+def _secret(inputs, key, env_name):
+    value = inputs.get(key)
+    # Unresolved optional workflow placeholders are not credentials. Keep the
+    # portable pack provider-neutral; only the owner resolves pod defaults.
+    if value is None or value == "" or (isinstance(value, str) and value.startswith("$")):
+        return os.environ.get(env_name)
+    return value
+
+
+def _provider_error(error, secrets):
+    message = str(error)
+    def redact(value):
+        nonlocal message
+        if isinstance(value, str) and value:
+            message = message.replace(value, "[redacted]")
+            try:
+                parsed = json.loads(value)
+            except (ValueError, RecursionError):
+                return
+            if isinstance(parsed, dict):
+                redact(parsed)
+        elif isinstance(value, dict):
+            for item in value.values():
+                redact(item)
+    for name in ("api_key", "credential"):
+        redact(secrets.get(name))
+    return f"provider-error: {type(error).__name__}: {message}"[:500]
+
+
 def _number(value):
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return (isinstance(value, (int, float)) and not isinstance(value, bool)
+            and abs(value) <= 1e15 and math.isfinite(value))
 
 
 def _sha256_json(value):
-    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+
+
+def _text(value, name, limit=2000):
+    if not isinstance(value, str) or not value.strip() or len(value) > limit:
+        raise ValueError(f"{name} must be a non-empty string of at most {limit} characters")
+    return value.strip()
+
+
+def _object(value, name):
+    if not isinstance(value, dict):
+        raise ValueError(f"{name} must be an object")
+    return value
+
+
+def _rights(value):
+    rights = _object(value, "rights")
+    normalized = {}
+    for camel, snake in (("clearedForClipping", "cleared_for_clipping"),
+                         ("rightsHolder", "rights_holder"), ("licenseRef", "license_ref")):
+        if camel in rights and snake in rights and (type(rights[camel]) is not type(rights[snake]) or rights[camel] != rights[snake]):
+            raise ValueError(f"contradictory rights {camel}/{snake} — CV ranking refused")
+        normalized[camel] = rights.get(camel, rights.get(snake))
+    if normalized["clearedForClipping"] is not True:
+        raise ValueError("rights do not clear this source for clipping — CV ranking refused")
+    for key in ("rightsHolder", "licenseRef"):
+        normalized[key] = _text(normalized[key], f"rights.{key}")
+    # Retain additional policy restrictions in the evidence identity.
+    return {**rights, **normalized}
+
+
+def _source_digest(value):
+    if not isinstance(value, str) or re.fullmatch(r"[a-f0-9]{64}", value) is None:
+        raise ValueError("source sha256 is required from the approved extraction manifest")
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -140,19 +215,21 @@ def _sha256_json(value):
 def _candidate_from_window(window, index):
     if not isinstance(window, dict):
         raise ValueError(f"manifest window {index} is not an object")
-    candidate_id = str(window.get("actionId") or window.get("candidate_id") or "").strip()
+    candidate_id = _text(window.get("actionId") or window.get("candidate_id"), "candidate id", 256)
     start, end, action = window.get("startSec"), window.get("endSec"), window.get("actionVideoSec")
     if not candidate_id:
         raise ValueError(f"manifest window {index} has no actionId")
-    if not (_number(start) and _number(end) and end > start):
+    if not (_number(start) and _number(end) and 0 <= start < end):
         raise ValueError(f"manifest window {candidate_id} has an invalid startSec/endSec")
-    if not _number(action):
+    if not (_number(action) and start <= action <= end):
         raise ValueError(f"manifest window {candidate_id} has no actionVideoSec")
     importance = window.get("importance")
+    if importance is not None and not (_number(importance) and 0 <= importance <= 100):
+        raise ValueError("candidate importance must be between 0 and 100")
     return {
         "candidate_id": candidate_id,
-        "label": str(window.get("label") or candidate_id),
-        "type": str(window.get("type") or "unknown"),
+        "label": _text(window.get("label") or candidate_id, "candidate label"),
+        "type": _text(window.get("type") or "unknown", "candidate type", 256),
         "importance": importance if _number(importance) else None,
         "action_video_sec": float(action),
         "window_start_sec": float(start),
@@ -165,21 +242,23 @@ def _candidate_from_window(window, index):
 def _candidate_from_explicit(entry, index):
     if not isinstance(entry, dict):
         raise ValueError(f"candidate {index} is not an object")
-    candidate_id = str(entry.get("candidate_id") or entry.get("actionId") or "").strip()
+    candidate_id = _text(entry.get("candidate_id") or entry.get("actionId"), "candidate id", 256)
     start = entry.get("window_start_sec", entry.get("startSec"))
     end = entry.get("window_end_sec", entry.get("endSec"))
     action = entry.get("action_video_sec", entry.get("actionVideoSec"))
     if not candidate_id:
         raise ValueError(f"candidate {index} has no candidate_id")
-    if not (_number(start) and _number(end) and end > start):
+    if not (_number(start) and _number(end) and 0 <= start < end):
         raise ValueError(f"candidate {candidate_id} has an invalid window")
-    if not _number(action):
+    if not (_number(action) and start <= action <= end):
         raise ValueError(f"candidate {candidate_id} has no action_video_sec")
     importance = entry.get("importance")
+    if importance is not None and not (_number(importance) and 0 <= importance <= 100):
+        raise ValueError("candidate importance must be between 0 and 100")
     return {
         "candidate_id": candidate_id,
-        "label": str(entry.get("label") or candidate_id),
-        "type": str(entry.get("type") or entry.get("pbp_type") or "unknown"),
+        "label": _text(entry.get("label") or candidate_id, "candidate label"),
+        "type": _text(entry.get("type") or entry.get("pbp_type") or "unknown", "candidate type", 256),
         "importance": importance if _number(importance) else None,
         "action_video_sec": float(action),
         "window_start_sec": float(start),
@@ -193,34 +272,43 @@ def build_context(inputs):
     """Return {candidates, sync_anchor, duration_sec, rights, event} or raise ValueError."""
     manifest = inputs.get("manifest")
     candidates = []
-    if isinstance(manifest, dict) and manifest:
-        rights = manifest.get("rights") if isinstance(manifest.get("rights"), dict) else {}
-        if rights.get("clearedForClipping") is not True and rights.get("cleared_for_clipping") is not True:
-            raise ValueError("manifest rights do not clear this source for clipping — CV ranking refused")
+    if "manifest" in inputs:
+        manifest = _object(manifest, "manifest")
+        if manifest.get("state") != "succeeded":
+            raise ValueError("manifest must be succeeded")
+        rights = _rights(manifest.get("rights"))
         windows = manifest.get("windows")
-        if not isinstance(windows, list) or not windows:
+        if not isinstance(windows, list) or not 1 <= len(windows) <= MAX_CANDIDATES:
             raise ValueError("manifest has no candidate windows")
         candidates = [_candidate_from_window(window, index) for index, window in enumerate(windows)]
-        anchor = manifest.get("syncAnchor") or {}
-        source = manifest.get("source") or {}
-        ffprobe = source.get("ffprobe") if isinstance(source, dict) else {}
-        duration = (ffprobe or {}).get("durationSec")
-        event = manifest.get("event") or {}
+        anchor = _object(manifest.get("syncAnchor"), "sync anchor")
+        source = _object(manifest.get("source"), "source")
+        duration = _object(source.get("ffprobe"), "source.ffprobe").get("durationSec")
+        event = manifest.get("event")
+        source_sha256 = _source_digest(source.get("sha256"))
     else:
         explicit = inputs.get("candidates")
-        if not isinstance(explicit, list) or not explicit:
+        if not isinstance(explicit, list) or not 1 <= len(explicit) <= MAX_CANDIDATES:
             raise ValueError("provide a ClipManifest in `manifest` or a non-empty `candidates` list")
         candidates = [_candidate_from_explicit(entry, index) for index, entry in enumerate(explicit)]
-        anchor = inputs.get("sync_anchor") or inputs.get("syncAnchor") or {}
+        anchor = _object(inputs.get("sync_anchor", inputs.get("syncAnchor")), "sync anchor")
         duration = inputs.get("duration_sec", inputs.get("durationSec"))
-        rights = inputs.get("rights") or {}
-        event = inputs.get("event") or {}
+        rights = _rights(inputs.get("rights"))
+        event = inputs.get("event")
+        source_sha256 = _source_digest(inputs.get("source_sha256"))
+    event = _object(event, "event")
+    for field in ("provider", "sport", "eventId"):
+        _text(event.get(field), f"event.{field}")
+    if not (_number(duration) and 0 < duration <= 24 * 60 * 60):
+        raise ValueError("source duration must be finite and between 0 and 86400 seconds")
+    if any(c["window_end_sec"] > duration for c in candidates):
+        raise ValueError("candidate window exceeds source duration")
     ids = [c["candidate_id"] for c in candidates]
     if len(set(ids)) != len(ids):
         raise ValueError("candidate ids must be unique")
     video_sec = anchor.get("videoSec", anchor.get("video_sec"))
     clock_sec = anchor.get("clockSec", anchor.get("clock_sec"))
-    if not (_number(video_sec) and _number(clock_sec)):
+    if not (_number(video_sec) and 0 <= video_sec <= duration and _number(clock_sec) and clock_sec >= 0):
         raise ValueError("sync anchor requires numeric videoSec and clockSec")
     return {
         "candidates": candidates,
@@ -228,6 +316,8 @@ def build_context(inputs):
         "duration_sec": float(duration) if _number(duration) else None,
         "rights": rights,
         "event": event if isinstance(event, dict) else {},
+        "source_sha256": source_sha256,
+        "manifest_sha256": _sha256_json(manifest) if manifest is not None else None,
     }
 
 
@@ -252,17 +342,30 @@ def build_prompt(context):
 # validation (fail closed) and ranking
 # ---------------------------------------------------------------------------
 
-def validate_output(raw_text, candidates):
+def validate_output(raw_text, candidates, duration_sec=None):
     """Return (data, problems). data is None whenever any problem exists."""
     problems = []
-    if raw_text is None or not str(raw_text).strip():
+    if not isinstance(raw_text, str) or not raw_text.strip() or len(raw_text) > MAX_MODEL_TEXT:
         return None, ["model returned no text"]
     try:
-        data = json.loads(raw_text)
-    except (TypeError, ValueError) as error:
+        def reject_constant(value):
+            raise ValueError(f"non-finite number {value}")
+        def unique_object(pairs):
+            result = {}
+            for key, value in pairs:
+                if key in result:
+                    raise ValueError("duplicate object key")
+                result[key] = value
+            return result
+        data = json.loads(raw_text, parse_constant=reject_constant, object_pairs_hook=unique_object)
+    except (TypeError, ValueError, RecursionError) as error:
         return None, [f"model output is not JSON: {error}"]
     if not isinstance(data, dict) or not isinstance(data.get("candidates"), list):
         return None, ["candidates[] missing"]
+    if len(data["candidates"]) > MAX_CANDIDATES:
+        return None, ["too many model candidates"]
+    if set(data) - {"candidates", "discovered_moments", "refusal"}:
+        problems.append("unknown response fields")
     by_id = {c["candidate_id"]: c for c in candidates}
     seen = set()
     for entry in data["candidates"]:
@@ -270,13 +373,16 @@ def validate_output(raw_text, candidates):
             problems.append("candidate entry is not an object")
             continue
         cid = entry.get("candidate_id")
-        if cid not in by_id:
+        if not isinstance(cid, str) or cid not in by_id:
             problems.append(f"unknown candidate_id {cid!r} (the model may not add candidates)")
             continue
         if cid in seen:
             problems.append(f"duplicate candidate_id {cid!r}")
             continue
         seen.add(cid)
+        if set(entry) - {"candidate_id", "refined_start_sec", "refined_end_sec", "relevance", "hype",
+                         "editorial_safety", "confidence", "verdict", "description"}:
+            problems.append(f"{cid} has unknown fields")
         for field in ("relevance", "hype", "editorial_safety"):
             value = entry.get(field)
             if not (isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 100):
@@ -287,27 +393,31 @@ def validate_output(raw_text, candidates):
         if entry.get("verdict") not in VERDICTS:
             problems.append(f"{cid}.verdict invalid: {entry.get('verdict')!r}")
         start, end = entry.get("refined_start_sec"), entry.get("refined_end_sec")
-        if not (_number(start) and _number(end) and end > start):
+        if not (_number(start) and _number(end) and 0 <= start < end
+                and (duration_sec is None or end <= duration_sec)):
             problems.append(f"{cid} refined window invalid: {start!r}-{end!r}")
         else:
             window = by_id[cid]
-            if start < window["window_start_sec"] - REFINEMENT_TOLERANCE_SEC or end > window["window_end_sec"] + REFINEMENT_TOLERANCE_SEC:
+            if abs(start - window["window_start_sec"]) > REFINEMENT_TOLERANCE_SEC or abs(end - window["window_end_sec"]) > REFINEMENT_TOLERANCE_SEC:
                 problems.append(f"{cid} refined window drifts more than {REFINEMENT_TOLERANCE_SEC:g}s from the candidate window")
-        if not isinstance(entry.get("description"), str):
+        if not isinstance(entry.get("description"), str) or not 1 <= len(entry["description"]) <= 2000:
             problems.append(f"{cid}.description missing")
     missing = set(by_id) - seen
     if missing:
         problems.append(f"candidates missing from output: {sorted(missing)}")
-    if not isinstance(data.get("discovered_moments"), list):
+    if not isinstance(data.get("discovered_moments"), list) or len(data["discovered_moments"]) > MAX_DISCOVERIES:
         problems.append("discovered_moments[] missing")
     else:
         for moment in data["discovered_moments"]:
-            if not (isinstance(moment, dict) and _number(moment.get("approx_sec")) and isinstance(moment.get("label"), str)
+            if not (isinstance(moment, dict) and not set(moment) - {"approx_sec", "label", "confidence"}
+                    and _number(moment.get("approx_sec")) and 0 <= moment["approx_sec"]
+                    and (duration_sec is None or moment["approx_sec"] <= duration_sec)
+                    and isinstance(moment.get("label"), str) and 1 <= len(moment["label"]) <= 2000
                     and _number(moment.get("confidence")) and 0 <= moment["confidence"] <= 1):
                 problems.append("discovered_moments entry malformed")
                 break
     refusal = data.get("refusal")
-    if refusal is not None and not isinstance(refusal, str):
+    if refusal is not None and (not isinstance(refusal, str) or len(refusal) > 2000):
         problems.append("refusal must be a string")
     return (data if not problems else None), problems
 
@@ -368,6 +478,12 @@ def _result(context, config, *, ranking, degraded, reasons, fallback_mode, disco
             "usage": usage,
             "latency_ms": latency_ms,
             "request_sha256": config["request_sha256"],
+            "ranking_id": str(uuid.uuid4()),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "source_sha256": context["source_sha256"],
+            "manifest_sha256": context["manifest_sha256"],
+            "rights_sha256": _sha256_json(context["rights"]),
+            "media_verified": (model_meta or {}).get("model_meta", {}).get("verified_source_sha256") == context["source_sha256"],
             "event": context["event"],
             **(model_meta or {}),
         },
@@ -399,8 +515,10 @@ def route_capabilities(request_data=None, *_, **__):
             "route": ROUTE, "contract_version": CONTRACT_VERSION, "prompt_version": PROMPT_VERSION,
             "providers": list(PROVIDERS), "processing": list(PROCESSING), "thinking_levels": list(THINKING),
             "default_model": DEFAULT_MODEL, "google_genai_sdk": sdk_version,
-            "agentic_available": {"ai_studio": True, "vertex_ai": _sdk_interactions_available()},
+            "agentic_available": {"ai_studio": True, "vertex_ai": False},
             "inline_video_limit_bytes": INLINE_VIDEO_LIMIT_BYTES,
+            "max_video_bytes": MAX_VIDEO_BYTES,
+            "requires_source_sha256": True,
         },
     }
 
@@ -449,7 +567,7 @@ def _ai_studio_upload(api_key, path, mime_type, timeout):
         raise RuntimeError("files upload start returned no upload URL")
     with open(path, "rb") as handle:
         status, _, body = _http("POST", upload_url, {"Content-Length": str(size), "X-Goog-Upload-Offset": "0",
-                                                      "X-Goog-Upload-Command": "upload, finalize"}, handle.read(), timeout)
+                                                      "X-Goog-Upload-Command": "upload, finalize"}, handle, timeout)
     if status != 200:
         raise RuntimeError(f"files upload finalize failed: HTTP {status}")
     info = json.loads(body)["file"]
@@ -464,31 +582,75 @@ def _ai_studio_upload(api_key, path, mime_type, timeout):
     return {"uri": info["uri"], "mime_type": info.get("mimeType", mime_type), "name": info["name"]}
 
 
+def _download_gcs_snapshot(uri, secrets, destination, limit, timeout):
+    """Read one object generation with authenticated storage, never a mutable provider URI."""
+    from google.cloud import storage
+    from google.oauth2 import service_account
+    parsed = urllib.parse.urlsplit(uri)
+    if parsed.scheme != "gs" or not parsed.netloc or not parsed.path.strip("/") or parsed.query or parsed.fragment:
+        raise ValueError("video URI must be a gs://bucket/object without query or fragment")
+    credential = secrets.get("credential")
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+    credentials = (service_account.Credentials.from_service_account_info(credential)
+                   if credential else None)
+    storage_client = storage.Client(project=secrets.get("project_id"), credentials=credentials)
+    blob = storage_client.bucket(parsed.netloc).blob(parsed.path.lstrip("/"))
+    blob.reload(timeout=timeout)
+    if not isinstance(blob.size, int) or not 0 < blob.size <= limit:
+        raise ValueError("source exceeds verified-media byte budget; no unverified URI fallback")
+    # Both the generation and the precondition stay pinned across retries.
+    generation = blob.generation
+    pinned = storage_client.bucket(parsed.netloc).blob(parsed.path.lstrip("/"), generation=generation)
+    with open(destination, "xb") as handle:
+        pinned.download_to_file(handle, if_generation_match=generation, timeout=timeout,
+                                start=0, end=limit - 1, raw_download=True)
+    return str(generation)
+
+
 def _resolve_video(config, secrets, client):
-    """Return (video_ref, meta). video_ref = {"uri", "mime_type"} or {"bytes", "mime_type"}."""
+    """Send only bytes matching the extraction digest, or an upload of that private snapshot.
+
+    Vertex inputs above the inline budget fail explicitly. Passing a mutable gs:// URL
+    after hashing it would reopen a hash-to-model TOCTOU gap; there is no such fallback.
+    """
     video = config["video"]
-    mime_type = video.get("mime_type") or "video/mp4"
-    uri = video.get("gcs_uri") or video.get("uri") or video.get("file_uri")
-    if uri:
-        if config["provider"] == "vertex_ai" and not str(uri).startswith("gs://"):
-            raise ValueError("vertex_ai only reads videos from gs:// URIs")
-        return {"uri": uri, "mime_type": mime_type}, {"video_source": "uri"}
-    path = video.get("path")
-    if not path:
-        raise ValueError("video requires `gcs_uri`/`uri` or a local `path`")
-    if not os.path.isfile(path):
-        raise ValueError(f"video path not found: {path}")
-    size = os.path.getsize(path)
-    if config["provider"] == "ai_studio":
-        if config["processing"] == "agentic" or size > INLINE_VIDEO_LIMIT_BYTES:
-            uploaded = _ai_studio_upload(secrets["api_key"], path, mime_type, config["timeout_sec"])
-            return {"uri": uploaded["uri"], "mime_type": uploaded["mime_type"]}, {"video_source": "files-api", "video_bytes": size}
-        with open(path, "rb") as handle:
-            return {"bytes": handle.read(), "mime_type": mime_type}, {"video_source": "inline", "video_bytes": size}
-    if size > INLINE_VIDEO_LIMIT_BYTES:
-        raise ValueError("vertex_ai needs a gs:// URI for videos above 20 MB (stage the source with the google-storage connector)")
-    with open(path, "rb") as handle:
-        return {"bytes": handle.read(), "mime_type": mime_type}, {"video_source": "inline", "video_bytes": size}
+    mime_type = video["mime_type"]
+    limit = INLINE_VIDEO_LIMIT_BYTES if config["provider"] == "vertex_ai" else MAX_VIDEO_BYTES
+    with tempfile.TemporaryDirectory(prefix="gemini-cv-verified-") as directory:
+        snapshot = os.path.join(directory, "source.mp4")
+        generation = None
+        if video.get("uri"):
+            generation = _download_gcs_snapshot(video["uri"], secrets, snapshot, limit, config["timeout_sec"])
+        else:
+            # Open before checking, so a symlink/FIFO swap cannot change what is read.
+            fd = os.open(video["path"], os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+            with os.fdopen(fd, "rb") as source, open(snapshot, "xb") as target:
+                before = os.fstat(source.fileno())
+                if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= limit:
+                    raise ValueError("source exceeds verified-media byte budget or is not a regular file")
+                total = 0
+                while chunk := source.read(1024 * 1024):
+                    total += len(chunk)
+                    if total > limit:
+                        raise ValueError("source exceeds verified-media byte budget")
+                    target.write(chunk)
+                after = os.fstat(source.fileno())
+                if (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+                    raise ValueError("source changed during snapshot")
+        size = os.path.getsize(snapshot)
+        if not 0 < size <= limit:
+            raise ValueError("source exceeds verified-media byte budget")
+        with open(snapshot, "rb") as handle:
+            digest = hashlib.file_digest(handle, "sha256").hexdigest()
+        if digest != config["source_sha256"]:
+            raise ValueError("source digest does not match approved extraction manifest")
+        meta = {"verified_source_sha256": digest, "video_bytes": size, "storage_generation": generation}
+        if config["provider"] == "ai_studio" and (config["processing"] == "agentic" or size > INLINE_VIDEO_LIMIT_BYTES):
+            uploaded = _ai_studio_upload(secrets["api_key"], snapshot, mime_type, config["timeout_sec"])
+            return {"uri": uploaded["uri"], "mime_type": uploaded["mime_type"]}, {**meta, "video_source": "verified-files-api"}
+        with open(snapshot, "rb") as handle:
+            return {"bytes": handle.read(), "mime_type": mime_type}, {**meta, "video_source": "verified-inline"}
 
 
 def _static_transport(config, secrets, context, prompt):
@@ -584,19 +746,30 @@ def _config(inputs, context):
         video = {"path": video} if not video.startswith(("gs://", "https://", "http://")) else {"uri": video}
     if not isinstance(video, dict):
         raise ValueError("video is required: {gcs_uri|uri|path, mime_type}")
-    try:
-        timeout_sec = float(inputs.get("timeout_sec") or DEFAULT_TIMEOUT_SEC)
-        max_output_tokens = int(inputs.get("max_output_tokens") or DEFAULT_MAX_OUTPUT_TOKENS)
-    except (TypeError, ValueError):
-        raise ValueError("timeout_sec and max_output_tokens must be numeric")
+    refs = [video[k] for k in ("uri", "gcs_uri", "file_uri", "path") if k in video]
+    if len(refs) != 1:
+        raise ValueError("video must specify exactly one source reference")
+    reference = _text(refs[0], "video reference", 4096)
+    video = {"path" if "path" in video else "uri": reference,
+             "mime_type": _text(video.get("mime_type", "video/mp4"), "video mime_type", 100)}
+    if "uri" in video and not reference.startswith("gs://"):
+        raise ValueError("remote video must be authenticated gs:// media; arbitrary URLs cannot prove source bytes")
+    timeout_sec = inputs.get("timeout_sec", DEFAULT_TIMEOUT_SEC)
+    max_output_tokens = inputs.get("max_output_tokens", DEFAULT_MAX_OUTPUT_TOKENS)
+    if not (_number(timeout_sec) and 0 < timeout_sec <= 600):
+        raise ValueError("timeout_sec must be finite and between 0 and 600")
+    if not (isinstance(max_output_tokens, int) and not isinstance(max_output_tokens, bool) and 1 <= max_output_tokens <= 65536):
+        raise ValueError("max_output_tokens must be an integer between 1 and 65536")
     config = {
         "provider": provider, "processing": processing, "thinking_level": thinking,
         "model": str(inputs.get("model_name") or inputs.get("model") or DEFAULT_MODEL),
         "location": str(inputs.get("location") or DEFAULT_LOCATION),
         "video": video, "timeout_sec": timeout_sec, "max_output_tokens": max_output_tokens,
+        "source_sha256": context["source_sha256"],
     }
     config["request_sha256"] = _sha256_json({
         "prompt_version": PROMPT_VERSION, "model": config["model"], "processing": processing, "thinking": thinking,
+        "provider": provider, "location": config["location"], "video": video, "context": context,
         "max_output_tokens": max_output_tokens, "candidates": context["candidates"], "sync_anchor": context["sync_anchor"],
     })
     return config
@@ -607,9 +780,11 @@ def rank_highlight_candidates(request_data, *_, transport=None, **__):
     try:
         context = build_context(inputs)
         config = _config(inputs, context)
-    except ValueError as error:
+    except (ValueError, TypeError, OverflowError, RecursionError) as error:
         return _error(400, str(error))
-    secrets = {"api_key": inputs.get("api_key"), "project_id": inputs.get("project_id"), "credential": inputs.get("credential")}
+    secrets = {"api_key": _secret(inputs, "api_key", "TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"),
+               "project_id": _secret(inputs, "project_id", "TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"),
+               "credential": _secret(inputs, "credential", "TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL")}
     fallback = pbp_fallback_ranking(context["candidates"])
 
     if config["processing"] == "agentic" and config["provider"] != "ai_studio" and transport is None:
@@ -623,10 +798,10 @@ def rank_highlight_candidates(request_data, *_, transport=None, **__):
         raw_text, usage, meta = run(config, secrets, context, prompt)
     except Exception as error:  # provider error, timeout, upload failure, missing credential
         return _result(context, config, ranking=fallback, degraded=True, fallback_mode="pbp-importance",
-                       reasons=[f"provider-error: {type(error).__name__}: {error}"[:500]])
-    meta = dict(meta or {})
+                       reasons=[_provider_error(error, secrets)])
+    meta = dict(meta) if isinstance(meta, dict) else {}
     latency_ms = meta.pop("latency_ms", None)
-    data, problems = validate_output(raw_text, context["candidates"])
+    data, problems = validate_output(raw_text, context["candidates"], context["duration_sec"])
     if data is None:
         return _result(context, config, ranking=fallback, degraded=True, fallback_mode="pbp-importance",
                        reasons=[f"schema-violation: {p}" for p in problems], usage=usage, latency_ms=latency_ms,
