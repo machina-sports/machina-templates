@@ -14,7 +14,9 @@ workflow:
       x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
   inputs:
     event_document_id: $.get('event_document_id')
+    observed_at: "$.get('observed_at', datetime.utcnow().isoformat() + '+00:00')"
   outputs:
+    canonical-refusals: "$.get('canonical-refusals', [])"
     workflow-status: "'executed' if $.get('event_updated') is not None else ('skipped' if $.get('event_exists') is not True or ($.get('provider-response-valid', False) and not $.get('provider-errors', []) and not $.get('fixture_exists', False)) else 'failed')"
   tasks:
 
@@ -61,29 +63,55 @@ workflow:
         provider-errors: "{str(key)[:100]: str(value)[:500] for key, value in list($.get('errors', {}).items())[:20]} if isinstance($.get('errors'), dict) else [str(item)[:500] for item in $.get('errors', [])[:20]] if isinstance($.get('errors'), list) else [str($.get('errors'))[:500]] if $.get('errors') else []"
         provider-response-valid: "isinstance($.get('response'), list) and isinstance($.get('errors'), (list, dict)) and isinstance($.get('results'), int) and not isinstance($.get('results'), bool) and $.get('results') in (0, 1) and $.get('results') == len($.get('response'))"
         fixture_data: "$.get('response', [])[0] if isinstance($.get('response'), list) and len($.get('response')) > 0 else {}"
-        fixture_exists: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response', [])[0], dict) and isinstance($.get('response', [])[0].get('fixture'), dict) and isinstance($.get('response', [])[0].get('fixture', {}).get('id'), (str, int)) and not isinstance($.get('response', [])[0].get('fixture', {}).get('id'), bool) and len(str($.get('response', [])[0].get('fixture', {}).get('id')).strip()) > 0 and isinstance($.get('provider_fixture_id'), (str, int)) and not isinstance($.get('provider_fixture_id'), bool) and len(str($.get('provider_fixture_id')).strip()) > 0 and str($.get('response', [])[0].get('fixture', {}).get('id')).strip() == str($.get('provider_fixture_id')).strip()"
+        fixture_exists: "isinstance($.get('response'), list) and len($.get('response')) == 1 and isinstance($.get('response', [])[0], dict) and isinstance($.get('response', [])[0].get('fixture'), dict) and isinstance($.get('response', [])[0].get('fixture', {}).get('id'), (str, int)) and not isinstance($.get('response', [])[0].get('fixture', {}).get('id'), bool) and len(str($.get('response', [])[0].get('fixture', {}).get('id')).strip()) > 0 and isinstance($.context.get('provider_fixture_id'), (str, int)) and not isinstance($.context.get('provider_fixture_id'), bool) and len(str($.context.get('provider_fixture_id')).strip()) > 0 and str($.get('response', [])[0].get('fixture', {}).get('id')).strip() == str($.context.get('provider_fixture_id')).strip()"
 
-    # iptc-api-football-event-mapping
-    - type: mapping
-      name: iptc-api-football-event-mapping
-      title: IPTC | API Football Event Mapping
-      description: Mapping data from api-football to IPTC events
+    # canonicalize-fixture
+    # One writer, one shape. sync-fixtures already persists sport:Event through the
+    # canonical seam; a per-event refresh that wrote the legacy IPTC mapping instead
+    # (urn:apifootball ids, sport:competitors) overwrote the canonical block every
+    # consumer reads. This task produces the same envelope sync-fixtures does.
+    - type: connector
+      name: canonicalize-fixture
+      description: Canonicalize the refreshed provider fixture through the Machina Sports Schema seam.
       condition: "$.get('provider-response-valid', False) and not $.get('provider-errors', []) and $.get('fixture_exists') is True"
+      connector:
+        name: machina-sports-canonical
+        command: canonicalize_event
       inputs:
-        fixtures: |
-          [
-            $.get('fixture_data', {})
-          ]
+        provider: "'api-football'"
+        consumer_tier: "'prototype'"
+        requires: "['event.identity', 'event.competition', 'event.participants', 'event.start_time', 'event.status', 'provenance']"
+        optional: "['event.score']"
+        observed_at: "$.get('observed_at')"
+        payload: "$.get('fixture_data', {})"
       outputs:
-        event_updated: $.get('sport_schema_events', [])[0] if $.get('sport_schema_events', []) else None
-        event_updated_ids: |
-          [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
+        canonical-refusals: "$.get('refusals', [])"
+        canonical-envelope-valid: "$.get('allowed') is True and isinstance($.get('refusals'), list) and not $.get('refusals') and isinstance($.get('envelope'), dict) and isinstance($.get('envelope', {}).get('machina_sports_schema'), dict) and $.get('envelope', {}).get('machina_sports_schema', {}).get('schema_version') == 'machina-sports-schema/1' and isinstance($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view'), dict) and isinstance($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id'), str) and bool($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id')) and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id') == $.context.get('event_value', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id') and isinstance($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('label'), str) and bool($.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('label')) and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('provider', {}).get('namespace') == 'api-football' and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('provider', {}).get('family') == 'licensed' and $.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {}).get('provider', {}).get('raw') == $.context.get('fixture_data') and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('provider', {}).get('namespace') == 'api-football' and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('provider', {}).get('family') == 'licensed' and $.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {}).get('observed_at') == $.context.get('observed_at') and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('data_class') == 'licensed-provider-example-fixture' and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('prototype_only') is True and $.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {}).get('commercial_use') is False"
+        event_updated: |
+          (
+            [
+              {
+                '@id': block.get('event_view', {}).get('event_id', ''),
+                '@type': 'sport:Event',
+                'name': block.get('event_view', {}).get('label', ''),
+                'title': block.get('event_view', {}).get('label', ''),
+                'event_view': block.get('event_view', {}),
+                'machina_sports_schema': block
+              }
+              for block in [$.get('envelope', {}).get('machina_sports_schema') if isinstance($.get('envelope'), dict) else None]
+              if $.get('allowed') is True
+              and isinstance(block, dict)
+              and block.get('schema_version') == 'machina-sports-schema/1'
+              and isinstance(block.get('event_view'), dict)
+              and block.get('event_view', {}).get('event_id') == $.context.get('event_value', {}).get('machina_sports_schema', {}).get('event_view', {}).get('event_id')
+            ] + [None]
+          )[0]
 
     # version-control-update
     - type: document
       name: version-control-update
       description: Update the events document with synchronized data.
-      condition: "$.get('event_exists') is True and $.get('provider-response-valid', False) and not $.get('provider-errors', []) and $.get('fixture_exists') is True and isinstance($.get('event_updated'), dict)"
+      condition: "$.get('event_exists') is True and $.get('provider-response-valid', False) and not $.get('provider-errors', []) and $.get('fixture_exists') is True and $.get('canonical-envelope-valid') is True and isinstance($.get('event_updated'), dict)"
       config:
         action: update
         embed-vector: false
@@ -91,9 +119,31 @@ workflow:
       filters:
         document_id: $.get('event_document_id')
       documents:
+        # The canonical block owns the match's identity, kickoff, status and
+        # score. The retired IPTC mapping wrote its own aliases for the same
+        # facts; merging the stored document forward keeps those aliases alive
+        # and unrefreshed, and every one of them is a hard reject in the
+        # consumer (lib/event-evidence.ts: matchStateDeclarationsAgree reads
+        # sport:status / status / sport:score, and schema:startDate must parse
+        # equal to the canonical start_time). So drop exactly the aliases this
+        # writer now owns and keep everything else the document carries —
+        # operator fields, market data, version_control.
         sport:Event: |
           {
-            **$.get('event_value', {}),
+            **{
+              key: value
+              for key, value in $.get('event_value', {}).items()
+              if key not in (
+                '@context',
+                'schema:startDate',
+                'sport:competition',
+                'sport:competitors',
+                'sport:score',
+                'sport:status',
+                'sport:venue',
+                'status'
+              )
+            },
             **$.get('event_updated', {}),
             'version_control': {
               **$.get('event_value', {}).get('version_control', {})
