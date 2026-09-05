@@ -1,5 +1,7 @@
 """Regression tests for API-Football workflow safety and observability."""
 
+import importlib.util
+
 from datetime import datetime, timedelta, timezone
 
 from pathlib import Path
@@ -8,6 +10,7 @@ import yaml
 
 
 CONNECTOR_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = CONNECTOR_ROOT.parents[1]
 SAFE_BUILTINS = {
     "all": all,
     "bool": bool,
@@ -36,7 +39,10 @@ def evaluate(expression, response, workflow_context=None):
         **SAFE_BUILTINS,
         "datetime": datetime,
         "timedelta": timedelta,
-        "context": workflow_context if workflow_context is not None else response,
+        # The engine always binds `context` to accumulated workflow state, never
+        # to the task response (core/workflow/context.py::_save_outputs). Default
+        # to empty state so a test only sees state it deliberately models.
+        "context": workflow_context if workflow_context is not None else {},
     }
     expression = expression.replace("$.context", "context")
     expression = expression.replace("$.get", "response.get")
@@ -48,8 +54,13 @@ def task(workflow, name):
     return next(item for item in workflow["tasks"] if item["name"] == name)
 
 
-def evaluate_outputs(outputs, context):
-    return {key: evaluate(expression, context) for key, expression in outputs.items()}
+def evaluate_outputs(outputs, response, workflow_context=None):
+    # Mirrors core/workflow/context.py::_save_outputs: `$.get` reads the task's
+    # connector response, `$.context` reads accumulated workflow state.
+    return {
+        key: evaluate(expression, response, workflow_context)
+        for key, expression in outputs.items()
+    }
 
 
 def provider_fixture(fixture_id=1390823):
@@ -67,6 +78,54 @@ def provider_fixture(fixture_id=1390823):
         "goals": {"home": 2, "away": 1},
         "score": {"fulltime": {"home": 2, "away": 1}},
     }
+
+
+def _canonical_connector():
+    """The real machina-sports-canonical connector and package.
+
+    Loaded exactly the way this repository's own canonical suites load it
+    (tests/iptc_canonical_support.py), so these guards are proved against the
+    envelope the seam actually emits rather than against a hand-written stub
+    that can drift from it.
+    """
+    support_spec = importlib.util.spec_from_file_location(
+        "iptc_canonical_support", REPO_ROOT / "tests/iptc_canonical_support.py"
+    )
+    support = importlib.util.module_from_spec(support_spec)
+    support_spec.loader.exec_module(support)
+    support.canonical_package()
+
+    spec = importlib.util.spec_from_file_location(
+        "machina_sports_canonical_connector",
+        REPO_ROOT / "connectors/machina-sports-canonical/machina-sports-canonical.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def canonicalize_through_the_seam(fixture, observed_at, consumer_tier=None):
+    """The connector response the canonicalize-fixture task would receive.
+
+    `requires`/`optional`/`consumer_tier` are read off the workflow itself, so a
+    change to what the task asks for is a change to what these tests prove.
+    """
+    canonicalize = task(
+        load_yaml("workflows/event-synchronize.yml")["workflow"], "canonicalize-fixture"
+    )
+    inputs = canonicalize["inputs"]
+    return _canonical_connector().canonicalize_event(
+        {
+            "params": {
+                "provider": evaluate(inputs["provider"], {}),
+                "consumer_tier": consumer_tier or evaluate(inputs["consumer_tier"], {}),
+                "requires": evaluate(inputs["requires"], {}),
+                "optional": evaluate(inputs["optional"], {}),
+                "observed_at": observed_at,
+                "payload": fixture,
+            }
+        }
+    )["data"]
 
 
 def test_get_fixtures_exposes_bounded_provider_diagnostics():
@@ -219,14 +278,18 @@ def test_sync_fixtures_builds_validated_canonical_event_documents():
             "commercial_use": False,
         },
     }
-    connector_context = {
+    connector_response = {
         "allowed": True,
         "envelope": {"machina_sports_schema": block},
+    }
+    workflow_state = {
         "provider-fixture": fixture,
         "observed_at": observed_at,
     }
 
-    canonical_outputs = evaluate_outputs(canonicalize["outputs"], connector_context)
+    canonical_outputs = evaluate_outputs(
+        canonicalize["outputs"], connector_response, workflow_state
+    )
     assert canonical_outputs["canonical-envelopes"] == [
         {"machina_sports_schema": block}
     ]
@@ -247,7 +310,9 @@ def test_sync_fixtures_builds_validated_canonical_event_documents():
         }
     }
     assert evaluate_outputs(
-        canonicalize["outputs"], {**connector_context, "envelope": altered}
+        canonicalize["outputs"],
+        {**connector_response, "envelope": altered},
+        workflow_state,
     )["canonical-envelope-validity"] == [False]
 
     canonical_fixture = canonical_outputs["fixtures"][0]
@@ -431,10 +496,12 @@ def test_event_synchronize_never_updates_without_a_provider_fixture():
         "event_exists": True,
         "provider-response-valid": True,
         "provider-errors": [],
-        "event_updated": {"@id": "urn:apifootball:sport_event:1390823"},
+        "canonical-envelope-valid": True,
+        "event_updated": {"@id": "urn:machina:sports:event:x1390823"},
     }
 
     assert not evaluate(update["condition"], {**base, "fixture_exists": False})
+    assert not evaluate(update["condition"], {**base, "fixture_exists": True, "canonical-envelope-valid": False})
     assert evaluate(update["condition"], {**base, "fixture_exists": True})
 
     fetch_outputs = task(workflow, "fetch-fixture-details")["outputs"]
@@ -610,12 +677,8 @@ def test_event_synchronize_rejects_a_different_fixture_id():
 
     state = evaluate_outputs(
         fetch_outputs,
-        {
-            "response": [provider_fixture(999)],
-            "errors": [],
-            "results": 1,
-            "provider_fixture_id": 1390823,
-        },
+        {"response": [provider_fixture(999)], "errors": [], "results": 1},
+        {"provider_fixture_id": 1390823},
     )
 
     assert state["provider-response-valid"] is True
@@ -632,12 +695,8 @@ def test_event_synchronize_accepts_equivalent_string_and_integer_fixture_ids():
     ):
         state = evaluate_outputs(
             fetch_outputs,
-            {
-                "response": [provider_fixture(response_id)],
-                "errors": [],
-                "results": 1,
-                "provider_fixture_id": provider_fixture_id,
-            },
+            {"response": [provider_fixture(response_id)], "errors": [], "results": 1},
+            {"provider_fixture_id": provider_fixture_id},
         )
 
         assert state["provider-response-valid"] is True
@@ -661,12 +720,8 @@ def test_event_synchronize_rejects_empty_boolean_and_invalid_fixture_ids():
     ):
         state = evaluate_outputs(
             fetch_outputs,
-            {
-                "response": [provider_fixture(response_id)],
-                "errors": [],
-                "results": 1,
-                "provider_fixture_id": provider_fixture_id,
-            },
+            {"response": [provider_fixture(response_id)], "errors": [], "results": 1},
+            {"provider_fixture_id": provider_fixture_id},
         )
 
         assert state["provider-response-valid"] is True
@@ -685,12 +740,8 @@ def test_event_synchronize_requires_exactly_one_well_formed_fixture():
     ):
         state = evaluate_outputs(
             fetch_outputs,
-            {
-                "response": response,
-                "errors": [],
-                "results": len(response),
-                "provider_fixture_id": "1570353",
-            },
+            {"response": response, "errors": [], "results": len(response)},
+            {"provider_fixture_id": "1570353"},
         )
 
         assert state["fixture_exists"] is False
@@ -723,3 +774,279 @@ def test_event_synchronize_provider_response_validation_stays_bounded():
         evaluate_outputs(fetch_outputs, payload)["provider-response-valid"] is False
         for payload in invalid_payloads
     )
+
+
+def test_event_synchronize_reads_resolved_fixture_id_from_workflow_state_not_response():
+    # Regression for the Aug 28 - Sep 4 outage: API-Football's /fixtures response
+    # never carries `provider_fixture_id`; that value lives in workflow state from
+    # the resolve task. Reading it via `$.get` made `fixture_exists` False on every
+    # real response, so the mapping and update tasks never ran and every
+    # synchronize reported `skipped`.
+    workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    fetch_outputs = task(workflow, "fetch-fixture-details")["outputs"]
+
+    assert "$.get('provider_fixture_id')" not in fetch_outputs["fixture_exists"]
+    assert "$.context.get('provider_fixture_id')" in fetch_outputs["fixture_exists"]
+
+    real_response = {
+        "get": "fixtures",
+        "parameters": {"id": "1557404"},
+        "errors": [],
+        "results": 1,
+        "paging": {"current": 1, "total": 1},
+        "response": [provider_fixture(1557404)],
+    }
+    state = evaluate_outputs(fetch_outputs, real_response, {"provider_fixture_id": 1557404})
+    assert state["provider-response-valid"] is True
+    assert state["fixture_exists"] is True
+
+    state = evaluate_outputs(fetch_outputs, real_response, {})
+    assert state["fixture_exists"] is False
+
+
+def test_event_synchronize_refreshes_through_the_canonical_seam_only():
+    # The per-event refresh must write the same canonical sport:Event shape that
+    # sync-fixtures writes. The legacy IPTC mapping (urn:apifootball ids,
+    # sport:competitors) overwrote the canonical block every consumer reads.
+    workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    names = [item["name"] for item in workflow["tasks"]]
+    assert "iptc-api-football-event-mapping" not in names
+    assert all(item.get("type") != "mapping" for item in workflow["tasks"])
+
+    canonicalize = task(workflow, "canonicalize-fixture")
+    assert canonicalize["connector"] == {"name": "machina-sports-canonical", "command": "canonicalize_event"}
+    assert canonicalize["inputs"]["provider"] == "'api-football'"
+    assert canonicalize["inputs"]["payload"] == "$.get('fixture_data', {})"
+    assert canonicalize["inputs"]["observed_at"] == "$.get('observed_at')"
+    assert "$.get('observed_at'" in workflow["inputs"]["observed_at"]
+
+    # Proved against the envelope the real seam emits, not a stub of it. A
+    # microsecond-bearing observed_at is the workflow's own default shape
+    # (datetime.utcnow().isoformat() + '+00:00'), and the gate compares it by
+    # string equality — so the seam has to echo it back byte for byte.
+    fixture = provider_fixture(1557404)
+    observed_at = "2026-09-04T23:24:08.123456+00:00"
+    response = canonicalize_through_the_seam(fixture, observed_at)
+    block = response["envelope"]["machina_sports_schema"]
+    event_id = block["event_view"]["event_id"]
+    state = {
+        "event_value": {"machina_sports_schema": {"event_view": {"event_id": event_id}}},
+        "fixture_data": fixture,
+        "observed_at": observed_at,
+    }
+
+    outputs = evaluate_outputs(canonicalize["outputs"], response, state)
+    assert outputs["canonical-envelope-valid"] is True
+    assert outputs["canonical-refusals"] == []
+    assert outputs["event_updated"]["@id"] == event_id
+    assert outputs["event_updated"]["@type"] == "sport:Event"
+    assert outputs["event_updated"]["machina_sports_schema"]["provenance"]["observed_at"] == observed_at
+    assert "sport:competitors" not in outputs["event_updated"]
+    assert not str(outputs["event_updated"]["@id"]).startswith("urn:apifootball:")
+
+    # What the gate is actually asserting about the real envelope: the consumer
+    # (lib/event-evidence.ts) rejects anything that is not a licensed
+    # api-football observation carrying provider-native crosswalk entries.
+    assert block["event_view"]["provider"]["family"] == "licensed"
+    assert block["event_view"]["provider"]["raw"] == fixture
+    assert block["provenance"]["provider"] == {"namespace": "api-football", "family": "licensed"}
+    assert block["rights"]["data_class"] == "licensed-provider-example-fixture"
+    assert {entry["resolution_method"] for entry in block["provider_ids"]} == {"provider-native"}
+
+    # A canonical envelope for a different event never overwrites this document.
+    outputs = evaluate_outputs(
+        canonicalize["outputs"],
+        canonicalize_through_the_seam(provider_fixture(1557405), observed_at),
+        state,
+    )
+    assert outputs["canonical-envelope-valid"] is False
+    assert outputs["event_updated"] is None
+
+    # A real refusal from the seam produces no update and surfaces its refusals.
+    refused = canonicalize_through_the_seam(fixture, observed_at, consumer_tier="production")
+    assert refused["allowed"] is False
+    outputs = evaluate_outputs(canonicalize["outputs"], refused, state)
+    assert outputs["canonical-envelope-valid"] is False
+    assert outputs["event_updated"] is None
+    assert outputs["canonical-refusals"] == refused["refusals"]
+    assert outputs["canonical-refusals"]
+
+    # An envelope that is well formed but carries refusals never writes.
+    outputs = evaluate_outputs(
+        canonicalize["outputs"],
+        {**response, "refusals": [{"code": "capability-incompatible"}]},
+        state,
+    )
+    assert outputs["canonical-envelope-valid"] is False
+
+
+def legacy_poisoned_event_value(event_id, fixture):
+    """A stored document as the retired IPTC mapping left it.
+
+    The pre-canonical event-synchronize merged the mapping's output over the
+    document, so a real production event carries the canonical block *and* the
+    mapping's aliases for the same facts, alongside unrelated operator and
+    market data that nothing in this workflow owns.
+    """
+    return {
+        "@context": {"sport": "https://www.sportschema.org/ontologies/sport#"},
+        "@id": "urn:apifootball:sport_event:{0}".format(fixture["fixture"]["id"]),
+        "@type": ["sport:Event", "schema:SportsEvent"],
+        "name": "Espanyol vs Atletico Madrid - La Liga",
+        "schema:startDate": "2025-08-17T19:30:00+00:00",
+        "sport:status": "NS",
+        "status": "NS",
+        "sport:score": {"sport:homeScore": None, "sport:awayScore": None},
+        "sport:competitors": [{"@id": "urn:apifootball:team:540"}],
+        "sport:competition": {"@id": "urn:apifootball:league:140"},
+        "sport:venue": {"@id": "urn:apifootball:venue:1"},
+        "machina_sports_schema": {"event_view": {"event_id": event_id}},
+        # Everything below is owned by somebody else and must survive untouched.
+        "markets": [{"provider": "entain", "market_id": "1x2"}],
+        "editorial_notes": "desk copy",
+        "metadata_hint": {"broadcast": "channel-4"},
+        "version_control": {"counter": 7, "processing": True},
+    }
+
+
+CANONICAL_OWNED_ALIASES = (
+    "@context",
+    "schema:startDate",
+    "sport:competition",
+    "sport:competitors",
+    "sport:score",
+    "sport:status",
+    "sport:venue",
+    "status",
+)
+
+
+def persisted_event_document(state):
+    """The document the update task actually writes, per the engine's rules.
+
+    `documents` is evaluated by core/workflow/context.py::_retrieve_from_context,
+    which binds `$.get` to accumulated workflow state.
+    """
+    workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    return evaluate(task(workflow, "version-control-update")["documents"]["sport:Event"], state)
+
+
+def refreshed_state(fixture, observed_at):
+    """Workflow state after a successful canonicalize-fixture, over a document
+    the retired mapping had already poisoned."""
+    workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    canonicalize = task(workflow, "canonicalize-fixture")
+    response = canonicalize_through_the_seam(fixture, observed_at)
+    event_id = response["envelope"]["machina_sports_schema"]["event_view"]["event_id"]
+    state = {
+        "event_document_id": "doc-1",
+        "event_value": legacy_poisoned_event_value(event_id, fixture),
+        "fixture_data": fixture,
+        "observed_at": observed_at,
+    }
+    state.update(evaluate_outputs(canonicalize["outputs"], response, state))
+    return state
+
+
+def test_event_synchronize_drops_only_the_aliases_the_canonical_block_now_owns():
+    fixture = provider_fixture(1557404)
+    state = refreshed_state(fixture, "2026-09-04T23:24:08.123456+00:00")
+    assert state["canonical-envelope-valid"] is True
+
+    document = persisted_event_document(state)
+
+    # The stale aliases the canonical block now owns are gone, so no consumer
+    # reads a fact this writer no longer refreshes.
+    for alias in CANONICAL_OWNED_ALIASES:
+        assert alias not in document, alias
+
+    # The canonical refresh landed.
+    block = document["machina_sports_schema"]
+    assert document["@id"] == block["event_view"]["event_id"]
+    assert document["@type"] == "sport:Event"
+    assert document["event_view"] == block["event_view"]
+    assert document["name"] == block["event_view"]["label"]
+    assert document["title"] == block["event_view"]["label"]
+    assert not str(document["@id"]).startswith("urn:apifootball:")
+
+    # Everything this workflow does not own survives untouched.
+    assert document["markets"] == [{"provider": "entain", "market_id": "1x2"}]
+    assert document["editorial_notes"] == "desk copy"
+    assert document["metadata_hint"] == {"broadcast": "channel-4"}
+    assert document["version_control"] == {"counter": 7, "processing": True}
+
+
+def test_event_synchronize_leaves_no_stale_state_across_the_match_lifecycle():
+    # prelive -> live -> finished, and a kickoff that moves. Each refresh must
+    # leave the document carrying exactly one answer for status, score and
+    # kickoff: the canonical one.
+    lifecycle = [
+        ("2025-08-17T19:30:00+00:00", {"short": "NS"}, {"home": None, "away": None}),
+        ("2025-08-17T19:30:00+00:00", {"short": "1H"}, {"home": 1, "away": 0}),
+        ("2025-08-17T21:15:00+00:00", {"short": "FT"}, {"home": 2, "away": 1}),
+    ]
+
+    for kickoff, status, goals in lifecycle:
+        fixture = provider_fixture(1557404)
+        fixture["fixture"]["date"] = kickoff
+        fixture["fixture"]["status"] = status
+        fixture["goals"] = goals
+        fixture["score"] = {"fulltime": goals}
+
+        state = refreshed_state(fixture, "2026-09-04T23:24:08.123456+00:00")
+        assert state["canonical-envelope-valid"] is True
+
+        document = persisted_event_document(state)
+        event_view = document["machina_sports_schema"]["event_view"]
+
+        # The document never carries a second, unrefreshed answer.
+        for alias in CANONICAL_OWNED_ALIASES:
+            assert alias not in document, (alias, status["short"])
+
+        # The canonical answer tracks the provider, including the moved kickoff.
+        assert event_view["provider"]["raw"]["fixture"]["status"] == status
+        assert event_view["provider"]["raw"]["fixture"]["date"] == kickoff
+        assert event_view["start_time"] == kickoff
+        assert document["version_control"] == {"counter": 7, "processing": True}
+
+
+def test_event_synchronize_never_writes_when_the_envelope_gate_fails():
+    # The gate is the only thing standing between a bad envelope and the
+    # document, so a failed gate must stop the update task outright.
+    workflow = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    update = task(workflow, "version-control-update")
+    base = {
+        "event_exists": True,
+        "provider-response-valid": True,
+        "provider-errors": [],
+        "fixture_exists": True,
+        "event_updated": {"@id": "urn:machina:sports:event:x1"},
+    }
+
+    assert evaluate(update["condition"], {**base, "canonical-envelope-valid": True})
+    assert not evaluate(update["condition"], {**base, "canonical-envelope-valid": False})
+    assert not evaluate(update["condition"], base)
+
+
+def test_event_synchronize_gate_matches_its_sibling_writer():
+    # One writer, one shape means one gate. Anything sync-fixtures refuses to
+    # persist, the per-event refresh must refuse to persist too.
+    synchronize = load_yaml("workflows/event-synchronize.yml")["workflow"]
+    sync_fixtures = load_yaml("sync-fixtures.yml")["workflow"]
+    gate = task(synchronize, "canonicalize-fixture")["outputs"]["canonical-envelope-valid"]
+    sibling = task(sync_fixtures, "canonicalize-fixtures")["outputs"]["canonical-envelope-validity"]
+
+    for claim in (
+        "get('label'), str)",
+        "get('provider', {}).get('family') == 'licensed'",
+        "get('provenance', {}).get('provider', {}).get('namespace') == 'api-football'",
+        "get('provenance', {}).get('provider', {}).get('family') == 'licensed'",
+        "get('rights', {}).get('data_class') == 'licensed-provider-example-fixture'",
+        "get('rights', {}).get('prototype_only') is True",
+        "get('rights', {}).get('commercial_use') is False",
+    ):
+        assert claim in sibling, claim
+        assert claim in gate, claim
+
+    # And the per-event refresh additionally refuses on any refusal at all.
+    assert "not $.get('refusals')" in gate

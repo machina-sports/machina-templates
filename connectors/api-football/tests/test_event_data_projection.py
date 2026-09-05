@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime
 import importlib.util
 import json
 from pathlib import Path
@@ -427,6 +428,101 @@ def test_endpoint_provenance_rights_and_empty_endpoint_contracts_are_explicit():
         assert document["value"]["provider_envelope"]["response"] == []
         assert document["metadata"]["status"] == "unavailable"
         assert document["metadata"]["projection_capability"]["status"] == "unavailable"
+
+
+def endpoint_receipts():
+    receipts = {
+        key: {"mode": "provider_http", "provider_id": "api-football",
+              "source_operation": endpoint, "observed_at": OBSERVED_AT[key],
+              "synthetic": False}
+        for key, _, _, _, endpoint in load_projector().DOCUMENT_SPECS
+    }
+    receipts["fixture"] = {**receipts["events"], "source_operation": "api-football/fixtures"}
+    return receipts
+
+
+def test_fresh_http_receipts_survive_both_projection_families_without_rights_promotion():
+    result = project(endpoint_provenance=endpoint_receipts())
+    assert result["status"] is True
+    for document in result["data"]["documents"]:
+        provenance = document["metadata"]["provenance"]
+        assert provenance["synthetic"] is False
+        assert provenance["retrieval"]["source_operation"] == ENDPOINTS[document["name"]]
+        assert provenance["retrieval"]["observed_at"] == provenance["observed_at"]
+        assert document["metadata"]["rights"]["terms"] == METADATA["source_event_rights"]
+    assert all(item["value"]["provenance"]["synthetic"] is False
+               for item in result["data"]["evidence_documents"])
+
+
+def test_missing_receipts_never_turn_legacy_or_imported_payloads_into_real_observations():
+    for receipts in ({}, {"events": endpoint_receipts()["events"]}):
+        result = project(endpoint_provenance=receipts)
+        assert all("synthetic" not in d["metadata"]["provenance"] for d in result["data"]["documents"])
+    receipts = endpoint_receipts()
+    del receipts["lineups"]
+    documents = documents_by_name(project(endpoint_provenance=receipts))
+    assert "synthetic" not in documents["api-football-event-lineups"]["metadata"]["provenance"]
+    assert documents["api-football-event-actions"]["metadata"]["provenance"]["synthetic"] is False
+
+
+def test_receipts_cannot_override_synthetic_source_or_mismatched_endpoint_or_timestamp():
+    source = {**METADATA["source_event_provenance"], "synthetic": True}
+    result = project(source_event_provenance=source, endpoint_provenance=endpoint_receipts())
+    assert all(d["metadata"]["provenance"]["synthetic"] is True for d in result["data"]["documents"])
+    for field, value in [("mode", "replay"), ("provider_id", "other"),
+                         ("source_operation", "api-football/fixtures/lineups"),
+                         ("observed_at", "2026-08-21T20:00:00Z"), ("synthetic", "false")]:
+        receipts = endpoint_receipts()
+        receipts["events"][field] = value
+        document = documents_by_name(project(endpoint_provenance=receipts))["api-football-event-actions"]
+        assert document["metadata"]["provenance"].get("synthetic") is not False
+    source["synthetic"] = "false"
+    result = project(source_event_provenance=source, endpoint_provenance=endpoint_receipts())
+    assert all(d["metadata"]["provenance"].get("synthetic") is not False for d in result["data"]["documents"])
+    payload = load_payload()
+    payload["events"]["synthetic"] = True
+    documents = documents_by_name(project(payload, endpoint_provenance=endpoint_receipts()))
+    assert documents["api-football-event-actions"]["metadata"]["provenance"]["synthetic"] is True
+    assert documents["api-football-event-lineups"]["metadata"]["provenance"]["synthetic"] is False
+
+
+def test_workflow_records_receipts_at_each_http_response_not_from_caller_time():
+    workflow = yaml.safe_load((CONNECTOR_ROOT / "api-football-enrich-event-data.yml").read_text())["workflow"]
+    tasks = {t["name"]: t for t in workflow["tasks"]}
+    keys = ["fixture", "events", "lineups", "team-statistics", "player-statistics", "head-to-head"]
+    for key in keys:
+        task = tasks["fetch-" + key]
+        receipt = task["outputs"][key + "-receipt"]
+        assert task["connector"]["name"] == "api-football"
+        assert "datetime.utcnow()" in receipt and "provider_http" in receipt
+        assert "$.get('observed_at'" not in receipt
+        assert "'synthetic': False" in receipt
+    projection = tasks["project-event-data"]["inputs"]
+    assert "endpoint_provenance" in projection
+    assert "receipt" in projection["endpoint_observed_at"]
+
+
+def test_workflow_receipt_expressions_feed_the_projector_with_per_endpoint_times():
+    workflow = yaml.safe_load((CONNECTOR_ROOT / "api-football-enrich-event-data.yml").read_text())["workflow"]
+    tasks = {t["name"]: t for t in workflow["tasks"]}
+    context = {"observed_at": "caller-controlled", "projection-observed-at": "fallback"}
+    for index, key in enumerate(["fixture", "events", "lineups", "team-statistics", "player-statistics", "head-to-head"]):
+        class Clock:
+            @staticmethod
+            def utcnow():
+                return datetime(2026, 9, 5, 18, 0, index)
+        expression = tasks["fetch-" + key]["outputs"][key + "-receipt"]
+        context[key + "-receipt"] = eval(expression, {"datetime": Clock})
+    inputs = tasks["project-event-data"]["inputs"]
+    resolved = {key: eval(inputs[key].replace("$", "context"), {"context": context})
+                for key in ("endpoint_provenance", "endpoint_observed_at")}
+    result = project(**resolved)
+    for document in result["data"]["documents"]:
+        provenance = document["metadata"]["provenance"]
+        assert provenance["synthetic"] is False
+        assert provenance["observed_at"] not in ("caller-controlled", "fallback")
+        assert provenance["retrieval"]["observed_at"] == provenance["observed_at"]
+    assert len(set(resolved["endpoint_observed_at"].values())) == 5
 
 
 def test_h2h_and_mismatched_endpoint_identity_fail_closed():

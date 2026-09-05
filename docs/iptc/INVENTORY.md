@@ -33,7 +33,7 @@ The Machina canonical domain model remains authoritative. IPTC Sport Schema is a
 ## Headline
 
 - **25** emitting mappings across **16** files.
-- **75** files read an IPTC field path or payload key.
+- **80** files read an IPTC field path or payload key.
 
 ### Two conflicting `sport:` namespaces are in use today
 
@@ -435,10 +435,11 @@ Each row is a field path the consumer migration must cover. A consumer here is a
 | `agent-templates/world-cup-intelligence/mappings/worldcup-iptc-event-to-api-response.yml` | workflow-or-mapping | `schema:startDate`, `sport:competition`, `sport:competitor`, `sport:competitors`, `sport:status`, `sport:venue` | — |
 | `agent-templates/world-cup-intelligence/prompts/worldcup-match-recap.yml` | workflow-or-mapping | `sport:status` | — |
 | `agent-templates/world-cup-intelligence/tests/test_worldcup_market_intelligence.py` | test | `schema:startDate`, `sport:competition`, `sport:competitor`, `sport:competitors`, `sport:qualifier`, `sport:round`, `sport:status`, `sport:venue` | — |
+| `agent-templates/world-cup-intelligence/tests/test_worldcup_workflow_regressions.py` | test | `schema:startDate`, `sport:awayScore`, `sport:homeScore`, `sport:score`, `sport:status` | — |
 | `agent-templates/world-cup-intelligence/workflows/wcbracket-enrich-teams.yml` | workflow-or-mapping | `sport:competitor`, `sport:competitors`, `sport:qualifier` | — |
 | `agent-templates/world-cup-intelligence/workflows/wcbracket-simulate.yml` | workflow-or-mapping | `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:qualifier`, `sport:status` | — |
 | `agent-templates/world-cup-intelligence/workflows/worldcup-coverage-gateway.yml` | workflow-or-mapping | `sport:status` | — |
-| `agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml` | workflow-or-mapping | `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:qualifier` | — |
+| `agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml` | workflow-or-mapping | `sport:competitor`, `sport:competitors`, `sport:qualifier` | — |
 | `agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml` | workflow-or-mapping | `sport:competitor`, `sport:competitors`, `sport:qualifier` | — |
 | `agent-templates/world-cup-intelligence/workflows/worldcup-get-standings.yml` | workflow-or-mapping | `schema:startDate` | — |
 | `agent-templates/world-cup-intelligence/workflows/worldcup-ingest-fixtures.yml` | workflow-or-mapping | — | `iptc_events`, `sport_schema_event`, `sport_schema_events` |
@@ -451,10 +452,14 @@ Each row is a field path the consumer migration must cover. A consumer here is a
 | `connectors/api-football/sync-fixtures-players-statistics.yml` | workflow-or-mapping | — | `iptc_players`, `iptc_players_statistics`, `iptc_schema_events`, `iptc_schema_ids` |
 | `connectors/api-football/sync-fixtures-teams-statistics.yml` | workflow-or-mapping | `sport:participation`, `sport:participationBy` | `iptc_schema_events`, `iptc_schema_ids`, `iptc_teams`, `iptc_teams_statistics` |
 | `connectors/api-football/tests/test_event_data_projection.py` | test | — | `iptc_schema_events` |
+| `connectors/api-football/tests/test_terminal_reconciliation.py` | test | `schema:startDate`, `sport:competition`, `sport:status` | — |
+| `connectors/api-football/tests/test_workflow_guards.py` | test | `schema:startDate`, `sport:awayScore`, `sport:competition`, `sport:competitor`, `sport:competitors`, `sport:homeScore`, `sport:score`, `sport:status`, `sport:venue` | — |
 | `connectors/api-football/workflows/event-consumer-live.yml` | workflow-or-mapping | `schema:startDate`, `sport:competition`, `sport:status` | — |
+| `connectors/api-football/workflows/event-consumer-postlive.yml` | workflow-or-mapping | `schema:startDate`, `sport:competition`, `sport:status` | — |
 | `connectors/api-football/workflows/event-consumer-prelive.yml` | workflow-or-mapping | `schema:startDate`, `sport:competition`, `sport:status` | — |
 | `connectors/api-football/workflows/event-sync-markets.yml` | workflow-or-mapping | `schema:startDate` | `iptc_schema_events` |
-| `connectors/api-football/workflows/event-synchronize.yml` | workflow-or-mapping | `schema:startDate` | `sport_schema_event`, `sport_schema_events` |
+| `connectors/api-football/workflows/event-synchronize.yml` | workflow-or-mapping | `schema:startDate`, `sport:competition`, `sport:competitor`, `sport:competitors`, `sport:score`, `sport:status`, `sport:venue` | — |
+| `connectors/api-football/workflows/event-terminal-update.yml` | workflow-or-mapping | `schema:startDate`, `sport:status` | — |
 | `connectors/api-football/workflows/event-update.yml` | workflow-or-mapping | `schema:startDate` | — |
 | `connectors/sportradar-mlb/sync-games.yml` | workflow-or-mapping | `schema:sportName`, `sport:competition`, `sport:homeScore`, `sport:score`, `sport:status` | `sport_schema_event`, `sport_schema_events` |
 | `connectors/sportradar-mlb/sync-pitchers.yml` | workflow-or-mapping | `sport:score`, `sport:status` | — |
