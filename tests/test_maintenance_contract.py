@@ -1,4 +1,4 @@
-"""CLI contract tests for the Design Log 030 shadow maintenance pilot.
+"""CLI contract tests for the shadow maintenance pilot.
 
 Run from the repository root:
 
@@ -21,198 +21,21 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 AUDITOR = REPO_ROOT / "scripts/audit-maintenance-contract.py"
 CONTRACT = REPO_ROOT / ".machina/maintenance.json"
-BASE_SHA = "3a020f67b43aea2babf3c1808f2e89659d100bc8"
-PILOT_CONTEXT = {
-    "selected_by": "Andre",
-    "selected_at": "2026-08-14",
-    "reviewed_at_base_sha": BASE_SHA,
-    "active_conflict": False,
-}
-REQUIRED_EVIDENCE_FIELDS = [
-    "argv",
-    "base_sha",
-    "duration",
-    "exit_code",
-    "interpreter",
-    "normalized_failure_signature",
-    "stderr_sha256",
-    "stdout_sha256",
-]
-SETUP_ARGV = [
-    "python3",
-    "-m",
-    "pip",
-    "install",
-    "--disable-pip-version-check",
-    "-r",
-    "requirements-iptc-validator.txt",
-    "-r",
-    "requirements-iptc-build.txt",
-]
-VERIFICATION = [
-    {
-        "name": "ai-command-inventory",
-        "category": "static_inventory",
-        "argv": ["python3", "scripts/check-ai-command-inventory.py"],
-        "network_required": False,
-        "secrets_required": False,
-        "timeout_seconds": 30,
-        "enabled": True,
-    },
-    {
-        "name": "iptc-suite-list",
-        "category": "manifest",
-        "argv": ["python3", "tools/iptc/run_test_suites.py", "--list"],
-        "network_required": False,
-        "secrets_required": False,
-        "timeout_seconds": 30,
-        "enabled": True,
-    },
-    {
-        "name": "agent-builder-compat",
-        "category": "generated_compatibility",
-        "argv": [
-            "python3",
-            "scripts/sync-machina-agent-builder-compat.py",
-            "--check",
-        ],
-        "network_required": False,
-        "secrets_required": False,
-        "timeout_seconds": 60,
-        "enabled": True,
-    },
-    {
-        "name": "machina-ai-policy",
-        "category": "policy",
-        "argv": [
-            "python3",
-            "scripts/check-machina-ai-policy.py",
-            "all",
-            "--require-semantic",
-        ],
-        "network_required": False,
-        "secrets_required": False,
-        "timeout_seconds": 120,
-        "enabled": True,
-    },
-    {
-        "name": "agent-builder-unit",
-        "category": "unit",
-        "argv": [
-            "python3",
-            "-m",
-            "unittest",
-            "tests/test_machina_agent_builder_validator.py",
-        ],
-        "network_required": False,
-        "secrets_required": False,
-        "timeout_seconds": 120,
-        "enabled": True,
-    },
-    {
-        "name": "agent-builder-validation",
-        "category": "validation",
-        "argv": ["python3", "scripts/validate-machina-agent-builder.py"],
-        "network_required": False,
-        "secrets_required": False,
-        "timeout_seconds": 300,
-        "enabled": True,
-    },
-    {
-        "name": "iptc-pin",
-        "category": "dependency_pin",
-        "argv": ["python3", "-m", "tools.iptc", "--verify-pin"],
-        "network_required": False,
-        "secrets_required": False,
-        "timeout_seconds": 300,
-        "enabled": True,
-    },
-    {
-        "name": "machina-ai-connector-pytest",
-        "category": "connector_tests",
-        "argv": ["python3", "-m", "pytest", "connectors/machina-ai/tests"],
-        "network_required": False,
-        "secrets_required": False,
-        "timeout_seconds": 300,
-        "enabled": False,
-        "reason": "exact_dependencies_not_pinned",
-    },
-    {
-        "name": "nvidia-nim-connector-pytest",
-        "category": "connector_tests",
-        "argv": ["python3", "-m", "pytest", "connectors/nvidia-nim/tests"],
-        "network_required": False,
-        "secrets_required": False,
-        "timeout_seconds": 300,
-        "enabled": False,
-        "reason": "exact_dependencies_not_pinned",
-    },
-    {
-        "name": "iptc-test-suites",
-        "category": "test_suite",
-        "argv": ["python3", "tools/iptc/run_test_suites.py", "--verbose"],
-        "network_required": False,
-        "secrets_required": False,
-        "timeout_seconds": 1800,
-        "enabled": True,
-    },
-    {
-        "name": "iptc-check",
-        "category": "conformance",
-        "argv": ["python3", "-m", "tools.iptc", "--check"],
-        "network_required": False,
-        "secrets_required": False,
-        "timeout_seconds": 1800,
-        "enabled": True,
-    },
-]
-EXPECTED_CONTRACT = {
-    "schema_version": 1,
-    "design_log": "030",
-    "repository": "machina-templates",
-    "authorized_base_sha": BASE_SHA,
-    "mode": "shadow",
-    "approved_by": "Andre",
-    "approved_at": "2026-08-14",
-    "pilot_context": PILOT_CONTEXT,
-    "reviewers": ["@antonelli182"],
-    "allowed_routines": ["dead_code_evidence", "flaky_test_evidence"],
-    "runtime": {"network_allowed": False, "secrets_required": False},
-    "authority": {
-        "repository_writes": False,
-        "fix": False,
-        "stage": False,
-        "commit": False,
-        "push": False,
-        "merge": False,
-        "deploy": False,
-        "rollback": False,
-        "external_post": False,
-    },
-    "concurrency": {"writer_limit_repo": 0, "writer_limit_fleet": 0},
-    "repair_pass_limit": 0,
-    "evidence": {
-        "destination": {
-            "os_temp_only": True,
-            "repository_paths_allowed": False,
-        },
-        "required_fields": REQUIRED_EVIDENCE_FIELDS,
-    },
-    "prohibited_paths": ["**"],
-    "setup": {
-        "automatic": False,
-        "operator_only_argv": SETUP_ARGV,
-        "network_required": True,
-    },
-    "workflow_policy": {
-        "reviewed_at_base_sha": BASE_SHA,
-        "human_merge_required": True,
-        "main_push_side_effects": ["subscriber_webhook"],
-        "release_tag_publish": True,
-        "workflow_changes_allowed": False,
-    },
-    "verification": VERIFICATION,
-}
+# Pin the reviewed input before using it as a fixture. Loading an unpinned
+# contract would make the exact-content assertion tautological. This fingerprint
+# retains that independent expectation without duplicating the operator record
+# into the public test surface. Changes require an explicit reviewed repin.
+REVIEWED_CONTRACT_SHA256 = "56fe3996209d494c49bf3ba68bd0a4c88ed9758f2143667db5a5b2eaa01800d0"
+
+
+def reviewed_contract(raw: bytes):
+    if hashlib.sha256(raw).hexdigest() != REVIEWED_CONTRACT_SHA256:
+        raise ValueError("maintenance contract differs from the reviewed fixture")
+    return json.loads(raw)
+
+
+EXPECTED_CONTRACT = reviewed_contract(CONTRACT.read_bytes())
+PILOT_CONTEXT = copy.deepcopy(EXPECTED_CONTRACT["pilot_context"])
 
 
 def run_auditor(contract: Path | None = None, cwd: Path | None = None):
@@ -281,8 +104,21 @@ class MaintenanceContractCLITests(unittest.TestCase):
         self.assertEqual(parsed_output(completed)["outcome"], "valid")
 
     def test_checked_in_contract_has_exact_reviewed_content(self):
-        self.assertEqual(json.loads(CONTRACT.read_text(encoding="utf-8")),
+        self.assertEqual(reviewed_contract(CONTRACT.read_bytes()),
                          EXPECTED_CONTRACT)
+
+    def test_changed_contract_cannot_redefine_the_expected_fixture(self):
+        changed = copy.deepcopy(EXPECTED_CONTRACT)
+        changed["authority"]["fix"] = True
+        with self.assertRaisesRegex(ValueError, "differs from the reviewed fixture"):
+            reviewed_contract(json.dumps(changed).encode("utf-8"))
+
+    def test_fixture_fingerprint_covers_every_byte(self):
+        raw = CONTRACT.read_bytes()
+        for changed in (raw + b"\n", raw[:-1], b"not json"):
+            with self.subTest(size=len(changed)):
+                with self.assertRaisesRegex(ValueError, "differs from the reviewed fixture"):
+                    reviewed_contract(changed)
 
     def test_valid_output_is_stable_and_hashes_exact_input_bytes(self):
         path = self.write_contract()
