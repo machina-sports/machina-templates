@@ -1,0 +1,31 @@
+name: Test Gemini CV contract
+
+on:
+  pull_request:
+    paths:
+      - 'connectors/gemini-cv/**'
+      - 'tests/test_gemini_cv_connector.py'
+      - '.github/workflows/test-gemini-cv.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'connectors/gemini-cv/**'
+      - 'tests/test_gemini_cv_connector.py'
+      - '.github/workflows/test-gemini-cv.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - run: python -m pip install pytest==8.3.5
+      - run: python -m pytest tests/test_gemini_cv_connector.py -q
