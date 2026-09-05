@@ -159,19 +159,17 @@ the dual-write cannot perturb them.
 ## Test evidence
 
 ```
-$ python3 -m pytest connectors/api-football/tests -q     # system interpreter
-130 passed, 2 skipped
-
-$ python -m pytest connectors/api-football/tests -q      # interpreter with jsonschema
-132 passed
+$ python3 -m pytest connectors/api-football/tests -q     # this interpreter, jsonschema present
+137 passed
 ```
 
-82 pre-existing + 50 new. The pre-existing 82 are unchanged and still pass.
+86 pre-existing + 51 new. The pre-existing 86 — the baseline after PR #364 merged — are
+unchanged and still pass.
 
 `jsonschema` is not a dependency of this repository's runtime, so the two tests that need
-a validator skip on an interpreter without it and the other 130 run regardless. The
+a validator skip on an interpreter without it and the other 135 run regardless. The
 properties that must hold everywhere — legacy byte-identity, exact identity binding,
-unavailability, upsert identity, expression safety — are in the 130, not the 2.
+unavailability, upsert identity, expression safety — are in the 135, not the 2.
 
 Expression validation was run against the actual runtime evaluator rather than a local
 imitation (the workflow engine's `safe_eval`): **141 expressions accepted, 0 rejected**

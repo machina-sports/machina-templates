@@ -642,6 +642,22 @@ def test_non_expressible_provider_metrics_are_labelled_by_the_provider_and_bound
     )
 
 
+def test_two_grouped_rows_that_compare_equal_keep_distinct_ordinals():
+    """Two players with identical measurements are still two measurements.
+
+    An equality-based lookup gives both rows ordinal 0, so the second row's
+    labels collide with the first's and one player's minutes silently overwrite
+    the other's downstream. The ordinal has to follow the row's position, not
+    its value."""
+    metrics = load_projector()._metrics(
+        [{"games": {"minutes": 31}}, {"games": {"minutes": 31}}]
+    )
+    assert metrics == [
+        {"provider_label": "0.games.minutes", "value": 31},
+        {"provider_label": "1.games.minutes", "value": 31},
+    ]
+
+
 def test_a_label_value_row_with_a_non_scalar_value_yields_no_metric():
     """API-Football's fixture-statistics rows are {type, value}. If a value ever
     arrives as a container, the row has no scalar measurement in it — and reading
