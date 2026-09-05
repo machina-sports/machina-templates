@@ -77,12 +77,32 @@
           "properties": {
             "provider": { "$ref": "#/$defs/provider" },
             "observed_at": { "type": "string", "minLength": 1 },
+            "synthetic": { "type": "boolean" },
+            "retrieval": {
+              "description": "Transport receipt emitted by the owned retrieval workflow. Consumers must also match provider, endpoint and observation time against the enclosing source bindings; this is not a commercial-rights or claim-verification certificate.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "provider_id", "source_operation", "observed_at"],
+              "properties": {
+                "mode": { "const": "provider_http" },
+                "provider_id": { "type": "string", "minLength": 1 },
+                "source_operation": { "type": "string", "minLength": 1 },
+                "observed_at": { "type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$" }
+              }
+            },
             "source_refs": {
               "type": "array",
               "minItems": 2,
               "items": { "$ref": "#/$defs/source_ref" }
             }
-          }
+          },
+          "allOf": [
+            {
+              "if": { "required": ["synthetic"], "properties": { "synthetic": { "const": false } } },
+              "then": { "required": ["retrieval"] },
+              "else": { "not": { "required": ["retrieval"] } }
+            }
+          ]
         },
         "rights": {
           "type": "object",
