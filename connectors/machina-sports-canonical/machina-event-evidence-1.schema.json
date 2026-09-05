@@ -1,0 +1,420 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://machina.gg/contracts/machina-event-evidence/1",
+  "title": "machina-event-evidence/1",
+  "description": "The provider-neutral evidence projection contract. One document family carries every fact that turns a canonical sport:Event into content: actions, lineups, team and player statistics, head-to-head and season form. It is connector-local rather than part of the canonical package because the package's release process is not this repository's to run; the byte-exact copy rule applies when a second producer adopts it. This contract owns no IPTC vocabulary: `statistic.curie` is constrained to the schemes the canonical package's official-statistic admissibility manifest publishes, and nothing may emit a CURIE that manifest does not admit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "metadata", "value"],
+  "properties": {
+    "name": {
+      "const": "canonical-event-evidence"
+    },
+    "metadata": {
+      "description": "The upsert identity and nothing else. machina-client-api's document_update_bulk filters on {\"metadata\": metadata, \"name\": name}, so every key here is part of the key: a volatile field in this object is a new document on every refresh instead of an update.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_code",
+        "source_event_document_id",
+        "provider_namespace",
+        "evidence_kind"
+      ],
+      "properties": {
+        "event_code": { "$ref": "#/$defs/canonical_id" },
+        "source_event_document_id": { "type": "string", "minLength": 1 },
+        "provider_namespace": { "type": "string", "minLength": 1 },
+        "evidence_kind": { "$ref": "#/$defs/evidence_kind" }
+      }
+    },
+    "value": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@id",
+        "schema_version",
+        "kind",
+        "event_id",
+        "event_code",
+        "source_event_document_id",
+        "provider",
+        "provider_event_id",
+        "status",
+        "observed_at",
+        "projection_key",
+        "projection_capability",
+        "provenance",
+        "rights",
+        "request_context",
+        "facts"
+      ],
+      "properties": {
+        "@id": { "$ref": "#/$defs/canonical_id" },
+        "schema_version": { "const": "machina-event-evidence/1" },
+        "kind": { "$ref": "#/$defs/evidence_kind" },
+        "event_id": { "$ref": "#/$defs/canonical_id" },
+        "event_code": { "$ref": "#/$defs/canonical_id" },
+        "source_event_document_id": { "type": "string", "minLength": 1 },
+        "provider": { "$ref": "#/$defs/provider" },
+        "provider_event_id": { "type": ["string", "integer"] },
+        "status": { "enum": ["available", "unavailable"] },
+        "observed_at": { "type": "string", "minLength": 1 },
+        "projection_key": { "$ref": "#/$defs/canonical_id" },
+        "projection_capability": {
+          "description": "The producing provider's own capability name, unrenamed. A provider-neutral consumer keys on evidence_kind and status; renaming the capability here would invent a second capability vocabulary beside the one the seam already publishes.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "status"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "status": { "enum": ["available", "unavailable"] }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["provider", "observed_at", "source_refs"],
+          "properties": {
+            "provider": { "$ref": "#/$defs/provider" },
+            "observed_at": { "type": "string", "minLength": 1 },
+            "source_refs": {
+              "type": "array",
+              "minItems": 2,
+              "items": { "$ref": "#/$defs/source_ref" }
+            }
+          }
+        },
+        "rights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["terms", "source_event_rights_ref"],
+          "properties": {
+            "terms": { "type": "object", "minProperties": 1 },
+            "source_event_rights_ref": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "value", "path"],
+              "properties": {
+                "kind": { "type": "string", "minLength": 1 },
+                "value": { "type": "string", "minLength": 1 },
+                "path": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        },
+        "request_context": { "type": "object" },
+        "facts": { "type": "array" },
+        "unavailable_reason": { "type": "string", "minLength": 1 },
+        "longitudinal_schema_version": {
+          "const": "canonical-longitudinal-statistics/1"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "required": ["status"],
+            "properties": { "status": { "const": "unavailable" } }
+          },
+          "then": {
+            "required": ["unavailable_reason"],
+            "properties": { "facts": { "maxItems": 0 } }
+          },
+          "else": {
+            "not": { "required": ["unavailable_reason"] }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["metadata"],
+        "properties": {
+          "metadata": {
+            "required": ["evidence_kind"],
+            "properties": { "evidence_kind": { "const": "actions" } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "value": {
+            "properties": {
+              "facts": { "items": { "$ref": "#/$defs/action_fact" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["metadata"],
+        "properties": {
+          "metadata": {
+            "required": ["evidence_kind"],
+            "properties": { "evidence_kind": { "const": "lineups" } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "value": {
+            "properties": {
+              "facts": { "items": { "$ref": "#/$defs/lineup_fact" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["metadata"],
+        "properties": {
+          "metadata": {
+            "required": ["evidence_kind"],
+            "properties": { "evidence_kind": { "const": "team_statistics" } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "value": {
+            "properties": {
+              "facts": { "items": { "$ref": "#/$defs/team_statistics_fact" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["metadata"],
+        "properties": {
+          "metadata": {
+            "required": ["evidence_kind"],
+            "properties": { "evidence_kind": { "const": "player_statistics" } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "value": {
+            "properties": {
+              "facts": { "items": { "$ref": "#/$defs/player_statistics_fact" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["metadata"],
+        "properties": {
+          "metadata": {
+            "required": ["evidence_kind"],
+            "properties": { "evidence_kind": { "const": "head_to_head" } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "value": {
+            "properties": {
+              "facts": { "items": { "$ref": "#/$defs/prior_meeting_fact" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["metadata"],
+        "properties": {
+          "metadata": {
+            "required": ["evidence_kind"],
+            "properties": { "evidence_kind": { "const": "season_form" } }
+          }
+        }
+      },
+      "then": {
+        "description": "season_form is the longitudinal kind and it already has an owner: machina_sports_canonical.LONGITUDINAL_SCHEMA_VERSION. A season_form document must cite that contract rather than describing its records here, and no Phase 1 producer emits the kind.",
+        "properties": {
+          "value": {
+            "required": ["longitudinal_schema_version"],
+            "properties": {
+              "longitudinal_schema_version": {
+                "const": "canonical-longitudinal-statistics/1"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "canonical_id": {
+      "type": "string",
+      "pattern": "^urn:machina:sports:[a-z][a-z0-9_-]*:.+$"
+    },
+    "evidence_kind": {
+      "enum": [
+        "actions",
+        "lineups",
+        "team_statistics",
+        "player_statistics",
+        "head_to_head",
+        "season_form"
+      ]
+    },
+    "provider": {
+      "description": "namespace and family exactly as the source event's canonical provenance carries them. event_view.provider.raw is deliberately not admitted: it is provenance for display, and a consumer reading it for logic is back on provider shape.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespace", "family"],
+      "properties": {
+        "namespace": { "type": "string", "minLength": 1 },
+        "family": { "type": "string", "minLength": 1 }
+      }
+    },
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "note": { "type": "string" }
+      }
+    },
+    "statistic": {
+      "description": "An exact IPTC statistic. The pattern admits only the sport-statistic CURIE schemes the canonical package publishes; membership in the admissibility manifest is the real gate and is asserted by the producer's test suite, because a JSON Schema cannot read that manifest.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["curie", "value"],
+      "properties": {
+        "curie": {
+          "type": "string",
+          "pattern": "^sp[a-z]{2,6}stat:[a-z][A-Za-z0-9]*$"
+        },
+        "value": { "type": ["string", "number", "boolean", "null"] }
+      }
+    },
+    "metric": {
+      "description": "A provider-labelled measurement with no IPTC term. Bounded on purpose: the label is the provider's own key path at most one level deep and the value is a scalar, so nothing here can grow into an unbounded copy of a provider tree. The untouched provider rows stay under provider_evidence.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider_label", "value"],
+      "properties": {
+        "provider_label": { "type": "string", "minLength": 1 },
+        "value": { "type": ["string", "number", "boolean", "null"] }
+      }
+    },
+    "lineup_member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["participation_id", "number", "position", "grid", "provider_evidence"],
+      "properties": {
+        "participation_id": { "$ref": "#/$defs/canonical_id" },
+        "athlete_id": { "$ref": "#/$defs/canonical_id" },
+        "number": { "type": ["integer", "string", "null"] },
+        "position": { "type": ["string", "null"] },
+        "grid": { "type": ["string", "null"] },
+        "provider_evidence": { "type": "object" }
+      }
+    },
+    "action_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["@id", "claim_type", "claim_scope", "event_id", "team_id", "provider_evidence"],
+      "properties": {
+        "@id": { "$ref": "#/$defs/canonical_id" },
+        "claim_type": { "const": "action" },
+        "claim_scope": { "const": "event-action" },
+        "event_id": { "$ref": "#/$defs/canonical_id" },
+        "team_id": { "$ref": "#/$defs/canonical_id" },
+        "participation_id": { "$ref": "#/$defs/canonical_id" },
+        "athlete_id": { "$ref": "#/$defs/canonical_id" },
+        "assist_participation_id": { "$ref": "#/$defs/canonical_id" },
+        "assist_athlete_id": { "$ref": "#/$defs/canonical_id" },
+        "provider_evidence": { "type": "object" }
+      }
+    },
+    "lineup_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@id", "claim_type", "claim_scope", "event_id", "team_id",
+        "formation", "starting", "substitutes", "provider_evidence"
+      ],
+      "properties": {
+        "@id": { "$ref": "#/$defs/canonical_id" },
+        "claim_type": { "const": "lineup" },
+        "claim_scope": { "const": "team-participation" },
+        "event_id": { "$ref": "#/$defs/canonical_id" },
+        "team_id": { "$ref": "#/$defs/canonical_id" },
+        "formation": { "type": ["string", "null"] },
+        "starting": { "type": "array", "items": { "$ref": "#/$defs/lineup_member" } },
+        "substitutes": { "type": "array", "items": { "$ref": "#/$defs/lineup_member" } },
+        "provider_evidence": { "type": "object" }
+      }
+    },
+    "team_statistics_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@id", "claim_type", "claim_scope", "event_id", "team_id",
+        "statistics", "metrics", "provider_evidence"
+      ],
+      "properties": {
+        "@id": { "$ref": "#/$defs/canonical_id" },
+        "claim_type": { "const": "team_statistics" },
+        "claim_scope": { "const": "team-participation" },
+        "event_id": { "$ref": "#/$defs/canonical_id" },
+        "team_id": { "$ref": "#/$defs/canonical_id" },
+        "statistics": { "type": "array", "items": { "$ref": "#/$defs/statistic" } },
+        "metrics": { "type": "array", "items": { "$ref": "#/$defs/metric" } },
+        "provider_evidence": { "type": "object" }
+      }
+    },
+    "player_statistics_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@id", "claim_type", "claim_scope", "event_id", "team_id",
+        "participation_id", "statistics", "metrics", "provider_evidence"
+      ],
+      "properties": {
+        "@id": { "$ref": "#/$defs/canonical_id" },
+        "claim_type": { "const": "player_statistics" },
+        "claim_scope": { "const": "athlete-participation" },
+        "event_id": { "$ref": "#/$defs/canonical_id" },
+        "team_id": { "$ref": "#/$defs/canonical_id" },
+        "participation_id": { "$ref": "#/$defs/canonical_id" },
+        "athlete_id": { "$ref": "#/$defs/canonical_id" },
+        "statistics": { "type": "array", "items": { "$ref": "#/$defs/statistic" } },
+        "metrics": { "type": "array", "items": { "$ref": "#/$defs/metric" } },
+        "provider_evidence": { "type": "object" }
+      }
+    },
+    "prior_meeting_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@id", "claim_type", "claim_scope", "event_id",
+        "home_team_id", "away_team_id", "provider_evidence"
+      ],
+      "properties": {
+        "@id": { "$ref": "#/$defs/canonical_id" },
+        "claim_type": { "const": "prior_meeting" },
+        "claim_scope": { "const": "prior-meeting" },
+        "event_id": { "$ref": "#/$defs/canonical_id" },
+        "home_team_id": { "$ref": "#/$defs/canonical_id" },
+        "away_team_id": { "$ref": "#/$defs/canonical_id" },
+        "provider_evidence": { "type": "object" }
+      }
+    }
+  }
+}

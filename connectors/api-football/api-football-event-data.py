@@ -47,6 +47,23 @@ DOCUMENT_SPECS = (
     ),
 )
 
+#: The provider-neutral evidence contract this connector also writes.
+#: The five legacy documents above keep their exact bytes for one release; this
+#: family is what the app, the guards and every future provider read instead.
+EVIDENCE_SCHEMA_VERSION = "machina-event-evidence/1"
+EVIDENCE_DOCUMENT_NAME = "canonical-event-evidence"
+
+#: Endpoint source key -> the contract's evidence kind. The mapping is 1:1 by
+#: construction; ``season_form`` is the contract's sixth kind and belongs to the
+#: season workflow and the canonical package's longitudinal contract, not here.
+EVIDENCE_KINDS = {
+    "events": "actions",
+    "lineups": "lineups",
+    "team_statistics": "team_statistics",
+    "player_statistics": "player_statistics",
+    "head_to_head": "head_to_head",
+}
+
 
 def _params(request_data):
     return dict((request_data or {}).get("params") or {})
@@ -549,6 +566,226 @@ PROJECTORS = {
 }
 
 
+def _carry(target, source, pairs):
+    """Copy a key only where the trusted projector actually produced one.
+
+    Absence is the point. A missing ``canonical_athlete_id`` means the source
+    event's crosswalk did not map that provider player, and the contract must
+    show no athlete rather than a plausible one — so there is no default here and
+    no place to put a minted identifier.
+    """
+    for source_key, target_key in pairs:
+        if source_key in source:
+            target[target_key] = source[source_key]
+
+
+def _metrics(statistics):
+    """Provider-labelled measurements, one level deep and scalar-valued.
+
+    The contract asks for exact IPTC CURIEs "where expressible" and a bounded
+    ``metrics`` block for the rest. Nothing is expressible here: the canonical
+    package ships no API-Football statistic mapping at its pinned commit, and a
+    mapping invented in this connector would be a second statistic vocabulary
+    beside the one the package owns. So every measurement travels under the
+    provider's own label, the exact provider rows stay in ``provider_evidence``
+    for whoever writes that mapping, and ``statistics`` stays empty.
+
+    Bounded means bounded in structure: one level of the provider's own keys and
+    scalars only. Anything deeper is not flattened and not summarised.
+    """
+    metrics = []
+    rows = statistics if isinstance(statistics, list) else []
+    # The grouped shape (fixtures/players) puts every measurement in one entry,
+    # so a second entry would collide label-for-label and needs its ordinal. The
+    # label/value shape (fixtures/statistics) is one row *per* measurement, where
+    # an ordinal prefix would corrupt every label instead of disambiguating it.
+    grouped = [row for row in rows if isinstance(row, dict) and "type" not in row]
+    prefixed = len(grouped) > 1
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if "type" in row:
+            # A row in this shape whose value is a container carries no scalar
+            # measurement, and reading its keys as labels would report a `type`
+            # metric the provider never sent. Skipped, not salvaged; the row
+            # itself survives verbatim in provider_evidence.
+            label = _text(row.get("type"))
+            if label is not None and not isinstance(row.get("value"), (dict, list)):
+                metrics.append({"provider_label": label, "value": row.get("value")})
+            continue
+        prefix = "{0}.".format(grouped.index(row)) if prefixed else ""
+        for group, value in row.items():
+            if isinstance(value, dict):
+                for key, inner in value.items():
+                    if isinstance(inner, (dict, list)):
+                        continue
+                    metrics.append({
+                        "provider_label": "{0}{1}.{2}".format(prefix, group, key),
+                        "value": inner,
+                    })
+            elif not isinstance(value, list):
+                metrics.append({
+                    "provider_label": "{0}{1}".format(prefix, group),
+                    "value": value,
+                })
+    return metrics
+
+
+def _evidence_actions(facts, event_id):
+    projected = []
+    for fact in facts:
+        item = {
+            "@id": fact["@id"],
+            "claim_type": "action",
+            "claim_scope": "event-action",
+            "event_id": event_id,
+            "team_id": fact["team_id"],
+        }
+        _carry(item, fact, (
+            ("participation_id", "participation_id"),
+            ("canonical_athlete_id", "athlete_id"),
+            ("assist_participation_id", "assist_participation_id"),
+            ("canonical_assist_athlete_id", "assist_athlete_id"),
+        ))
+        evidence = {
+            "team_id": fact["provider_team_id"],
+            "response_ordinal": fact["provider_response_ordinal"],
+            "payload": deepcopy(fact["provider_facts"]),
+        }
+        _carry(evidence, fact, (
+            ("provider_event_id", "event_id"),
+            ("provider_player_id", "player_id"),
+            ("provider_assist_player_id", "assist_player_id"),
+        ))
+        item["provider_evidence"] = evidence
+        projected.append(item)
+    return projected
+
+
+def _evidence_member(player):
+    member = {"participation_id": player["participation_id"]}
+    _carry(member, player, (("canonical_athlete_id", "athlete_id"),))
+    member["number"] = player.get("number")
+    member["position"] = player.get("position")
+    member["grid"] = player.get("grid")
+    member["provider_evidence"] = {
+        "player_id": player["provider_player_id"],
+        "name": player.get("name"),
+    }
+    return member
+
+
+def _evidence_lineups(facts, event_id):
+    return [
+        {
+            "@id": fact["@id"],
+            "claim_type": "lineup",
+            "claim_scope": "team-participation",
+            "event_id": event_id,
+            "team_id": fact["team_id"],
+            "formation": fact.get("formation"),
+            "starting": [_evidence_member(player) for player in fact["starting"]],
+            "substitutes": [_evidence_member(player) for player in fact["substitutes"]],
+            "provider_evidence": {
+                "team_id": fact["provider_team_id"],
+                "coach": deepcopy(fact.get("coach")),
+            },
+        }
+        for fact in facts
+    ]
+
+
+def _evidence_team_statistics(facts, event_id):
+    return [
+        {
+            "@id": fact["@id"],
+            "claim_type": "team_statistics",
+            "claim_scope": "team-participation",
+            "event_id": event_id,
+            "team_id": fact["team_id"],
+            "statistics": [],
+            "metrics": _metrics(fact["statistics"]),
+            "provider_evidence": {
+                "team_id": fact["provider_team_id"],
+                "statistics": deepcopy(fact["statistics"]),
+            },
+        }
+        for fact in facts
+    ]
+
+
+def _evidence_player_statistics(facts, event_id):
+    """One claim per athlete participation, not one per team.
+
+    This is the only kind whose canonical grain differs from the legacy
+    projection, and it differs because the claim does: "this athlete recorded
+    these measurements" is not a statement about the team document that happens
+    to contain it.
+    """
+    projected = []
+    for fact in facts:
+        for player in fact["players"]:
+            item = {
+                "@id": _urn(
+                    "event-evidence-athlete-statistics",
+                    event_id,
+                    fact["team_id"],
+                    _text(player["provider_player_id"]),
+                ),
+                "claim_type": "player_statistics",
+                "claim_scope": "athlete-participation",
+                "event_id": event_id,
+                "team_id": fact["team_id"],
+                "participation_id": player["participation_id"],
+            }
+            _carry(item, player, (("canonical_athlete_id", "athlete_id"),))
+            item["statistics"] = []
+            item["metrics"] = _metrics(player["statistics"])
+            item["provider_evidence"] = {
+                "team_id": fact["provider_team_id"],
+                "player_id": player["provider_player_id"],
+                "name": player.get("name"),
+                "statistics": deepcopy(player["statistics"]),
+            }
+            projected.append(item)
+    return projected
+
+
+def _evidence_head_to_head(facts, event_id):
+    return [
+        {
+            "@id": fact["@id"],
+            "claim_type": "prior_meeting",
+            "claim_scope": "prior-meeting",
+            "event_id": event_id,
+            "home_team_id": fact["home_team_id"],
+            "away_team_id": fact["away_team_id"],
+            "provider_evidence": {
+                "event_id": fact["provider_fixture_id"],
+                "home_team_id": fact["provider_home_team_id"],
+                "away_team_id": fact["provider_away_team_id"],
+                "payload": deepcopy(fact["facts"]),
+            },
+        }
+        for fact in facts
+    ]
+
+
+#: The canonical facts are derived from the legacy projector's output rather than
+#: from a second read of the provider payload. That output is where every exact
+#: identity check already happened — fixture id equality, crosswalk equality for
+#: both teams, duplicate participation refusal — so deriving from it is what
+#: guarantees the two families can never disagree about what the provider said.
+#: A second parse would be a second chance to be wrong in only one of them.
+EVIDENCE_PROJECTORS = {
+    "events": _evidence_actions,
+    "lineups": _evidence_lineups,
+    "team_statistics": _evidence_team_statistics,
+    "player_statistics": _evidence_player_statistics,
+    "head_to_head": _evidence_head_to_head,
+}
+
+
 def _document(spec, facts, reason, envelope, request_context, identity, context):
     source_key, name, kind, capability_name, endpoint = spec
     status = "available" if facts else "unavailable"
@@ -610,6 +847,60 @@ def _document(spec, facts, reason, envelope, request_context, identity, context)
     }
 
 
+def _evidence_document(spec, facts, identity, context, legacy):
+    """The same observation as ``legacy``, said in provider-neutral terms.
+
+    Every binding is copied from the legacy document rather than recomputed:
+    same provider, same rights, same provenance, same capability name, same
+    status, same observation time. An unavailable endpoint stays unavailable
+    with the reason the provider actually gave — there is no branch here that
+    can turn silence into an empty-but-available fact list.
+    """
+    source_key = spec[0]
+    evidence_kind = EVIDENCE_KINDS[source_key]
+    event_code = context["event_code"]
+    source_event_document_id = context["source_event_document_id"]
+    status = legacy["metadata"]["status"]
+    projection_key = _urn(
+        "event-evidence", evidence_kind, source_event_document_id, event_code
+    )
+    value = {
+        "@id": projection_key,
+        "schema_version": EVIDENCE_SCHEMA_VERSION,
+        "kind": evidence_kind,
+        "event_id": event_code,
+        "event_code": event_code,
+        "source_event_document_id": source_event_document_id,
+        "provider": deepcopy(context["provider"]),
+        "provider_event_id": identity["provider_fixture_id"],
+        "status": status,
+        "observed_at": legacy["metadata"]["observed_at"],
+        "projection_key": projection_key,
+        "projection_capability": deepcopy(legacy["metadata"]["projection_capability"]),
+        "provenance": deepcopy(legacy["metadata"]["provenance"]),
+        "rights": deepcopy(legacy["metadata"]["rights"]),
+        "request_context": deepcopy(legacy["value"]["request_context"]),
+        "facts": EVIDENCE_PROJECTORS[source_key](facts, event_code),
+    }
+    if status == "unavailable":
+        value["unavailable_reason"] = legacy["value"]["unavailable_reason"]
+    return {
+        "name": EVIDENCE_DOCUMENT_NAME,
+        # The whole of `metadata` is the store's upsert key: machina-client-api's
+        # `document_update_bulk` filters on {"metadata": metadata, "name": name}.
+        # Event, source document, provider and kind — and deliberately nothing
+        # that changes between refreshes, because `observed_at` in here would
+        # mean a new document every tick instead of an updated one.
+        "metadata": {
+            "event_code": event_code,
+            "source_event_document_id": source_event_document_id,
+            "provider_namespace": context["provider"]["namespace"],
+            "evidence_kind": evidence_kind,
+        },
+        "value": value,
+    }
+
+
 def project_event_data(request_data):
     """Project one canonical event and exact provider endpoint envelopes."""
     params = _params(request_data)
@@ -636,6 +927,7 @@ def project_event_data(request_data):
 
     event_id = context["event_code"]
     documents = []
+    evidence_documents = []
     unavailable = []
     diagnostics = {}
     h2h_pair = "{0}-{1}".format(identity["home_id"], identity["away_id"])
@@ -658,16 +950,18 @@ def project_event_data(request_data):
         if not facts:
             unavailable.append(capability_name)
             diagnostics[capability_name] = reason or "provider returned no facts"
-        documents.append(
-            _document(
-                spec,
-                facts,
-                reason,
-                envelope,
-                request_context,
-                identity,
-                context,
-            )
+        document = _document(
+            spec,
+            facts,
+            reason,
+            envelope,
+            request_context,
+            identity,
+            context,
+        )
+        documents.append(document)
+        evidence_documents.append(
+            _evidence_document(spec, facts, identity, context, document)
         )
 
     if not unavailable:
@@ -683,6 +977,7 @@ def project_event_data(request_data):
         workflow_status=workflow_status,
         event_id=event_id,
         documents=documents,
+        evidence_documents=evidence_documents,
         requirements_unavailable=unavailable,
         diagnostics=diagnostics,
     )

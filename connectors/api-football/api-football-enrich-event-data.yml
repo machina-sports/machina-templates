@@ -15,10 +15,16 @@ workflow:
     event_document_id: "$.get('event_document_id')"
     observed_at: "$.get('observed_at', datetime.utcnow().isoformat() + 'Z')"
   outputs:
-    workflow-status: "$.get('projection-workflow-status', 'failed') if $.get('projection-valid', False) and $.get('projections-saved', False) else 'failed'"
+    # Both families or neither. A run that projected cleanly, wrote the five
+    # legacy documents and then lost the canonical dual-write is a partially
+    # persisted run, and reporting it as `executed` would leave the pod holding
+    # an evidence family that silently stops at whichever tick failed.
+    workflow-status: "$.get('projection-workflow-status', 'failed') if $.get('projection-valid', False) and $.get('projections-saved', False) and $.get('evidence-saved-kinds', []) == ['actions', 'head_to_head', 'lineups', 'player_statistics', 'team_statistics'] else 'failed'"
     event_document_id: "$.get('event_document_id')"
     requirements-unavailable: "$.get('requirements-unavailable', [])"
     diagnostics: "$.get('projection-diagnostics', {})"
+    # Which half failed, so a failed status is diagnosable without the trace.
+    evidence-dual-write: "$.get('evidence-saved-kinds', []) == ['actions', 'head_to_head', 'lineups', 'player_statistics', 'team_statistics']"
   tasks:
     - type: document
       name: load-event
@@ -168,6 +174,11 @@ workflow:
         projection-workflow-status: "$.get('workflow_status', 'failed')"
         requirements-unavailable: "$.get('requirements_unavailable', [])"
         projection-diagnostics: "$.get('diagnostics', {})"
+        evidence-documents: "$.get('evidence_documents', [])"
+        # The store's bulk-update reads one flat object per document and pops
+        # `metadata` off it, keeping the remainder as `value`. This is the only
+        # place that shape is assembled; the connector returns the document.
+        evidence-items: "[{**item.get('value', {}), 'metadata': item.get('metadata', {})} for item in $.get('evidence_documents', [])]"
 
     - type: document
       name: save-actions
@@ -305,3 +316,26 @@ workflow:
         projection_key: "$.get('head-to-head-projection', {}).get('metadata', {}).get('projection_key')"
       outputs:
         projections-saved: "True"
+
+    - type: document
+      name: save-canonical-event-evidence
+      description: |
+        Dual-write the same five observations as provider-neutral
+        `canonical-event-evidence` documents (machina-event-evidence/1).
+        `bulk-update` is a real upsert: it filters on {metadata, name} and the
+        contract keeps `metadata` to the identity tuple — event, source
+        document, provider namespace and evidence kind — so a retry updates the
+        five documents instead of adding five more. The five legacy documents
+        above are unchanged and still written; nothing reads this family yet.
+      condition: "$.get('projection-valid', False) and len($.get('evidence-items', [])) == 5"
+      config:
+        action: bulk-update
+        embed-vector: false
+      document_name: "'canonical-event-evidence'"
+      documents:
+        items: "$.get('evidence-items', [])"
+      outputs:
+        # The receipt is what the store echoed back, not that the task ran. A
+        # kind missing here is a kind that did not persist, and the workflow
+        # output below turns that into `failed` rather than a quiet half-write.
+        evidence-saved-kinds: "sorted({item.get('metadata', {}).get('evidence_kind') for item in $.get('documents', []) if item.get('name') == 'canonical-event-evidence' and item.get('metadata', {}).get('evidence_kind') is not None})"
