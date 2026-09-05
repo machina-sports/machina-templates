@@ -708,6 +708,14 @@
     },
     {
       "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_workflow_regressions.py",
+      "category": "field-path-read",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json reads_field_paths = `schema:startDate`, `sport:awayScore`, `sport:homeScore`, `sport:score`, `sport:status`. The cached-final regressions exercise legacy cached status/time inputs and explicitly reject an unproduced sport:score shape. Keep these compatibility and negative fixtures; they do not establish a new production event model."
+    },
+    {
+      "repo": "machina-templates",
       "path": "agent-templates/world-cup-intelligence/workflows/wcbracket-enrich-teams.yml",
       "category": "document-name",
       "literal": "worldcup:bracket-simulation",
@@ -811,6 +819,15 @@
       "owner": "machina-templates:agent-templates/world-cup-intelligence",
       "disposition": "no-change",
       "evidence": "inventory.json couplings: document-name `worldcup:clv-report` at agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml:190. PR3-CONSUMER-INVENTORY.md \u00a73.1: a world-cup-intelligence side document (cache / ledger / crosswalk / skill output), not the event document. PR 3 changes the event envelope only, so this document name is unaffected."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "category": "document-name",
+      "literal": "worldcup:event",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "compat-alias",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json document-name `worldcup:event` at agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml:67. The load-cached-final-events task searches the existing event collection only when provider finals are absent. Preserve its event document name during the canonical migration; this row records a compatibility obligation, not a completed migration."
     },
     {
       "repo": "machina-templates",
@@ -988,7 +1005,7 @@
       "category": "field-path-read",
       "owner": "machina-templates:agent-templates/world-cup-intelligence",
       "disposition": "migrate",
-      "evidence": "inventory.json consumers[kind=workflow-or-mapping].reads_field_paths = `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:qualifier` (4 paths). PR 3 action: repoint at the shared canonical seam and read `event_view` (PR3-CONSUMER-INVENTORY.md \u00a74 migration order, \u00a75 seam requirements)."
+      "evidence": "2026-09-05 source review at ddfbf36: lookup-event still reads `sport:competitor`, `sport:competitors` and `sport:qualifier` according to inventory.json; `schema:startDate` is no longer recorded. Migrate those team-role reads through the canonical event view. Identity crosswalk and fixture-scoped injury retrieval remain separate side-document/provider concerns."
     },
     {
       "repo": "machina-templates",
@@ -1034,6 +1051,24 @@
       "owner": "machina-templates:agent-templates/world-cup-intelligence",
       "disposition": "compat-alias",
       "evidence": "inventory.json couplings: document-name `worldcup:event` at agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml:30. PR 3 architecture: WCI persists the canonical envelope plus exact-path derived compatibility aliases under the unchanged `worldcup:event` document name, so this document-name dependency is preserved rather than migrated (plan Architecture; PR3-CONSUMER-INVENTORY.md \u00a710.4)."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-fifa-player-power-ranking",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json document-name `worldcup:final-fifa-player-power-ranking` at agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml:115. The load-player-identity and load-final-fifa-player-rankings tasks read separate identity and immutable ranking documents. These are not event envelopes; their document names remain unchanged by the event migration."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
+      "category": "document-name",
+      "literal": "worldcup:identity-crosswalk",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json document-name `worldcup:identity-crosswalk` at agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml:101. The load-player-identity and load-final-fifa-player-rankings tasks read separate identity and immutable ranking documents. These are not event envelopes; their document names remain unchanged by the event migration."
     },
     {
       "repo": "machina-templates",
@@ -1113,6 +1148,24 @@
       "owner": "machina-templates:agent-templates/world-cup-intelligence",
       "disposition": "migrate",
       "evidence": "inventory.json consumers[kind=workflow-or-mapping].reads_field_paths = `schema:startDate` (1 paths). PR 3 action: repoint at the shared canonical seam and read `event_view` (PR3-CONSUMER-INVENTORY.md \u00a74 migration order, \u00a75 seam requirements)."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-import-final-fifa-player-rankings.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-fifa-player-power-ranking",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json document-name `worldcup:final-fifa-player-power-ranking` at agent-templates/world-cup-intelligence/workflows/worldcup-import-final-fifa-player-rankings.yml:71. The workflow loads and upserts identity crosswalks and persists validated player-ranking records plus their manifest. These side-document names are separate from the event envelope and need no event-schema rename. This review does not execute the import."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-import-final-fifa-player-rankings.yml",
+      "category": "document-name",
+      "literal": "worldcup:identity-crosswalk",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json document-name `worldcup:identity-crosswalk` at agent-templates/world-cup-intelligence/workflows/worldcup-import-final-fifa-player-rankings.yml:26, 57. The workflow loads and upserts identity crosswalks and persists validated player-ranking records plus their manifest. These side-document names are separate from the event envelope and need no event-schema rename. This review does not execute the import."
     },
     {
       "repo": "machina-templates",
@@ -1642,6 +1695,58 @@
     },
     {
       "repo": "machina-templates",
+      "path": "connectors/api-football/tests/test_terminal_reconciliation.py",
+      "category": "document-name",
+      "literal": "sport:Event",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "compat-alias",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json document-name `sport:Event` at connectors/api-football/tests/test_terminal_reconciliation.py:558. The regression assertions cover the dual legacy/canonical claim filters, exact event document name, terminal statuses, date bounds and coverage allowlists. Preserve that compatibility coverage while storage readers migrate; this is test evidence, not another production consumer."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "connectors/api-football/tests/test_terminal_reconciliation.py",
+      "category": "field-path-read",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "no-change",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json reads_field_paths = `schema:startDate`, `sport:competition`, `sport:status`. The regression assertions cover the dual legacy/canonical claim filters, exact event document name, terminal statuses, date bounds and coverage allowlists. Preserve that compatibility coverage while storage readers migrate; this is test evidence, not another production consumer."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "connectors/api-football/tests/test_terminal_reconciliation.py",
+      "category": "storage-predicate",
+      "literal": "value.schema:startDate",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "compat-alias",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json storage-predicate `value.schema:startDate` at connectors/api-football/tests/test_terminal_reconciliation.py:153, 154, 176, 413, 431, 432. The regression assertions cover the dual legacy/canonical claim filters, exact event document name, terminal statuses, date bounds and coverage allowlists. Preserve that compatibility coverage while storage readers migrate; this is test evidence, not another production consumer."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "connectors/api-football/tests/test_terminal_reconciliation.py",
+      "category": "storage-predicate",
+      "literal": "value.sport:competition",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "compat-alias",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json storage-predicate `value.sport:competition` at connectors/api-football/tests/test_terminal_reconciliation.py:461, 471. The regression assertions cover the dual legacy/canonical claim filters, exact event document name, terminal statuses, date bounds and coverage allowlists. Preserve that compatibility coverage while storage readers migrate; this is test evidence, not another production consumer."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "connectors/api-football/tests/test_terminal_reconciliation.py",
+      "category": "storage-predicate",
+      "literal": "value.sport:status",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "compat-alias",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json storage-predicate `value.sport:status` at connectors/api-football/tests/test_terminal_reconciliation.py:117, 118, 121, 413, 428. The regression assertions cover the dual legacy/canonical claim filters, exact event document name, terminal statuses, date bounds and coverage allowlists. Preserve that compatibility coverage while storage readers migrate; this is test evidence, not another production consumer."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "connectors/api-football/tests/test_workflow_guards.py",
+      "category": "field-path-read",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "no-change",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json reads_field_paths = `schema:startDate`, `sport:awayScore`, `sport:competition`, `sport:competitor`, `sport:competitors`, `sport:homeScore`, `sport:score`, `sport:status`, `sport:venue`. The canonical synchronize regressions construct poisoned legacy aliases, assert their removal and test canonical identity/rights/refusal gates. The field-path matches are test fixtures and assertions, not a legacy production reader to migrate."
+    },
+    {
+      "repo": "machina-templates",
       "path": "connectors/api-football/workflows/event-consumer-live.yml",
       "category": "document-name",
       "literal": "sport:Event",
@@ -1683,6 +1788,50 @@
       "owner": "machina-templates:connectors/api-football",
       "disposition": "compat-alias",
       "evidence": "inventory.json couplings: storage-predicate `value.sport:status` at connectors/api-football/workflows/event-consumer-live.yml:70. PR3-CONSUMER-INVENTORY.md \u00a79 group E and \u00a710.3: a storage predicate binds the persisted document shape, and is preserved by an exact-path derived compatibility alias at the same path \u2014 a document-store migration, not a consumer edit. Task 1 evidence amendment: the surfaces welded to the persisted event shape are the provider connector workflows, so this row is owned here and not by world-cup-intelligence."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "connectors/api-football/workflows/event-consumer-postlive.yml",
+      "category": "document-name",
+      "literal": "sport:Event",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "compat-alias",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json document-name `sport:Event` at connectors/api-football/workflows/event-consumer-postlive.yml:44, 83, 136. The post-live claim and stuck-event recovery tasks query the existing event collection. Date/status/competition predicates retain legacy paths alongside canonical alternatives. Keep exact-path storage compatibility until those query paths are deliberately migrated; no workflow is changed by this review."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "connectors/api-football/workflows/event-consumer-postlive.yml",
+      "category": "field-path-read",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "migrate",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json reads_field_paths = `schema:startDate`, `sport:competition`, `sport:status`. The post-live claim and stuck-event recovery tasks query the existing event collection. Date/status/competition predicates retain legacy paths alongside canonical alternatives. Keep exact-path storage compatibility until those query paths are deliberately migrated; no workflow is changed by this review."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "connectors/api-football/workflows/event-consumer-postlive.yml",
+      "category": "storage-predicate",
+      "literal": "value.schema:startDate",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "compat-alias",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json storage-predicate `value.schema:startDate` at connectors/api-football/workflows/event-consumer-postlive.yml:42, 81, 91. The post-live claim and stuck-event recovery tasks query the existing event collection. Date/status/competition predicates retain legacy paths alongside canonical alternatives. Keep exact-path storage compatibility until those query paths are deliberately migrated; no workflow is changed by this review."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "connectors/api-football/workflows/event-consumer-postlive.yml",
+      "category": "storage-predicate",
+      "literal": "value.sport:competition",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "compat-alias",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json storage-predicate `value.sport:competition` at connectors/api-football/workflows/event-consumer-postlive.yml:108. The post-live claim and stuck-event recovery tasks query the existing event collection. Date/status/competition predicates retain legacy paths alongside canonical alternatives. Keep exact-path storage compatibility until those query paths are deliberately migrated; no workflow is changed by this review."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "connectors/api-football/workflows/event-consumer-postlive.yml",
+      "category": "storage-predicate",
+      "literal": "value.sport:status",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "compat-alias",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json storage-predicate `value.sport:status` at connectors/api-football/workflows/event-consumer-postlive.yml:95, 137. The post-live claim and stuck-event recovery tasks query the existing event collection. Date/status/competition predicates retain legacy paths alongside canonical alternatives. Keep exact-path storage compatibility until those query paths are deliberately migrated; no workflow is changed by this review."
     },
     {
       "repo": "machina-templates",
@@ -1758,16 +1907,8 @@
       "path": "connectors/api-football/workflows/event-synchronize.yml",
       "category": "field-path-read",
       "owner": "machina-templates:connectors/api-football",
-      "disposition": "migrate",
-      "evidence": "inventory.json consumers[kind=workflow-or-mapping].reads_field_paths = `schema:startDate` (1 paths). PR 3 action: repoint at the shared canonical seam and read `event_view` (PR3-CONSUMER-INVENTORY.md \u00a74 migration order, \u00a75 seam requirements)."
-    },
-    {
-      "repo": "machina-templates",
-      "path": "connectors/api-football/workflows/event-synchronize.yml",
-      "category": "payload-key-read",
-      "owner": "machina-templates:connectors/api-football",
-      "disposition": "migrate",
-      "evidence": "inventory.json consumers[kind=workflow-or-mapping].reads_payload_keys = `iptc_schema_events`, `sport_schema_event`, `sport_schema_events` (3 keys) \u2014 legacy IPTC payload passed between workflow tasks. PR 3 action: repoint at the shared canonical seam and read `event_view` (PR3-CONSUMER-INVENTORY.md \u00a74 migration order, \u00a75 seam requirements)."
+      "disposition": "no-change",
+      "evidence": "2026-09-05 source review at ddfbf36: canonicalize-fixture calls the canonical connector, and version-control-update explicitly removes the listed legacy aliases before persisting the canonical block. The field-path scanner matches that removal list, not legacy fact reads. Keep the canonical writer and its poisoned-alias regressions; the former payload-key-read row is no longer present in the generated inventory."
     },
     {
       "repo": "machina-templates",
@@ -1777,6 +1918,23 @@
       "owner": "machina-templates:connectors/api-football",
       "disposition": "compat-alias",
       "evidence": "inventory.json couplings: storage-predicate `value.schema:startDate` at connectors/api-football/workflows/event-synchronize.yml:30. PR3-CONSUMER-INVENTORY.md \u00a79 group E and \u00a710.3: a storage predicate binds the persisted document shape, and is preserved by an exact-path derived compatibility alias at the same path \u2014 a document-store migration, not a consumer edit. Task 1 evidence amendment: the surfaces welded to the persisted event shape are the provider connector workflows, so this row is owned here and not by world-cup-intelligence."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "connectors/api-football/workflows/event-terminal-update.yml",
+      "category": "field-path-read",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "migrate",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json reads_field_paths = `schema:startDate`, `sport:status`. The load-event-by-id task still sorts by the legacy start-date path, and completion checks read legacy status with a canonical fallback. Preserve the storage sort contract while moving remaining status reads to the canonical view; this classification does not change finalization rules."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "connectors/api-football/workflows/event-terminal-update.yml",
+      "category": "storage-predicate",
+      "literal": "value.schema:startDate",
+      "owner": "machina-templates:connectors/api-football",
+      "disposition": "compat-alias",
+      "evidence": "2026-09-05 source review at ddfbf36: inventory.json storage-predicate `value.schema:startDate` at connectors/api-football/workflows/event-terminal-update.yml:60. The load-event-by-id task still sorts by the legacy start-date path, and completion checks read legacy status with a canonical fallback. Preserve the storage sort contract while moving remaining status reads to the canonical view; this classification does not change finalization rules."
     },
     {
       "repo": "machina-templates",
