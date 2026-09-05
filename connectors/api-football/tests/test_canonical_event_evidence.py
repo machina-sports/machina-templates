@@ -647,11 +647,11 @@ def test_two_grouped_rows_that_compare_equal_keep_distinct_ordinals():
 
     An equality-based lookup gives both rows ordinal 0, so the second row's
     labels collide with the first's and one player's minutes silently overwrite
-    the other's downstream. The ordinal has to follow the row's position, not
-    its value."""
-    metrics = load_projector()._metrics(
-        [{"games": {"minutes": 31}}, {"games": {"minutes": 31}}]
-    )
+    the other's downstream. The same dict appearing twice is the harder case:
+    it defeats an identity-based lookup too. The ordinal has to follow the
+    row's position, not its value and not its object."""
+    row = {"games": {"minutes": 31}}
+    metrics = load_projector()._metrics([row, row])
     assert metrics == [
         {"provider_label": "0.games.minutes", "value": 31},
         {"provider_label": "1.games.minutes", "value": 31},

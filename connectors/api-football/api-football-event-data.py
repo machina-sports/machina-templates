@@ -601,9 +601,11 @@ def _metrics(statistics):
     # an ordinal prefix would corrupt every label instead of disambiguating it.
     grouped = [row for row in rows if isinstance(row, dict) and "type" not in row]
     prefixed = len(grouped) > 1
-    # Keyed by identity, not equality: two grouped rows that compare equal are
-    # still two measurements and must keep distinct ordinals.
-    ordinals = {id(row): index for index, row in enumerate(grouped)}
+    # Counted as the grouped rows are read, so the ordinal follows a row's
+    # position among them. Two grouped rows that carry the same measurements —
+    # or are the same object twice — are still two rows and keep distinct
+    # ordinals; the label/value rows in between advance nothing.
+    ordinal = 0
     for row in rows:
         if not isinstance(row, dict):
             continue
@@ -616,7 +618,8 @@ def _metrics(statistics):
             if label is not None and not isinstance(row.get("value"), (dict, list)):
                 metrics.append({"provider_label": label, "value": row.get("value")})
             continue
-        prefix = "{0}.".format(ordinals[id(row)]) if prefixed else ""
+        prefix = "{0}.".format(ordinal) if prefixed else ""
+        ordinal += 1
         for group, value in row.items():
             if isinstance(value, dict):
                 for key, inner in value.items():
