@@ -15,6 +15,7 @@ from PIL import Image
 import base64
 
 import datetime
+import hashlib
 
 import ipaddress
 
@@ -632,6 +633,19 @@ def invoke_image(request_data):
     params = request_data.get("params") or {}
     headers = request_data.get("headers") or {}
 
+    strict_image = params.get("strict_image") is True
+    if strict_image:
+        if not isinstance(params.get("prompt"), str) or not params["prompt"].strip():
+            return {"status": False, "message": "An explicit image prompt is required."}
+        if not isinstance(params.get("model_name"), str) or not params["model_name"].strip():
+            return {"status": False, "message": "An explicit image model is required."}
+        if params.get("provider") not in {"vertex_ai", "ai_studio"}:
+            return {"status": False, "message": "An explicit image provider is required."}
+        if params.get("image_size", "1K") not in {"1K", "2K", "4K"}:
+            return {"status": False, "message": "Unsupported image size."}
+        if params.get("aspect_ratio", "16:9") not in {"1:1", "16:9", "9:16", "4:3", "3:4"}:
+            return {"status": False, "message": "Unsupported image aspect ratio."}
+
     provider = (params.get("provider") or headers.get("provider") or "ai_studio").lower()
 
     if provider == "ai_studio":
@@ -710,14 +724,16 @@ def invoke_image(request_data):
             prompt = prompt.replace("{{away_animal}}", str(away_animal))
 
     try:
+        client_options = {"http_options": types.HttpOptions(timeout=120000)} if strict_image else {}
         if provider == "ai_studio":
-            client = genai.Client(api_key=api_key)
+            client = genai.Client(api_key=api_key, **client_options)
         else:  # vertex_ai
             client = genai.Client(
                 vertexai=True,
                 project=project_id,
                 location=location,
                 credentials=credentials,
+                **client_options,
             )
 
         # Prepare image parts under the same local/remote media policy used by
@@ -751,6 +767,8 @@ def invoke_image(request_data):
                 types.Part(inline_data=types.Blob(data=image_data, mime_type=mime_type))
             )
         if skipped_media:
+            if strict_image:
+                return {"status": False, "message": "A required reference image failed media validation."}
             print(f"⚠️ {len(skipped_media)} input image(s) skipped by media security validation")
 
         # Decide contents based on available inputs
@@ -774,7 +792,7 @@ def invoke_image(request_data):
             contents = "Um gato fofo brincando com uma bola de lã"
             print("⚠️ Usando prompt padrão")
 
-        print(f"Gerando imagem com prompt: {prompt}")
+        print("Generating image with the configured provider and model")
         if image_parts:
             print(f"✅ Usando {len(image_parts)} imagens de entrada junto com o prompt")
         if aspect_ratio:
@@ -782,7 +800,12 @@ def invoke_image(request_data):
 
         # Configure image generation with aspect ratio if provided
         config = None
-        if aspect_ratio:
+        if strict_image:
+            config = types.GenerateContentConfig(
+                response_modalities=["IMAGE"],
+                image_config=types.ImageConfig(aspect_ratio=aspect_ratio or "16:9", image_size=params.get("image_size", "1K")),
+            )
+        elif aspect_ratio:
             config = types.GenerateContentConfig(
                 image_config=types.ImageConfig(
                     aspect_ratio=aspect_ratio,
@@ -804,7 +827,7 @@ def invoke_image(request_data):
         # Check for prompt feedback (safety filters, etc.)
         if hasattr(response, "prompt_feedback"):
             print(f"⚠️ Prompt feedback: {response.prompt_feedback}")
-            if hasattr(response.prompt_feedback, "block_reason"):
+            if getattr(response.prompt_feedback, "block_reason", None):
                 return {
                     "status": False,
                     "message": f"Request blocked: {response.prompt_feedback.block_reason}",
@@ -813,6 +836,10 @@ def invoke_image(request_data):
 
         if hasattr(response, "candidates") and response.candidates:
             for idx, candidate in enumerate(response.candidates):
+                if strict_image:
+                    finish_reason = getattr(candidate, "finish_reason", None)
+                    if getattr(finish_reason, "value", finish_reason) != "STOP":
+                        return {"status": False, "message": "Image generation did not finish successfully."}
                 print(f"📋 Candidate {idx}: has content = {hasattr(candidate, 'content')}")
                 
                 # Check for finish reason
@@ -827,13 +854,18 @@ def invoke_image(request_data):
                     print(f"📋 Candidate {idx} has {len(candidate.content.parts)} parts")
                     
                     for part_idx, part in enumerate(candidate.content.parts):
+                        if getattr(part, "thought", False):
+                            continue
                         print(f"📋 Part {part_idx}: has inline_data = {hasattr(part, 'inline_data')}")
                         if hasattr(part, "text"):
                             print(f"📋 Part {part_idx} has text: {part.text[:200] if part.text else 'None'}")
                         
                         if hasattr(part, "inline_data") and part.inline_data:
+                            if strict_image and getattr(part.inline_data, "mime_type", None) not in {"image/png", "image/jpeg", "image/webp"}:
+                                return {"status": False, "message": "The provider returned an unsupported image format."}
                             image_data = part.inline_data.data
                             image = Image.open(BytesIO(image_data))
+                            image.load()
                             temp_file = tempfile.NamedTemporaryFile(
                                 delete=False, suffix=".webp", dir=_output_root()
                             )
@@ -852,6 +884,13 @@ def invoke_image(request_data):
                                     "image_format": "WEBP",
                                     "prompt": prompt,
                                     "model": model_name,
+                                    "model_version": getattr(response, "model_version", None) or model_name,
+                                    "provider": provider,
+                                    "synthetic": True,
+                                    "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                                    "sha256": hashlib.sha256(Path(temp_path).read_bytes()).hexdigest(),
+                                    "width": image.width,
+                                    "height": image.height,
                                     "input_images_count": len(image_parts),
                                     "input_image_paths": (
                                         image_paths if image_paths else []
@@ -2454,4 +2493,3 @@ def invoke_music(request_data):
 
     except Exception as e:
         return {"status": False, "message": f"Exception when generating music: {e}"}
-

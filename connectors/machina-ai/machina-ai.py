@@ -250,7 +250,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
                 "chat": ["gemini-3.7-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"],
                 "embedding": ["text-embedding-004"],
                 "search_answer": ["gemini-3.7-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"],
-                "image": [],
+                "image": ["gemini-3.1-flash-image"],
                 "video": [],
                 "tts": [],
                 "music": [],
@@ -862,6 +862,7 @@ class RequestNormalizer:
             "language", "language_code", "voice", "voice_id", "output_format", "operation", "task_id",
             "poll_after_ms", "grounding", "search", "tools", "dimensions", "aspect_ratio", "duration",
             "negative_prompt", "idempotency_key", "provider_options", "input_kind", "size", "quality", "style",
+            "strict_image", "image_size",
         )
         for field_name in option_fields:
             value = self._extract(field_name, sources, conflicts)
