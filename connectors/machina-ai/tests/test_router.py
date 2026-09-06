@@ -123,6 +123,16 @@ def enabled_config(*providers, **extra):
 
 
 class TestNormalization:
+    def test_strict_image_options_survive_the_pod_params_boundary(self):
+        request = router.Router(FakeRuntime()).normalizer.normalize("invoke_image", {"params": {
+            "provider": "vertex_ai", "model_name": "gemini-3.1-flash-image",
+            "prompt": "Text-free background", "strict_image": True, "image_size": "1K", "aspect_ratio": "16:9",
+        }})
+        assert request.options["strict_image"] is True
+        assert request.options["image_size"] == "1K"
+        assert request.options["aspect_ratio"] == "16:9"
+        assert request.model == "gemini-3.1-flash-image"
+
     def test_canonical_top_level_wins_alias_and_nested_sources(self):
         runtime = FakeRuntime()
         request = router.Router(runtime).normalizer.normalize(
@@ -501,6 +511,29 @@ class TestGemini35FlashLiteDefaults:
         } in models["data"]
         vertex = next(item for item in health["data"] if item["provider"] == "vertex_ai")
         assert self.MODEL in vertex["models"]["chat"]
+
+
+class TestBroadcastModelCompatibility:
+    @pytest.mark.parametrize("command,model", [
+        ("invoke_prompt", "gemini-3.8-flash"),
+        ("invoke_search", "gemini-3.8-flash"),
+        ("invoke_image", "gemini-3.1-flash-image"),
+    ])
+    def test_explicit_broadcast_models_are_admitted_without_changing_defaults(self, command, model):
+        result = getattr(router, command)({"_runtime": FakeRuntime(), "provider": "vertex_ai", "model": model, "prompt": "test"})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_ai"
+        assert result["metadata"]["selected_model"] == model
+        assert result["metadata"]["fallback_used"] is False
+        assert router.DEFAULT_CONFIG["defaults"]["chat"]["model"] == "gemini-3.5-flash-lite"
+
+    def test_operator_model_restrictions_still_override_new_allowances(self):
+        adapter = FakeAdapter()
+        runtime = FakeRuntime(config={"providers": {"vertex_ai": {"allowed_models": {"chat": ["gemini-3.5-flash-lite"]}}}}, adapters={"vertex_ai": adapter})
+        result = router.invoke_prompt({"_runtime": runtime, "provider": "vertex_ai", "model": "gemini-3.8-flash"})
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] == "policy_model_not_allowed"
+        assert adapter.calls == []
 
 
 class TestFallbacks:
