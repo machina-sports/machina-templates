@@ -9,6 +9,12 @@ The Machina AI router allows the explicit Vertex image model
 This is an image capability allowance, not a text default or fallback change.
 Deployment-level model allowlists can still restrict it; verify the actual pod.
 
+The coordinated Broadcast release also admits explicit `gemini-3.8-flash` chat
+and search requests so importing this router does not require an undocumented
+project override to keep existing text prompts working. Shared default model
+selection is unchanged. Preserve and verify effective runtime allowlists:
+operator-supplied lists replace defaults and can intentionally restrict models.
+
 Strict mode uses image-only response modalities, 1K by default, the supplied
 aspect ratio and a 120-second SDK timeout. A non-success finish reason, provider
 block, text-only response, unsupported image MIME or undecodable bytes cannot
