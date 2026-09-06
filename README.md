@@ -102,6 +102,7 @@ The repository includes a wide range of templates for various sports content wor
 The repository includes connectors for various services:
 
 ### AI Services
+- `machina-ai` / `google-genai`: policy-routed generation, including the opt-in [strict Nano Banana image receipt contract](connectors/google-genai/IMAGE-CONTRACT.md)
 - `openai`: OpenAI API integration
 - `groq`: Groq API integration
 - `perplexity`: Perplexity API for web search
