@@ -123,6 +123,29 @@ def enabled_config(*providers, **extra):
 
 
 class TestNormalization:
+    @pytest.mark.parametrize(
+        "params",
+        [
+            {"priority_paygo": True},
+            {"params": {"priority_paygo": True}},
+            {"options": {"priority_paygo": True}},
+        ],
+    )
+    def test_priority_paygo_normalizes_as_a_canonical_boolean_option(self, params):
+        request = router.Router(FakeRuntime()).normalizer.normalize("invoke_prompt", params)
+        assert request.options["priority_paygo"] is True
+
+    @pytest.mark.parametrize("value", ["true", "false", 1, 0, [], {}])
+    def test_priority_paygo_rejects_non_boolean_values(self, value):
+        adapter = FakeAdapter()
+        result = router.invoke_prompt({
+            "_runtime": FakeRuntime(adapters={"vertex_ai": adapter}),
+            "priority_paygo": value,
+        })
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] == "unsupported_option"
+        assert adapter.calls == []
+
     def test_strict_image_options_survive_the_pod_params_boundary(self):
         request = router.Router(FakeRuntime()).normalizer.normalize("invoke_image", {"params": {
             "provider": "vertex_ai", "model_name": "gemini-3.1-flash-image",
@@ -213,6 +236,18 @@ class TestRoutingAndReceipts:
         assert "router_receipt" not in result["data"]["provider_extensions"]
         assert result["metadata"]["provider_request_id"] == "req-vertex_ai"
         assert result["metadata"]["usage"] == {"total_tokens": 3}
+
+    @pytest.mark.parametrize("requested", [True, False])
+    def test_receipt_records_requested_priority_without_claiming_acknowledgement(self, requested):
+        result = router.invoke_prompt({"_runtime": FakeRuntime(), "priority_paygo": requested})
+        assert result["status"] is True
+        assert result["metadata"]["requested_priority_paygo"] is requested
+        assert "priority_acknowledged" not in result["metadata"]
+
+    def test_default_receipt_does_not_claim_priority(self):
+        result = router.invoke_prompt({"_runtime": FakeRuntime()})
+        assert result["status"] is True
+        assert "requested_priority_paygo" not in result["metadata"]
 
     def test_search_embeds_exact_router_receipt_in_data(self):
         result = router.invoke_search({"_runtime": FakeRuntime(), "prompt": "latest"})
@@ -499,6 +534,31 @@ class TestGemini35FlashLiteDefaults:
         assert accepted["metadata"]["selected_model"] == self.MODEL
         assert refused["status"] is False
         assert refused["metadata"]["error_class"] == "policy_model_not_allowed"
+
+    def test_profile_only_priority_factory_selects_exact_model_and_vertex_header(self):
+        class InProcessRuntime:
+            def config(self, key=None):
+                return {}
+
+            def adapter(self, provider):
+                return None
+
+        fake_chat = MagicMock(return_value="vertex-chat")
+        vertex_module = SimpleNamespace(ChatVertexAI=fake_chat, VertexAIEmbeddings=MagicMock())
+        with patch.dict(sys.modules, {"langchain_google_vertexai": vertex_module}):
+            result = router.invoke_prompt({
+                "_runtime": InProcessRuntime(),
+                "profile": "balanced",
+                "priority_paygo": True,
+            })
+
+        assert result["status"] is True
+        assert result["data"] == "vertex-chat"
+        assert result["metadata"]["selected_provider"] == "vertex_ai"
+        assert result["metadata"]["selected_model"] == self.MODEL
+        assert fake_chat.call_args.kwargs["additional_headers"] == {
+            "x-vertex-ai-llm-shared-request-type": "priority"
+        }
 
     def test_management_commands_expose_gemini_35_flash_lite(self):
         models = router.list_models({"_runtime": FakeRuntime()})
@@ -796,6 +856,238 @@ class TestProviderAdapters:
         assert fake_from_info.call_args.kwargs["scopes"] == ["https://www.googleapis.com/auth/cloud-platform"]
         assert fake_embeddings.call_args.kwargs["credentials"] == "scoped-creds"
 
+    @pytest.mark.parametrize("priority_paygo,expected", [(True, True), (False, False), (None, False)])
+    def test_vertex_prompt_delegation_translates_priority_paygo(self, priority_paygo, expected):
+        class DelegateRuntime:
+            def __init__(self):
+                self.payload = None
+
+            def delegate(self, connector, request_data=None, command=None):
+                self.payload = request_data
+                return {"status": True, "data": "vertex-chat", "metadata": {}}
+
+        runtime = DelegateRuntime()
+        adapter = router.GoogleGenAIAdapter(router.RuntimeFacade(runtime), router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}}))
+        options = {} if priority_paygo is None else {"priority_paygo": priority_paygo}
+        result = adapter.create_chat_model(
+            self.route("vertex_ai", "google_genai", model="gemini-3.5-flash-lite"),
+            self.request(**options),
+        )
+
+        assert result.data == "vertex-chat"
+        assert runtime.payload["priority_mode"] is expected
+        assert runtime.payload["params"]["priority_mode"] is expected
+        assert "priority_paygo" not in runtime.payload
+        assert "priority_paygo" not in runtime.payload["params"]
+
+    def test_in_process_vertex_omits_priority_header_when_false_or_default(self):
+        fake_chat = MagicMock(return_value="vertex-chat")
+        vertex_module = SimpleNamespace(ChatVertexAI=fake_chat, VertexAIEmbeddings=MagicMock())
+        adapter = router.GoogleGenAIAdapter(router.RuntimeFacade(), router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}}))
+        route = self.route("vertex_ai", "google_genai", model="gemini-3.5-flash-lite")
+        with patch.dict(sys.modules, {"langchain_google_vertexai": vertex_module}):
+            adapter.create_chat_model(route, self.request(priority_paygo=False))
+            adapter.create_chat_model(route, self.request())
+        for call in fake_chat.call_args_list:
+            assert "additional_headers" not in call.kwargs
+
+    @staticmethod
+    def nullable_schema():
+        return {
+            "type": "object",
+            "required": ["interval_quantity", "details"],
+            "properties": {
+                "interval_quantity": {
+                    "type": ["integer", "null"],
+                    "description": "Number of intervals when known.",
+                    "enum": [1, 2, None],
+                },
+                "details": {
+                    "type": "object",
+                    "properties": {
+                        "label": {"type": ["string", "null"]},
+                        "scores": {
+                            "type": "array",
+                            "items": {"type": ["number", "null"]},
+                        },
+                    },
+                },
+            },
+        }
+
+    @pytest.mark.parametrize("delegated", [False, True])
+    def test_vertex_factory_normalizes_nullable_dictionary_schemas(self, delegated):
+        class VertexModel:
+            def __init__(self):
+                self.schema = None
+                self.kwargs = None
+
+            def with_structured_output(self, schema, **kwargs):
+                self.schema = schema
+                self.kwargs = kwargs
+                return "structured-model"
+
+        model = VertexModel()
+        runtime = router.RuntimeFacade()
+        modules = {}
+        if delegated:
+            class DelegateRuntime:
+                def delegate(self, connector, request_data=None, command=None):
+                    return {"status": True, "data": model, "metadata": {}}
+
+            runtime = router.RuntimeFacade(DelegateRuntime())
+        else:
+            modules = {
+                "langchain_google_vertexai": SimpleNamespace(
+                    ChatVertexAI=MagicMock(return_value=model),
+                    VertexAIEmbeddings=MagicMock(),
+                )
+            }
+
+        adapter = router.GoogleGenAIAdapter(runtime, router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}}))
+        route = self.route("vertex_ai", "google_genai", model="gemini-3.5-flash-lite")
+        schema = self.nullable_schema()
+        original = json.loads(json.dumps(schema))
+        with patch.dict(sys.modules, modules):
+            factory = adapter.create_chat_model(route, self.request()).data
+        result = factory.with_structured_output(schema, method="json_schema")
+
+        assert result == "structured-model"
+        assert schema == original
+        assert model.kwargs == {"method": "json_schema"}
+        assert model.schema["properties"]["interval_quantity"] == {
+            "type": "integer",
+            "nullable": True,
+            "description": "Number of intervals when known.",
+            "enum": [1, 2, None],
+        }
+        assert model.schema["properties"]["details"]["properties"]["label"] == {
+            "type": "string",
+            "nullable": True,
+        }
+        assert model.schema["properties"]["details"]["properties"]["scores"]["items"] == {
+            "type": "number",
+            "nullable": True,
+        }
+        assert model.schema["required"] == ["interval_quantity", "details"]
+
+    def test_vertex_nullable_schema_preserves_literal_annotation_values(self):
+        literal = {"type": ["integer", "null"], "nested": {"type": ["string", "number"]}}
+        schema = {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "type": ["object", "null"],
+                    "enum": [literal, None],
+                    "const": literal,
+                    "default": literal,
+                    "examples": [literal],
+                }
+            },
+            "required": ["details"],
+        }
+        original = json.loads(json.dumps(schema))
+        converted = router._vertex_response_schema(schema)
+        assert schema == original
+        details = converted["properties"]["details"]
+        assert details["type"] == "object"
+        assert details["nullable"] is True
+        for name in ("enum", "const", "default", "examples"):
+            assert details[name] == original["properties"]["details"][name]
+
+    def test_vertex_factory_forwards_non_dictionary_schemas_invoke_and_stream(self):
+        class ResponseModel:
+            pass
+
+        class VertexModel:
+            def __init__(self):
+                self.structured_schema = None
+
+            def with_structured_output(self, schema, **kwargs):
+                self.structured_schema = schema
+                return "structured-model"
+
+            def invoke(self, *args, **kwargs):
+                return (args, kwargs)
+
+            def stream(self, *args, **kwargs):
+                return iter([(args, kwargs)])
+
+        model = VertexModel()
+        vertex_module = SimpleNamespace(ChatVertexAI=MagicMock(return_value=model), VertexAIEmbeddings=MagicMock())
+        adapter = router.GoogleGenAIAdapter(router.RuntimeFacade(), router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}}))
+        route = self.route("vertex_ai", "google_genai", model="gemini-3.5-flash-lite")
+        with patch.dict(sys.modules, {"langchain_google_vertexai": vertex_module}):
+            factory = adapter.create_chat_model(route, self.request()).data
+
+        assert factory.with_structured_output(ResponseModel) == "structured-model"
+        assert model.structured_schema is ResponseModel
+        assert factory.invoke("hello", config={"tag": "test"}) == (("hello",), {"config": {"tag": "test"}})
+        assert list(factory.stream("hello", stop=["done"])) == [(("hello",), {"stop": ["done"]})]
+        # LCEL accepts Runnable instances, callables, or mappings in a pipe.
+        assert callable(factory)
+        assert factory("hello", config={"tags": ["test"]}, stop=["done"]) == (
+            ("hello",), {"config": {"tags": ["test"]}, "stop": ["done"]}
+        )
+
+    def test_google_ai_studio_factory_does_not_normalize_nullable_schemas(self):
+        model = MagicMock()
+        google_module = SimpleNamespace(ChatGoogleGenerativeAI=MagicMock(return_value=model))
+        adapter = router.GoogleGenAIAdapter(router.RuntimeFacade(), router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}}))
+        route = self.route("google_ai_studio", "google_genai", model="gemini-3.5-flash-lite")
+        with patch.dict(sys.modules, {"langchain_google_genai": google_module}):
+            factory = adapter.create_chat_model(route, self.request()).data
+
+        schema = self.nullable_schema()
+        factory.with_structured_output(schema)
+        assert factory is model
+        assert model.with_structured_output.call_args.args[0] is schema
+
+    @pytest.mark.parametrize(
+        "schema_type",
+        [
+            ["string", "integer"],
+            ["string", "integer", "null"],
+            ["unsupported", "null"],
+        ],
+    )
+    def test_vertex_factory_rejects_unsupported_type_unions(self, schema_type):
+        model = MagicMock()
+        vertex_module = SimpleNamespace(ChatVertexAI=MagicMock(return_value=model), VertexAIEmbeddings=MagicMock())
+        adapter = router.GoogleGenAIAdapter(router.RuntimeFacade(), router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}}))
+        route = self.route("vertex_ai", "google_genai", model="gemini-3.5-flash-lite")
+        with patch.dict(sys.modules, {"langchain_google_vertexai": vertex_module}):
+            factory = adapter.create_chat_model(route, self.request()).data
+
+        with pytest.raises(ValueError, match="Vertex structured output"):
+            factory.with_structured_output({"type": "object", "properties": {"value": {"type": schema_type}}})
+        model.with_structured_output.assert_not_called()
+
+    def test_priority_paygo_requires_vertex_global_region_before_invocation(self):
+        adapter = FakeAdapter()
+        runtime = FakeRuntime(
+            config={"providers": {"vertex_ai": {"location": "us-central1"}}},
+            adapters={"vertex_ai": adapter},
+        )
+        result = router.invoke_prompt({"_runtime": runtime, "priority_paygo": True})
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] == "unsupported_option"
+        assert adapter.calls == []
+
+    def test_priority_paygo_true_is_not_applied_to_other_providers(self):
+        adapter = FakeAdapter()
+        runtime = FakeRuntime(
+            config={
+                "providers": {"groq": {"enabled": True, "credential": "secret", "allowed_models": {"chat": ["groq-chat"]}}},
+                "profiles": {"fast": {"chat": [{"provider": "groq", "model": "groq-chat"}]}},
+            },
+            adapters={"groq": adapter},
+        )
+        result = router.invoke_prompt({"_runtime": runtime, "profile": "fast", "priority_paygo": True})
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] == "unsupported_option"
+        assert adapter.calls == []
+
     def test_groq_chat_and_embedding_rejection(self):
         fake_chat = MagicMock(return_value="groq-chat")
         adapter = router.GroqAdapter(router.RuntimeFacade(), router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}}))
@@ -905,7 +1197,7 @@ class TestRuntimeContractAdoption:
     def test_delegate_uses_runtime_signature_with_flat_and_header_credentials(self):
         services = RuntimeServicesDelegate()
         adapter = router.GroqAdapter(router.RuntimeFacade(services), self.media())
-        result = adapter.create_chat_model(self.route(), self.request())
+        result = adapter.create_chat_model(self.route(), self.request(priority_paygo=False))
         assert result.data == {"delegated": True}
         call = services.calls[0]
         assert call["target"] == "groq"
@@ -916,6 +1208,8 @@ class TestRuntimeContractAdoption:
         assert payload["headers"]["api_key"] == "groq-secret"
         assert payload["params"]["project_id"] == "proj-1"
         assert payload["organization"] == "org-1"
+        assert "priority_paygo" not in payload
+        assert "priority_paygo" not in payload["params"]
 
     def test_module_global_machina_delegate_is_preferred(self, monkeypatch):
         calls = []

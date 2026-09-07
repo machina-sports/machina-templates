@@ -388,6 +388,7 @@ The normalized request model SHOULD support:
 - `timeout_ms`
 - `response_format`
 - `stream`
+- `priority_paygo` (boolean; Vertex AI chat on the `global` location only)
 - `messages`
 - `prompt`
 - `input` / `texts`
@@ -527,6 +528,7 @@ Streaming is out of scope for v1. `stream: true` MUST return `unsupported_option
 - `provider_request_id` when safe to expose
 - token/character/second usage when available
 - `error_class` on failure
+- `requested_priority_paygo` when explicitly supplied; this records request intent, not provider acknowledgement
 
 The router MUST NOT log or return secrets, raw authorization headers, service-account JSON, or raw prompts by default.
 
@@ -1104,7 +1106,7 @@ Endpoint and deployment MUST be bound by policy in protected production environm
 
 | Existing command | Router mapping | Compatibility notes | Recommended route |
 |---|---|---|---|
-| `invoke_prompt` | `invoke_prompt` / `invoke_chat` | preserve `provider=vertex_ai|ai_studio`, `credential`, `project_id`, `location`, API key for AI Studio, priority mode, timeout conversion | `balanced`, `quality`, `long_context` |
+| `invoke_prompt` | `invoke_prompt` / `invoke_chat` | preserve `provider=vertex_ai|ai_studio`, `credential`, `project_id`, `location`, API key for AI Studio, map canonical boolean `priority_paygo` to native `priority_mode` only for global Vertex chat, and preserve timeout conversion | `balanced`, `quality`, `long_context` |
 | `invoke_embedding` | `invoke_embedding` | preserve Vertex credential/project aliases and current legacy model remapping where explicitly enabled | default embedding route |
 | `invoke_search` | `invoke_search` | preserve Gemini grounding/search options | `search_answer` remap or `multimodal` |
 | `invoke_image` | `invoke_image` | normalize prompt, image inputs, output path | `multimodal` |
