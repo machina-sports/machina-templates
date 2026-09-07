@@ -234,6 +234,21 @@ workflow:
 """)
         assert result.returncode == 0, result.stderr
 
+    def test_profile_only_priority_router_block_passes(self, tmp_path):
+        result = self.run_lint(tmp_path, """
+workflow:
+  tasks:
+    - type: prompt
+      connector:
+        name: machina-ai
+        command: invoke_prompt
+        profile: balanced
+        priority_paygo: true
+      inputs:
+        prompt: hello
+""")
+        assert result.returncode == 0, result.stderr
+
     def test_vertex_anthropic_claude_block_passes(self, tmp_path):
         result = self.run_lint(tmp_path, """
 workflow:

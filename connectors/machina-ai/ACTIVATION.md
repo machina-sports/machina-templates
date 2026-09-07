@@ -12,6 +12,44 @@ The installable non-production probe is `test-smoke-gemini-35-flash-lite.yml`.
 It requires operator-provided Vertex credentials. No live smoke was run as part of
 this repository change because those credentials were unavailable.
 
+### Priority PayGo for router-only prompts
+
+Use the router's boolean `priority_paygo` option on prompt tasks. Keep provider
+credentials, project, and the required `global` location in runtime policy:
+
+```yaml
+- type: prompt
+  connector:
+    name: machina-ai
+    command: invoke_prompt
+    profile: balanced
+    priority_paygo: true
+  inputs:
+    prompt: "$.get('prompt')"
+```
+
+Do not add `google-genai` context variables or its native `priority_mode` flag to
+a `machina-ai` task. The router maps `priority_paygo` to that native flag only
+after policy resolves the profile to a Vertex AI chat route. It rejects non-boolean
+values, non-Vertex routes, and non-global Vertex locations before provider
+invocation. Omit the option, or set it to `false`, for standard PayGo behavior.
+
+Successful router metadata may include `requested_priority_paygo`; this records
+the sanitized request intent and is not confirmation that Vertex acknowledged or
+served the priority tier.
+
+## Vertex structured-output and pipeline compatibility
+
+The Vertex factory preserves nullable JSON Schema fields by translating
+`type: [T, "null"]` into `type: T` with `nullable: true` on a copy of the
+schema. Required fields, enums, defaults, and examples are preserved. Other
+type-array unions fail before provider invocation rather than being silently
+weakened. Non-dictionary schemas pass through to the provider library unchanged.
+
+The factory remains callable for LCEL composition, forwards invocation config,
+and delegates streaming to the underlying model. Validate both structured and
+plain-text workflows against the deployed client runtime before a rollout.
+
 ## Activating the Claude on Vertex route (`vertex_anthropic`)
 
 The `vertex_anthropic` provider ships **dormant** (`enabled: false`). Nothing routes

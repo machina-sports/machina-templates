@@ -12,7 +12,7 @@ setup:
     - machina-ai
   status: available
   value: connectors/machina-ai
-  version: 2.0.0
+  version: 2.0.1
 
 datasets:
   - type: "connector"

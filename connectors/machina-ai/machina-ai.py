@@ -862,7 +862,7 @@ class RequestNormalizer:
             "language", "language_code", "voice", "voice_id", "output_format", "operation", "task_id",
             "poll_after_ms", "grounding", "search", "tools", "dimensions", "aspect_ratio", "duration",
             "negative_prompt", "idempotency_key", "provider_options", "input_kind", "size", "quality", "style",
-            "strict_image", "image_size",
+            "strict_image", "image_size", "priority_paygo",
         )
         for field_name in option_fields:
             value = self._extract(field_name, sources, conflicts)
@@ -885,6 +885,8 @@ class RequestNormalizer:
             _safe_int(policy.get("max_timeout_ms"), 120000),
             legacy_seconds=timeout_is_legacy,
         )
+        if "priority_paygo" in options and not isinstance(options["priority_paygo"], bool):
+            raise RouterError("unsupported_option", "priority_paygo must be a boolean.")
         if _as_bool(options.get("stream")):
             raise RouterError("unsupported_option", "Streaming is not supported by the v1 router contract.")
 
@@ -1209,6 +1211,11 @@ class PolicyEngine:
             "api_version": self._read_env(conf, "api_version") or conf.get("api_version"),
             "location": self._read_env(conf, "location") or conf.get("location") or request.security.get("location"),
         }
+        if request.options.get("priority_paygo"):
+            if request.capability != "chat" or provider != "vertex_ai":
+                raise RouterError("unsupported_option", "priority_paygo is supported only for Vertex AI chat routes.")
+            if str(credentials.get("location") or "global").strip().lower() != "global":
+                raise RouterError("unsupported_option", "priority_paygo requires the Vertex AI global location.")
         if request.security.get("deployment") and not credentials["deployment"]:
             if protected:
                 raise RouterError("policy_endpoint_not_allowed", "This deployment is controlled by runtime policy.")
@@ -1268,6 +1275,9 @@ class ProviderAdapter:
         if not self.delegate_connector:
             return None
         safe_params = {**copy.deepcopy(request.input), **copy.deepcopy(request.options)}
+        priority_paygo = safe_params.pop("priority_paygo", None)
+        if self.delegate_connector == "google-genai" and command == "invoke_prompt" and route.provider == "vertex_ai":
+            safe_params["priority_mode"] = priority_paygo if priority_paygo is not None else False
         safe_params.update({
             "provider": route.provider,
             "model": route.model,
@@ -1398,6 +1408,77 @@ def _vertex_service_account_credentials(credential: Any) -> Any:
         raise RouterError("credential_invalid", "The configured Vertex credential is invalid.")
 
 
+_VERTEX_SCHEMA_TYPES = {"array", "boolean", "integer", "number", "object", "string"}
+
+
+def _vertex_response_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = copy.deepcopy(schema)
+
+    def normalize(value: Any) -> None:
+        if isinstance(value, dict):
+            schema_type = value.get("type")
+            if isinstance(schema_type, list):
+                non_null_types = [item for item in schema_type if item != "null"]
+                if (
+                    len(schema_type) != 2
+                    or len(non_null_types) != 1
+                    or schema_type.count("null") != 1
+                    or non_null_types[0] not in _VERTEX_SCHEMA_TYPES
+                ):
+                    raise ValueError(
+                        "Vertex structured output supports type arrays only for one JSON Schema type plus null."
+                    )
+                value["type"] = non_null_types[0]
+                value["nullable"] = True
+            # Traverse schema positions, not literal enum/default/example data.
+            for keyword in ("properties", "patternProperties", "$defs", "definitions", "dependentSchemas"):
+                children = value.get(keyword)
+                if isinstance(children, dict):
+                    for nested in children.values():
+                        normalize(nested)
+            for keyword in (
+                "items", "additionalItems", "additionalProperties", "propertyNames",
+                "contains", "not", "if", "then", "else", "unevaluatedProperties",
+                "unevaluatedItems", "allOf", "anyOf", "oneOf", "prefixItems",
+            ):
+                normalize(value.get(keyword))
+        elif isinstance(value, list):
+            for nested in value:
+                normalize(nested)
+
+    normalize(normalized)
+    return normalized
+
+
+class _VertexChatModelProxy:
+    def __init__(self, model: Any):
+        self._model = model
+
+    def with_structured_output(self, schema: Any, **kwargs: Any) -> Any:
+        if isinstance(schema, dict):
+            schema = _vertex_response_schema(schema)
+        return self._model.with_structured_output(schema, **kwargs)
+
+    def invoke(self, *args: Any, **kwargs: Any) -> Any:
+        return self._model.invoke(*args, **kwargs)
+
+    def __call__(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+        # LCEL composes callables through RunnableLambda, preserving config.
+        return self.invoke(input, config=config, **kwargs)
+
+    def stream(self, *args: Any, **kwargs: Any) -> Any:
+        return self._model.stream(*args, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._model, name)
+
+
+def _vertex_chat_model(model: Any) -> Any:
+    if callable(getattr(model, "with_structured_output", None)):
+        return _VertexChatModelProxy(model)
+    return model
+
+
 class GoogleGenAIAdapter(ProviderAdapter):
     provider_id = "vertex_ai"
     capabilities = {"chat", "embedding", "search_answer", "image", "video", "tts", "voice", "music"}
@@ -1409,6 +1490,8 @@ class GoogleGenAIAdapter(ProviderAdapter):
     def create_chat_model(self, route: Route, request: NormalizedRequest) -> AdapterResult:
         delegated = self._delegate("invoke_prompt", route, request)
         if delegated:
+            if route.provider == "vertex_ai":
+                delegated.data = _vertex_chat_model(delegated.data)
             return delegated
         try:
             if route.provider == "vertex_ai":
@@ -1420,6 +1503,10 @@ class GoogleGenAIAdapter(ProviderAdapter):
                     "temperature": request.options.get("temperature", 0.2),
                     "request_parallelism": 1,
                 }
+                if request.options.get("priority_paygo"):
+                    kwargs["additional_headers"] = {
+                        "x-vertex-ai-llm-shared-request-type": "priority"
+                    }
                 credentials = self._credentials(route)
                 if credentials is not None:
                     kwargs["credentials"] = credentials
@@ -1437,6 +1524,8 @@ class GoogleGenAIAdapter(ProviderAdapter):
         except Exception as error:
             error_class, message = _safe_exception(error)
             raise RouterError(error_class, message)
+        if route.provider == "vertex_ai":
+            model = _vertex_chat_model(model)
         return AdapterResult(model)
 
     def create_embedding_model(self, route: Route, request: NormalizedRequest) -> AdapterResult:
@@ -2114,6 +2203,8 @@ class Router:
         }
         if request and request.conflicts:
             metadata["normalization_conflicts"] = list(request.conflicts)
+        if request and "priority_paygo" in request.options:
+            metadata["requested_priority_paygo"] = request.options["priority_paygo"]
         metadata.update(updates)
         selected_provider = metadata.get("selected_provider")
         if selected_provider:
