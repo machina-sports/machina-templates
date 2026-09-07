@@ -16,6 +16,16 @@ def load_module(name, path):
     return module
 
 
+def test_machina_router_keeps_langchain_imports_lazy():
+    with patch("importlib.import_module", side_effect=AssertionError("unexpected lazy import")):
+        module = load_module(
+            "machina_ai_lazy_import_hardening",
+            ROOT / "connectors" / "machina-ai" / "machina-ai.py",
+        )
+
+    assert module._vertex_response_schema({"type": "string"}) == {"type": "string"}
+
+
 def test_azure_import_and_boolean_failure_status():
     fake = SimpleNamespace(AzureChatOpenAI=MagicMock(), AzureOpenAIEmbeddings=MagicMock())
     with patch.dict(sys.modules, {"langchain_openai": fake}):

@@ -1450,32 +1450,112 @@ def _vertex_response_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
     return normalized
 
 
-class _VertexChatModelProxy:
-    def __init__(self, model: Any):
-        self._model = model
+_VERTEX_RUNNABLE_PROXY_CLASS: Any = None
 
-    def with_structured_output(self, schema: Any, **kwargs: Any) -> Any:
-        if isinstance(schema, dict):
-            schema = _vertex_response_schema(schema)
-        return self._model.with_structured_output(schema, **kwargs)
 
-    def invoke(self, *args: Any, **kwargs: Any) -> Any:
-        return self._model.invoke(*args, **kwargs)
+def _vertex_runnable_proxy_class() -> Any:
+    global _VERTEX_RUNNABLE_PROXY_CLASS
+    if _VERTEX_RUNNABLE_PROXY_CLASS is not None:
+        return _VERTEX_RUNNABLE_PROXY_CLASS
 
-    def __call__(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
-        # LCEL composes callables through RunnableLambda, preserving config.
-        return self.invoke(input, config=config, **kwargs)
+    # Keep LangChain optional for every non-chat router capability. This import is
+    # reached only after policy has selected a Vertex chat factory.
+    runnable_type = importlib.import_module("langchain_core.runnables").Runnable
 
-    def stream(self, *args: Any, **kwargs: Any) -> Any:
-        return self._model.stream(*args, **kwargs)
+    class VertexChatModelProxy(runnable_type):
+        def __init__(self, model: Any):
+            self._model = model
 
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._model, name)
+        @property
+        def InputType(self) -> Any:
+            return self._model.InputType
+
+        @property
+        def OutputType(self) -> Any:
+            return self._model.OutputType
+
+        @property
+        def config_specs(self) -> Any:
+            return self._model.config_specs
+
+        def get_input_schema(self, config: Any = None) -> Any:
+            return self._model.get_input_schema(config)
+
+        def get_output_schema(self, config: Any = None) -> Any:
+            return self._model.get_output_schema(config)
+
+        def with_structured_output(self, schema: Any, **kwargs: Any) -> Any:
+            if isinstance(schema, dict):
+                schema = _vertex_response_schema(schema)
+            return self._model.with_structured_output(schema, **kwargs)
+
+        def invoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+            if config is None:
+                return self._model.invoke(input, **kwargs)
+            return self._model.invoke(input, config=config, **kwargs)
+
+        async def ainvoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+            if config is None:
+                return await self._model.ainvoke(input, **kwargs)
+            return await self._model.ainvoke(input, config=config, **kwargs)
+
+        def batch(
+            self,
+            inputs: List[Any],
+            config: Any = None,
+            *,
+            return_exceptions: bool = False,
+            **kwargs: Any,
+        ) -> List[Any]:
+            return self._model.batch(
+                inputs,
+                config=config,
+                return_exceptions=return_exceptions,
+                **kwargs,
+            )
+
+        async def abatch(
+            self,
+            inputs: List[Any],
+            config: Any = None,
+            *,
+            return_exceptions: bool = False,
+            **kwargs: Any,
+        ) -> List[Any]:
+            return await self._model.abatch(
+                inputs,
+                config=config,
+                return_exceptions=return_exceptions,
+                **kwargs,
+            )
+
+        def stream(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+            if config is None:
+                yield from self._model.stream(input, **kwargs)
+            else:
+                yield from self._model.stream(input, config=config, **kwargs)
+
+        async def astream(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+            if config is None:
+                stream = self._model.astream(input, **kwargs)
+            else:
+                stream = self._model.astream(input, config=config, **kwargs)
+            async for chunk in stream:
+                yield chunk
+
+        def __call__(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+            return self.invoke(input, config=config, **kwargs)
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._model, name)
+
+    _VERTEX_RUNNABLE_PROXY_CLASS = VertexChatModelProxy
+    return VertexChatModelProxy
 
 
 def _vertex_chat_model(model: Any) -> Any:
     if callable(getattr(model, "with_structured_output", None)):
-        return _VertexChatModelProxy(model)
+        return _vertex_runnable_proxy_class()(model)
     return model
 
 
