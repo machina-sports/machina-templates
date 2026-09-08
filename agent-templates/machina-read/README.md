@@ -20,6 +20,14 @@ At most two focus teams receive recent-results, season-stats, availability and n
 
 ## Reasoning and output
 
+Editorial voice: lead with an evidence-backed sporting tension, explain why it
+matters, and add one brief wry metaphor or playful punchline when appropriate.
+Use conversational, fair rivalry commentary rather than a generic matchup label
+or numbers recap. Analysis points connect evidence to implication and limitation.
+Humor never supplies facts, invented quotes, price causality or betting advice;
+injuries, illness, tragedy and personal traits are not joke material. Keep the
+existing compact JSON contract, exact numeric quotes and citation gates.
+
 The only model route is `machina-ai`, Vertex AI, `gemini-3.5-flash-lite`. Do not substitute another model without approval. The output is a short headline/body plus public evidence-based points and source references. It must connect market evidence with structured sports context, not merely format a quote table. Numbers/citations, normalized identities, timing, truncation and source availability are checked before storage. These checks do not constitute a semantic guarantee for every possible model claim; review consequential claims and do not infer news-caused price movement from a single snapshot.
 
 The v2 value contains status, edition/observation/generation/expiry times, story, sources, teams, retained market evidence, capability gaps and engine metadata. Valid values are stored under `machina-read-edition`. Provider quotes and native timestamps are not rewritten on cache reads. Overall source indexing includes the valid citations already supplied by generated points; it does not invent sources.
