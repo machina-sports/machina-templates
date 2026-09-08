@@ -885,6 +885,15 @@ class RequestNormalizer:
             _safe_int(policy.get("max_timeout_ms"), 120000),
             legacy_seconds=timeout_is_legacy,
         )
+        # Callers may shorten the whole invocation, never relax runtime policy.
+        # Unlike the per-attempt timeout, this budget includes retries/fallbacks.
+        for _, source in sources:
+            if "total_deadline_ms" not in options and "total_deadline_ms" in source:
+                options["total_deadline_ms"] = source["total_deadline_ms"]
+        if "total_deadline_ms" in options:
+            value = options["total_deadline_ms"]
+            if type(value) is not int or value <= 0:
+                raise RouterError("invalid_request", "total_deadline_ms must be a positive integer in milliseconds.")
         if "priority_paygo" in options and not isinstance(options["priority_paygo"], bool):
             raise RouterError("unsupported_option", "priority_paygo must be a boolean.")
         if _as_bool(options.get("stream")):
@@ -2441,7 +2450,9 @@ class Router:
             primary = self.policy.route(request)
             fallback_specs = self.policy.fallback_candidates(primary, request)
             policy = _as_dict(self.config.get("policy"))
-            deadline = started + (_safe_int(policy.get("total_deadline_ms"), 120000, minimum=1) / 1000.0)
+            budget_ms = _safe_int(policy.get("total_deadline_ms"), 120000, minimum=1)
+            budget_ms = min(budget_ms, request.options.get("total_deadline_ms", budget_ms))
+            deadline = started + (budget_ms / 1000.0)
             attempts: List[Dict[str, Any]] = []
             last_error: Optional[RouterError] = None
             plan: List[Any] = [primary] + list(fallback_specs)
