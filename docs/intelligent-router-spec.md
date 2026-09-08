@@ -956,6 +956,13 @@ The router SHOULD enforce:
 
 A fallback attempt MUST NOT start when it cannot complete within the remaining deadline.
 
+The OpenAI-compatible adapter (including xAI search) disables SDK-level retries;
+the router owns the retry budget. Every attempt receives the smaller of its route
+timeout and the remaining invocation budget. A result returned after the deadline
+is reported as a timeout, not a successful route. These are cooperative SDK timeouts,
+not process-level cancellation of a provider that ignores them. Factory construction
+does not establish a deadline for a later caller-owned model invocation.
+
 ### 16.5 Circuit breaker
 
 Adapters SHOULD support route-level circuit breakers keyed by configured route identity, not by untrusted raw endpoint.

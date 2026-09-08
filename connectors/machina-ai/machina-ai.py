@@ -23,7 +23,7 @@ import re
 import socket
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
 from urllib.parse import urlparse
@@ -1739,6 +1739,8 @@ class OpenAICompatibleAdapter(ProviderAdapter):
             "api_key": route.credentials.get("api_key"),
             "temperature": request.options.get("temperature", 0.2),
             "timeout": route.timeout_ms / 1000.0,
+            # The router owns retries; SDK defaults would multiply its budget.
+            "max_retries": 0,
         }
         if route.endpoint:
             kwargs["base_url"] = route.endpoint
@@ -1772,7 +1774,7 @@ class OpenAICompatibleAdapter(ProviderAdapter):
     def _client(self, route: Route) -> Any:
         try:
             module = importlib.import_module("openai")
-            kwargs = {"api_key": route.credentials.get("api_key"), "timeout": route.timeout_ms / 1000.0}
+            kwargs = {"api_key": route.credentials.get("api_key"), "timeout": route.timeout_ms / 1000.0, "max_retries": 0}
             if route.endpoint:
                 kwargs["base_url"] = route.endpoint
             if route.credentials.get("organization"):
@@ -2476,9 +2478,18 @@ class Router:
                         last_error = RouterError("provider_timeout", "The router invocation deadline was exhausted.")
                         break
                     attempt_started = time.monotonic()
+                    remaining_ms = int((deadline - attempt_started) * 1000)
+                    if remaining_ms <= 0:
+                        last_error = RouterError("provider_timeout", "The router invocation deadline was exhausted.")
+                        break
+                    attempt_route = replace(route, timeout_ms=min(route.timeout_ms, remaining_ms))
                     try:
-                        adapter = self.registry.get(route)
-                        result = self._execute_adapter(adapter, route, request)
+                        adapter = self.registry.get(attempt_route)
+                        result = self._execute_adapter(adapter, attempt_route, request)
+                        # SDK timeouts are cooperative, not process cancellation.
+                        # A provider ignoring its timeout must not become a late success.
+                        if time.monotonic() >= deadline:
+                            raise RouterError("provider_timeout", "The router invocation deadline was exhausted.", transient=True)
                         self.runtime.circuit_record(route_id, True)
                         metadata = self._metadata(
                             request,
