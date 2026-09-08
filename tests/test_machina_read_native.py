@@ -107,6 +107,8 @@ def test_editorial_prompt_has_voice_analysis_and_unchanged_evidence_guards():
                    'Each analysis point must connect cited evidence',
                    'Frame interpretations as interpretations',
                    'Copy its numeric quote exactly as supplied',
+                   'never market share or our win probability',
+                   'Make that playful payoff visible in the body',
                    'Use ONLY supplied facts', 'A snapshot cannot prove movement',
                    'not internal chain-of-thought', 'betting recommendations',
                    '"headline":"max 80 chars"', '"body":"max 320 chars"', '"text":"max 350 chars"']:
