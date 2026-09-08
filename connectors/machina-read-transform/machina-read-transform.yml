@@ -1,0 +1,19 @@
+connector:
+  name: machina-read-transform
+  description: Pure identity, evidence selection and publication validation for native
+    Machina Read workflows. No I/O or orchestration.
+  filename: machina-read-transform.py
+  filetype: pyscript
+  commands:
+  - name: Initialize
+    value: initialize
+  - name: Cached
+    value: cached
+  - name: Select
+    value: select
+  - name: Context
+    value: context
+  - name: Finalize
+    value: finalize
+  - name: Health
+    value: health
