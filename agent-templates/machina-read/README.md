@@ -28,7 +28,11 @@ The v2 value contains status, edition/observation/generation/expiry times, story
 
 A same-day unexpired native edition is reused, skipping collection and generation. This is sequential cache reuse, not a claim of race-safe global once-per-day execution. Failed validation does not store a replacement or extend an old expiry.
 
-Workflows retain draft definitions and are invoked by the native `machina-read-daily` agent. Its approved release schedule is `0 6 * * *` in the native scheduler's UTC clock. Import/activate that agent only within approved release scope. The transform defaults to private results; the approved producer explicitly supplies boolean `publish_public: True` after validation. Public admission, scheduling and code installation remain separately verified operations. Website consumers use the standard boilerplate server-only pod auth and a fixed read-only document query.
+Workflows retain draft definitions. The `machina-read-daily` agent ships **inactive**, with the platform's established `context.config-frequency: 720` mechanism, not a jobs/cron entry. After verified activation it checks twice a day; healthy same-day editions are reused, so normal generation is once per UTC day. Failed refreshes may be retried on the next scheduled check, not continuously. This is not a wall-clock 06:00 cron promise.
+
+Every completed producer check writes `machina-read-health` with an explicit healthy/failed outcome and timestamp, also exposed in workflow/agent output. These are native operational health records, not a claim that an external notification channel is configured. A source or storage outage can prevent a health write; platform execution failures remain separate evidence.
+
+The transform defaults to private results; the approved producer explicitly supplies boolean `publish_public: True` after validation. Reads select admitted editions. Public admission, scheduling and code installation remain separately verified operations. Website consumers use the standard boilerplate server-only pod auth and a fixed read-only document query. The initial adapter is intentionally MLB title-futures only; missing/closed/off-season or unsupported aliases fail closed rather than inventing another sport's data.
 
 ## Checks
 

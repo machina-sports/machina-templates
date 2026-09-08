@@ -22,6 +22,7 @@ workflow:
         - -1
     filters:
       name: '''machina-read-edition'''
+      value.publicApproved: 'True'
     outputs:
       read_documents: $.get('documents', [])
   - type: connector

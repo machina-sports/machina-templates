@@ -145,8 +145,16 @@ def test_publication_needs_explicit_boolean_approval():
 
 def test_daily_schedule_is_native_and_fixed():
     agent = yaml.safe_load((ROOT / 'agent-templates/machina-read/agents/machina-read-daily.yml').read_text())['agent']
-    assert agent['jobs'] == [{'name': 'daily-edition', 'type': 'agent', 'target': 'machina-read-daily', 'cron': '0 6 * * *', 'enabled': True}]
+    assert agent['status'] == 'inactive' and agent['jobs'] == []
+    assert agent['context'] == {'config-frequency': 720, 'status': 'inactive'}
     assert len(agent['workflows']) == 1 and agent['workflows'][0]['name'] == 'machina-read-produce-daily'
+
+
+def test_refresh_health_is_explicit_and_failure_is_not_healthy():
+    assert call('health', {'refresh_status': 'executed'})['health']['state'] == 'healthy'
+    failed = call('health', {'refresh_status': 'failed', 'reason': 'source_unavailable'})['health']
+    assert failed['state'] == 'failed' and failed['reason'] == 'source_unavailable'
+    assert call('health', {})['health']['state'] == 'failed'
 
 
 def test_names_use_cited_team_ids_and_never_rewrite_geography():

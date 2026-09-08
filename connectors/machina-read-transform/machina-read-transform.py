@@ -103,6 +103,14 @@ def initialize(_):
 
 
 @operation
+def health(params):
+    refreshed = params.get("refresh_status") == "executed"
+    return {"status": "ready", "health": {"state": "healthy" if refreshed else "failed",
+            "checkedAt": iso(now()), "refreshStatus": params.get("refresh_status", "unknown"),
+            "reason": "" if refreshed else str(params.get("reason") or "producer_failed")[:200]}}
+
+
+@operation
 def cached(params):
     records = params.get("documents", [])
     require(isinstance(records, list), "invalid_cache")

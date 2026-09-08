@@ -11,6 +11,7 @@ workflow:
     document_id: $.get('read_cache', {}).get('documentId') or $.get('read_saved_id')
     served_from: '''cache'' if $.get(''read_cache'', {}).get(''hit'') else ''generated'''
     workflow-status: '''executed'' if $.get(''read_cache'', {}).get(''hit'') or $.get(''read_saved_id'') else ''failed'''
+    health: $.get('read_health', {}).get('health', {})
   tasks:
   - type: connector
     name: edition-clock
@@ -31,6 +32,7 @@ workflow:
         - -1
     filters:
       name: '''machina-read-edition'''
+      value.publicApproved: 'True'
       metadata.edition_date: $.get('read_clock', {}).get('day')
     outputs:
       read_existing: $.get('documents', [])
@@ -46,6 +48,7 @@ workflow:
       read_cache: $
   - type: connector
     name: collect-title-markets
+    continue_on_error: true
     connector:
       name: sports-skills
       command: invoke_kalshi
@@ -61,6 +64,7 @@ workflow:
     condition: $.get('read_cache', {}).get('hit') is not True
   - type: connector
     name: collect-team-catalog
+    continue_on_error: true
     connector:
       name: sports-skills
       command: invoke_mlb
@@ -263,3 +267,23 @@ workflow:
       source: '''machina-read-native'''
     outputs:
       read_saved_id: ($.get('documents', []) or [{}])[0].get('_id')
+  - type: connector
+    name: evaluate-refresh-health
+    connector:
+      name: machina-read-transform
+      command: health
+    inputs:
+      refresh_status: "'executed' if $.get('read_cache', {}).get('hit') or $.get('read_saved_id') else 'failed'"
+      reason: "$.get('read_final', {}).get('reason') or $.get('read_selection', {}).get('reason') or 'producer_failed'"
+    outputs:
+      read_health: $
+  - type: document
+    name: record-refresh-health
+    config:
+      action: save
+      embed-vector: false
+      force-update: true
+    filters:
+      name: "'machina-read-health'"
+    documents:
+      machina-read-health: $.get('read_health', {}).get('health', {})

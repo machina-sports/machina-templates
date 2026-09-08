@@ -15,3 +15,5 @@ connector:
     value: context
   - name: Finalize
     value: finalize
+  - name: Health
+    value: health
