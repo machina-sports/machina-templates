@@ -1287,6 +1287,12 @@ class ProviderAdapter:
         priority_paygo = safe_params.pop("priority_paygo", None)
         if self.delegate_connector == "google-genai" and command == "invoke_prompt" and route.provider == "vertex_ai":
             safe_params["priority_mode"] = priority_paygo if priority_paygo is not None else False
+        if self.delegate_connector == "google-genai" and command == "invoke_search":
+            # Existing grounded-search connector uses search_query and seconds.
+            safe_params["search_query"] = request.input.get("prompt") or request.input.get("input")
+            if not safe_params["search_query"] and request.input.get("messages"):
+                safe_params["search_query"] = "\n".join(str(message.get("content", "")) for message in request.input["messages"] if isinstance(message, Mapping))
+            safe_params["timeout"] = route.timeout_ms / 1000.0
         safe_params.update({
             "provider": route.provider,
             "model": route.model,
@@ -1647,11 +1653,13 @@ class GoogleGenAIAdapter(ProviderAdapter):
         delegated = self._delegate("invoke_search", route, request)
         if delegated:
             data = delegated.data
-            if not isinstance(data, Mapping) or "role" not in data:
+            if isinstance(data, Mapping) and "answer" in data:
+                data = _chat_data(data["answer"], citations=data.get("search_results") if isinstance(data.get("search_results"), list) else [])
+            elif not isinstance(data, Mapping) or "role" not in data:
                 data = _chat_data(_content_from_response(data))
             delegated.data = data
             return delegated
-        return self.invoke_chat(route, request)
+        raise RouterError("provider_unavailable", "Google grounded search requires the existing runtime delegation service.")
 
     def invoke_image(self, route: Route, request: NormalizedRequest) -> AdapterResult:
         delegated = self._delegate("invoke_image", route, request)
