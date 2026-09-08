@@ -799,6 +799,31 @@ class TestModalitiesAndAsync:
 
 
 class TestProviderAdapters:
+    def test_google_search_translates_prompt_deadline_and_preserves_grounding(self):
+        class DelegateRuntime:
+            def delegate(self, connector, request_data=None, command=None):
+                assert connector == "google-genai" and command == "invoke_search"
+                self.payload = request_data
+                return {"status": True, "data": {"answer": '{"news": []}',
+                    "search_results": [{"url": "https://news.example/story", "title": "Reporting"}],
+                    "search_queries": ["fixture reporting"]}}
+        runtime = DelegateRuntime()
+        adapter = router.GoogleGenAIAdapter(router.RuntimeFacade(runtime), router.MediaSecurity({}))
+        result = adapter.invoke_search(self.route("vertex_ai", "google_genai", capability="search_answer"),
+                                       self.request("invoke_search", "search_answer", "execute", prompt="fixture reporting"))
+        assert runtime.payload["params"]["search_query"] == "fixture reporting"
+        assert runtime.payload["params"]["timeout"] == 1.0
+        assert result.data["content"] == '{"news": []}'
+        assert result.data["citations"] == [{"url": "https://news.example/story", "title": "Reporting"}]
+
+    def test_google_search_does_not_fall_back_to_ungrounded_chat(self):
+        adapter = router.GoogleGenAIAdapter(router.RuntimeFacade(), router.MediaSecurity({}))
+        adapter.invoke_chat = MagicMock(return_value=router.AdapterResult(router._chat_data("invented")))
+        with pytest.raises(router.RouterError, match="grounded search"):
+            adapter.invoke_search(self.route("vertex_ai", "google_genai", capability="search_answer"),
+                                  self.request("invoke_search", "search_answer", "execute", prompt="fixture reporting"))
+        adapter.invoke_chat.assert_not_called()
+
     def route(self, provider="openai_compatible", adapter="openai_compatible", capability="chat", model="model"):
         return router.Route(
             provider=provider,
