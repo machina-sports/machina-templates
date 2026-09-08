@@ -1,0 +1,32 @@
+workflow:
+  name: machina-read-source-probe
+  title: Machina Read - Native source probe
+  description: Read-only canary for the installed Sports Skills connector envelopes. No generation, persistence, publishing, or schedule.
+  status: draft
+  inputs: {}
+  outputs:
+    markets: "$.get('market_response', {})"
+    teams: "$.get('team_response', {})"
+    workflow-status: "'executed' if $.get('market_response', {}).get('status') and $.get('team_response', {}).get('status') else 'failed'"
+  tasks:
+    - type: connector
+      name: read-title-markets
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      inputs:
+        command: "'get_markets'"
+        series_ticker: "'KXMLB'"
+        status: "'open'"
+        limit: "100"
+      outputs:
+        market_response: "$"
+    - type: connector
+      name: read-team-identities
+      connector:
+        name: sports-skills
+        command: invoke_mlb
+      inputs:
+        command: "'get_teams'"
+      outputs:
+        team_response: "$"

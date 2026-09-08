@@ -1,0 +1,20 @@
+agent:
+  name: machina-read-daily
+  title: Machina Read - Daily native edition
+  description: Produce one validated contextual sports read each day using native workflows; consumers only read the stored result.
+  status: active
+  jobs:
+    - name: daily-edition
+      type: agent
+      target: machina-read-daily
+      cron: "0 6 * * *"
+      enabled: true
+  context: {}
+  context-variables: {}
+  workflows:
+    - name: machina-read-produce-daily
+      inputs: {}
+      outputs:
+        edition: "$.get('edition', {})"
+        served_from: "$.get('served_from')"
+        workflow-status: "$.get('workflow-status')"

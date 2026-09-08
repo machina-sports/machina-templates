@@ -1,0 +1,36 @@
+workflow:
+  name: machina-read-get-latest
+  title: Machina Read - Latest stored edition
+  description: Read-only document retrieval and expiry check; no collection or model
+    execution.
+  status: draft
+  inputs: {}
+  outputs:
+    edition: $.get('read_latest', {}).get('edition', {})
+    document_id: $.get('read_latest', {}).get('documentId')
+    workflow-status: '''executed'' if $.get(''read_latest'', {}).get(''hit'') else
+      ''skipped'''
+  tasks:
+  - type: document
+    name: load-latest-native-edition
+    config:
+      action: search
+      search-limit: 1
+      search-vector: false
+      search-sorters:
+      - - _id
+        - -1
+    filters:
+      name: '''machina-read-edition'''
+    outputs:
+      read_documents: $.get('documents', [])
+  - type: connector
+    name: validate-stored-edition
+    connector:
+      name: machina-read-transform
+      command: cached
+    inputs:
+      documents: $.get('read_documents', [])
+      same_day: 'False'
+    outputs:
+      read_latest: $
