@@ -1,12 +1,13 @@
 workflow:
   name: machina-read-produce-daily
-  title: Machina Read - Contextual daily story
-  description: Native Sports Skills collection, canonical team joins, Gemini via machina-ai, validation, and immutable Machina document
-    storage. No local runner. Manual/draft until activation approval.
+  title: Machina Read - Cross-sport daily story
+  description: Native multi-sport collection through sports-skills, Polymarket and Kalshi, pure compaction and cross-sport
+    balancing, one Gemini call through machina-ai, publication validation and native v3 document storage. No local runner
+    or shadow collector. Manual/draft until activation approval.
   status: draft
   inputs: {}
   outputs:
-    edition: $.get('read_cache', {}).get('edition', {}) if $.get('read_cache', {}).get('hit') else ($.get('read_final', {}).get('edition',
+    edition: $.get('read_cache', {}).get('edition', {}) if $.get('read_cache', {}).get('hit') else ($.get('read_final', {}).get('public',
       {}) if $.get('read_saved_id') else {})
     document_id: $.get('read_cache', {}).get('documentId') or $.get('read_saved_id')
     served_from: '''cache'' if $.get(''read_cache'', {}).get(''hit'') else ''generated'''
@@ -16,7 +17,7 @@ workflow:
   - type: connector
     name: edition-clock
     connector:
-      name: machina-read-transform
+      name: machina-read-multisport
       command: initialize
     inputs: {}
     outputs:
@@ -32,14 +33,15 @@ workflow:
         - -1
     filters:
       name: '''machina-read-edition'''
+      value.schemaVersion: '3'
       value.publicApproved: 'True'
-      metadata.edition_date: $.get('read_clock', {}).get('day')
+      metadata.edition_date: $.get('read_clock', {}).get('date')
     outputs:
       read_existing: $.get('documents', [])
   - type: connector
     name: check-native-cache
     connector:
-      name: machina-read-transform
+      name: machina-read-multisport
       command: cached
     inputs:
       documents: $.get('read_existing', [])
@@ -47,8 +49,133 @@ workflow:
     outputs:
       read_cache: $
   - type: connector
-    name: collect-title-markets
+    name: collect-sport-schedule
+    connector:
+      name: sports-skills
+      command: invoke_markets
+    inputs:
+      command: '''get_sport_schedule'''
+      date: $.get('read_clock', {}).get('date')
+    outputs:
+      read_raw_schedule: $
+    condition: $.get('read_cache', {}).get('hit') is not True
     continue_on_error: true
+  - type: connector
+    name: compact-sport-schedule
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''schedule'''
+      raw: $.get('read_raw_schedule', {})
+    outputs:
+      read_schedule: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-football-schedule
+    connector:
+      name: sports-skills
+      command: invoke_football
+    inputs:
+      command: '''get_daily_schedule'''
+      date: $.get('read_clock', {}).get('date')
+    outputs:
+      read_raw_football: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-football-schedule
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''football'''
+      raw: $.get('read_raw_football', {})
+    outputs:
+      read_football: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-tennis-atp
+    connector:
+      name: sports-skills
+      command: invoke_tennis
+    inputs:
+      command: '''get_scoreboard'''
+      tour: '''atp'''
+      date: $.get('read_clock', {}).get('date')
+    outputs:
+      read_raw_tennis_atp: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-tennis-atp
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''tennis'''
+      raw: $.get('read_raw_tennis_atp', {})
+      tour: '''atp'''
+    outputs:
+      read_tennis_atp: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-tennis-wta
+    connector:
+      name: sports-skills
+      command: invoke_tennis
+    inputs:
+      command: '''get_scoreboard'''
+      tour: '''wta'''
+      date: $.get('read_clock', {}).get('date')
+    outputs:
+      read_raw_tennis_wta: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-tennis-wta
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''tennis'''
+      raw: $.get('read_raw_tennis_wta', {})
+      tour: '''wta'''
+    outputs:
+      read_tennis_wta: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-polymarket-events
+    connector:
+      name: sports-skills
+      command: invoke_polymarket
+    inputs:
+      command: '''get_sports_events'''
+      limit: '20'
+      active: 'True'
+      closed: 'False'
+    outputs:
+      read_raw_polymarket: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-polymarket-events
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''polymarket'''
+      raw: $.get('read_raw_polymarket', {})
+    outputs:
+      read_polymarket: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-kalshi-baseball
     connector:
       name: sports-skills
       command: invoke_kalshi
@@ -56,177 +183,313 @@ workflow:
       command: '''get_markets'''
       series_ticker: '''KXMLB'''
       status: '''open'''
-      limit: '100'
+      limit: '30'
     outputs:
-      read_markets: '{''status'': $.get(''status''), ''data'': {''cursor'': $.get(''data'', {}).get(''cursor''), ''markets'': [{k: m.get(k)
-        for k in [''ticker'', ''event_ticker'', ''status'', ''result'', ''title'', ''yes_sub_title'', ''yes_bid_dollars'', ''yes_ask_dollars'',
-        ''volume_24h_fp'', ''close_time'', ''expected_expiration_time'']} for m in $.get(''data'', {}).get(''markets'', [])][:100]}}'
+      read_raw_kalshi: $
     condition: $.get('read_cache', {}).get('hit') is not True
-  - type: connector
-    name: collect-team-catalog
     continue_on_error: true
+  - type: connector
+    name: collect-baseball-identities
     connector:
       name: sports-skills
       command: invoke_mlb
     inputs:
       command: '''get_teams'''
     outputs:
-      read_teams: $
+      read_baseball_identities: $
     condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
   - type: connector
-    name: resolve-team-identities
+    name: compact-kalshi-baseball
     connector:
-      name: machina-read-transform
-      command: select
+      name: machina-read-multisport
+      command: compact
     inputs:
-      teams: $.get('read_teams', {})
-      markets: $.get('read_markets', {})
+      kind: '''kalshi'''
+      raw: $.get('read_raw_kalshi', {})
+      identities: $.get('read_baseball_identities', {})
     outputs:
-      read_selection: $
+      read_kalshi: $
     condition: $.get('read_cache', {}).get('hit') is not True
-  - type: connector
-    name: collect-standings
-    connector:
-      name: sports-skills
-      command: invoke_mlb
-    inputs:
-      command: '''get_standings'''
-      season: $.get('read_clock', {}).get('year')
-    outputs:
-      read_standings: $
-    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_selection', {}).get('status') == 'ready'
     continue_on_error: true
   - type: connector
-    name: collect-reported-availability
-    connector:
-      name: sports-skills
-      command: invoke_mlb
-    inputs:
-      command: '''get_injuries'''
-    outputs:
-      read_injuries: '{''status'': $.get(''status''), ''data'': {''teams'': [{''team'': t.get(''team''), ''team_id'': t.get(''team_id''),
-        ''injuries'': [{''name'': i.get(''name''), ''status'': i.get(''status'')} for i in t.get(''injuries'', [])[:6]]} for t in $.get(''data'',
-        {}).get(''teams'', [])[:40]]}}'
-    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_selection', {}).get('status') == 'ready'
-    continue_on_error: true
-  - type: connector
-    name: collect-team-0-results
-    connector:
-      name: sports-skills
-      command: invoke_mlb
-    inputs:
-      command: '''get_team_schedule'''
-      team_id: ($.get('read_selection', {}).get('focus') or [{}, {}])[0].get('id')
-      season: $.get('read_clock', {}).get('year')
-    outputs:
-      read_schedule_0: '{''status'': $.get(''status''), ''data'': {''team'': $.get(''data'', {}).get(''team''), ''season'': $.get(''data'',
-        {}).get(''season''), ''events'': [x[2] for x in sorted([(e.get(''start_time'', ''''), e.get(''id'', ''''), e) for e in $.get(''data'',
-        {}).get(''events'', []) if e.get(''status'') == ''closed''], reverse=True)[:10]]}}'
-    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_selection', {}).get('status') == 'ready'
-    continue_on_error: true
-  - type: connector
-    name: collect-team-0-stats
-    connector:
-      name: sports-skills
-      command: invoke_mlb
-    inputs:
-      command: '''get_team_stats'''
-      team_id: ($.get('read_selection', {}).get('focus') or [{}, {}])[0].get('id')
-      season_year: $.get('read_clock', {}).get('year')
-      season_type: '2'
-    outputs:
-      read_stats_0: '{''status'': $.get(''status''), ''data'': {''team_id'': $.get(''data'', {}).get(''team_id''), ''season_year'':
-        $.get(''data'', {}).get(''season_year''), ''season_type'': $.get(''data'', {}).get(''season_type''), ''categories'': [{''name'':
-        c.get(''name''), ''stats'': [s for s in c.get(''stats'', []) if s.get(''name'') in [''gamesPlayed'', ''runs'', ''homeRuns'',
-        ''stolenBases'']]} for c in $.get(''data'', {}).get(''categories'', []) if c.get(''name'') == ''Batting'']}}'
-    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_selection', {}).get('status') == 'ready'
-    continue_on_error: true
-  - type: connector
-    name: collect-team-0-news
+    name: collect-news-football
     connector:
       name: sports-skills
       command: invoke_news
     inputs:
       command: '''fetch_items'''
       google_news: 'True'
-      query: ($.get('read_selection', {}).get('focus') or [{}, {}])[0].get('name', '')
-      after: $.get('read_clock', {}).get('after')
+      query: '''soccer football when:2d'''
       sort_by_date: 'True'
       limit: '5'
     outputs:
-      read_news_0: '{''status'': $.get(''status''), ''data'': {''items'': [{k: item.get(k) for k in [''title'', ''link'', ''published'']}
-        for item in $.get(''data'', {}).get(''items'', [])[:5]]}}'
-    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_selection', {}).get('status') == 'ready'
+      read_raw_news_football: $
+    condition: $.get('read_cache', {}).get('hit') is not True
     continue_on_error: true
   - type: connector
-    name: collect-team-1-results
+    name: compact-news-football
     connector:
-      name: sports-skills
-      command: invoke_mlb
+      name: machina-read-multisport
+      command: compact
     inputs:
-      command: '''get_team_schedule'''
-      team_id: ($.get('read_selection', {}).get('focus') or [{}, {}])[1].get('id')
-      season: $.get('read_clock', {}).get('year')
+      kind: '''news'''
+      raw: $.get('read_raw_news_football', {})
+      sport: '''football'''
     outputs:
-      read_schedule_1: '{''status'': $.get(''status''), ''data'': {''team'': $.get(''data'', {}).get(''team''), ''season'': $.get(''data'',
-        {}).get(''season''), ''events'': [x[2] for x in sorted([(e.get(''start_time'', ''''), e.get(''id'', ''''), e) for e in $.get(''data'',
-        {}).get(''events'', []) if e.get(''status'') == ''closed''], reverse=True)[:10]]}}'
-    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_selection', {}).get('status') == 'ready'
+      read_news_football: $
+    condition: $.get('read_cache', {}).get('hit') is not True
     continue_on_error: true
   - type: connector
-    name: collect-team-1-stats
-    connector:
-      name: sports-skills
-      command: invoke_mlb
-    inputs:
-      command: '''get_team_stats'''
-      team_id: ($.get('read_selection', {}).get('focus') or [{}, {}])[1].get('id')
-      season_year: $.get('read_clock', {}).get('year')
-      season_type: '2'
-    outputs:
-      read_stats_1: '{''status'': $.get(''status''), ''data'': {''team_id'': $.get(''data'', {}).get(''team_id''), ''season_year'':
-        $.get(''data'', {}).get(''season_year''), ''season_type'': $.get(''data'', {}).get(''season_type''), ''categories'': [{''name'':
-        c.get(''name''), ''stats'': [s for s in c.get(''stats'', []) if s.get(''name'') in [''gamesPlayed'', ''runs'', ''homeRuns'',
-        ''stolenBases'']]} for c in $.get(''data'', {}).get(''categories'', []) if c.get(''name'') == ''Batting'']}}'
-    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_selection', {}).get('status') == 'ready'
-    continue_on_error: true
-  - type: connector
-    name: collect-team-1-news
+    name: collect-news-americanfootball
     connector:
       name: sports-skills
       command: invoke_news
     inputs:
       command: '''fetch_items'''
       google_news: 'True'
-      query: ($.get('read_selection', {}).get('focus') or [{}, {}])[1].get('name', '')
-      after: $.get('read_clock', {}).get('after')
+      query: '''nfl football when:2d'''
       sort_by_date: 'True'
       limit: '5'
     outputs:
-      read_news_1: '{''status'': $.get(''status''), ''data'': {''items'': [{k: item.get(k) for k in [''title'', ''link'', ''published'']}
-        for item in $.get(''data'', {}).get(''items'', [])[:5]]}}'
-    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_selection', {}).get('status') == 'ready'
+      read_raw_news_americanfootball: $
+    condition: $.get('read_cache', {}).get('hit') is not True
     continue_on_error: true
   - type: connector
-    name: assemble-context
+    name: compact-news-americanfootball
     connector:
-      name: machina-read-transform
-      command: context
+      name: machina-read-multisport
+      command: compact
     inputs:
-      selection: $.get('read_selection', {})
-      standings: $.get('read_standings', {})
-      injuries: $.get('read_injuries', {})
-      schedule_0: $.get('read_schedule_0', {})
-      stats_0: $.get('read_stats_0', {})
-      news_0: $.get('read_news_0', {})
-      schedule_1: $.get('read_schedule_1', {})
-      stats_1: $.get('read_stats_1', {})
-      news_1: $.get('read_news_1', {})
+      kind: '''news'''
+      raw: $.get('read_raw_news_americanfootball', {})
+      sport: '''americanfootball'''
+    outputs:
+      read_news_americanfootball: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-news-baseball
+    connector:
+      name: sports-skills
+      command: invoke_news
+    inputs:
+      command: '''fetch_items'''
+      google_news: 'True'
+      query: '''MLB baseball when:2d'''
+      sort_by_date: 'True'
+      limit: '5'
+    outputs:
+      read_raw_news_baseball: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-news-baseball
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''news'''
+      raw: $.get('read_raw_news_baseball', {})
+      sport: '''baseball'''
+    outputs:
+      read_news_baseball: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-news-basketball
+    connector:
+      name: sports-skills
+      command: invoke_news
+    inputs:
+      command: '''fetch_items'''
+      google_news: 'True'
+      query: '''NBA WNBA basketball when:2d'''
+      sort_by_date: 'True'
+      limit: '5'
+    outputs:
+      read_raw_news_basketball: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-news-basketball
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''news'''
+      raw: $.get('read_raw_news_basketball', {})
+      sport: '''basketball'''
+    outputs:
+      read_news_basketball: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-news-hockey
+    connector:
+      name: sports-skills
+      command: invoke_news
+    inputs:
+      command: '''fetch_items'''
+      google_news: 'True'
+      query: '''NHL ice hockey when:2d'''
+      sort_by_date: 'True'
+      limit: '5'
+    outputs:
+      read_raw_news_hockey: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-news-hockey
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''news'''
+      raw: $.get('read_raw_news_hockey', {})
+      sport: '''hockey'''
+    outputs:
+      read_news_hockey: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-news-tennis
+    connector:
+      name: sports-skills
+      command: invoke_news
+    inputs:
+      command: '''fetch_items'''
+      google_news: 'True'
+      query: '''ATP WTA tennis when:2d'''
+      sort_by_date: 'True'
+      limit: '5'
+    outputs:
+      read_raw_news_tennis: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-news-tennis
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''news'''
+      raw: $.get('read_raw_news_tennis', {})
+      sport: '''tennis'''
+    outputs:
+      read_news_tennis: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-news-motorsport
+    connector:
+      name: sports-skills
+      command: invoke_news
+    inputs:
+      command: '''fetch_items'''
+      google_news: 'True'
+      query: '''Formula 1 racing when:2d'''
+      sort_by_date: 'True'
+      limit: '5'
+    outputs:
+      read_raw_news_motorsport: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-news-motorsport
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''news'''
+      raw: $.get('read_raw_news_motorsport', {})
+      sport: '''motorsport'''
+    outputs:
+      read_news_motorsport: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-news-golf
+    connector:
+      name: sports-skills
+      command: invoke_news
+    inputs:
+      command: '''fetch_items'''
+      google_news: 'True'
+      query: '''PGA LPGA golf when:2d'''
+      sort_by_date: 'True'
+      limit: '5'
+    outputs:
+      read_raw_news_golf: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-news-golf
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''news'''
+      raw: $.get('read_raw_news_golf', {})
+      sport: '''golf'''
+    outputs:
+      read_news_golf: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-news-cricket
+    connector:
+      name: sports-skills
+      command: invoke_news
+    inputs:
+      command: '''fetch_items'''
+      google_news: 'True'
+      query: '''cricket when:2d'''
+      sort_by_date: 'True'
+      limit: '5'
+    outputs:
+      read_raw_news_cricket: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-news-cricket
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''news'''
+      raw: $.get('read_raw_news_cricket', {})
+      sport: '''cricket'''
+    outputs:
+      read_news_cricket: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: assemble-cross-sport-context
+    connector:
+      name: machina-read-multisport
+      command: assemble
+    inputs:
+      schedule: $.get('read_schedule', {})
+      football: $.get('read_football', {})
+      tennis_atp: $.get('read_tennis_atp', {})
+      tennis_wta: $.get('read_tennis_wta', {})
+      polymarket: $.get('read_polymarket', {})
+      kalshi: $.get('read_kalshi', {})
+      news_football: $.get('read_news_football', {})
+      news_americanfootball: $.get('read_news_americanfootball', {})
+      news_baseball: $.get('read_news_baseball', {})
+      news_basketball: $.get('read_news_basketball', {})
+      news_hockey: $.get('read_news_hockey', {})
+      news_tennis: $.get('read_news_tennis', {})
+      news_motorsport: $.get('read_news_motorsport', {})
+      news_golf: $.get('read_news_golf', {})
+      news_cricket: $.get('read_news_cricket', {})
     outputs:
       read_context: $
-    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_selection', {}).get('status') == 'ready'
+    condition: $.get('read_cache', {}).get('hit') is not True
   - type: connector
-    name: reason-across-context
+    name: reason-across-sports
     connector:
       name: machina-ai
       command: invoke_chat
@@ -244,7 +507,7 @@ workflow:
   - type: connector
     name: validate-generated-story
     connector:
-      name: machina-read-transform
+      name: machina-read-multisport
       command: finalize
     inputs:
       context_pack: $.get('read_context', {})
@@ -263,18 +526,20 @@ workflow:
     documents:
       machina-read-edition: $.get('read_final', {}).get('edition', {})
     metadata:
-      edition_date: $.get('read_clock', {}).get('day')
-      source: '''machina-read-native'''
+      edition_date: $.get('read_clock', {}).get('date')
+      source: '''machina-read-native-v3'''
     outputs:
       read_saved_id: ($.get('documents', []) or [{}])[0].get('_id')
   - type: connector
     name: evaluate-refresh-health
     connector:
-      name: machina-read-transform
+      name: machina-read-multisport
       command: health
     inputs:
-      refresh_status: "'executed' if $.get('read_cache', {}).get('hit') or $.get('read_saved_id') else 'failed'"
-      reason: "$.get('read_final', {}).get('reason') or $.get('read_selection', {}).get('reason') or 'producer_failed'"
+      cache: $.get('read_cache', {})
+      saved: $.get('read_saved_id')
+      final: $.get('read_final', {})
+      context: $.get('read_context', {})
     outputs:
       read_health: $
   - type: document
@@ -284,6 +549,6 @@ workflow:
       embed-vector: false
       force-update: true
     filters:
-      name: "'machina-read-health'"
+      name: '''machina-read-health'''
     documents:
       machina-read-health: $.get('read_health', {}).get('health', {})

@@ -108,6 +108,8 @@ def test_editorial_prompt_has_voice_analysis_and_unchanged_evidence_guards():
                    'Frame interpretations as interpretations',
                    'Copy its numeric quote exactly as supplied',
                    'never market share or our win probability',
+                   'outright championship futures across the whole league',
+                   'Do not invent a disagreement between results and price',
                    'Make that playful payoff visible in the body',
                    'Use ONLY supplied facts', 'A snapshot cannot prove movement',
                    'not internal chain-of-thought', 'betting recommendations',
