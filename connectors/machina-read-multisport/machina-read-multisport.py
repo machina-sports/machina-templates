@@ -346,11 +346,11 @@ def compact_tennis(data, current, tour):
                             parts.append(f"{games} (tiebreak {number(entry['tiebreak'], 40, True)})"
                                          if entry.get("tiebreak") is not None else str(games))
                         lines.append(f"{clean(competitor['name'], 90)} {', '.join(parts)}")
-                    label = clean(f"{tour.upper()} {event_name}: {clean(str(match.get('round') or 'match'), 60)}", 180)
+                    label = clean(f"{event_name}: {clean(str(match.get('round') or 'match'), 60)}", 180)
                     text = (f"{label} ({clean(str(match.get('draw') or 'singles'), 40)}) completed {iso(stamp)}. "
                             f"Provider result line: {result}. Set scores as reported: {'; '.join(lines)}. "
                             f"Athlete identifiers are not supplied and are not inferred.")
-                    items.append(candidate(f"event:tennis:{tour}:{ident}", "tennis", "event", label, text,
+                    items.append(candidate(f"event:tennis:{ident}", "tennis", "event", label, text,
                                            "https://www.espn.com/tennis/scoreboard", current, RANK_RESULT, stamp))
                 except (ValueError, KeyError, TypeError, IndexError):
                     continue
@@ -527,12 +527,16 @@ DIRECTIVES = (
     '"points":[{"text":"max 350 chars","sourceIds":["ids"]},{"text":"max 350 chars","sourceIds":["ids"]}]}. '
     'Supply two or three points. Each point must move from cited evidence, to a clear sporting implication, '
     'to an honest caveat or what to watch next. Do not merely restate the headline, body or the numbers. '
+    'Aim for a body under 230 characters, and each point under 260 characters; the maxima are hard rejection limits. '
+    'Put supporting detail in points rather than squeezing every participant, score and price into the body. '
     'The headline, body and points together must cite evidence from at least TWO different sports. '
     'When market evidence is supplied, cite at least one market source somewhere in the post, and name the '
     'exchange naturally in the sentence that uses it. Never force a price into the headline. '
+    'If Polymarket evidence is supplied, at least one analysis point MUST cite and discuss a Polymarket source with its quoted price. '
     'A quoted contract price is what an exchange contract costs at one instant. It is not our forecast, not a '
     'win probability, not market share, and not evidence of movement, momentum, money flow or trader emotion. '
     'Never compare prices from unrelated contracts or invent a disagreement between results and prices. '
+    'Do not describe quotes as sitting still, idling, holding, chasing, or changing: there is no price history here. '
     'Copy every number exactly as supplied, including decimal places and fractions. Do no arithmetic of your own '
     'and derive no new figure. A number may only appear where its own source is cited. '
     'A scheduled or unfinished event has no result; a placeholder zero is not a score. Only describe an outcome '
@@ -650,6 +654,9 @@ def finalize(params):
     require(len(sports) >= 2, "single_sport_edition")
     if any(entry["kind"] == "market" for entry in pack["sources"]):
         require(any(catalog[key]["kind"] == "market" for key in cited), "missing_market_citation")
+    if any(entry["id"].startswith("market:polymarket:") for entry in pack["sources"]):
+        require(any(key.startswith("market:polymarket:") for point in story["points"] for key in point["sourceIds"]),
+                "missing_polymarket_analysis")
     prose = " ".join([story["headline"], story["body"], *(point["text"] for point in story["points"])])
     for pattern, sport in SPORT_HINTS:
         require(sport in sports or not re.search(pattern, prose, re.I), "unbound_sport_reference")

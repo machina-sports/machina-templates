@@ -177,7 +177,8 @@ def pack(**overrides):
 
 def draft(context, sports=('motorsport', 'baseball')):
     """A minimal compliant story citing one market plus one other-sport source."""
-    market = next(s for s in context['sources'] if s['kind'] == 'market')
+    market = next((s for s in context['sources'] if s['id'].startswith('market:polymarket:')),
+                  next(s for s in context['sources'] if s['kind'] == 'market'))
     others = [s for s in context['sources'] if s['sport'] != market['sport']]
     return {'headline': 'Grid calm, diamond noise, everyone still arguing',
             'body': 'Polymarket has the title contract parked while the other sport keeps making a racket.',
@@ -225,7 +226,7 @@ def test_football_rejects_a_closed_event_whose_scores_disagree():
 
 def test_tennis_filters_by_match_date_and_preserves_the_provider_result_line():
     block = call('compact', {'kind': 'tennis', 'raw': tennis_response(), 'tour': 'atp'})
-    assert [item['source']['id'] for item in block['items']] == ['event:tennis:atp:184901']
+    assert [item['source']['id'] for item in block['items']] == ['event:tennis:184901']
     text = block['items'][0]['source']['text']
     assert 'Callum Wren (GBR) bt Mateo Salas (ESP) 7-6 (7-3) 6-3' in text
     assert '7 (tiebreak 7), 6' in text and 'not supplied' in text
@@ -369,7 +370,7 @@ def test_assembly_is_balanced_across_sports_and_never_dominated_by_one_feed():
 def test_assembly_prefers_completed_evidence_and_reports_honest_coverage():
     context = pack()
     ranked = [s['id'] for s in context['sources']]
-    assert 'event:football:401880501' in ranked and 'event:tennis:atp:184901' in ranked
+    assert 'event:football:401880501' in ranked and 'event:tennis:184901' in ranked
     coverage = {row['sport']: row['status'] for row in context['coverage']}
     assert set(coverage) == set(SPORT_IDS) and len(context['coverage']) <= 12
     assert coverage['motorsport'] == 'available'
@@ -579,6 +580,8 @@ def test_expiry_is_shortened_by_a_cited_market_close_and_never_extended():
     story['sourceIds'] = [kalshi['id']]
     story['points'][0]['sourceIds'] = [kalshi['id']]
     story['points'][1]['sourceIds'] = [other['id']]
+    poly = next(s for s in context['sources'] if s['id'].startswith('market:polymarket:'))
+    story['points'][1]['sourceIds'].append(poly['id'])
     story['body'] = 'Kalshi keeps a title contract open while the other sport keeps changing the subject.'
     story['points'][0]['text'] = 'That title contract is a price at one instant and settles nothing about October.'
     edition = call('finalize', {'context_pack': context, 'model_reply': reply(story)})['edition']
@@ -593,6 +596,27 @@ def stored(**overrides):
                                 'publish_public': True})['edition']
     edition.update(overrides)
     return {'name': 'machina-read-edition', '_id': 'synthetic', 'value': edition}
+
+
+def test_tennis_does_not_invent_tour_identity_from_the_requested_lane():
+    raw = tennis_response('atp')
+    raw['data']['tournaments'][0]['name'] = 'WTA Synthetic Open'
+    atp = call('compact', {'kind': 'tennis', 'tour': 'atp', 'raw': raw})
+    wta = call('compact', {'kind': 'tennis', 'tour': 'wta', 'raw': raw})
+    assert atp['items'][0]['source']['id'] == wta['items'][0]['source']['id']
+    assert atp['items'][0]['source']['label'].startswith('WTA Synthetic Open')
+    assert 'ATP WTA' not in atp['items'][0]['source']['text']
+
+
+def test_available_polymarket_evidence_must_be_discussed():
+    context = pack()
+    story = draft(context)
+    kalshi = next(s for s in context['sources'] if s['id'].startswith('market:kalshi:'))
+    other = next(s for s in context['sources'] if s['sport'] == 'football')
+    story['sourceIds'] = [kalshi['id'], other['id']]
+    story['points'][0]['sourceIds'] = [kalshi['id']]
+    story['points'][1]['sourceIds'] = [other['id']]
+    assert call('finalize', {'context_pack': context, 'model_reply': reply(story)})['reason'] == 'missing_polymarket_analysis'
 
 
 def test_cache_admits_only_a_same_day_admitted_unexpired_v3_edition():
