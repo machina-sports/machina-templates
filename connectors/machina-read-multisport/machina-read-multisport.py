@@ -607,9 +607,25 @@ def assemble(params):
                  "reason": "usable recent evidence collected" if sport in by_sport
                  else "no usable recent evidence in this run"} for sport in SPORTS]
     scope = "Multi-sport daily read"
-    evidence = {"scope": scope, "sports": sports, "sources": sources,
+    # Scan broadly, but brief the model narrowly. A long source buffet repeatedly
+    # caused the generator to ignore Polymarket and default to baseball/tennis.
+    # Select evidence, never invent an editorial result or alter a quoted price.
+    poly_candidates = [entry for entry in sources if entry["id"].startswith("market:polymarket:")]
+    poly = poly_candidates[current.date().toordinal() % len(poly_candidates)] if poly_candidates else None
+    brief_sources = sources
+    if poly is not None:
+        anchor = next((entry for entry in sources if entry["sport"] != poly["sport"] and entry["kind"] == "event"),
+                      next(entry for entry in sources if entry["sport"] != poly["sport"]))
+        selected_sports = {poly["sport"], anchor["sport"]}
+        brief_sources = [anchor, poly] + [entry for entry in sources
+            if entry["sport"] in selected_sports and entry["id"] not in {anchor["id"], poly["id"]}][:4]
+    evidence = {"scope": scope, "sports": sports, "sources": brief_sources,
                 "coverage": [row for row in coverage if row["status"] == "unavailable"]}
     prompt = DIRECTIVES + json.dumps(evidence, ensure_ascii=True, separators=(",", ":"))
+    if poly is not None:
+        prompt += ("\nEditorial assignment: write about the first sporting source and the Polymarket source "
+                   + poly["id"] + ". The second analysis point must explain that Polymarket quote and cite that exact ID. "
+                   "Use only the brief's sources. Body under 230 characters. Return only the requested JSON.")
     require(len(prompt.encode()) <= PROMPT_BUDGET, "context_budget_exceeded")
     return {"status": "ready", "observedAt": iso(current), "scope": scope, "sports": sports, "sources": sources,
             "marketSnapshots": [row for row in snapshots
