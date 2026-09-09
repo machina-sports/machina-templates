@@ -382,7 +382,7 @@ def compact_polymarket(data, current):
                 question = clean(market["question"], 200)
                 sport = market_sport(f"{title} {event_slug} {question} {market.get('slug') or ''}")
                 require(str(market.get("status") or "").strip().lower() == "active", "closed_market")
-                require(instant(market["end_date"]) > current, "expired_market")
+                require(instant(market["end_date"]) > current + timedelta(hours=24), "short_or_expired_market")
                 updated = instant(market["updated_at"])
                 require(current - timedelta(hours=24) <= updated <= current + timedelta(minutes=5), "stale_quote")
                 liquidity = number(market["liquidity"], 1e12)

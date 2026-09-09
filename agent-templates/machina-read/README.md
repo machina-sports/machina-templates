@@ -53,6 +53,9 @@ preserved and no athlete identifier is invented.
 Market sport is classified only from explicit league or competition tokens in the
 provider's own title, slug and question. A requested sport label is never
 trusted, and a market matching two sports or none is skipped rather than guessed.
+Polymarket contracts must remain open for more than 24 hours at collection so a
+daily edition cannot expire between scheduled checks. Near-term game markets
+are deliberately excluded from this daily surface, not presented as live odds.
 Contracts that are closed, expired, stale (quote older than 24 hours), illiquid,
 or priced with a boolean, non-finite or out-of-range value are dropped, which
 also removes resolved contracts masquerading as active. Quotes are rendered from
@@ -73,6 +76,10 @@ The assembler round-robins candidates across sports, preferring completed
 sporting evidence, then markets, then fixtures, then headlines, so neither
 alphabetical order nor a high-volume feed decides the edition. Every edition must
 carry at least two sports and at most 24 sources within a bounded text budget.
+The writer receives a compact, unmodified subset of this evidence from two sports,
+including a required Polymarket analysis source when one is available. The market
+assignment rotates deterministically by UTC day; no quote or factual conclusion
+is invented by selection. Full scan coverage remains recorded separately.
 `coverage` records which sports produced usable recent evidence, which is not a
 transport signal: a lane that answered but returned only off-season or
 unverifiable rows is reported `unavailable`. No edition claims that every sport

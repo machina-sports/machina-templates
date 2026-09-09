@@ -314,9 +314,12 @@ def test_kalshi_names_bind_to_the_unique_provider_catalog():
 
 def test_polymarket_snapshot_retains_its_expiry_bound():
     raw = polymarket_response()
-    raw['data']['events'][0]['markets'][0]['end_date'] = module.iso(NOW + timedelta(hours=2))
+    raw['data']['events'][0]['markets'][0]['end_date'] = module.iso(NOW + timedelta(hours=26))
     result = call('compact', {'kind': 'polymarket', 'raw': raw})
-    assert result['snapshots'][0]['closesAt'] == module.iso(NOW + timedelta(hours=2))
+    assert result['snapshots'][0]['closesAt'] == module.iso(NOW + timedelta(hours=26))
+    for hours in [2, 12, 24]:
+        raw['data']['events'][0]['markets'][0]['end_date'] = module.iso(NOW + timedelta(hours=hours))
+        assert call('compact', {'kind': 'polymarket', 'raw': raw})['items'] == []
 
 
 def test_news_drops_routine_promo_stale_and_future_headlines():
