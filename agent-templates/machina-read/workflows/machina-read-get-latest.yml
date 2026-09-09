@@ -1,7 +1,7 @@
 workflow:
   name: machina-read-get-latest
-  title: Machina Read - Latest stored cross-sport edition
-  description: Read-only v3 document retrieval, admission and expiry check. No collection, market, news or model execution.
+  title: Machina Read - Latest stored single-sport edition
+  description: Read-only v4 document retrieval, admission and expiry check. No collection, market, news or model execution.
   status: draft
   inputs: {}
   outputs:
@@ -20,7 +20,7 @@ workflow:
         - -1
     filters:
       name: '''machina-read-edition'''
-      value.schemaVersion: '3'
+      value.schemaVersion: '4'
       value.publicApproved: 'True'
     outputs:
       read_documents: $.get('documents', [])
@@ -32,5 +32,6 @@ workflow:
     inputs:
       documents: $.get('read_documents', [])
       same_day: 'False'
+      edition_format: '4'
     outputs:
       read_latest: $

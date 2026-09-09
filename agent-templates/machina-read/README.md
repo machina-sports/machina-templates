@@ -1,5 +1,23 @@
 # Native Machina Read
 
+## Current v4 single-story format
+
+The production producer and reader request `edition_format: 4`. Each generated
+edition contains one sport and one concrete story. The producer reads the latest
+admitted edition for rotation, prefers a different eligible sport, and only adds
+a market when it matches the selected named subject. Nine-sport discovery remains
+available; it is not a requirement to mix sports in an individual post.
+
+The transformer keeps its v3 default for compatibility with existing records and
+rollback consumers. V4 is explicit, has its own cache filter, and permits one
+detailed source. Writing uses self-contained facts and optional earned humor,
+not compulsory jokes or comparisons. Full-article enrichment is not automated
+for every source; editor-reviewed posts must be labelled as such by consumers.
+
+The sections below describe the discovery lanes and the legacy v3 behavior where
+they explicitly refer to cross-sport editions. The v4 selection rules above govern
+the current producer. Scheduler ownership and evidence/publication gates remain.
+
 A native workflow package, not a standalone application or agent service. There
 is no shadow collector, local runner or background service anywhere in it.
 

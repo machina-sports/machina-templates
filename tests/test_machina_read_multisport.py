@@ -745,10 +745,10 @@ def test_every_native_expression_compiles_and_survives_empty_state():
                 eval(code, {'state': {}})
 
 
-def test_reader_is_v3_only_and_touches_no_provider_or_storage():
+def test_reader_is_v4_only_and_touches_no_provider_or_storage():
     reader = load('machina-read-get-latest.yml')
     assert 'workflow-status' in reader['outputs'] and reader['title'] and reader['description']
-    assert reader['tasks'][0]['filters'] == {'name': "'machina-read-edition'", 'value.schemaVersion': '3',
+    assert reader['tasks'][0]['filters'] == {'name': "'machina-read-edition'", 'value.schemaVersion': '4',
                                              'value.publicApproved': 'True'}
     for task in reader['tasks']:
         assert task.get('connector', {}).get('name') in (None, 'machina-read-multisport')
@@ -762,7 +762,7 @@ def test_producer_stores_a_v3_edition_without_forcing_an_overwrite():
     assert save['config']['force-update'] is False
     assert save['documents']['machina-read-edition'] == "$.get('read_final', {}).get('edition', {})"
     assert save['metadata']['edition_date'] == "$.get('read_clock', {}).get('date')"
-    assert workflow['tasks'][1]['filters']['value.schemaVersion'] == '3'
+    assert workflow['tasks'][1]['filters']['value.schemaVersion'] == '4'
     assert workflow['tasks'][1]['filters']['value.publicApproved'] == 'True'
     assert any(t.get('config', {}).get('action') == 'save' and 'machina-read-health' in t.get('documents', {})
                for t in workflow['tasks'])
