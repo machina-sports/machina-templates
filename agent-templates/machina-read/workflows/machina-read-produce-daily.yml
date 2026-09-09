@@ -1,8 +1,8 @@
 workflow:
   name: machina-read-produce-daily
-  title: Machina Read - Cross-sport daily story
-  description: Native multi-sport collection through sports-skills, Polymarket and Kalshi, pure compaction and cross-sport
-    balancing, one Gemini call through machina-ai, publication validation and native v3 document storage. No local runner
+  title: Machina Read - One sport, one daily story
+  description: Native multi-sport collection through sports-skills, Polymarket and Kalshi, rotation into one concrete story,
+    one Gemini call through machina-ai, publication validation and native v4 document storage. No local runner
     or shadow collector. Manual/draft until activation approval.
   status: draft
   inputs: {}
@@ -33,7 +33,7 @@ workflow:
         - -1
     filters:
       name: '''machina-read-edition'''
-      value.schemaVersion: '3'
+      value.schemaVersion: '4'
       value.publicApproved: 'True'
       metadata.edition_date: $.get('read_clock', {}).get('date')
     outputs:
@@ -46,8 +46,24 @@ workflow:
     inputs:
       documents: $.get('read_existing', [])
       same_day: 'True'
+      edition_format: '4'
     outputs:
       read_cache: $
+  - type: document
+    name: find-previous-published-edition
+    config:
+      action: search
+      search-limit: 1
+      search-vector: false
+      search-sorters:
+      - - _id
+        - -1
+    filters:
+      name: '''machina-read-edition'''
+      value.publicApproved: 'True'
+    outputs:
+      read_previous_documents: $.get('documents', [])
+    condition: $.get('read_cache', {}).get('hit') is not True
   - type: connector
     name: collect-sport-schedule
     connector:
@@ -470,6 +486,8 @@ workflow:
       name: machina-read-multisport
       command: assemble
     inputs:
+      edition_format: '4'
+      previous_documents: $.get('read_previous_documents', [])
       schedule: $.get('read_schedule', {})
       football: $.get('read_football', {})
       tennis_atp: $.get('read_tennis_atp', {})
