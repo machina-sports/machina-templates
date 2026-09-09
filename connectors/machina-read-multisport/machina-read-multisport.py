@@ -109,7 +109,10 @@ def number(value, maximum=1e12, integer=False, minimum=0):
 
 
 def percent(value):
-    return (value * 100).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+    rendered = format(value * 100, "f")
+    if "." in rendered:
+        rendered = rendered.rstrip("0").rstrip(".")
+    return rendered if "." in rendered else rendered + ".0"
 
 
 def money(value):
@@ -529,9 +532,12 @@ DIRECTIVES = (
     'to an honest caveat or what to watch next. Do not merely restate the headline, body or the numbers. '
     'Aim for a body under 230 characters, and each point under 260 characters; the maxima are hard rejection limits. '
     'Put supporting detail in points rather than squeezing every participant, score and price into the body. '
+    'The visible headline/body must name both selected sports or their participants and include a concrete sourced detail. '
+    'End the body with one playful, relevant payoff; a generic line about results and futures is not enough. '
     'The headline, body and points together must cite evidence from at least TWO different sports. '
     'When market evidence is supplied, cite at least one market source somewhere in the post, and name the '
     'exchange naturally in the sentence that uses it. Never force a price into the headline. '
+    'Do not end an analysis point with only a definition of a quote: give a specific implication or limitation for that sporting story. '
     'If Polymarket evidence is supplied, at least one analysis point MUST cite and discuss a Polymarket source with its quoted price. '
     'A quoted contract price is what an exchange contract costs at one instant. It is not our forecast, not a '
     'win probability, not market share, and not evidence of movement, momentum, money flow or trader emotion. '
