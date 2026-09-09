@@ -768,10 +768,12 @@ def test_producer_stores_a_v3_edition_without_forcing_an_overwrite():
                for t in workflow['tasks'])
 
 
-def test_the_agent_source_stays_inactive_with_the_native_frequency_mechanism():
+def test_the_agent_source_stays_inactive_with_a_disabled_native_job():
     agent = yaml.safe_load((ROOT / 'agent-templates/machina-read/agents/machina-read-daily.yml').read_text())['agent']
-    assert agent['status'] == 'inactive' and agent['jobs'] == []
-    assert agent['context'] == {'config-frequency': 720, 'status': 'inactive'}
+    assert agent['status'] == 'inactive'
+    assert agent['jobs'] == [{'name': 'machina-read-refresh', 'type': 'agent', 'target': 'machina-read-daily',
+                             'interval': 43200, 'enabled': False, 'context': {}}]
+    assert agent['context'] == {'status': 'inactive'} and agent['context-variables'] == {}
     assert [w['name'] for w in agent['workflows']] == ['machina-read-produce-daily']
 
 

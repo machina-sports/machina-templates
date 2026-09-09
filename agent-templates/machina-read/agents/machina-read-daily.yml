@@ -3,9 +3,14 @@ agent:
   title: Machina Read - Daily native edition
   description: Produce one validated contextual sports read each day using native workflows; consumers only read the stored result.
   status: inactive
-  jobs: []
+  jobs:
+    - name: machina-read-refresh
+      type: agent
+      target: machina-read-daily
+      interval: 43200
+      enabled: false
+      context: {}
   context:
-    config-frequency: 720
     status: inactive
   context-variables: {}
   workflows:

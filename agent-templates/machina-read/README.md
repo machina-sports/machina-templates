@@ -128,9 +128,11 @@ boolean `publish_public: True` after validation, and anything else, including th
 string `"True"`, stays private. Reads select admitted editions only.
 
 Workflows retain draft definitions and the `machina-read-daily` agent ships
-**inactive** with `jobs: []` and the platform's established
-`context.config-frequency: 720` mechanism, not a cron entry. The parent activates
-it after deployment. After verified activation it checks twice a day; healthy
+**inactive** with a disabled native `type: agent` job targeting itself, with
+`interval: 43200` seconds. Fantasy's observed Celery Beat scheduler evaluates
+`jobs.enabled`; the legacy `context.config-frequency` mechanism does not drive
+that scheduler. Activation enables this job and the agent after deployment,
+without starting a separate scheduler or restarting the pod. After verified activation it checks twice a day; healthy
 same-day editions are reused, so normal generation is once per UTC day. Failed
 refreshes may be retried on the next scheduled check, not continuously. This is
 not a wall-clock cron promise.

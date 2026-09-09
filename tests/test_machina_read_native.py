@@ -167,8 +167,10 @@ def test_publication_needs_explicit_boolean_approval():
 
 def test_daily_schedule_is_native_and_fixed():
     agent = yaml.safe_load((ROOT / 'agent-templates/machina-read/agents/machina-read-daily.yml').read_text())['agent']
-    assert agent['status'] == 'inactive' and agent['jobs'] == []
-    assert agent['context'] == {'config-frequency': 720, 'status': 'inactive'}
+    assert agent['status'] == 'inactive'
+    assert agent['jobs'] == [{'name': 'machina-read-refresh', 'type': 'agent', 'target': 'machina-read-daily',
+                             'interval': 43200, 'enabled': False, 'context': {}}]
+    assert agent['context'] == {'status': 'inactive'}
     assert len(agent['workflows']) == 1 and agent['workflows'][0]['name'] == 'machina-read-produce-daily'
 
 
