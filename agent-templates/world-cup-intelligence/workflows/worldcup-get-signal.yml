@@ -124,7 +124,9 @@ workflow:
         kelly_fraction: "$.get('kelly_fraction', 0.25)"
         bankroll: "$.get('bankroll', '')"
         fee_bps: "$.get('fee_bps', 0)"
-        source_weights: "$.get('calibration_weights', {})"
+        # Hand the learned weights over only once the calibration loop has actually moved a
+        # weight (weights_updated_at set); until then the posterior says weights_source: default.
+        source_weights: "$.get('calibration_weights', {}) if $.get('calibration_updated_at', '') else {}"
         weights_updated_at: "$.get('calibration_updated_at', '')"
       outputs:
         signal: "$.get('signal', {})"

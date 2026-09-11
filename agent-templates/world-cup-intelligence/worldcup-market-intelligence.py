@@ -6353,11 +6353,9 @@ def compute_clv(request_data: dict[str, Any]) -> dict[str, Any]:
     now_iso = _text(params.get("now_iso")) or _now_iso()
     ledger: list[dict[str, Any]] = []
     settled_rows: list[dict[str, Any]] = []
-    for row in _as_list(params.get("ledger_rows")):
-        if not isinstance(row, dict):
-            continue
+    for row in _dedupe_rows(params.get("ledger_rows")):
         if row.get("clv_bucket"):           # already settled -> carry forward
-            ledger.append(row)
+            ledger.append(_with_store_key(row))
             continue
         res = by_fid.get(_text(row.get("fixture_id")))
         if not res:                         # fixture not final yet
@@ -6374,7 +6372,7 @@ def compute_clv(request_data: dict[str, Any]) -> dict[str, Any]:
                   else ("CLV-" if clv_cents < -_CLV_NEUTRAL_CENTS else "CLV="))
         actual = _result_outcome(res[0], res[1])
         won = 1 if _text(row.get("outcome")) == actual else 0
-        updated = dict(row)
+        updated = _with_store_key(dict(row))   # re-attach the upsert key the store strips from `value`
         updated.update({
             "closing_price": round(closing, 4),
             "clv_cents": clv_cents,
@@ -6615,18 +6613,16 @@ def settle_calibration_rows(request_data: dict[str, Any]) -> dict[str, Any]:
     now_iso = _text(params.get("now_iso")) or _now_iso()
     rows: list[dict[str, Any]] = []
     settled: list[dict[str, Any]] = []
-    for row in _as_list(params.get("rows")):
-        if not isinstance(row, dict):
-            continue
+    for row in _dedupe_rows(params.get("rows")):
         if row.get("status") == "settled" and row.get("won") is not None:
-            rows.append(row)
+            rows.append(_with_store_key(row, kind="calibration"))
             continue
         result = by_fid.get(_text(row.get("fixture_id")))
         if not result:
             rows.append(row)
             continue
         actual = _result_outcome(result[0], result[1])
-        updated = dict(row)
+        updated = _with_store_key(dict(row), kind="calibration")
         updated.update({
             "actual_outcome": actual,
             "won": 1 if _text(row.get("outcome")) == actual else 0,
@@ -6636,6 +6632,44 @@ def settle_calibration_rows(request_data: dict[str, Any]) -> dict[str, Any]:
         rows.append(updated)
         settled.append(updated)
     return {"status": True, "data": {"rows": rows, "settled_rows": settled, "settled_count": len(settled)}}
+
+
+def _with_store_key(row: dict[str, Any], kind: str | None = None) -> dict[str, Any]:
+    """Re-attach the document-store upsert key to a row loaded back from the store.
+
+    The document runner pops `metadata` out of the saved value (it lives on the document,
+    not inside `value`), so a row read via `d.get('value')` comes back WITHOUT the metadata
+    it was saved with. Writing it back as-is upserts on name + empty metadata: every row in
+    the batch collapses into one document and the originals stay untouched. Rebuild the key
+    from the row's own fields before re-saving (ledger: {event_urn, outcome}; calibration
+    sample: {event_urn, outcome, kind})."""
+    meta = row.get("metadata")
+    if not isinstance(meta, dict) or not meta:
+        meta = {"event_urn": _text(row.get("event_urn")), "outcome": _text(row.get("outcome"))}
+        if kind:
+            meta["kind"] = kind
+        row["metadata"] = meta
+    if not row.get("_id"):
+        suffix = ":cal" if kind == "calibration" else ""
+        row["_id"] = "%s:%s%s" % (_text(row.get("event_urn")), _text(row.get("outcome")), suffix)
+    return row
+
+
+def _dedupe_rows(rows: Any) -> list[dict[str, Any]]:
+    """One row per `_id`, preferring a settled copy over a pending one (collapsed-upsert leftovers)."""
+    by_id: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    for row in _as_list(rows):
+        if not isinstance(row, dict):
+            continue
+        rid = _text(row.get("_id")) or "%s:%s" % (_text(row.get("event_urn")), _text(row.get("outcome")))
+        current = by_id.get(rid)
+        if current is None:
+            by_id[rid] = row
+            order.append(rid)
+        elif row.get("status") == "settled" and current.get("status") != "settled":
+            by_id[rid] = row
+    return [by_id[rid] for rid in order]
 
 
 def _calibration_metrics(pairs: list[tuple[float, int]], bins: int = CALIBRATION_BINS) -> dict[str, Any]:
@@ -6731,9 +6765,7 @@ def compute_calibration(request_data: dict[str, Any]) -> dict[str, Any]:
 
     settled: list[dict[str, Any]] = []
     n_pending = n_outside = 0
-    for row in _as_list(params.get("rows")):
-        if not isinstance(row, dict):
-            continue
+    for row in _dedupe_rows(params.get("rows")):
         if competition and _lower(row.get("competition")) != competition:
             continue
         if row.get("status") != "settled" or row.get("won") is None:
