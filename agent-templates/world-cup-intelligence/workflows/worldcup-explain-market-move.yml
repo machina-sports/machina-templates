@@ -189,6 +189,7 @@ workflow:
         snapshots: "($.get('event_snapshots', []) or []) + ($.get('team_snapshots', []) or [])"
         market_state: "$.get('market_state', {})"
         min_move_bps: "$.get('min_move_bps', 200)"
+        competition: "$.get('cached', {}).get('competition') or $.get('cached', {}).get('competition_urn') or ''"
         window_hours: "$.get('window_hours', 24)"
       outputs:
         belief: "$"
@@ -239,6 +240,7 @@ workflow:
         snapshots: "($.get('event_snapshots', []) or []) + ($.get('team_snapshots', []) or [])"
         market_state: "$.get('market_state', {})"
         min_move_bps: "$.get('min_move_bps', 200)"
+        competition: "$.get('cached', {}).get('competition') or $.get('cached', {}).get('competition_urn') or ''"
         window_hours: "$.get('window_hours', 24)"
         research: "$.get('research', '')"
         research_sources: "$.get('research_sources', [])"

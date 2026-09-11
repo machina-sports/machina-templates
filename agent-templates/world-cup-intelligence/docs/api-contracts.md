@@ -359,6 +359,23 @@ Returns `move` (`moved`, `net_move_bps`, `swing_bps`, `direction`, from/to price
 
 `explanation` (when `include_reasoning`): `summary`, `top_cause` (= `belief.top.cause`), `likely_drivers[]` (`driver`, `cause`, `kind` confirmed/speculative/noise), `confidence` (= `belief.top.p`), `evidence[]` (cited research when it ran), `disclaimer`.
 
+## Competitions (OG Edge fatia 4) — `worldcup-get-competitions`
+
+"Catalogs and weights are per competition; generalise the venue connectors and the forecast model per sport; the rest of the layer does not change." The connector carries a **competition registry** (`COMPETITIONS`): for each competition its slug, name, sport, forecast model, `knockout` flag, api-football league/season, competition URN and URN code, venue search terms and query, Kalshi sport key, and belief-catalog prior overrides. Registered today (soccer, Dixon-Coles): `world-cup-2026` (default, knockout), `brasileirao-2026` (league 71), `premier-league-2026` (league 39), `champions-league-2026` (league 2, knockout). Market terms for the non-World-Cup entries are seed values to tune against live venue payloads; per-fixture team queries do the heavy lifting.
+
+Request: `{ "competition": "brasileirao-2026" }` (optional) → `competitions[]` (the registry), `default`, `resolved` (the anchors for the requested slug / league id / URN / code; unknown keys resolve to the default with a warning). Cost class **data (1)**.
+
+**What `competition` changes downstream** — pass the slug to:
+
+- `worldcup-ingest-fixtures`, `worldcup-sync-model-forecasts`, `worldcup-backtest-forecasts`: a `resolve-competition` task fills league/season/sr_season_id from the registry (explicit values still win); events are minted with the competition URN, name and URN code (`…:bra`, `…:wor`) and tagged `machina_competition_slug`; forecasts carry `competition`.
+- `worldcup-sync-market-sources`: the venue search query, the Kalshi sport key and the relevance gate follow the competition; cached markets are tagged `competition`.
+- `worldcup-get-signal` / `compute_signal`: `signal.posterior.competition` and `calibration_ref: /world-cup/v1/calibration?competition=<slug>`; the fusion weights come from the competition's own calibration report first, the aggregate second, the v0 priors otherwise.
+- `worldcup-explain-market-move`: the belief catalog priors follow the competition (`belief.competition`, `belief.priors_source: competition | default`) — knockout competitions start `resolution_ambiguity` at 0.12 and `news_or_injury` at 0.31, because Reg-Time markets resolve on 90 minutes while the tie is decided later.
+- `worldcup-log-signals` / `worldcup-backtest-forecasts`: calibration rows inherit the forecast's competition; the backtest publishes the aggregate report **and one report per competition** (`worldcup:calibration-report:<slug>`), each chaining its learned weights from its own previous report.
+- **Regulation time:** CLV and calibration settle 1X2 legs on `score.fulltime` when present (`_final_results_by_fixture`), so a knockout tie decided in extra time or on penalties scores as the 90-minute result the markets and the model are about.
+
+Activating a second competition in a pod is an operator decision: run `worldcup-ingest-fixtures`, `worldcup-sync-market-sources`, `worldcup-sync-model-forecasts`, `worldcup-log-signals` and `worldcup-backtest-forecasts` with `{"competition": "<slug>"}`; the public read endpoints then see its fixtures, markets, signals and calibration next to the World Cup's. Other sports need a forecast model per sport (`model` in the registry); the fusion, belief and calibration layers are already sport-agnostic.
+
 ## `worldcup-get-calibration` (calibration v0, OG Edge fatia 3)
 
 Request: `{ "venue": "kalshi", "competition": "world-cup-2026", "window_days": 90 }` — all optional (`window_days: 0` = all time). Cost class **data (1)**: arithmetic over the calibration sample, no model call.

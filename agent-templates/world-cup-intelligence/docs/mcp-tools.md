@@ -39,6 +39,7 @@ least one of these on every deployed MCP surface — without a discovery primiti
 | Context & markets | `get_event_context`, `search_markets`, `get_market_state` | data (1) / market (3) |
 | Forecast & intelligence | `get_match_forecast`, `get_signal`, `find_market_edges`, `explain_market_move`, `backtest_forecasts` | intelligence (12) / edge (18) |
 | Calibration | `get_calibration` | data (1) |
+| Competitions | `get_competitions` | data (1) |
 
 Internal-only (never expose): `sync-*`, `ingest-*`, `seed-*`, `refresh-*`,
 `log-signals`, `coverage-gateway`.
@@ -134,6 +135,14 @@ Inputs: `venue` (`kalshi` | `polymarket` | `bookmaker` | `model`, optional highl
 Returns `calibration`: the track record behind the probabilities — `brier` (fused posterior) vs `brier_market_baseline` / `brier_model` / `brier_uniform_baseline`, `log_loss`, `calibration_error`, `posterior_beats_market`, a `reliability` curve (predicted vs observed per 0.1 bin), `by_source` (Brier / log-loss / reliability / weight in use / weight learned per source family), `weights_in_use`, `weights_learned`, `weights_updated_at`, `n_resolved` and `sample_size_sufficient`. Pure arithmetic over settled legs; no model call. See `docs/api-contracts.md`.
 
 Nobody should buy a 55% posterior without seeing, in the same contract, how often 55% came true.
+
+### `worldcup_get_competitions`
+
+Backed by `worldcup-get-competitions` (REST `POST /world-cup/v1/competitions`, data class).
+
+Inputs: `competition` (optional slug / api-football league id / competition URN / URN code to resolve).
+
+Returns `competitions[]` — the registry behind the intelligence layer (slug, name, sport, model, `knockout`, api-football league/season, competition URN and code, venue search terms, Kalshi sport key, belief-prior overrides), `default` and, when asked, `resolved` (the anchors for one competition). Pass a slug as `competition` to the other tools; see `docs/api-contracts.md` § Competitions for what it changes.
 
 ### `worldcup_stable_markets`
 

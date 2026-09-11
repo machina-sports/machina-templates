@@ -37,6 +37,119 @@ WORLD_CUP_TERMS = (
 )
 
 
+# -- Competition registry (OG Edge, fatia 4) ----------------------------------
+#
+# "Catalogs and weights are per competition; generalise the venue connectors and
+# the forecast model per sport; the rest of the layer does not change." Every
+# competition-specific anchor the layer needs lives here: the api-football
+# league/season, the URN code and competition URN minted on events, the venue
+# relevance terms and search query, the Kalshi sport key, the forecast model,
+# whether the competition has knockout ties (Reg-Time markets vs full result),
+# and the belief-catalog prior overrides. Workflows resolve a `competition`
+# slug through `resolve_competition` and stop hard-coding the World Cup; the
+# World Cup stays the default so every existing call keeps its behaviour.
+# Market terms for the non-World-Cup entries are seed values to be tuned
+# against live venue payloads (per-fixture team queries do the heavy lifting).
+
+DEFAULT_COMPETITION = "world-cup-2026"
+_GENERIC_QUERY_TOKENS = {"fifa", "world", "cup", "2026"}
+COMPETITIONS: dict[str, dict[str, Any]] = {
+    "world-cup-2026": {
+        "slug": "world-cup-2026", "name": "FIFA World Cup 2026", "sport": "soccer", "code": "wor",
+        "urn": "urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor",
+        "api_football": {"league": "1", "season": "2026"}, "sportradar_season": "sr:season:101177",
+        "model": "dixon-coles", "knockout": True,
+        "market_terms": WORLD_CUP_TERMS, "generic_tokens": _GENERIC_QUERY_TOKENS,
+        "search_query": "FIFA World Cup", "kalshi_sport": "worldcup",
+        # knockout ties: Reg-Time markets resolve on 90 minutes while the tie is decided later,
+        # so "how does this market resolve" is a live question more often than in a league
+        "move_priors": {"news_or_injury": 0.31, "resolution_ambiguity": 0.12},
+    },
+    "brasileirao-2026": {
+        "slug": "brasileirao-2026", "name": "Brasileirão Série A 2026", "sport": "soccer", "code": "bra",
+        "urn": "urn:machina:sport:soccer:competition:brasileirao-serie-a-2026:bra",
+        "api_football": {"league": "71", "season": "2026"}, "sportradar_season": None,
+        "model": "dixon-coles", "knockout": False,
+        "market_terms": ("brasileir", "serie a", "série a", "campeonato brasileiro", "kxbrasileirao", "brazil serie a"),
+        "generic_tokens": {"brasileirão", "brasileirao", "série", "serie", "a", "2026", "campeonato", "brasileiro"},
+        "search_query": "Brasileirão Série A", "kalshi_sport": "soccer",
+        "move_priors": None,
+    },
+    "premier-league-2026": {
+        "slug": "premier-league-2026", "name": "Premier League 2026/27", "sport": "soccer", "code": "eng",
+        "urn": "urn:machina:sport:soccer:competition:premier-league-2026:eng",
+        "api_football": {"league": "39", "season": "2026"}, "sportradar_season": None,
+        "model": "dixon-coles", "knockout": False,
+        "market_terms": ("premier league", "epl", "kxepl"),
+        "generic_tokens": {"premier", "league", "epl", "2026"},
+        "search_query": "Premier League", "kalshi_sport": "soccer",
+        "move_priors": None,
+    },
+    "champions-league-2026": {
+        "slug": "champions-league-2026", "name": "UEFA Champions League 2026/27", "sport": "soccer", "code": "uefa",
+        "urn": "urn:machina:sport:soccer:competition:uefa-champions-league-2026:uefa",
+        "api_football": {"league": "2", "season": "2026"}, "sportradar_season": None,
+        "model": "dixon-coles", "knockout": True,
+        "market_terms": ("champions league", "ucl", "kxucl", "uefa"),
+        "generic_tokens": {"champions", "league", "uefa", "ucl", "2026"},
+        "search_query": "Champions League", "kalshi_sport": "soccer",
+        "move_priors": {"news_or_injury": 0.31, "resolution_ambiguity": 0.12},
+    },
+}
+
+
+def competition_profile(key: Any) -> dict[str, Any]:
+    """Registry entry for a slug, an api-football league id, a competition URN or a URN code.
+
+    Unknown or empty keys resolve to the World Cup so every pre-registry call keeps its
+    behaviour; the returned dict carries `resolved: False` in that case."""
+    text = str(key or "").strip().lower()
+    for profile in COMPETITIONS.values():
+        if text and text in (profile["slug"], profile["urn"].lower(), profile["api_football"]["league"], profile["code"]):
+            return dict(profile, resolved=True)
+    fallback = dict(COMPETITIONS[DEFAULT_COMPETITION], resolved=not text)
+    return fallback
+
+
+def resolve_competition(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Resolve a competition slug/league/URN into the anchors the workflows need.
+
+    Params: competition (slug | api-football league id | competition URN | URN code; default
+    world-cup-2026), optional overrides league / season / sr_season_id / query, list (True ->
+    every registry entry). Returns league, season, sr_season_id, competition_slug,
+    competition_name, competition_urn, competition_code, sport, model, knockout, search_query,
+    kalshi_sport, market_terms, move_priors -- explicit overrides win over the registry."""
+    params = _params(request_data)
+    if params.get("list"):
+        rows = [{k: v for k, v in p.items() if k not in ("market_terms", "generic_tokens")}
+                | {"market_terms": list(p["market_terms"]), "default": p["slug"] == DEFAULT_COMPETITION}
+                for p in COMPETITIONS.values()]
+        return {"status": True, "data": {"competitions": rows, "count": len(rows), "default": DEFAULT_COMPETITION}}
+    profile = competition_profile(params.get("competition"))
+    league = _text(params.get("league")) or profile["api_football"]["league"]
+    season = _text(params.get("season")) or profile["api_football"]["season"]
+    data = {
+        "competition_slug": profile["slug"],
+        "competition_name": profile["name"],
+        "competition_urn": profile["urn"],
+        "competition_code": profile["code"],
+        "sport": profile["sport"],
+        "model": profile["model"],
+        "knockout": profile["knockout"],
+        "league": league,
+        "season": season,
+        "sr_season_id": _text(params.get("sr_season_id")) or profile.get("sportradar_season") or "",
+        "search_query": _text(params.get("query")) or profile["search_query"],
+        "kalshi_sport": profile["kalshi_sport"],
+        "market_terms": list(profile["market_terms"]),
+        "move_priors": profile.get("move_priors"),
+        "resolved": profile.get("resolved", True),
+        "warnings": [] if profile.get("resolved", True) else
+                    [f"unknown competition {params.get('competition')!r}; using {DEFAULT_COMPETITION}"],
+    }
+    return {"status": True, "data": data}
+
+
 def _params(request_data: dict[str, Any]) -> dict[str, Any]:
     return dict(request_data.get("params") or {})
 
@@ -353,7 +466,10 @@ def _extract_source_records(source: str, payloads: list[Any]) -> list[dict[str, 
     return records
 
 
-def _market_matches(market: dict[str, Any], *, query: str, team: str, source: str, status: str) -> bool:
+def _market_matches(market: dict[str, Any], *, query: str, team: str, source: str, status: str,
+                    terms: Any = None, generic_tokens: Any = None) -> bool:
+    terms = tuple(terms) if terms else WORLD_CUP_TERMS
+    generic = set(generic_tokens) if generic_tokens else _GENERIC_QUERY_TOKENS
     if source and source != "all" and market.get("source") != source:
         return False
     if status and status != "all" and market.get("status") not in {status, "unknown"}:
@@ -371,19 +487,18 @@ def _market_matches(market: dict[str, Any], *, query: str, team: str, source: st
     )
     if team and _lower(team) not in haystack:
         return False
-    # Relevance gate: keep only World Cup-related markets so broad sports
-    # payloads don't pollute results.
-    if not any(term in haystack for term in WORLD_CUP_TERMS):
+    # Relevance gate: keep only markets of the competition in play (the World Cup
+    # terms by default) so broad sports payloads don't pollute results.
+    if not any(term in haystack for term in terms):
         return False
     if query:
         normalized_query = _lower(query)
-        # Generic World Cup words don't discriminate between markets; only
+        # Generic competition words don't discriminate between markets; only
         # specific tokens (teams, players, "group h") narrow the results.
-        generic_tokens = {"fifa", "world", "cup", "2026"}
         query_tokens = [
             token
             for token in normalized_query.split()
-            if len(token) > 2 and token not in generic_tokens
+            if len(token) > 2 and token not in generic
         ]
         if query_tokens and normalized_query not in haystack:
             if not any(token in haystack for token in query_tokens):
@@ -405,11 +520,15 @@ def _filter_markets(markets: list[dict[str, Any]], params: dict[str, Any]) -> li
     # thin tail (draw legs of near-term games) at lower caps.
     limit = max(1, min(limit, 500))
 
+    profile = competition_profile(params.get("competition"))
     filtered = [
         market
         for market in markets
-        if _market_matches(market, query=query, team=team, source=source, status=status)
+        if _market_matches(market, query=query, team=team, source=source, status=status,
+                           terms=profile["market_terms"], generic_tokens=profile["generic_tokens"])
     ]
+    for market in filtered:
+        market.setdefault("competition", profile["slug"])
     # Prefer the most liquid / highest-volume candidates when providers return broad sports payloads.
     filtered.sort(key=lambda market: max(_to_float(market.get("volume")), _to_float(market.get("liquidity"))), reverse=True)
     return filtered[:limit]
@@ -447,14 +566,15 @@ def normalize_market_sources(request_data: dict[str, Any]) -> dict[str, Any]:
     markets = _filter_markets(list(deduped.values()), params)
 
     warnings = []
+    comp_name = competition_profile(params.get("competition"))["name"]
     if not markets:
         warnings.append(
-            "No matching World Cup markets found after source normalization/filtering. Try force_live=true, source=all, or a broader query."
+            f"No matching {comp_name} markets found after source normalization/filtering. Try force_live=true, source=all, or a broader query."
         )
     if kalshi_records and not any(m.get("source") == "kalshi" for m in markets):
-        warnings.append("Kalshi returned records, but none matched the World Cup/status/source filters.")
+        warnings.append(f"Kalshi returned records, but none matched the {comp_name}/status/source filters.")
     if poly_records and not any(m.get("source") == "polymarket" for m in markets):
-        warnings.append("Polymarket returned records, but none matched the World Cup/status/source filters.")
+        warnings.append(f"Polymarket returned records, but none matched the {comp_name}/status/source filters.")
     # Asymmetric ingestion is the common failure mode: each fetch task runs
     # under continue_on_error, so one venue can silently come back empty and
     # leave a single-venue cache. Cross-source pairing needs both venues, so
@@ -1350,9 +1470,25 @@ def _observe_news(research: Any, research_sources: Any, research_ran: bool) -> t
     return "news=not_found", f"grounded search returned nothing event-specific ({len(sources)} source(s))"
 
 
-def _move_update(evidence: list[tuple[str, str]]) -> list[dict[str, Any]]:
+def _move_priors(profile: dict[str, Any] | None) -> tuple[dict[str, float], str]:
+    """Catalog priors for a competition: the registry's `move_priors` overrides, renormalised to 1."""
+    priors = {h["cause"]: float(h["prior"]) for h in MOVE_HYPOTHESES}
+    overrides = (profile or {}).get("move_priors") if isinstance(profile, dict) else None
+    if not isinstance(overrides, dict) or not overrides:
+        return priors, "default"
+    for cause, value in overrides.items():
+        if cause in priors:
+            try:
+                priors[cause] = max(0.0, float(value))
+            except (TypeError, ValueError):
+                continue
+    total = sum(priors.values()) or 1.0
+    return {cause: round(value / total, 4) for cause, value in priors.items()}, "competition"
+
+
+def _move_update(evidence: list[tuple[str, str]], priors: dict[str, float] | None = None) -> list[dict[str, Any]]:
     """posterior ∝ prior · Π P(evidence | cause); hypotheses sorted by posterior."""
-    weights = {h["cause"]: float(h["prior"]) for h in MOVE_HYPOTHESES}
+    weights = dict(priors) if priors else {h["cause"]: float(h["prior"]) for h in MOVE_HYPOTHESES}
     for label, _note in evidence:
         row = MOVE_LIKELIHOOD.get(label)
         if not row:
@@ -1360,8 +1496,9 @@ def _move_update(evidence: list[tuple[str, str]]) -> list[dict[str, Any]]:
         for cause in weights:
             weights[cause] *= row[cause]
     total = sum(weights.values()) or 1.0
+    base = dict(priors) if priors else {h["cause"]: float(h["prior"]) for h in MOVE_HYPOTHESES}
     ranked = [{
-        "cause": h["cause"], "p": round(weights[h["cause"]] / total, 3), "prior": h["prior"],
+        "cause": h["cause"], "p": round(weights[h["cause"]] / total, 3), "prior": base[h["cause"]],
         "label": h["label"], "implication": h["implication"], "next_check": h["next_check"],
     } for h in MOVE_HYPOTHESES]
     ranked.sort(key=lambda item: -item["p"])
@@ -1407,10 +1544,14 @@ def explain_move_belief(request_data: dict[str, Any]) -> dict[str, Any]:
         min_move_bps = 200
     window_hours = params.get("window_hours")
     research_ran = bool(params.get("research_ran")) or bool(_text(params.get("research")).strip())
+    profile = competition_profile(params.get("competition") or cached.get("competition") or cached.get("competition_urn"))
+    priors, priors_source = _move_priors(profile)
 
     belief: dict[str, Any] = {
         "version": MOVE_BELIEF_VERSION,
         "market_id": market_id,
+        "competition": profile["slug"],
+        "priors_source": priors_source,
         "window_hours": window_hours,
         "move": {key: move.get(key) for key in ("net_move_bps", "swing_bps", "direction", "from_price", "to_price")},
         "applicable": bool(move.get("moved")),
@@ -1450,7 +1591,7 @@ def explain_move_belief(request_data: dict[str, Any]) -> dict[str, Any]:
         else:
             belief["unobserved"].append({"signal": signal, "reason": note})
 
-    ranked = _move_update(evidence)
+    ranked = _move_update(evidence, priors)
     top = ranked[0]
     p_news = next(h["p"] for h in ranked if h["cause"] == "news_or_injury")
     undecided = top["p"] < MOVE_UNDECIDED_BELOW
@@ -3441,7 +3582,8 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
     """Build IPTC World Cup event docs with machina URNs from API-Football fixtures."""
     params = _params(request_data)
     fixtures = _as_list(params.get("fixtures"))
-    comp_slug = _text(params.get("competition_slug")) or "world-cup-2026"
+    profile = competition_profile(params.get("competition_slug") or params.get("competition"))
+    comp_slug = profile["slug"]
     events: list[dict[str, Any]] = []
     warnings: list[str] = []
 
@@ -3486,14 +3628,14 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
 
         date_iso = _text(fixture.get("date"))
         event_urn = (
-            f"urn:machina:sport:soccer:event:"
-            f"{_canonical_team_slug(home_name)}-vs-{_canonical_team_slug(away_name)}:{_event_date(date_iso)}:wor"
+            f"urn:machina:sport:{profile['sport']}:event:"
+            f"{_canonical_team_slug(home_name)}-vs-{_canonical_team_slug(away_name)}:{_event_date(date_iso)}:{profile['code']}"
         )
-        # Canonical competition URN — must match the competition crosswalk doc and
-        # the market cache (api-football's league name "World Cup" would mint a
-        # different, dangling slug).
-        comp_name = "FIFA World Cup 2026"
-        comp_urn = "urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor"
+        # Canonical competition URN from the registry — must match the competition
+        # crosswalk doc and the market cache (api-football's league name would mint
+        # a different, dangling slug).
+        comp_name = profile["name"]
+        comp_urn = profile["urn"]
 
         venue_name = _text(venue.get("name"))
         venue_block: dict[str, Any] = {
@@ -5176,6 +5318,10 @@ def build_event_forecasts(request_data: dict[str, Any]) -> dict[str, Any]:
         docs.append({
             "metadata": {"event_urn": event_urn},
             "_id": event_urn, "@id": event_urn, "id": event_urn,
+            # competition travels with the forecast so signals, ledger and calibration rows inherit it
+            "competition": _text(ev.get("machina_competition_slug")) or competition_profile(
+                ((ev.get("sport:competition") or {}).get("@id") if isinstance(ev.get("sport:competition"), dict) else None)
+                or ev.get("competition_urn"))["slug"],
             "provider_ids": {"api_football": _text((ev.get("provider_ids") or {}).get("api_football"))},
             "schema:startDate": ev.get("schema:startDate"),
             "home_team": {"urn": home_urn, "name": _text(home.get("name"))},
@@ -5753,8 +5899,10 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
         post_summary = "Posterior sees no edge; H %.2f bits, %.1f effective sources." % (entropy or 0.0, eff_event)
     else:
         post_summary = "No posterior: no priced outcome to fuse."
+    signal_competition = competition_profile(params.get("competition") or forecast.get("competition"))["slug"]
     posterior_block = {
         "version": POSTERIOR_VERSION,
+        "competition": signal_competition,
         "weights": {"model": model_weight, **{k: v for k, v in weights.items() if k != "model"}},
         "by_outcome": {b: f.get("posterior") for b, f in fusions.items()},
         "entropy_bits": entropy,
@@ -5767,7 +5915,7 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
         # fatia 3: where the weights came from, and where their track record lives
         "weights_source": "learned" if weights_learned else "default",
         "weights_updated_at": _text(params.get("weights_updated_at")) or None,
-        "calibration_ref": CALIBRATION_REF,
+        "calibration_ref": f"{CALIBRATION_REF}?competition={signal_competition}",
     }
 
     caveats = MODEL_CAVEATS + GAP_CAVEATS + [SIGNAL_STAKE_CAVEAT, POSTERIOR_CAVEAT]
@@ -6220,8 +6368,9 @@ def build_signal_ledger_rows(request_data: dict[str, Any]) -> dict[str, Any]:
         evt_markets = by_urn.get(event_urn) or []
         if not event_urn or not evt_markets:
             continue
+        row_competition = _text(fc.get("competition")) or competition   # the forecast's own competition wins
         sig = compute_signal({"params": dict(sig_params, forecast=fc, markets=evt_markets,
-                                             event_urn=event_urn)}).get("data", {}).get("signal", {})
+                                             event_urn=event_urn, competition=row_competition)}).get("data", {}).get("signal", {})
         fixture_id = _text((fc.get("provider_ids") or {}).get("api_football"))
         kickoff = fc.get("schema:startDate")
         posterior_meta = sig.get("posterior") or {}
@@ -6236,7 +6385,7 @@ def build_signal_ledger_rows(request_data: dict[str, Any]) -> dict[str, Any]:
                         "event_urn": event_urn,
                         "outcome": leg.get("outcome"),
                         "outcome_name": leg.get("outcome_name"),
-                        "competition": competition,
+                        "competition": row_competition,
                         "kickoff": kickoff,
                         "fixture_id": fixture_id,
                         "data_source": fc.get("data_source"),
@@ -6331,16 +6480,8 @@ def compute_clv(request_data: dict[str, Any]) -> dict[str, Any]:
     """
     params = _params(request_data)
 
-    by_fid: dict[str, tuple[int, int]] = {}
-    for f in _as_list(params.get("finished_fixtures")):
-        if not isinstance(f, dict):
-            continue
-        if _text(((f.get("fixture") or {}).get("status") or {}).get("short")).upper() not in _FINAL_STATUS:
-            continue
-        fid = _text((f.get("fixture") or {}).get("id"))
-        goals = f.get("goals") or {}
-        if fid and goals.get("home") is not None and goals.get("away") is not None:
-            by_fid[fid] = (int(goals["home"]), int(goals["away"]))
+    # regulation-time result: 1X2 legs settle on the 90 minutes (see _final_results_by_fixture)
+    by_fid = _final_results_by_fixture(params.get("finished_fixtures"))
 
     snaps_by_cid: dict[str, list[dict[str, Any]]] = {}
     for s in _as_list(params.get("snapshots")):
@@ -6586,8 +6727,14 @@ CALIBRATION_CAVEAT = (
 )
 
 
-def _final_results_by_fixture(finished_fixtures: Any) -> dict[str, tuple[int, int]]:
-    """api-football fixture id -> (home_goals, away_goals) for FT/AET/PEN fixtures."""
+def _final_results_by_fixture(finished_fixtures: Any, regulation_time: bool = True) -> dict[str, tuple[int, int]]:
+    """api-football fixture id -> (home_goals, away_goals) for FT/AET/PEN fixtures.
+
+    1X2 markets (and Kalshi "Reg Time" legs, and the Dixon-Coles forecast) are about the 90
+    minutes, so a knockout tie decided in extra time or on penalties must settle on
+    `score.fulltime`, not on the final `goals` -- otherwise a regulation-time draw scores as
+    a home/away win and every source looks wrong at once (seen on world-cup-2: knockout
+    draws priced 0.99 by Kalshi settled as losses). `regulation_time=False` keeps `goals`."""
     by_fid: dict[str, tuple[int, int]] = {}
     for f in _as_list(finished_fixtures):
         if not isinstance(f, dict):
@@ -6597,6 +6744,11 @@ def _final_results_by_fixture(finished_fixtures: Any) -> dict[str, tuple[int, in
             continue
         fid = _text(fixture.get("id"))
         goals = f.get("goals") or {}
+        if regulation_time:
+            score = f.get("score") if isinstance(f.get("score"), dict) else {}
+            fulltime = score.get("fulltime") if isinstance(score.get("fulltime"), dict) else {}
+            if fulltime.get("home") is not None and fulltime.get("away") is not None:
+                goals = fulltime
         if fid and goals.get("home") is not None and goals.get("away") is not None:
             by_fid[fid] = (int(goals["home"]), int(goals["away"]))
     return by_fid
@@ -6858,5 +7010,24 @@ def compute_calibration(request_data: dict[str, Any]) -> dict[str, Any]:
     }
     if venue and venue not in by_source:
         report["warnings"] = [f"no settled rows priced by '{venue}' in the window"]
-    return {"status": True, "data": {"calibration": report, "_id": CALIBRATION_REPORT_ID,
-                                     "metadata": {"event_urn": CALIBRATION_REPORT_ID}}}
+    report_id = f"worldcup:calibration-report:{competition}" if competition else CALIBRATION_REPORT_ID
+    data: dict[str, Any] = {"calibration": report, "_id": report_id, "metadata": {"event_urn": report_id}}
+
+    # fatia 4: one report per competition next to the aggregate -- catalogs and weights are per
+    # competition, so get-signal reads the competition's own learned weights (falling back to
+    # the aggregate, then to the v0 priors). Each chains from its own previous report.
+    if params.get("split_by_competition") and not competition:
+        by_comp = params.get("weights_by_competition") if isinstance(params.get("weights_by_competition"), dict) else {}
+        updated_by_comp = params.get("updated_by_competition") if isinstance(params.get("updated_by_competition"), dict) else {}
+        slugs = sorted({_lower(r.get("competition")) for r in _as_list(params.get("rows"))
+                        if isinstance(r, dict) and _text(r.get("competition"))})
+        reports = [{"_id": report_id, "metadata": {"event_urn": report_id}, "calibration": report}]
+        for slug in slugs:
+            sub = dict(params, competition=slug, split_by_competition=False,
+                       weights_in_use=by_comp.get(slug) or params.get("weights_in_use") or {},
+                       previous_weights_updated_at=updated_by_comp.get(slug) or "")
+            sub_data = compute_calibration({"params": sub})["data"]
+            reports.append({"_id": sub_data["_id"], "metadata": sub_data["metadata"], "calibration": sub_data["calibration"]})
+        data["reports"] = reports
+        data["competitions"] = slugs
+    return {"status": True, "data": data}
