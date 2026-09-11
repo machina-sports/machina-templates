@@ -1,7 +1,7 @@
 agent:
   name: machina-read-daily
-  title: Machina Read - Daily native edition
-  description: Produce one validated contextual sports read each day using native workflows; consumers only read the stored result.
+  title: Machina Read - Daily best story
+  description: Select and produce one validated best sports story each day using native workflows; consumers only read the stored result.
   status: inactive
   jobs:
     - name: machina-read-refresh
