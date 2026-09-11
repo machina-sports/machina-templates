@@ -1,0 +1,19 @@
+connector:
+  name: machina-read-multisport
+  description: Pure multi-sport evidence compaction, bounded best-story candidate assembly and
+    publication validation for native Machina Read v4, with explicit v3 compatibility. No I/O or orchestration.
+  filename: machina-read-multisport.py
+  filetype: pyscript
+  commands:
+  - name: Initialize
+    value: initialize
+  - name: Cached
+    value: cached
+  - name: Compact
+    value: compact
+  - name: Assemble
+    value: assemble
+  - name: Finalize
+    value: finalize
+  - name: Health
+    value: health
