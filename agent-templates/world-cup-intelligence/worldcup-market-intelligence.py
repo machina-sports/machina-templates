@@ -5575,10 +5575,12 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
 
     # -- posterior (fatia 1): the model is one source of evidence among the venues ----------
     weights = dict(DEFAULT_SOURCE_WEIGHTS)
+    weights_learned = False   # fatia 3: weights handed in by the calibration loop replace the v0 priors
     if isinstance(params.get("source_weights"), dict):
         for k, v in params["source_weights"].items():
             try:
                 weights[_lower(k)] = max(0.0, float(v))
+                weights_learned = True
             except (TypeError, ValueError):
                 continue
     model_weight = _num(params.get("model_weight"), weights.get("model", 0.8))
@@ -5762,6 +5764,10 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
         "abstain_reasons": abstain_reasons,
         "top_pick": posterior_top["outcome"] if posterior_top else None,
         "summary": post_summary,
+        # fatia 3: where the weights came from, and where their track record lives
+        "weights_source": "learned" if weights_learned else "default",
+        "weights_updated_at": _text(params.get("weights_updated_at")) or None,
+        "calibration_ref": CALIBRATION_REF,
     }
 
     caveats = MODEL_CAVEATS + GAP_CAVEATS + [SIGNAL_STAKE_CAVEAT, POSTERIOR_CAVEAT]
@@ -6174,10 +6180,21 @@ def build_signal_ledger_rows(request_data: dict[str, Any]) -> dict[str, Any]:
     FIRST time we flagged value (the true entry).
 
     Params: forecasts[], markets[], existing_ids[] (already-logged row ids), now_iso
-      (optional), min_edge_bps / kelly_fraction / fee_bps (passed through to compute_signal).
+      (optional), min_edge_bps / kelly_fraction / fee_bps / source_weights / weights_updated_at
+      (passed through to compute_signal).
+
+    Calibration sample (fatia 3): unless emit_calibration is False, ALSO emits one
+    `calibration_rows` entry per 1X2 leg of every forecast with markets -- value or not --
+    carrying each source's probability (`sources`), the posterior, the model and the best
+    market price, so the resolved result can score every source without the value-pick
+    selection bias of the CLV ledger. Insert-only too (existing_calibration_ids), id
+    "{event_urn}:{outcome}:cal"; `competition` tags the rows (default world-cup-2026).
     """
     params = _params(request_data)
     existing = {_text(x) for x in _as_list(params.get("existing_ids")) if _text(x)}
+    existing_cal = {_text(x) for x in _as_list(params.get("existing_calibration_ids")) if _text(x)}
+    emit_calibration = params.get("emit_calibration") is not False
+    competition = _text(params.get("competition")) or "world-cup-2026"
     now_iso = _text(params.get("now_iso")) or _now_iso()
 
     by_urn: dict[str, list[dict[str, Any]]] = {}
@@ -6188,11 +6205,14 @@ def build_signal_ledger_rows(request_data: dict[str, Any]) -> dict[str, Any]:
         if urn:
             by_urn.setdefault(urn, []).append(m)
 
-    sig_params = {k: params.get(k) for k in ("min_edge_bps", "kelly_fraction", "fee_bps")
+    sig_params = {k: params.get(k) for k in ("min_edge_bps", "kelly_fraction", "fee_bps",
+                                              "source_weights", "weights_updated_at")
                   if params.get(k) is not None}
 
     rows: list[dict[str, Any]] = []
+    cal_rows: list[dict[str, Any]] = []
     seen: set[str] = set()
+    seen_cal: set[str] = set()
     for fc in _as_list(params.get("forecasts")):
         if not isinstance(fc, dict):
             continue
@@ -6204,7 +6224,37 @@ def build_signal_ledger_rows(request_data: dict[str, Any]) -> dict[str, Any]:
                                              event_urn=event_urn)}).get("data", {}).get("signal", {})
         fixture_id = _text((fc.get("provider_ids") or {}).get("api_football"))
         kickoff = fc.get("schema:startDate")
+        posterior_meta = sig.get("posterior") or {}
         for leg in (sig.get("legs") or []):
+            if emit_calibration:
+                cal_id = "%s:%s:cal" % (event_urn, leg.get("outcome"))
+                if cal_id not in existing_cal and cal_id not in seen_cal:
+                    seen_cal.add(cal_id)
+                    cal_rows.append({
+                        "_id": cal_id,
+                        "metadata": {"event_urn": event_urn, "outcome": leg.get("outcome"), "kind": "calibration"},
+                        "event_urn": event_urn,
+                        "outcome": leg.get("outcome"),
+                        "outcome_name": leg.get("outcome_name"),
+                        "competition": competition,
+                        "kickoff": kickoff,
+                        "fixture_id": fixture_id,
+                        "data_source": fc.get("data_source"),
+                        "model_prob": leg.get("model_prob"),
+                        "posterior_prob": leg.get("posterior_prob"),
+                        "market_prob": leg.get("best_price"),
+                        "best_venue": leg.get("best_venue"),
+                        "sources": [{k: e.get(k) for k in ("source", "family", "p", "weight", "follower_of")}
+                                    for e in (leg.get("evidence") or []) if isinstance(e, dict)],
+                        "recommendation": leg.get("recommendation"),
+                        "posterior_recommendation": leg.get("posterior_recommendation"),
+                        "weights_used": posterior_meta.get("weights"),
+                        "weights_source": posterior_meta.get("weights_source"),
+                        "posterior_version": POSTERIOR_VERSION,
+                        "logged_at": now_iso,
+                        "status": "pending",
+                        "disclaimer": DISCLAIMER,
+                    })
             if leg.get("recommendation") != "value":
                 continue
             rid = "%s:%s" % (event_urn, leg.get("outcome"))
@@ -6236,7 +6286,8 @@ def build_signal_ledger_rows(request_data: dict[str, Any]) -> dict[str, Any]:
                 "status": "pending",
                 "disclaimer": DISCLAIMER,
             })
-    return {"status": True, "data": {"ledger_rows": rows, "count": len(rows)}}
+    return {"status": True, "data": {"ledger_rows": rows, "count": len(rows),
+                                     "calibration_rows": cal_rows, "calibration_count": len(cal_rows)}}
 
 
 def _closing_price(snaps: list[dict[str, Any]], kickoff: Any, outcome_name: str) -> float | None:
@@ -6505,3 +6556,275 @@ def select_prematch_fixtures(request_data: dict[str, Any]) -> dict[str, Any]:
         "status": True,
         "data": {"fixtures": fixtures, "count": len(fixtures), "considered": len(_as_list(params.get("events")))},
     }
+
+
+# -- Calibration: Brier per source, learned weights (OG Edge, fatia 3) --------
+#
+# Markets resolve, so the fusion weights need not stay operator priors. Every
+# forecast with markets logs one calibration row per 1X2 outcome (ALL legs, not
+# only the value picks the CLV ledger keeps), the row is settled against the
+# final score, and the report scores the fused posterior, the model, the best
+# market price and each source family with Brier, log-loss and a reliability
+# curve. Weights are learned by an exponential blend towards 1/Brier, so the
+# best source drifts to 1.0 and the rest settle at their relative sharpness.
+# "/calibration is the product inside the product": nobody should read a 55%
+# posterior without seeing, in the same contract, how often 55% came true.
+
+CALIBRATION_VERSION = "calibration v0"
+CALIBRATION_LAMBDA = 0.2             # memory of the weight update: w <- (1-λ)·w + λ·target
+CALIBRATION_MIN_RESOLVED = 30        # settled rows a source needs before its weight moves
+CALIBRATION_MIN_SAMPLE = 50          # report-level sufficiency
+CALIBRATION_WEIGHT_FLOOR = 0.1
+CALIBRATION_BINS = 10
+CALIBRATION_WINDOW_DAYS = 90
+CALIBRATION_FAMILIES = ("model", "bookmaker", "polymarket", "kalshi")
+CALIBRATION_REPORT_ID = "worldcup:calibration-report:aggregate"
+CALIBRATION_REF = "/world-cup/v1/calibration"
+CALIBRATION_CAVEAT = (
+    "calibration v0: Brier/log-loss over settled 1X2 legs of forecasts that had markets (one row "
+    "per outcome, value pick or not); reliability bins under 10 rows are noisy; learned weights "
+    "move only for sources with >= 30 settled rows, by an exponential blend towards 1/Brier "
+    "relative to the best source, clipped to [0.1, 1.0]. Decision support, not betting advice."
+)
+
+
+def _final_results_by_fixture(finished_fixtures: Any) -> dict[str, tuple[int, int]]:
+    """api-football fixture id -> (home_goals, away_goals) for FT/AET/PEN fixtures."""
+    by_fid: dict[str, tuple[int, int]] = {}
+    for f in _as_list(finished_fixtures):
+        if not isinstance(f, dict):
+            continue
+        fixture = f.get("fixture") or {}
+        if _text((fixture.get("status") or {}).get("short")).upper() not in _FINAL_STATUS:
+            continue
+        fid = _text(fixture.get("id"))
+        goals = f.get("goals") or {}
+        if fid and goals.get("home") is not None and goals.get("away") is not None:
+            by_fid[fid] = (int(goals["home"]), int(goals["away"]))
+    return by_fid
+
+
+def settle_calibration_rows(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Settle pending calibration rows whose fixture is final: won = (row outcome == actual 1X2).
+
+    Params: rows[] (worldcup:calibration-sample), finished_fixtures[] (api-football), now_iso.
+    Already-settled rows carry forward unchanged; rows whose fixture is not final stay pending.
+    """
+    params = _params(request_data)
+    by_fid = _final_results_by_fixture(params.get("finished_fixtures"))
+    now_iso = _text(params.get("now_iso")) or _now_iso()
+    rows: list[dict[str, Any]] = []
+    settled: list[dict[str, Any]] = []
+    for row in _as_list(params.get("rows")):
+        if not isinstance(row, dict):
+            continue
+        if row.get("status") == "settled" and row.get("won") is not None:
+            rows.append(row)
+            continue
+        result = by_fid.get(_text(row.get("fixture_id")))
+        if not result:
+            rows.append(row)
+            continue
+        actual = _result_outcome(result[0], result[1])
+        updated = dict(row)
+        updated.update({
+            "actual_outcome": actual,
+            "won": 1 if _text(row.get("outcome")) == actual else 0,
+            "status": "settled",
+            "settled_at": now_iso,
+        })
+        rows.append(updated)
+        settled.append(updated)
+    return {"status": True, "data": {"rows": rows, "settled_rows": settled, "settled_count": len(settled)}}
+
+
+def _calibration_metrics(pairs: list[tuple[float, int]], bins: int = CALIBRATION_BINS) -> dict[str, Any]:
+    """Brier, log-loss, base rate and a reliability curve for (probability, outcome) pairs."""
+    n = len(pairs)
+    if n == 0:
+        return {"n": 0, "brier": None, "log_loss": None, "base_rate": None, "calibration_error": None, "reliability": []}
+    eps = 1e-6
+    brier = sum((p - y) ** 2 for p, y in pairs) / n
+    log_loss = 0.0
+    for p, y in pairs:
+        q = min(max(p, eps), 1.0 - eps)
+        log_loss -= y * math.log(q) + (1 - y) * math.log(1.0 - q)
+    log_loss /= n
+    buckets = [{"n": 0, "sum_p": 0.0, "wins": 0} for _ in range(bins)]
+    for p, y in pairs:
+        idx = min(bins - 1, max(0, int(p * bins)))
+        buckets[idx]["n"] += 1
+        buckets[idx]["sum_p"] += p
+        buckets[idx]["wins"] += y
+    reliability: list[dict[str, Any]] = []
+    error = 0.0
+    for i, bucket in enumerate(buckets):
+        if not bucket["n"]:
+            continue
+        predicted = bucket["sum_p"] / bucket["n"]
+        observed = bucket["wins"] / bucket["n"]
+        reliability.append({"bin": f"{i / bins:.1f}-{(i + 1) / bins:.1f}", "predicted": round(predicted, 4),
+                            "observed": round(observed, 4), "n": bucket["n"]})
+        error += bucket["n"] * abs(predicted - observed)
+    return {
+        "n": n,
+        "brier": round(brier, 4),
+        "log_loss": round(log_loss, 4),
+        "base_rate": round(sum(y for _, y in pairs) / n, 4),
+        "calibration_error": round(error / n, 4),
+        "reliability": reliability,
+    }
+
+
+def _learn_weights(weights_in_use: dict[str, float], by_source: dict[str, dict[str, Any]],
+                   lam: float, min_resolved: int) -> tuple[dict[str, float], list[str]]:
+    """w_i <- (1-λ)·w_i + λ·(Brier_best / Brier_i), clipped to [floor, 1.0].
+
+    The target of each eligible source is its inverse Brier relative to the best eligible source,
+    so the sharpest source drifts towards 1.0 and the others towards their relative sharpness;
+    λ is the memory (small: do not chase noise; large: react to a degraded source). Sources with
+    fewer than min_resolved settled rows keep their weight in use. Returns (weights, updated)."""
+    learned = {k: round(float(v), 4) for k, v in weights_in_use.items()}
+    eligible = {fam: 1.0 / stats["brier"] for fam, stats in by_source.items()
+                if stats.get("n", 0) >= min_resolved and stats.get("brier")}
+    if not eligible:
+        return learned, []
+    raw_max = max(eligible.values())
+    for fam, raw in eligible.items():
+        current = float(weights_in_use.get(fam, DEFAULT_VENUE_WEIGHT))
+        blended = (1.0 - lam) * current + lam * (raw / raw_max)
+        learned[fam] = round(min(1.0, max(CALIBRATION_WEIGHT_FLOOR, blended)), 4)
+    return learned, sorted(eligible)
+
+
+def compute_calibration(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Calibration report over settled calibration rows (OG Edge, fatia 3).
+
+    Params:
+      - rows: worldcup:calibration-sample rows (pending rows are counted, settled ones scored)
+      - weights_in_use: fusion weights currently applied (defaults to DEFAULT_SOURCE_WEIGHTS)
+      - previous_weights_updated_at: carried when no weight moves this run
+      - window_days (90), competition ('' = all), venue ('' = none highlighted)
+      - lambda, min_resolved, min_sample, now_iso (optional overrides)
+
+    Scores the posterior, the model, the best market price and each source family (Brier,
+    log-loss, reliability curve), decides `posterior_beats_market`, and learns the weights.
+    Pure arithmetic; the same rows always give the same report.
+    """
+    params = _params(request_data)
+    now_iso = _text(params.get("now_iso")) or _now_iso()
+    now_ts = _ts_epoch(now_iso) or int(time.time())
+    window_days = _num(params.get("window_days"), CALIBRATION_WINDOW_DAYS)
+    competition = _lower(params.get("competition"))
+    venue = _lower(params.get("venue"))
+    lam = min(1.0, max(0.0, _num(params.get("lambda"), CALIBRATION_LAMBDA)))
+    min_resolved = int(_num(params.get("min_resolved"), CALIBRATION_MIN_RESOLVED))
+    min_sample = int(_num(params.get("min_sample"), CALIBRATION_MIN_SAMPLE))
+    weights_in_use = dict(DEFAULT_SOURCE_WEIGHTS)
+    if isinstance(params.get("weights_in_use"), dict):
+        for k, v in params["weights_in_use"].items():
+            try:
+                weights_in_use[_lower(k)] = max(0.0, float(v))
+            except (TypeError, ValueError):
+                continue
+    cutoff_ts = int(now_ts - window_days * 86400) if window_days and window_days > 0 else None
+
+    settled: list[dict[str, Any]] = []
+    n_pending = n_outside = 0
+    for row in _as_list(params.get("rows")):
+        if not isinstance(row, dict):
+            continue
+        if competition and _lower(row.get("competition")) != competition:
+            continue
+        if row.get("status") != "settled" or row.get("won") is None:
+            n_pending += 1
+            continue
+        kickoff_ts = _ts_epoch(row.get("kickoff"))
+        if cutoff_ts is not None and kickoff_ts is not None and kickoff_ts < cutoff_ts:
+            n_outside += 1
+            continue
+        settled.append(row)
+
+    pairs: dict[str, list[tuple[float, int]]] = {"posterior": [], "model": [], "market": []}
+    family_pairs: dict[str, list[tuple[float, int]]] = {fam: [] for fam in CALIBRATION_FAMILIES}
+    for row in settled:
+        y = 1 if row.get("won") else 0
+        for key, field in (("posterior", "posterior_prob"), ("model", "model_prob"), ("market", "market_prob")):
+            if row.get(field) is not None:
+                pairs[key].append((_to_float(row.get(field)), y))
+        per_family: dict[str, list[float]] = {}
+        for src in _as_list(row.get("sources")):
+            if not isinstance(src, dict) or src.get("p") is None:
+                continue
+            fam = _lower(src.get("family"))
+            if fam in family_pairs:
+                per_family.setdefault(fam, []).append(_to_float(src.get("p")))
+        for fam, probs in per_family.items():
+            family_pairs[fam].append((sum(probs) / len(probs), y))
+
+    posterior = _calibration_metrics(pairs["posterior"])
+    model = _calibration_metrics(pairs["model"])
+    market = _calibration_metrics(pairs["market"])
+    by_source: dict[str, dict[str, Any]] = {}
+    for fam in CALIBRATION_FAMILIES:
+        metrics = _calibration_metrics(family_pairs[fam])
+        if metrics["n"] == 0:
+            continue
+        by_source[fam] = dict(metrics, weight_in_use=weights_in_use.get(fam),
+                              sample_sufficient=metrics["n"] >= min_resolved)
+    learned, updated = _learn_weights(weights_in_use, by_source, lam, min_resolved)
+    for fam in by_source:
+        by_source[fam]["weight_learned"] = learned.get(fam)
+
+    n_resolved = len(settled)
+    uniform = round(sum((1.0 / 3.0 - (1 if r.get("won") else 0)) ** 2 for r in settled) / n_resolved, 4) if n_resolved else None
+    beats = (posterior["brier"] < market["brier"]) if (posterior["brier"] is not None and market["brier"] is not None) else None
+    weights_updated_at = now_iso if updated else (_text(params.get("previous_weights_updated_at")) or None)
+
+    if not n_resolved:
+        summary = "No settled calibration rows in the window yet; weights stay as in use."
+    else:
+        vs_market = ("beats" if beats else "does not beat") if beats is not None else "cannot be compared with"
+        summary = ("Posterior Brier %s over %d settled legs (%s market %s, model %s, uniform %s); "
+                   "log-loss %s; weights %s." % (
+                       posterior["brier"], n_resolved, vs_market, market["brier"], model["brier"], uniform,
+                       posterior["log_loss"],
+                       ("updated for " + ", ".join(updated)) if updated else "unchanged (no source reached %d settled rows)" % min_resolved))
+
+    report = {
+        "version": CALIBRATION_VERSION,
+        "competition": competition or "all",
+        "venue": venue or None,
+        "window_days": window_days,
+        "cutoff": datetime.fromtimestamp(cutoff_ts, tz=timezone.utc).isoformat() if cutoff_ts is not None else None,
+        "n_resolved": n_resolved,
+        "n_pending": n_pending,
+        "n_outside_window": n_outside,
+        "sample_size_sufficient": n_resolved >= min_sample,
+        "brier": posterior["brier"],
+        "brier_market_baseline": market["brier"],
+        "brier_model": model["brier"],
+        "brier_uniform_baseline": uniform,
+        "log_loss": posterior["log_loss"],
+        "log_loss_market": market["log_loss"],
+        "calibration_error": posterior["calibration_error"],
+        "posterior_beats_market": beats,
+        "reliability": posterior["reliability"],
+        "reliability_market": market["reliability"],
+        "by_source": by_source,
+        "venue_stats": by_source.get(venue) if venue else None,
+        "weights_in_use": weights_in_use,
+        "weights_learned": learned,
+        "weights_updated": updated,
+        "weights_updated_at": weights_updated_at,
+        "lambda": lam,
+        "min_resolved": min_resolved,
+        "computed_at": now_iso,
+        "summary": summary,
+        "caveat": CALIBRATION_CAVEAT,
+        "disclaimer": DISCLAIMER,
+    }
+    if venue and venue not in by_source:
+        report["warnings"] = [f"no settled rows priced by '{venue}' in the window"]
+    return {"status": True, "data": {"calibration": report, "_id": CALIBRATION_REPORT_ID,
+                                     "metadata": {"event_urn": CALIBRATION_REPORT_ID}}}
