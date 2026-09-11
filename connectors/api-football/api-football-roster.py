@@ -185,7 +185,7 @@ def _rosters_from_lineups(entries, expected_teams, profile_names):
         return None, "fixture lineups are absent"
     rosters_by_team = {}
     seen_teams = set()
-    seen_players = set()
+    seen_players = {}
     for entry in entries:
         team = entry.get("team") if isinstance(entry, dict) else None
         team_id = _text(team.get("id")) if isinstance(team, dict) else None
@@ -210,8 +210,13 @@ def _rosters_from_lineups(entries, expected_teams, profile_names):
                     return None, error
                 player_id = _text(normalized_player["id"])
                 if player_id in seen_players:
+                    # A verbatim repeat inside one team's lineup is a provider
+                    # quirk. The same id on the other team, or under another
+                    # name, is a real identity conflict.
+                    if seen_players[player_id] == (team_id, normalized_player["name"]):
+                        continue
                     return None, "a provider player id appears more than once"
-                seen_players.add(player_id)
+                seen_players[player_id] = (team_id, normalized_player["name"])
                 players.append(normalized_player)
         if not players:
             return None, "each fixture lineup must contain at least one player"
@@ -246,7 +251,7 @@ def _normalize_squad(response, expected_team_id, fixture_team, profile_names):
         normalized_team["name"] = team_name
 
     normalized_players = []
-    seen = set()
+    seen = {}
     for player in players:
         normalized_player, error = _player_fields(
             player, profile_names=profile_names)
@@ -254,8 +259,13 @@ def _normalize_squad(response, expected_team_id, fixture_team, profile_names):
             return None, error
         player_id = _text(normalized_player["id"])
         if player_id in seen:
+            # The provider sometimes repeats a row verbatim. The same player
+            # listed twice is not an identity conflict, so keep the first row
+            # and move on; the same id under another name still refuses.
+            if seen[player_id] == normalized_player["name"]:
+                continue
             return None, "a squad contains a duplicate provider player id"
-        seen.add(player_id)
+        seen[player_id] = normalized_player["name"]
         normalized_players.append(normalized_player)
     return {"team": normalized_team, "players": normalized_players}, None
 
