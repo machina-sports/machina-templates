@@ -242,7 +242,10 @@ workflow:
         window_hours: "$.get('window_hours', 24)"
         research: "$.get('research', '')"
         research_sources: "$.get('research_sources', [])"
-        research_ran: "True"
+        # Read from state, never a constant: a task's inputs are evaluated and
+        # written into the shared state BEFORE its own condition is checked, so
+        # a constant `True` here would satisfy the condition above by itself.
+        research_ran: "$.get('research_ran', False)"
       outputs:
         belief: "$"
 
