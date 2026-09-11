@@ -2715,3 +2715,184 @@ class TestComputeMarketStability:
         row = rows["kalshi:MEX"]
         assert set(["cache_id", "confidence", "stable_since", "drivers", "outcome", "price"]).issubset(row.keys())
         assert any("latency is not benchmarked" in w for w in data["warnings"])
+
+
+# -- Posterior fusion (OG Edge, fatia 1) ----------------------------------------------------
+
+import math as _math
+
+_fuse_bucket = _module._fuse_bucket
+_venue_bucket_probs = _module._venue_bucket_probs
+
+
+def _book(source, brazil, draw, morocco):
+    """A venue quoting the full 1X2 book as three market docs (one per outcome)."""
+    return [_ok(source, "Brazil", brazil), _ok(source, "Draw", draw), _ok(source, "Morocco", morocco)]
+
+
+class TestSignalPosterior:
+    def test_fusion_matches_the_design_note_worked_example(self):
+        # "Bayes no OG Edge" §2: bookmaker 0.52 (w1.0), Polymarket 0.55 (w0.6), Kalshi 0.50 (w0.4),
+        # model 0.62 (w0.8) -> posterior 0.5527, +5.3pp over 0.50, every source >0.05 logit apart.
+        f = _fuse_bucket([
+            {"source": "model", "family": "model", "p": 0.62, "weight": 0.8},
+            {"source": "bwin", "family": "bookmaker", "p": 0.52, "weight": 1.0},
+            {"source": "polymarket", "family": "polymarket", "p": 0.55, "weight": 0.6},
+            {"source": "kalshi", "family": "kalshi", "p": 0.50, "weight": 0.4},
+        ])
+        assert abs(f["posterior_raw"] - 0.5527) < 0.0006
+        assert f["effective_sources"] == 2.8
+        by = {r["source"]: r for r in f["evidence"]}
+        assert all(r["follower_of"] is None for r in f["evidence"])
+        assert by["model"]["share"] == round(0.8 / 2.8, 4)
+        assert by["model"]["pull_pp"] > 0 > by["kalshi"]["pull_pp"]  # model pulls up, kalshi pulls down
+        assert abs(sum(r["share"] for r in f["evidence"]) - 1.0) < 1e-6
+
+    def test_follower_venue_is_discounted(self):
+        # kalshi quotes bwin's line (same logit) -> weight 0.4 * 0.2, flagged as follower of bwin
+        f = _fuse_bucket([
+            {"source": "model", "family": "model", "p": 0.60, "weight": 0.8},
+            {"source": "bwin", "family": "bookmaker", "p": 0.52, "weight": 1.0},
+            {"source": "kalshi", "family": "kalshi", "p": 0.52, "weight": 0.4},
+        ])
+        by = {r["source"]: r for r in f["evidence"]}
+        assert by["kalshi"]["follower_of"] == "bwin" and by["kalshi"]["weight"] == 0.08
+        assert by["bwin"]["follower_of"] is None
+        assert f["effective_sources"] == round((0.8 + 1.0 + 0.08) / 1.0, 2)
+
+    def test_model_is_never_a_follower_and_bad_inputs_are_dropped(self):
+        f = _fuse_bucket([
+            {"source": "model", "family": "model", "p": 0.52, "weight": 0.8},
+            {"source": "bwin", "family": "bookmaker", "p": 0.52, "weight": 1.0},
+            {"source": "broken", "family": "venue", "p": 0.0, "weight": 0.5},     # dropped
+            {"source": "zero", "family": "venue", "p": 0.5, "weight": 0.0},       # dropped
+        ])
+        by = {r["source"]: r for r in f["evidence"]}
+        assert set(by) == {"model", "bwin"} and by["model"]["follower_of"] is None
+        assert _fuse_bucket([]) == {}
+
+    def test_venue_probs_devig_full_books_and_keep_single_legs_raw(self):
+        markets = _book("bwin", 0.55, 0.30, 0.25) + [_ok("kalshi", "Brazil", 0.50)]
+        vp = _venue_bucket_probs(markets, {"home_win", "draw", "away_win"}, "brazil", "morocco")
+        assert vp["bwin"]["home_win"] == 0.5 and abs(sum(vp["bwin"].values()) - 1.0) < 1e-6  # 1.10 book de-vigged
+        assert vp["kalshi"] == {"home_win": 0.5}                                             # lone YES stays raw
+
+    def test_signal_carries_posterior_and_keeps_legacy_fields(self):
+        markets = _book("bwin", 0.52, 0.25, 0.23) + [_ok("polymarket", "Brazil", 0.55), _ok("kalshi", "Brazil", 0.50)]
+        fc = _sig_forecast(probs={"home_win": 0.62, "draw": 0.23, "away_win": 0.15})
+        r = compute_signal({"params": {"forecast": fc, "markets": markets}})["data"]
+        sig = r["signal"]
+        home = [l for l in sig["legs"] if l["outcome"] == "home_win"][0]
+        # legacy model-vs-price fields untouched
+        assert home["model_prob"] == 0.62 and home["best_price"] == 0.50 and home["edge"] == 0.12
+        assert home["recommendation"] == "value" and r["top_pick"]["outcome"] == "home_win"
+        # posterior fields ride along
+        assert 0.5 < home["posterior_prob"] < 0.62               # pulled toward the venues
+        assert home["effective_sources"] == 2.8 and home["posterior_recommendation"] == "value"
+        assert home["posterior_edge_bps"] == round((home["posterior_prob"] - 0.50) * 10000)
+        assert home["posterior_kelly_stake"] <= home["posterior_kelly_full"] * 0.25
+        assert 0 < home["kelly_shrink"] <= 1.0
+        weights = {e["source"]: e["weight"] for e in home["evidence"]}
+        assert weights == {"model": 0.8, "bwin": 1.0, "polymarket": 0.6, "kalshi": 0.4}
+        post = sig["posterior"]
+        assert post["version"] == "posterior v0" and post["top_pick"] == "home_win"
+        assert abs(sum(post["by_outcome"].values()) - 1.0) < 1e-3   # per-outcome values are rounded to 4dp
+        assert 0 < post["entropy_bits"] <= _math.log2(3) and 0 < post["uncertainty"] <= 1
+        assert post["summary"].startswith("Posterior ")
+        assert any("posterior v0" in c for c in sig["caveats"])
+        # draw and away only have model + bwin -> single-source abstention, never a value call
+        draw = [l for l in sig["legs"] if l["outcome"] == "draw"][0]
+        assert draw["effective_sources"] == 1.8 and draw["abstain_reason"] == "single_source"
+
+    def test_seeded_model_weighs_half(self):
+        markets = _book("bwin", 0.52, 0.25, 0.23)
+        r = compute_signal({"params": {"forecast": _sig_forecast(data_source="seed", confidence=0.2), "markets": markets}})["data"]
+        home = [l for l in r["signal"]["legs"] if l["outcome"] == "home_win"][0]
+        assert {e["source"]: e["weight"] for e in home["evidence"]}["model"] == 0.4
+        assert r["signal"]["posterior"]["weights"]["model"] == 0.4
+
+    def test_single_venue_abstains_as_single_source(self):
+        r = compute_signal({"params": {"forecast": _sig_forecast(), "markets": [_ok("kalshi", "Brazil", 0.50)]}})["data"]
+        leg = r["signal"]["legs"][0]
+        assert leg["recommendation"] == "value"                     # legacy still calls value
+        assert leg["posterior_recommendation"] == "abstain" and leg["abstain_reason"] == "single_source"
+        assert r["signal"]["posterior"]["top_pick"] is None and r["signal"]["posterior"]["abstain_reasons"] == ["single_source"]
+        assert "abstains" in r["signal"]["posterior"]["summary"]
+
+    def test_near_uniform_outcomes_abstain_on_uncertainty(self):
+        fc = _sig_forecast(probs={"home_win": 0.34, "draw": 0.33, "away_win": 0.33})
+        markets = _book("bwin", 0.34, 0.33, 0.33) + _book("polymarket", 0.34, 0.33, 0.33)
+        r = compute_signal({"params": {"forecast": fc, "markets": markets}})["data"]
+        post = r["signal"]["posterior"]
+        assert post["uncertainty"] > 0.95 and post["abstain_reasons"] == ["high_uncertainty"]
+        assert all(l["posterior_recommendation"] == "abstain" for l in r["signal"]["legs"])
+
+    def test_sources_disagree_blocks_a_value_call(self):
+        # model far above every venue: the edge is model-only, so the posterior refuses to call value
+        fc = _sig_forecast(probs={"home_win": 0.80, "draw": 0.12, "away_win": 0.08})
+        # polymarket sits 0.08 logit above bwin, so it is NOT a follower and two real sources exist
+        markets = _book("bwin", 0.45, 0.30, 0.25) + _book("polymarket", 0.47, 0.29, 0.24)
+        r = compute_signal({"params": {"forecast": fc, "markets": markets, "min_edge_bps": 100}})["data"]
+        home = [l for l in r["signal"]["legs"] if l["outcome"] == "home_win"][0]
+        assert home["effective_sources"] >= 2 and home["posterior_edge_bps"] >= 100   # would be value on edge alone...
+        assert home["abstain_reason"] == "sources_disagree"                             # ...but the model is alone up there
+
+    def test_source_weight_overrides(self):
+        markets = _book("bwin", 0.52, 0.25, 0.23) + [_ok("polymarket", "Brazil", 0.55)]
+        r = compute_signal({"params": {"forecast": _sig_forecast(), "markets": markets,
+                                       "source_weights": {"polymarket": 1.5}, "model_weight": 0.2}})["data"]
+        home = [l for l in r["signal"]["legs"] if l["outcome"] == "home_win"][0]
+        w = {e["source"]: e["weight"] for e in home["evidence"]}
+        assert w["polymarket"] == 1.5 and w["model"] == 0.2 and w["bwin"] == 1.0
+        assert home["effective_sources"] == round((1.5 + 1.0 + 0.2) / 1.5, 2)
+
+    def test_no_markets_means_no_posterior_block_content(self):
+        r = compute_signal({"params": {"forecast": _sig_forecast(), "markets": []}})["data"]
+        post = r["signal"]["posterior"]
+        assert post["by_outcome"] and post["top_pick"] is None      # model alone still yields a distribution
+        assert r["signal"]["legs"] == []
+
+
+class TestPosteriorLedgerAndBrier:
+    def test_ledger_rows_carry_the_posterior(self):
+        markets = [_mkt("kalshi", "Brazil", 0.50, cache_id="c-bra"), _mkt("kalshi", "Draw", 0.30, cache_id="c-tie"),
+                   _mkt("kalshi", "Morocco", 0.22, cache_id="c-mar"), _mkt("polymarket", "Brazil", 0.51, cache_id="p-bra")]
+        out = build_signal_ledger_rows({"params": {"forecasts": [_ledger_forecast()], "markets": markets, "existing_ids": []}})["data"]
+        row = {r["_id"]: r for r in out["ledger_rows"]}["urn:ev:1:home_win"]
+        assert row["posterior_version"] == "posterior v0"
+        assert 0 < row["posterior_prob"] < 1 and row["posterior_recommendation"] in ("value", "no_edge", "abstain")
+        assert row["model_prob"] == 0.60 and row["entry_price"] == 0.50     # legacy row fields unchanged
+
+    def test_settlement_scores_brier_for_model_posterior_and_market(self):
+        snaps = [_snap("c-bra", "2026-06-19T17:00:00+00:00", "Brazil", 0.34)]
+        row = {"_id": "urn:ev:1:home_win", "event_urn": "urn:ev:1", "outcome": "home_win", "outcome_name": "Brazil",
+               "cache_id": "c-bra", "entry_price": 0.28, "model_prob": 0.60, "posterior_prob": 0.45,
+               "fixture_id": "100", "kickoff": "2026-06-19T18:00:00+00:00", "confidence_tier": "high", "status": "pending"}
+        final = [{"fixture": {"id": "100", "status": {"short": "FT"}}, "goals": {"home": 2, "away": 0}}]
+        settled = compute_clv({"params": {"ledger_rows": [row], "snapshots": snaps, "finished_fixtures": final}})["data"]["settled_rows"][0]
+        assert settled["won"] == 1
+        assert settled["brier_model"] == round((0.60 - 1) ** 2, 4)
+        assert settled["brier_posterior"] == round((0.45 - 1) ** 2, 4)
+        assert settled["brier_market_entry"] == round((0.28 - 1) ** 2, 4)
+
+    def test_settlement_without_posterior_leaves_it_null(self):
+        snaps = [_snap("c-bra", "2026-06-19T17:00:00+00:00", "Brazil", 0.34)]
+        row = {"_id": "urn:ev:1:home_win", "event_urn": "urn:ev:1", "outcome": "home_win", "outcome_name": "Brazil",
+               "cache_id": "c-bra", "entry_price": 0.28, "model_prob": 0.60,
+               "fixture_id": "100", "kickoff": "2026-06-19T18:00:00+00:00", "status": "pending"}
+        final = [{"fixture": {"id": "100", "status": {"short": "FT"}}, "goals": {"home": 0, "away": 1}}]
+        settled = compute_clv({"params": {"ledger_rows": [row], "snapshots": snaps, "finished_fixtures": final}})["data"]["settled_rows"][0]
+        assert settled["won"] == 0 and settled["brier_posterior"] is None and settled["brier_model"] == 0.36
+
+    def test_report_aggregates_brier_and_compares_posterior_to_market(self):
+        rows = [dict(_clv_row("CLV+", 1), brier_model=0.16, brier_posterior=0.09, brier_market_entry=0.25),
+                dict(_clv_row("CLV-", 0), brier_model=0.36, brier_posterior=0.25, brier_market_entry=0.16),
+                _clv_row("CLV=", 1)]                                   # legacy row without brier fields
+        rep = compute_clv_report({"params": {"clv_rows": rows}})["data"]["clv_report"]["brier"]
+        assert rep["model"] == 0.26 and rep["posterior"] == 0.17 and rep["market_entry"] == 0.205
+        assert rep["n"] == {"model": 2, "posterior": 2, "market_entry": 2}
+        assert rep["posterior_beats_market"] is True
+
+    def test_report_without_brier_rows_is_null_safe(self):
+        rep = compute_clv_report({"params": {"clv_rows": [_clv_row("CLV+", 1)]}})["data"]["clv_report"]["brier"]
+        assert rep["model"] is None and rep["posterior_beats_market"] is None and rep["n"]["posterior"] == 0

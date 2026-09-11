@@ -73,6 +73,21 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
   Each leg also carries `fair_decimal`/`fair_american` (model-implied odds) + `market_american`, a
   `confidence_tier` (high ≥12c / medium 6–12c / low; forced low when `edge_likely_model_noise`), and —
   when `fee_bps` is supplied — `effective_price`, `gross_edge`, and net-of-fee `edge`/`ev_per_dollar`/`kelly_*`.
+  **Posterior (additive, `posterior v0`):** every price source is treated as *evidence* about the outcome and the
+  model is one source among them. Per venue the implied probability of each 1X2 bucket is taken from the venue's
+  own book (de-vigged by its book sum when it prices every bucket, raw otherwise) and fused with the model in a
+  weighted log-odds pool (initial weights: bookmaker 1.0, model 0.8 — halved while `data_source != results` —,
+  polymarket 0.6, kalshi 0.4, unknown venue 0.5; override with `source_weights{}` / `model_weight`). A venue whose
+  logit sits within 0.05 of a heavier source is a *follower* and its weight is cut ×0.2. Each leg gains
+  `posterior_prob` (normalized across the 1X2 buckets), `posterior_edge`/`posterior_edge_bps`/`posterior_ev_per_dollar`,
+  `posterior_kelly_full`/`posterior_kelly_stake` (fractional Kelly × `kelly_shrink` = 1/(1+disagreement)),
+  `effective_sources` (Σweights / heaviest weight), `disagreement` (std of source logits), `evidence[]`
+  (`source`, `family`, `p`, `logit`, `weight`, `share`, `pull_pp`, `follower_of`) and `posterior_recommendation`
+  ∈ `value | no_edge | abstain` with `abstain_reason` ∈ `high_uncertainty` (normalized entropy > `max_uncertainty`,
+  default 0.95) | `single_source` (`effective_sources` < `min_effective_sources`, default 2) | `sources_disagree`
+  (`disagreement_pp`, the spread of the sources in probability points at the posterior, exceeds the edge). The signal carries a `posterior` block (`weights`, `by_outcome`,
+  `entropy_bits`, `uncertainty`, `effective_sources`, `abstain_reasons`, `top_pick`, `summary`). The legacy
+  model-vs-price fields and `recommendation` are unchanged. Design: note "Bayes no OG Edge", fatia 1.
 
 **Composite Skills (cached editorial cards)** — each serves a scoped cached candidate (idle cost = one doc search) or authors a new one on a cache miss / `force_regen`. Live-oriented cards use a TTL; final archive cards may be evergreen. Output is `skill_card` (the structured `body`) + `served_from` (`cache`|`generated`). All read-only/informational with the standard disclaimer; market-bearing cards keep resolution/liquidity/freshness caveats.
 - `worldcup-match-preview` (`event_urn`) — grounded preview; composes event + grounded news + optional model forecast + market snapshot. TTL 6h (FRESH).
@@ -278,6 +293,13 @@ Post-match audit. Compares each `worldcup:model-forecast` to the actual result (
 Read the aggregate doc to surface the model's published accuracy. `sample_size_sufficient` gates over-reading early-tournament numbers.
 
 ## CLV (closing line value) — `worldcup-log-signals` + `worldcup-backtest-forecasts`
+
+**Brier from day one (fatia 1):** each ledger row also stores `posterior_prob` / `posterior_edge_bps` /
+`posterior_recommendation` / `effective_sources` / `posterior_version` next to `model_prob`. On settlement the
+row gains the binary Brier of the pick for three probabilities — `brier_model`, `brier_posterior`,
+`brier_market_entry` (the entry price read as a probability) — and `worldcup:clv-report:aggregate` carries their
+means under `brier` (`posterior_beats_market` = posterior mean < market-entry mean). This is the measurement the
+fatia-3 weight learning will consume.
 
 The betting-native proof-of-skill: did a signal's entry price beat the market's **closing line**?
 Two stages, both pure-stdlib:

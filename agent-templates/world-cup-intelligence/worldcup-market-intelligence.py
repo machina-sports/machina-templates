@@ -4888,6 +4888,136 @@ def _prob_to_american(p: float) -> int | None:
     return round(-(p / (1 - p)) * 100) if p >= 0.5 else round(((1 - p) / p) * 100)
 
 
+# -- Posterior fusion (OG Edge, fatia 1) ------------------------------------------------
+# Design note "Bayes no OG Edge" §2: every price source is EVIDENCE about the outcome and the
+# model is one source among them. The fused belief is a weighted log-odds pool, decomposable
+# per source, with an entropy that says how much is still unknown. The weights below are the
+# design note's INITIAL priors; fatia 3 learns them from settled Brier scores.
+POSTERIOR_VERSION = "posterior v0"
+DEFAULT_SOURCE_WEIGHTS = {"model": 0.8, "bookmaker": 1.0, "polymarket": 0.6, "kalshi": 0.4}
+DEFAULT_VENUE_WEIGHT = 0.5
+BOOKMAKER_SOURCES = ("bwin", "sportingbet", "betfair", "pinnacle", "bet365", "betano", "bookmaker")
+# A venue whose de-vigged logit sits within this tolerance of a heavier source is quoting the
+# same line and adds almost no information: its weight is cut to FOLLOWER_WEIGHT_FACTOR. This
+# is the snapshot proxy for the design note's history-based follower rule (fatia 3).
+FOLLOWER_LOGIT_TOLERANCE = 0.05
+FOLLOWER_WEIGHT_FACTOR = 0.2
+POSTERIOR_MIN_EFFECTIVE_SOURCES = 2.0
+POSTERIOR_MAX_UNCERTAINTY = 0.95   # normalized entropy H / log2(k) above which the posterior abstains
+POSTERIOR_CAVEAT = (
+    "Posterior fuses model + venue prices with initial evidence weights (posterior v0), not yet "
+    "calibrated against settled results; see brier fields in the CLV report."
+)
+_LOGIT_EPS = 1e-4
+
+
+def _logit(p: float) -> float:
+    p = min(1.0 - _LOGIT_EPS, max(_LOGIT_EPS, float(p)))
+    return math.log(p / (1.0 - p))
+
+
+def _sigmoid(x: float) -> float:
+    if x >= 0:
+        z = math.exp(-x)
+        return 1.0 / (1.0 + z)
+    z = math.exp(x)
+    return z / (1.0 + z)
+
+
+def _source_family(source: Any) -> str:
+    """Weight family of a venue: bookmaker / polymarket / kalshi / the source name itself."""
+    s = _lower(source)
+    if not s:
+        return "venue"
+    if any(b in s for b in BOOKMAKER_SOURCES):
+        return "bookmaker"
+    if "polymarket" in s:
+        return "polymarket"
+    if "kalshi" in s:
+        return "kalshi"
+    return s
+
+
+def _venue_bucket_probs(markets: Any, buckets: set[str], home_slug: str, away_slug: str) -> dict[str, dict[str, float]]:
+    """Per venue (source), the implied probability of each 1X2 bucket from that venue's OWN
+    prices: de-vigged by the venue's book sum when it prices every bucket, raw otherwise (a
+    lone binary YES price already IS the venue's probability). Unreliable markets skipped;
+    the lowest price wins when a venue quotes a bucket twice."""
+    prices: dict[str, dict[str, float]] = {}
+    for m in _as_list(markets):
+        if not isinstance(m, dict) or m.get("price_quality") == "unreliable":
+            continue
+        source = _text(m.get("source"))
+        if not source:
+            continue
+        for o in (m.get("outcomes") or []):
+            if not isinstance(o, dict) or o.get("price") is None:
+                continue
+            price = _to_float(o.get("price"))
+            if price <= 0.0 or price >= 1.0:
+                continue
+            bucket = _bucket_of(o.get("name"), home_slug, away_slug)
+            if not bucket or bucket not in buckets:
+                continue
+            cur = prices.setdefault(source, {})
+            if bucket not in cur or price < cur[bucket]:
+                cur[bucket] = price
+    out: dict[str, dict[str, float]] = {}
+    for source, by_bucket in prices.items():
+        total = sum(by_bucket.values())
+        full_book = len(by_bucket) >= len(buckets) and total > 0
+        out[source] = {b: (round(p / total, 6) if full_book else round(p, 6)) for b, p in by_bucket.items()}
+    return out
+
+
+def _fuse_bucket(sources: list[dict[str, Any]]) -> dict[str, Any]:
+    """Weighted log-odds pool of one bucket's evidence.
+
+    sources: [{source, family, p, weight}], the model included. Applies the follower discount,
+    then returns the raw posterior (before cross-bucket normalization), the per-source rows with
+    share and pull, the effective number of sources (sum of weights over the heaviest weight)
+    and the disagreement (population std of the source logits)."""
+    rows: list[dict[str, Any]] = []
+    for src in sources:
+        p = _to_float(src.get("p"))
+        w = _to_float(src.get("weight"))
+        if p <= 0.0 or p >= 1.0 or w <= 0.0:
+            continue
+        rows.append({"source": _text(src.get("source")), "family": _text(src.get("family")) or "venue",
+                     "p": round(p, 6), "logit": round(_logit(p), 6), "weight": round(w, 4), "follower_of": None})
+    if not rows:
+        return {}
+    ranked = sorted(rows, key=lambda r: -r["weight"])   # stable: input order breaks ties
+    for i, r in enumerate(ranked):
+        if r["family"] == "model":
+            continue
+        for h in ranked[:i]:
+            if h["family"] == "model" or h["follower_of"]:
+                continue
+            if abs(r["logit"] - h["logit"]) < FOLLOWER_LOGIT_TOLERANCE:
+                r["follower_of"] = h["source"]
+                r["weight"] = round(r["weight"] * FOLLOWER_WEIGHT_FACTOR, 4)
+                break
+    total_w = sum(r["weight"] for r in rows)
+    if total_w <= 0:
+        return {}
+    fused_logit = sum(r["weight"] * r["logit"] for r in rows) / total_w
+    posterior = _sigmoid(fused_logit)
+    for r in rows:
+        r["share"] = round(r["weight"] / total_w, 4)
+        r["pull_pp"] = round(r["share"] * (r["p"] - posterior) * 100.0, 2)
+    logits = [r["logit"] for r in rows]
+    mean_l = sum(logits) / len(logits)
+    disagreement = math.sqrt(sum((x - mean_l) ** 2 for x in logits) / len(logits)) if len(logits) > 1 else 0.0
+    return {"posterior_raw": round(posterior, 6), "fused_logit": round(fused_logit, 6), "evidence": rows,
+            "effective_sources": round(total_w / max(r["weight"] for r in rows), 2),
+            "disagreement": round(disagreement, 4)}
+
+
+def _entropy_bits(probs: list[float]) -> float:
+    return round(-sum(p * math.log2(p) for p in probs if p and p > 0), 4)
+
+
 def _confidence_tier(edge_bps: int, flags: list[str]) -> str:
     """Signal quality by edge magnitude (cents); a likely-noise edge is forced low."""
     if "edge_likely_model_noise" in flags:
@@ -4978,6 +5108,41 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
         warnings.append("No reliable linked market prices for this event.")
 
     overround = sum(b["best_price"] for b in best.values())
+
+    # -- posterior (fatia 1): the model is one source of evidence among the venues ----------
+    weights = dict(DEFAULT_SOURCE_WEIGHTS)
+    if isinstance(params.get("source_weights"), dict):
+        for k, v in params["source_weights"].items():
+            try:
+                weights[_lower(k)] = max(0.0, float(v))
+            except (TypeError, ValueError):
+                continue
+    model_weight = _num(params.get("model_weight"), weights.get("model", 0.8))
+    if data_source != "results":
+        model_weight = round(model_weight * 0.5, 4)   # seeded (pre-results) model: half the evidence weight
+    min_eff = _num(params.get("min_effective_sources"), POSTERIOR_MIN_EFFECTIVE_SOURCES)
+    max_unc = _num(params.get("max_uncertainty"), POSTERIOR_MAX_UNCERTAINTY)
+    venue_probs = _venue_bucket_probs(params.get("markets"), set(probs), home_slug, away_slug)
+    fusions: dict[str, dict[str, Any]] = {}
+    for bucket in ("home_win", "draw", "away_win"):
+        if bucket not in probs:
+            continue
+        srcs = [{"source": "model", "family": "model", "p": _to_float(probs.get(bucket)), "weight": model_weight}]
+        for venue, by_bucket in venue_probs.items():
+            if bucket in by_bucket:
+                fam = _source_family(venue)
+                srcs.append({"source": venue, "family": fam, "p": by_bucket[bucket],
+                             "weight": weights.get(fam, weights.get(_lower(venue), DEFAULT_VENUE_WEIGHT))})
+        fused = _fuse_bucket(srcs)
+        if fused:
+            fusions[bucket] = fused
+    raw_total = sum(f["posterior_raw"] for f in fusions.values())
+    for f in fusions.values():
+        f["posterior"] = round(f["posterior_raw"] / raw_total, 4) if raw_total > 0 else None
+    entropy = _entropy_bits([f["posterior"] for f in fusions.values() if f.get("posterior")]) if fusions else None
+    uncertainty = (round(entropy / math.log2(len(fusions)), 4)
+                   if entropy is not None and len(fusions) > 1 else None)
+
     legs: list[dict[str, Any]] = []
     for bucket in ("home_win", "draw", "away_win"):
         info = best.get(bucket)
@@ -5010,6 +5175,47 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
         tier = _confidence_tier(edge_bps, flags)
 
         is_value = edge_bps >= min_edge_bps and kelly_full > 0
+
+        fusion = fusions.get(bucket) or {}
+        post_fields: dict[str, Any] = {}
+        post_p = fusion.get("posterior")
+        if post_p is not None:
+            post_edge = round(post_p - effective_price, 4)
+            post_edge_bps = round(post_edge * 10000)
+            post_kelly_full = round((post_p - effective_price) / (1.0 - effective_price), 4) if effective_price < 1.0 else 0.0
+            if post_kelly_full < 0:
+                post_kelly_full = 0.0
+            shrink = round(1.0 / (1.0 + _to_float(fusion.get("disagreement"))), 4)
+            eff = _to_float(fusion.get("effective_sources"))
+            # spread of the sources, in probability points at the posterior (std of logits * p(1-p)):
+            # when the sources disagree by more than the edge itself, the edge is not a call
+            disagreement_pp = round(post_p * (1.0 - post_p) * _to_float(fusion.get("disagreement")), 4)
+            would_be_value = post_edge_bps >= min_edge_bps and post_kelly_full > 0
+            if uncertainty is not None and uncertainty > max_unc:
+                post_rec, abstain = "abstain", "high_uncertainty"
+            elif eff < min_eff:
+                post_rec, abstain = "abstain", "single_source"
+            elif would_be_value and disagreement_pp > post_edge:
+                post_rec, abstain = "abstain", "sources_disagree"
+            elif would_be_value:
+                post_rec, abstain = "value", None
+            else:
+                post_rec, abstain = "no_edge", None
+            post_fields = {
+                "posterior_prob": post_p,
+                "posterior_edge": post_edge,
+                "posterior_edge_bps": post_edge_bps,
+                "posterior_ev_per_dollar": round(post_p / effective_price - 1.0, 4) if effective_price > 0 else 0.0,
+                "posterior_kelly_full": post_kelly_full,
+                "posterior_kelly_stake": round(post_kelly_full * kelly_fraction * shrink, 4),
+                "kelly_shrink": shrink,
+                "posterior_recommendation": post_rec,
+                "abstain_reason": abstain,
+                "effective_sources": eff,
+                "disagreement": fusion.get("disagreement"),
+                "disagreement_pp": disagreement_pp,
+                "evidence": fusion.get("evidence", []),
+            }
         leg = {
             "outcome": bucket,
             "label": home_name if bucket == "home_win" else (away_name if bucket == "away_win" else "Draw"),
@@ -5038,6 +5244,7 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
         }
         if bankroll is not None:
             leg["stake_amount"] = round(bankroll * kelly_stake, 2)
+        leg.update(post_fields)
         legs.append(leg)
 
     if len(legs) < 3:
@@ -5063,7 +5270,37 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
     else:
         recommendation = "No reliable market prices to assess; pass."
 
-    caveats = MODEL_CAVEATS + GAP_CAVEATS + [SIGNAL_STAKE_CAVEAT]
+    post_eligible = [l for l in legs if l.get("posterior_recommendation") == "value"]
+    post_eligible.sort(key=lambda l: _to_float(l.get("posterior_ev_per_dollar")), reverse=True)
+    posterior_top = post_eligible[0] if post_eligible else None
+    abstain_reasons = sorted({l["abstain_reason"] for l in legs if l.get("abstain_reason")})
+    eff_event = min((_to_float(f.get("effective_sources")) for f in fusions.values()), default=0.0)
+    if posterior_top:
+        post_summary = ("Posterior %.1f%% for %s vs %s @%.2f: edge %+.1fpp, H %.2f bits, %.1f effective sources."
+                        % (posterior_top["posterior_prob"] * 100, posterior_top["label"], posterior_top["best_venue"],
+                           posterior_top["best_price"], posterior_top["posterior_edge"] * 100, entropy or 0.0,
+                           _to_float(posterior_top.get("effective_sources"))))
+    elif abstain_reasons:
+        post_summary = "Posterior abstains (%s); H %.2f bits, %.1f effective sources." % (
+            ", ".join(abstain_reasons), entropy or 0.0, eff_event)
+    elif fusions:
+        post_summary = "Posterior sees no edge; H %.2f bits, %.1f effective sources." % (entropy or 0.0, eff_event)
+    else:
+        post_summary = "No posterior: no priced outcome to fuse."
+    posterior_block = {
+        "version": POSTERIOR_VERSION,
+        "weights": {"model": model_weight, **{k: v for k, v in weights.items() if k != "model"}},
+        "by_outcome": {b: f.get("posterior") for b, f in fusions.items()},
+        "entropy_bits": entropy,
+        "uncertainty": uncertainty,
+        "effective_sources": eff_event,
+        "follower_rule": {"tolerance_logit": FOLLOWER_LOGIT_TOLERANCE, "weight_factor": FOLLOWER_WEIGHT_FACTOR},
+        "abstain_reasons": abstain_reasons,
+        "top_pick": posterior_top["outcome"] if posterior_top else None,
+        "summary": post_summary,
+    }
+
+    caveats = MODEL_CAVEATS + GAP_CAVEATS + [SIGNAL_STAKE_CAVEAT, POSTERIOR_CAVEAT]
     signal = {
         "event_urn": _text(params.get("event_urn")) or _text(_first(forecast, "_id", "@id", "id")),
         "home_team": home_name,
@@ -5077,6 +5314,7 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
         "legs": legs,
         "top_pick": top_pick,
         "recommendation": recommendation,
+        "posterior": posterior_block,
         "caveats": caveats,
         "disclaimer": DISCLAIMER,
     }
@@ -5522,6 +5760,12 @@ def build_signal_ledger_rows(request_data: dict[str, Any]) -> dict[str, Any]:
                 "model_prob": leg.get("model_prob"),
                 "edge_bps": leg.get("edge_bps"),
                 "confidence_tier": leg.get("confidence_tier"),
+                # posterior (fatia 1): logged next to the model prob so settlement can score both
+                "posterior_prob": leg.get("posterior_prob"),
+                "posterior_edge_bps": leg.get("posterior_edge_bps"),
+                "posterior_recommendation": leg.get("posterior_recommendation"),
+                "effective_sources": leg.get("effective_sources"),
+                "posterior_version": POSTERIOR_VERSION,
                 "fixture_id": fixture_id,
                 "kickoff": kickoff,
                 "logged_at": now_iso,
@@ -5614,12 +5858,18 @@ def compute_clv(request_data: dict[str, Any]) -> dict[str, Any]:
         bucket = ("CLV+" if clv_cents > _CLV_NEUTRAL_CENTS
                   else ("CLV-" if clv_cents < -_CLV_NEUTRAL_CENTS else "CLV="))
         actual = _result_outcome(res[0], res[1])
+        won = 1 if _text(row.get("outcome")) == actual else 0
         updated = dict(row)
         updated.update({
             "closing_price": round(closing, 4),
             "clv_cents": clv_cents,
             "clv_bucket": bucket,
-            "won": 1 if _text(row.get("outcome")) == actual else 0,
+            "won": won,
+            # binary Brier of the logged pick (won in {0,1}); lower is better. posterior vs
+            # market_entry is the fusion's proof-of-skill (design note "Bayes no OG Edge", fatia 1)
+            "brier_model": round((_to_float(row.get("model_prob")) - won) ** 2, 4) if row.get("model_prob") is not None else None,
+            "brier_posterior": round((_to_float(row.get("posterior_prob")) - won) ** 2, 4) if row.get("posterior_prob") is not None else None,
+            "brier_market_entry": round((_to_float(row.get("entry_price")) - won) ** 2, 4) if row.get("entry_price") is not None else None,
             "actual_outcome": actual,
             "status": "settled",
             "settled_at": now_iso,
@@ -5680,6 +5930,20 @@ def compute_clv_report(request_data: dict[str, Any]) -> dict[str, Any]:
                           "avg_clv_cents": round(d["sum_clv"] / d["count"], 2) if d["count"] else None}
                       for t, d in by_tier.items()}
 
+    def _mean_of(key: str) -> tuple[float | None, int]:
+        vals = [_to_float(r.get(key)) for r in rows if r.get(key) is not None]
+        return (round(sum(vals) / len(vals), 4), len(vals)) if vals else (None, 0)
+
+    brier_model, n_bm = _mean_of("brier_model")
+    brier_posterior, n_bp = _mean_of("brier_posterior")
+    brier_market, n_bk = _mean_of("brier_market_entry")
+    brier = {
+        "model": brier_model, "posterior": brier_posterior, "market_entry": brier_market,
+        "n": {"model": n_bm, "posterior": n_bp, "market_entry": n_bk},
+        "posterior_beats_market": (brier_posterior < brier_market) if (brier_posterior is not None and brier_market is not None) else None,
+        "note": "binary Brier of logged picks, lower is better; posterior vs market_entry is the fusion's proof-of-skill (posterior v0 weights are uncalibrated priors until fatia 3)",
+    }
+
     sample_size = n_plus + n_minus
     sufficient = n_plus >= _CLV_MIN_BUCKET and n_minus >= _CLV_MIN_BUCKET
     if not sample_size:
@@ -5701,6 +5965,7 @@ def compute_clv_report(request_data: dict[str, Any]) -> dict[str, Any]:
         "avg_clv_cents": avg_clv,
         "clv_positive_rate": clv_positive_rate,
         "by_confidence_tier": tier_breakdown,
+        "brier": brier,
         "recommendation": rec,
         "disclaimer": DISCLAIMER,
     }
