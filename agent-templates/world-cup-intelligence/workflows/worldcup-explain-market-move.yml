@@ -1,7 +1,12 @@
 workflow:
   name: worldcup-explain-market-move
   title: World Cup Intelligence - Explain Market Move
-  description: Detect a price move for a market_id over a window and explain its likely drivers with grounded, cited evidence.
+  description: |
+    Detect a price move for a market_id over a window, hold a belief over its
+    likely causes from the cheap evidence already in venue data (volume, book,
+    bookmaker line, sibling markets, dispute flags), spend the grounded web
+    search only when the value of information justifies it, and narrate from
+    the belief. Code decides, the model narrates.
 
   context-variables:
     debugger:
@@ -18,9 +23,11 @@ workflow:
     window_hours: "$.get('window_hours', 24)"
     min_move_bps: "$.get('min_move_bps', 200)"
     include_reasoning: "$.get('include_reasoning', True)"
+    include_book: "$.get('include_book', True)"
   outputs:
     market_id: "$.get('requested_id', '')"
     move: "$.get('move', {})"
+    belief: "$.get('belief', {})"
     explanation: "$.get('explanation', {})"
     warnings: "$.get('move_warnings', [])"
     workflow-status: "$.get('move', {}) != {} and 'executed' or 'skipped'"
@@ -74,10 +81,122 @@ workflow:
         move: "$"
         move_warnings: "$.get('warnings', [])"
 
+    # ── Cheap evidence (only when there is a move to explain) ──────────────
+    - type: document
+      name: load-event-snapshots
+      description: Hourly price snapshots of every market on the same event in the window (bookmaker line + siblings).
+      condition: "$.get('move', {}).get('moved') is True and $.get('cached', {}).get('event_urn', '') != ''"
+      config:
+        action: search
+        search-limit: 2000
+        search-vector: false
+      filters:
+        name: "'worldcup:market-snapshot'"
+        value.event_urn: "$.get('cached', {}).get('event_urn', '')"
+        value.ts: "{'$gte': (datetime.utcnow() - timedelta(hours=int($.get('window_hours', 24)))).isoformat()}"
+      outputs:
+        event_snapshots: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: document
+      name: load-team-snapshots
+      description: Snapshots of markets sharing a team with this one (champion, group, handicap siblings).
+      condition: "$.get('move', {}).get('moved') is True and len($.get('cached', {}).get('related_team_urns', []) or []) > 0"
+      config:
+        action: search
+        search-limit: 2000
+        search-vector: false
+      filters:
+        name: "'worldcup:market-snapshot'"
+        value.related_team_urns: "{'$in': $.get('cached', {}).get('related_team_urns', [])}"
+        value.ts: "{'$gte': (datetime.utcnow() - timedelta(hours=int($.get('window_hours', 24)))).isoformat()}"
+      outputs:
+        team_snapshots: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: kalshi-book
+      description: Kalshi order book (yes/no bid depth) for the moved market.
+      condition: "$.get('move', {}).get('moved') is True and $.get('requested_id', '').startswith('kalshi:') and $.get('include_book', True) is True"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      inputs:
+        command: "'get_market_orderbook'"
+        ticker: "$.get('requested_id', '').split(':', 1)[1]"
+      outputs:
+        kalshi_book: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: kalshi-trades
+      description: Recent Kalshi trades (was the leg one fill or many?).
+      condition: "$.get('move', {}).get('moved') is True and $.get('requested_id', '').startswith('kalshi:') and $.get('include_book', True) is True"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      inputs:
+        command: "'get_trades'"
+        ticker: "$.get('requested_id', '').split(':', 1)[1]"
+        limit: "100"
+      outputs:
+        kalshi_trades: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: poly-book
+      description: Polymarket CLOB order book for the primary outcome token.
+      condition: "$.get('move', {}).get('moved') is True and $.get('requested_id', '').startswith('polymarket:') and $.get('include_book', True) is True"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      inputs:
+        command: "'get_order_book'"
+        token_id: "(($.get('cached', {}).get('outcomes', []) or [{}])[0].get('token_id'))"
+      outputs:
+        poly_books: "[{'token_id': $.get('data', {}).get('token_id', ''), 'bids': $.get('data', {}).get('bids', []), 'asks': $.get('data', {}).get('asks', [])}] if $.get('status') else []"
+
+    - type: connector
+      name: normalize-state
+      description: Unify the venue book/trades into one shape for the belief.
+      condition: "$.get('move', {}).get('moved') is True"
+      continue_on_error: true
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_market_state
+      inputs:
+        market_id: "$.get('requested_id', '')"
+        cached: "$.get('cached', {})"
+        kalshi_book: "$.get('kalshi_book', {})"
+        kalshi_trades: "$.get('kalshi_trades', {})"
+        poly_books: "$.get('poly_books', [])"
+      outputs:
+        market_state: "$"
+
+    # ── Belief from cheap evidence + value-of-information gate ─────────────
+    - type: connector
+      name: move-belief
+      description: Prior over five causes updated by the cheap evidence; decides whether the web search is worth running.
+      condition: "$.get('move', {}).get('moved') is True"
+      connector:
+        name: worldcup-market-intelligence
+        command: explain_move_belief
+      inputs:
+        market_id: "$.get('requested_id', '')"
+        cached: "$.get('cached', {})"
+        move: "$.get('move', {})"
+        history: "$.get('history', [])"
+        snapshots: "($.get('event_snapshots', []) or []) + ($.get('team_snapshots', []) or [])"
+        market_state: "$.get('market_state', {})"
+        min_move_bps: "$.get('min_move_bps', 200)"
+        window_hours: "$.get('window_hours', 24)"
+      outputs:
+        belief: "$"
+        needs_web_search: "$.get('needs_web_search', False)"
+
     - type: connector
       name: grounded-move-research
-      description: Grounded Google Search for what happened to this matchup in the move window.
-      condition: "$.get('move', {}).get('moved') is True and $.get('include_reasoning', True) is True"
+      description: Grounded Google Search for what happened to this matchup in the move window -- only when the belief asks for it.
+      condition: "$.get('move', {}).get('moved') is True and $.get('include_reasoning', True) is True and $.get('needs_web_search', False) is True"
       continue_on_error: true
       connector:
         name: google-genai
@@ -93,10 +212,34 @@ workflow:
       outputs:
         research: "$.get('answer', '')"
         research_sources: "$.get('search_results', [])"
+        research_ran: "True"
 
+    - type: connector
+      name: move-belief-with-research
+      description: Recompute the belief with the web search as one more piece of evidence (same inputs, replayable).
+      condition: "$.get('research_ran', False) is True"
+      connector:
+        name: worldcup-market-intelligence
+        command: explain_move_belief
+      inputs:
+        market_id: "$.get('requested_id', '')"
+        cached: "$.get('cached', {})"
+        move: "$.get('move', {})"
+        history: "$.get('history', [])"
+        snapshots: "($.get('event_snapshots', []) or []) + ($.get('team_snapshots', []) or [])"
+        market_state: "$.get('market_state', {})"
+        min_move_bps: "$.get('min_move_bps', 200)"
+        window_hours: "$.get('window_hours', 24)"
+        research: "$.get('research', '')"
+        research_sources: "$.get('research_sources', [])"
+        research_ran: "True"
+      outputs:
+        belief: "$"
+
+    # ── Narration from the belief ──────────────────────────────────────────
     - type: prompt
       name: worldcup-market-move-explain
-      description: Explain the move with grounded evidence.
+      description: Narrate the move from the belief (ranked causes + evidence), citing the grounded research when it ran.
       condition: "$.get('move', {}).get('moved') is True and $.get('include_reasoning', True) is True"
       connector:
         name: google-genai
@@ -107,6 +250,7 @@ workflow:
       inputs:
         market: "{'title': $.get('cached', {}).get('title'), 'source': $.get('cached', {}).get('source')}"
         move: "$.get('move', {})"
+        belief: "$.get('belief', {})"
         research: "$.get('research', '')"
         research_sources: "$.get('research_sources', [])"
         timeout: 120

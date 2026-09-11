@@ -330,9 +330,34 @@ Returns `edge_candidates[]` — `within_venue_book_sum` (Kalshi YES prices summi
 
 ## `worldcup-explain-market-move`
 
-Request: `{ "market_id": "kalshi:…", "window_hours": 24, "min_move_bps": 200 }`
+Request: `{ "market_id": "kalshi:…", "window_hours": 24, "min_move_bps": 200, "include_reasoning": true, "include_book": true }`
 
-Returns `move` (`moved`, `net_move_bps`, `swing_bps`, `direction`, from/to price+ts) and, when moved, `explanation` (grounded, cited drivers classified confirmed/speculative/noise).
+Returns `move` (`moved`, `net_move_bps`, `swing_bps`, `direction`, from/to price+ts) and, when moved, `belief` and `explanation`.
+
+**`belief` (belief v0, OG Edge fatia 2)** — the deterministic investigator's verdict on *why* the price moved. Code decides, the model narrates: `explanation` is written from this block and must copy `top_cause`/`confidence` from it.
+
+- `hypotheses[]`: the five catalog causes ranked by posterior `p` (sums to 1), each with `prior`, `label`, `implication` (what it means for a user holding an edge) and `next_check`.
+
+  | cause | prior | implication |
+  |---|---|---|
+  | `news_or_injury` | 0.35 | the new price tends to be fair; an edge against it is suspect |
+  | `liquidity_whale` | 0.25 | reversion likely; the edge is real but ephemeral |
+  | `bookmaker_catchup` | 0.20 | no new information at the venue; look at the bookmaker |
+  | `correlated_market` | 0.12 | the cause lives in a sibling market; check consistency |
+  | `resolution_ambiguity` | 0.08 | contract risk, not football risk; abstain |
+
+- `evidence[]`: the cheap signals that fired, as `signal=value` labels, with `evidence_detail[]` (`note`, `likelihood` row) and `unobserved[]` (signal + why it could not be read). Signals and how they are read:
+  - `volume=spike|thin|normal` — leg hourly volume vs the pre-window median of the venue history (≥3× spike, ≤0.5× thin); when the venue history carries no volume, cached `liquidity` < 2000 reads as `thin`.
+  - `orderbook=single_fill|many_fills|wide_spread|deep` — trades inside the leg (≤3 trades or one ≥60% of the contracts = `single_fill`), else the book (spread ≥ 0.05 = `wide_spread`, top-3 depth ≥ 1000 = `deep`). Needs `include_book` (default true).
+  - `bookmaker=moved_first|moved_after|flat` — bookmaker-source rows in `worldcup:market-snapshot` for the same event: did a bookmaker line leave its baseline by ≥ `min_move_bps` before the venue leg started?
+  - `sibling=moved|flat` — non-bookmaker snapshot rows for the same event or sharing a `related_team_urn` (champion, group, handicap).
+  - `dispute=open|none` — dispute/resolution flags on the cached record or the live market.
+  - `news=found|not_found` — only after the grounded web search ran; keyword read of the answer (injury, lineup, suspension, weather, …).
+- `top` (`cause`, `p`), `confidence` (`high` ≥ 0.7, `medium` ≥ 0.5, `low`), `undecided` (top < 0.5), `entropy_bits`, `stance` (`price_likely_fair | reversion_likely | follow_bookmaker | check_sibling | abstain_contract_risk | insufficient_evidence | no_move`).
+- `needs_web_search` / `web_search_reason` / `web_search_run` — the **value-of-information gate**: the grounded search (the only expensive evidence) runs only when, after the cheap evidence, the top cause is still below 0.5 or `news_or_injury` is still ≥ 0.25. When it runs, the belief is recomputed from scratch with `news=…` as one more row (same inputs → same belief; replayable).
+- `summary`: one deterministic sentence (the fallback when `include_reasoning` is false); `caveat`: likelihoods are operator judgment (belief v0) pending calibration against resolved moves.
+
+`explanation` (when `include_reasoning`): `summary`, `top_cause` (= `belief.top.cause`), `likely_drivers[]` (`driver`, `cause`, `kind` confirmed/speculative/noise), `confidence` (= `belief.top.p`), `evidence[]` (cited research when it ran), `disclaimer`.
 
 ## `worldcup-generate-market-brief`
 

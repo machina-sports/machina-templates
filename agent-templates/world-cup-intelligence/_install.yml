@@ -30,7 +30,7 @@ setup:
     - pod-document-store
   status: available
   value: agent-templates/world-cup-intelligence
-  version: 0.7.0
+  version: 0.8.0
 
 datasets:
   - type: connector

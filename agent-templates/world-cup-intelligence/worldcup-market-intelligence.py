@@ -1016,6 +1016,470 @@ def detect_price_move(request_data):
     }
 
 
+# -- Explain market move: belief over causes (OG Edge, fatia 2) -------------
+#
+# The Context Graph investigator with another catalog. The hypothesis is the
+# CAUSE of a detected price move; the cheap evidence already in venue data
+# (volume, book, bookmaker line, sibling markets, dispute flags) updates a
+# prior over five causes, and the one expensive evidence -- the grounded web
+# search -- only runs when the value of information justifies it. Code
+# decides, the LLM narrates. Same inputs -> same belief (replayable).
+
+MOVE_BELIEF_VERSION = "belief v0"
+MOVE_UNDECIDED_BELOW = 0.5        # top cause below this -> undecided
+MOVE_NEWS_SEARCH_FLOOR = 0.25     # news_or_injury still >= this -> the web search is worth its cost
+MOVE_VOLUME_SPIKE_RATIO = 3.0     # leg hourly volume vs baseline median
+MOVE_VOLUME_THIN_RATIO = 0.5
+MOVE_THIN_LIQUIDITY_USD = 2000.0  # fallback when the venue history carries no volume
+MOVE_SINGLE_FILL_SHARE = 0.6      # one trade >= this share of the leg's contracts
+MOVE_SINGLE_FILL_MAX_TRADES = 3
+MOVE_WIDE_SPREAD = 0.05
+MOVE_DEEP_BOOK_CONTRACTS = 1000.0
+MOVE_NEWS_KEYWORDS = (
+    "injur", "ruled out", "doubtful", "fitness", "lineup", "line-up", "starting xi", "suspend",
+    "red card", "banned", "weather", "storm", "postpon", "illness", "withdraw", "sacked", "visa",
+)
+MOVE_BELIEF_CAVEAT = (
+    "belief v0: causes are a prior-weighted reading of cheap venue signals; likelihoods are "
+    "operator judgment pending calibration against resolved moves. Decision support, not betting advice."
+)
+
+MOVE_HYPOTHESES = [
+    {"cause": "news_or_injury", "prior": 0.35,
+     "label": "New information about the event: injury, lineup, weather, suspension",
+     "implication": "The new price tends to be the fair one; an edge against it is suspect.",
+     "next_check": "run the grounded web search over the move window"},
+    {"cause": "liquidity_whale", "prior": 0.25,
+     "label": "A large order in a thin book moved the price without new information",
+     "implication": "Reversion is likely; the edge is real but ephemeral.",
+     "next_check": "does the price revert within 2h?"},
+    {"cause": "bookmaker_catchup", "prior": 0.20,
+     "label": "The venue is catching up to a line the bookmaker moved earlier",
+     "implication": "No new information at the venue; look at the bookmaker.",
+     "next_check": "compare against the bookmaker line history"},
+    {"cause": "correlated_market", "prior": 0.12,
+     "label": "A sibling market moved: champion, group, handicap",
+     "implication": "The cause lives in the sibling; check consistency between them.",
+     "next_check": "compare-market-sources on the sibling market"},
+    {"cause": "resolution_ambiguity", "prior": 0.08,
+     "label": "Dispute about how the market resolves",
+     "implication": "Contract risk, not football risk. Abstain.",
+     "next_check": "read the market's resolution thread"},
+]
+MOVE_CAUSES = tuple(h["cause"] for h in MOVE_HYPOTHESES)
+MOVE_STANCE = {
+    "news_or_injury": "price_likely_fair",
+    "liquidity_whale": "reversion_likely",
+    "bookmaker_catchup": "follow_bookmaker",
+    "correlated_market": "check_sibling",
+    "resolution_ambiguity": "abstain_contract_risk",
+}
+
+# P(evidence | cause) -- operator judgment for belief v0 (design note "Bayes no
+# OG Edge", table 4). Columns follow MOVE_CAUSES: news, whale, catchup,
+# correlated, ambiguity. Rows marked "design" are the note's; the complements
+# (the observation that did NOT fire) are ours and deliberately mild.
+_MOVE_LIKELIHOOD_ROWS = {
+    "volume=spike":          (0.80, 0.30, 0.50, 0.50, 0.40),  # design
+    "volume=thin":           (0.20, 0.90, 0.50, 0.50, 0.60),  # design
+    "volume=normal":         (0.70, 0.50, 0.80, 0.80, 0.70),
+    "orderbook=single_fill": (0.25, 0.90, 0.30, 0.30, 0.30),  # design
+    "orderbook=many_fills":  (0.70, 0.30, 0.70, 0.60, 0.50),
+    "orderbook=wide_spread": (0.50, 0.80, 0.50, 0.50, 0.70),
+    "orderbook=deep":        (0.80, 0.30, 0.80, 0.80, 0.70),
+    "bookmaker=moved_first": (0.60, 0.10, 0.95, 0.40, 0.10),  # design
+    "bookmaker=moved_after": (0.85, 0.30, 0.10, 0.50, 0.30),
+    "bookmaker=flat":        (0.50, 0.80, 0.05, 0.60, 0.70),
+    "sibling=moved":         (0.50, 0.15, 0.40, 0.95, 0.20),  # design
+    "sibling=flat":          (0.70, 0.80, 0.70, 0.10, 0.80),
+    "dispute=open":          (0.10, 0.10, 0.10, 0.10, 0.95),  # design
+    "dispute=none":          (0.95, 0.95, 0.95, 0.95, 0.20),
+    "news=found":            (0.90, 0.20, 0.40, 0.30, 0.20),  # design ("web")
+    "news=not_found":        (0.40, 0.90, 0.80, 0.80, 0.90),
+}
+MOVE_LIKELIHOOD = {label: dict(zip(MOVE_CAUSES, row, strict=True)) for label, row in _MOVE_LIKELIHOOD_ROWS.items()}
+_DISPUTE_KEYS = ("status", "resolution_status", "uma_resolution_status", "resolution",
+                 "dispute", "disputed", "dispute_status", "flagged")
+
+
+def _ts_epoch(value: Any) -> int | None:
+    """Epoch seconds from an int/float (s or ms), a numeric string, or an ISO-8601 string."""
+    if value is None or value == "" or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return int(value / 1000.0) if value > 1e11 else int(value)
+    text = _text(value).strip()
+    try:
+        number = float(text)
+        return int(number / 1000.0) if number > 1e11 else int(number)
+    except ValueError:
+        pass
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return int(parsed.timestamp())
+
+
+def _median(values: list[float]) -> float:
+    ordered = sorted(values)
+    if not ordered:
+        return 0.0
+    mid = len(ordered) // 2
+    return ordered[mid] if len(ordered) % 2 else (ordered[mid - 1] + ordered[mid]) / 2.0
+
+
+def _move_window(move: dict[str, Any], window_hours: Any) -> tuple[int, int, int]:
+    """(window_start, to_ts, leg_start) -- the analysed window and the start of the price leg ending at to_price."""
+    to_ts = _ts_epoch(move.get("to_ts")) or 0
+    from_ts = _ts_epoch(move.get("from_ts")) or to_ts
+    try:
+        hours = float(window_hours) if window_hours not in (None, "") else 0.0
+    except (TypeError, ValueError):
+        hours = 0.0
+    window_start = min(from_ts, int(to_ts - hours * 3600)) if hours > 0 else from_ts
+    extreme = move.get("low") if move.get("direction") == "up" else move.get("high")
+    leg_start = _ts_epoch((extreme or {}).get("ts")) if isinstance(extreme, dict) else None
+    leg_start = leg_start if leg_start is not None else from_ts
+    return window_start, to_ts, max(min(leg_start, to_ts), window_start)
+
+
+def _snapshot_series(snapshots: Any) -> dict[str, dict[str, Any]]:
+    """Group worldcup:market-snapshot rows by cache_id -> {source, title, points[(ts, price)]}. Dedupes by snapshot id."""
+    series: dict[str, dict[str, Any]] = {}
+    seen: set[str] = set()
+    for row in _as_list(snapshots):
+        if not isinstance(row, dict):
+            continue
+        meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        sid = _text(row.get("id") or meta.get("snapshot_id")) or f"{row.get('cache_id')}:{row.get('ts')}"
+        if sid in seen:
+            continue
+        seen.add(sid)
+        cid = _text(row.get("cache_id"))
+        ts = _ts_epoch(row.get("ts"))
+        price = row.get("primary_price")
+        if not cid or ts is None or price is None:
+            continue
+        entry = series.setdefault(cid, {"source": _lower(row.get("source")), "title": _text(row.get("title")), "points": []})
+        entry["points"].append((ts, _to_float(price)))
+    for entry in series.values():
+        entry["points"].sort()
+    return series
+
+
+def _series_move(points: list[tuple[int, float]], window_start: int, to_ts: int, threshold: float) -> dict[str, Any] | None:
+    """Did a snapshot series leave its window baseline by >= threshold? None when it has < 2 points in the window."""
+    inside = [(ts, p) for ts, p in points if window_start <= ts <= to_ts]
+    if len(inside) < 2:
+        return None
+    base = inside[0][1]
+    lo = min(p for _, p in inside)
+    hi = max(p for _, p in inside)
+    swing_bps = round((hi - lo) * 10000)
+    for ts, p in inside[1:]:
+        if abs(p - base) >= threshold:
+            return {"moved": True, "first_change_ts": ts, "delta_bps": round((p - base) * 10000), "swing_bps": swing_bps}
+    return {"moved": False, "first_change_ts": None, "delta_bps": round((inside[-1][1] - base) * 10000), "swing_bps": swing_bps}
+
+
+def _observe_volume(history: Any, cached: dict[str, Any], window_start: int, to_ts: int, leg_start: int) -> tuple[str | None, str]:
+    baseline: list[float] = []
+    inside: list[float] = []
+    leg: list[float] = []
+    for point in _as_list(history):
+        if not isinstance(point, dict):
+            continue
+        ts = _ts_epoch(point.get("ts", point.get("timestamp")))
+        volume = point.get("volume")
+        if ts is None or volume is None:
+            continue
+        value = _to_float(volume)
+        if ts < window_start:
+            baseline.append(value)
+        elif ts < leg_start:
+            inside.append(value)
+        elif ts <= to_ts:
+            leg.append(value)
+    reference = baseline or inside
+    if leg and reference:
+        leg_mean = sum(leg) / len(leg)
+        ref_median = _median(reference)
+        note = f"leg {leg_mean:.0f}/h vs baseline {ref_median:.0f}/h"
+        if ref_median <= 0:
+            return ("volume=spike" if leg_mean > 0 else "volume=thin"), note
+        if leg_mean >= MOVE_VOLUME_SPIKE_RATIO * ref_median:
+            return "volume=spike", note
+        if leg_mean <= MOVE_VOLUME_THIN_RATIO * ref_median:
+            return "volume=thin", note
+        return "volume=normal", note
+    liquidity = _first(cached, "liquidity", "volume") if isinstance(cached, dict) else None
+    if liquidity is not None:
+        amount = _to_float(liquidity)
+        if amount < MOVE_THIN_LIQUIDITY_USD:
+            return "volume=thin", f"venue history carries no volume; market liquidity {amount:.0f} < {MOVE_THIN_LIQUIDITY_USD:.0f}"
+        return None, f"venue history carries no per-hour volume (liquidity {amount:.0f} is not thin)"
+    return None, "no volume in the venue history and no liquidity on the cached market"
+
+
+def _observe_orderbook(market_state: Any, leg_start: int, to_ts: int) -> tuple[str | None, str]:
+    state = market_state if isinstance(market_state, dict) else {}
+    sizes: list[float] = []
+    for trade in _as_list(state.get("trades")):
+        if not isinstance(trade, dict):
+            continue
+        ts = _ts_epoch(_first(trade, "created_time", "ts", "timestamp", "time"))
+        raw_size = _first(trade, "count", "size", "amount", "quantity", "contracts")
+        size = _to_float(raw_size) if raw_size is not None else 0.0
+        if ts is None or size <= 0 or not (leg_start <= ts <= to_ts + 60):
+            continue
+        sizes.append(size)
+    if sizes:
+        total = sum(sizes)
+        biggest = max(sizes)
+        share = biggest / total if total else 0.0
+        note = f"{len(sizes)} trade(s) in the leg, largest {biggest:.0f} of {total:.0f} contracts ({share:.0%})"
+        if len(sizes) <= MOVE_SINGLE_FILL_MAX_TRADES or share >= MOVE_SINGLE_FILL_SHARE:
+            return "orderbook=single_fill", note
+        return "orderbook=many_fills", note
+    book = state.get("book")
+    outcomes = book.get("outcomes") if isinstance(book, dict) else book
+    primary = next((o for o in _as_list(outcomes) if isinstance(o, dict)), None)
+    if primary is None:
+        return None, "no order book or trades supplied (market_state)"
+    spread = primary.get("spread")
+    depth = 0.0
+    for side in ("bids", "asks"):
+        for level in _as_list(primary.get(side))[:3]:
+            if isinstance(level, dict):
+                raw = _first(level, "size", "quantity", "amount")
+                depth += _to_float(raw) if raw is not None else 0.0
+    if spread is not None and _to_float(spread) >= MOVE_WIDE_SPREAD:
+        return "orderbook=wide_spread", f"best bid/ask spread {_to_float(spread):.3f}"
+    if depth >= MOVE_DEEP_BOOK_CONTRACTS:
+        return "orderbook=deep", f"top-3 depth {depth:.0f} contracts, spread {spread}"
+    return None, f"book neither wide nor deep (spread {spread}, top-3 depth {depth:.0f}) and no trades in the leg"
+
+
+def _observe_bookmaker(series: dict[str, dict[str, Any]], cache_id: str, threshold: float,
+                       window_start: int, to_ts: int, leg_start: int) -> tuple[str | None, str]:
+    hits: list[tuple[int, str, int]] = []
+    flat: list[str] = []
+    for cid, entry in series.items():
+        if cid == cache_id or entry["source"] not in BOOKMAKER_SOURCES:
+            continue
+        moved = _series_move(entry["points"], window_start, to_ts, threshold)
+        if moved is None:
+            continue
+        if moved["moved"]:
+            hits.append((moved["first_change_ts"], cid, moved["delta_bps"]))
+        else:
+            flat.append(cid)
+    if hits:
+        hits.sort()
+        ts, cid, bps = hits[0]
+        lead_min = (leg_start - ts) / 60.0
+        if ts <= leg_start:
+            return "bookmaker=moved_first", f"{cid} moved {bps:+d} bps {lead_min:.0f} min before the venue leg"
+        return "bookmaker=moved_after", f"{cid} moved {bps:+d} bps {-lead_min:.0f} min after the venue leg started"
+    if flat:
+        return "bookmaker=flat", f"{len(flat)} bookmaker line(s) on this event stayed within {int(threshold * 10000)} bps"
+    return None, "no bookmaker line for this event in the snapshot store"
+
+
+def _observe_sibling(series: dict[str, dict[str, Any]], cache_id: str, threshold: float,
+                     window_start: int, to_ts: int) -> tuple[str | None, str]:
+    moved: list[tuple[str, int]] = []
+    flat: list[str] = []
+    for cid, entry in series.items():
+        if cid == cache_id or entry["source"] in BOOKMAKER_SOURCES:
+            continue
+        result = _series_move(entry["points"], window_start, to_ts, threshold)
+        if result is None:
+            continue
+        if result["moved"] or result["swing_bps"] >= threshold * 10000:
+            moved.append((cid, result["delta_bps"]))
+        else:
+            flat.append(cid)
+    if moved:
+        moved.sort(key=lambda item: -abs(item[1]))
+        cid, bps = moved[0]
+        more = f" (+{len(moved) - 1} more)" if len(moved) > 1 else ""
+        return "sibling=moved", f"{cid} moved {bps:+d} bps in the window{more}"
+    if flat:
+        return "sibling=flat", f"{len(flat)} sibling market(s) stayed within {int(threshold * 10000)} bps"
+    return None, "no sibling market snapshots for this event/teams in the window"
+
+
+def _observe_dispute(cached: Any, market_state: Any) -> tuple[str | None, str]:
+    records = [cached]
+    if isinstance(market_state, dict):
+        records.append(market_state.get("market"))
+    seen_status = False
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        for key in _DISPUTE_KEYS:
+            value = record.get(key)
+            if value is None or value == "":
+                continue
+            if value is True and key in ("dispute", "disputed", "flagged"):
+                return "dispute=open", f"{key}=true on the market record"
+            text = _lower(json.dumps(value, default=str)) if isinstance(value, (dict, list)) else _lower(value)
+            if not text:
+                continue
+            seen_status = True
+            if "disput" in text or "challeng" in text:
+                return "dispute=open", f"{key}={_text(value)[:60]}"
+    if seen_status:
+        return "dispute=none", "no dispute flag on the market record"
+    return None, "market record carries no status/resolution fields"
+
+
+def _observe_news(research: Any, research_sources: Any, research_ran: bool) -> tuple[str | None, str]:
+    text = _text(research).strip()
+    sources = [s for s in _as_list(research_sources) if s]
+    if not research_ran and not text and not sources:
+        return None, "web search not run (value-of-information gate)"
+    low = text.lower()
+    hits = sorted({kw for kw in MOVE_NEWS_KEYWORDS if kw in low})
+    if hits and (sources or len(low) >= 80):
+        return "news=found", f"grounded search mentions {', '.join(hits[:4])} ({len(sources)} source(s))"
+    return "news=not_found", f"grounded search returned nothing event-specific ({len(sources)} source(s))"
+
+
+def _move_update(evidence: list[tuple[str, str]]) -> list[dict[str, Any]]:
+    """posterior ∝ prior · Π P(evidence | cause); hypotheses sorted by posterior."""
+    weights = {h["cause"]: float(h["prior"]) for h in MOVE_HYPOTHESES}
+    for label, _note in evidence:
+        row = MOVE_LIKELIHOOD.get(label)
+        if not row:
+            continue
+        for cause in weights:
+            weights[cause] *= row[cause]
+    total = sum(weights.values()) or 1.0
+    ranked = [{
+        "cause": h["cause"], "p": round(weights[h["cause"]] / total, 3), "prior": h["prior"],
+        "label": h["label"], "implication": h["implication"], "next_check": h["next_check"],
+    } for h in MOVE_HYPOTHESES]
+    ranked.sort(key=lambda item: -item["p"])
+    return ranked
+
+
+def _move_summary(ranked: list[dict[str, Any]], evidence: list[tuple[str, str]], undecided: bool, confidence: str) -> str:
+    """One deterministic sentence -- the fallback when the narrating prompt is skipped or unavailable."""
+    top, runner = ranked[0], ranked[1]
+    pct = int(round(top["p"] * 100))
+    labels = [label for label, _ in evidence]
+    because = ("on " + ", ".join(labels)) if labels else "on priors alone (no cheap evidence was observable)"
+    head = ("Undecided: leading cause %s (%s%%, %s confidence) %s." if undecided
+            else "Most likely %s (%s%%, %s confidence) %s.") % (top["cause"], pct, confidence, because)
+    return f"{head} Runner-up {runner['cause']} ({int(round(runner['p'] * 100))}%). Next: {top['next_check']}"
+
+
+def explain_move_belief(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Belief over the causes of a detected price move (OG Edge, fatia 2).
+
+    Params:
+      - market_id: cache id of the moved market ("kalshi:<ticker>" | "polymarket:<id>")
+      - cached: the cached WorldCupMarket record (status/liquidity/event_urn)
+      - move: detect_price_move output (moved, direction, from/to ts, low/high)
+      - history: venue price points [{ts, price, volume?}] over the full lookback
+      - snapshots: worldcup:market-snapshot rows for the same event/teams in the window
+      - market_state: normalize_market_state output (book, trades) -- optional
+      - min_move_bps, window_hours: the move detector's thresholds
+      - research, research_sources, research_ran: the grounded web search, when it ran
+
+    Cheap evidence updates the prior over MOVE_HYPOTHESES; `needs_web_search`
+    is the value-of-information gate (top cause < 0.5 or news_or_injury >= 0.25
+    and the search has not run). Recomputed from scratch on every call, so the
+    post-search call simply re-reads everything plus the research.
+    """
+    params = _params(request_data)
+    move = params.get("move") if isinstance(params.get("move"), dict) else {}
+    cached = params.get("cached") if isinstance(params.get("cached"), dict) else {}
+    market_id = _text(params.get("market_id")) or _text(cached.get("cache_id") or cached.get("id"))
+    try:
+        min_move_bps = int(params.get("min_move_bps") or move.get("min_move_bps") or 200)
+    except (TypeError, ValueError):
+        min_move_bps = 200
+    window_hours = params.get("window_hours")
+    research_ran = bool(params.get("research_ran")) or bool(_text(params.get("research")).strip())
+
+    belief: dict[str, Any] = {
+        "version": MOVE_BELIEF_VERSION,
+        "market_id": market_id,
+        "window_hours": window_hours,
+        "move": {key: move.get(key) for key in ("net_move_bps", "swing_bps", "direction", "from_price", "to_price")},
+        "applicable": bool(move.get("moved")),
+        "hypotheses": [],
+        "evidence": [],
+        "evidence_detail": [],
+        "unobserved": [],
+        "web_search_run": research_ran,
+        "warnings": [],
+        "caveat": MOVE_BELIEF_CAVEAT,
+    }
+    if not move.get("moved"):
+        belief["warnings"].append("No move above the threshold to explain; belief not computed.")
+        belief.update({
+            "top": None, "confidence": None, "undecided": True, "stance": "no_move",
+            "needs_web_search": False, "web_search_reason": "no move to explain", "entropy_bits": None,
+            "summary": "No move above the threshold; nothing to explain.",
+        })
+        return {"status": True, "data": belief}
+
+    window_start, to_ts, leg_start = _move_window(move, window_hours)
+    threshold = min_move_bps / 10000.0
+    series = _snapshot_series(params.get("snapshots"))
+    observations = [
+        ("volume", _observe_volume(params.get("history"), cached, window_start, to_ts, leg_start)),
+        ("orderbook", _observe_orderbook(params.get("market_state"), leg_start, to_ts)),
+        ("bookmaker", _observe_bookmaker(series, market_id, threshold, window_start, to_ts, leg_start)),
+        ("sibling", _observe_sibling(series, market_id, threshold, window_start, to_ts)),
+        ("dispute", _observe_dispute(cached, params.get("market_state"))),
+        ("news", _observe_news(params.get("research"), params.get("research_sources"), research_ran)),
+    ]
+    evidence: list[tuple[str, str]] = []
+    for signal, (label, note) in observations:
+        if label:
+            evidence.append((label, note))
+            belief["evidence_detail"].append({"label": label, "note": note, "likelihood": MOVE_LIKELIHOOD[label]})
+        else:
+            belief["unobserved"].append({"signal": signal, "reason": note})
+
+    ranked = _move_update(evidence)
+    top = ranked[0]
+    p_news = next(h["p"] for h in ranked if h["cause"] == "news_or_injury")
+    undecided = top["p"] < MOVE_UNDECIDED_BELOW
+    confidence = "high" if top["p"] >= 0.7 else ("medium" if not undecided else "low")
+    news_observed = any(label.startswith("news=") for label, _ in evidence)
+    needs_web_search = (not news_observed) and (undecided or p_news >= MOVE_NEWS_SEARCH_FLOOR)
+    if news_observed:
+        reason = "web search already run"
+    elif undecided:
+        reason = f"top cause {top['cause']} at {top['p']:.0%} is below {MOVE_UNDECIDED_BELOW:.0%}"
+    elif needs_web_search:
+        reason = f"news_or_injury still at {p_news:.0%} (>= {MOVE_NEWS_SEARCH_FLOOR:.0%})"
+    else:
+        reason = f"cheap evidence settled it: {top['cause']} at {top['p']:.0%}, news_or_injury at {p_news:.0%}"
+    belief.update({
+        "hypotheses": ranked,
+        "evidence": [label for label, _ in evidence],
+        "entropy_bits": _entropy_bits([h["p"] for h in ranked]),
+        "top": {"cause": top["cause"], "p": top["p"]},
+        "confidence": confidence,
+        "undecided": undecided,
+        "stance": "insufficient_evidence" if undecided else MOVE_STANCE[top["cause"]],
+        "needs_web_search": needs_web_search,
+        "web_search_reason": reason,
+        "summary": _move_summary(ranked, evidence, undecided, confidence),
+    })
+    return {"status": True, "data": belief}
+
+
 # -- Standings + squads ------------------------------------------------------
 
 

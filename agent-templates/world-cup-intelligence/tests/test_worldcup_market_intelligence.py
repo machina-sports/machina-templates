@@ -423,6 +423,7 @@ class TestNormalizeMarketState:
 
 detect_market_edges = _module.detect_market_edges
 detect_price_move = _module.detect_price_move
+explain_move_belief = _module.explain_move_belief
 
 
 def _leg(cache_id, event_id, name, price):
@@ -2896,3 +2897,205 @@ class TestPosteriorLedgerAndBrier:
     def test_report_without_brier_rows_is_null_safe(self):
         rep = compute_clv_report({"params": {"clv_rows": [_clv_row("CLV+", 1)]}})["data"]["clv_report"]["brier"]
         assert rep["model"] is None and rep["posterior_beats_market"] is None and rep["n"]["posterior"] == 0
+
+
+# -- OG Edge fatia 2: belief over the causes of a price move -----------------
+
+_MV_T0 = 1_750_000_000  # arbitrary epoch anchor; fixtures are hourly points
+
+
+def _mv_iso(ts):
+    return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _mv_fixture(leg_volume=None, with_volume=True):
+    """12 baseline hours before a 6h window; window prices 0.51,0.51,0.51,0.50(low),0.55,0.57,0.58.
+
+    The leg that ends at to_price starts at the low (hour 3 of the window), so
+    leg_start = window_start + 3h. Baseline/window-before-leg volume is 100/h;
+    `leg_volume` sets the leg hours (None keeps 100)."""
+    hist = []
+    for i in range(12):
+        point = {"ts": _MV_T0 + i * 3600, "price": 0.51}
+        if with_volume:
+            point["volume"] = 100
+        hist.append(point)
+    base = _MV_T0 + 12 * 3600
+    prices = [0.51, 0.51, 0.51, 0.50, 0.55, 0.57, 0.58]
+    for i, p in enumerate(prices):
+        point = {"ts": base + i * 3600, "price": p}
+        if with_volume:
+            point["volume"] = 100 if i < 3 else (leg_volume if leg_volume is not None else 100)
+        hist.append(point)
+    move = detect_price_move({"params": {"history": hist, "window_hours": 6, "min_move_bps": 200}})["data"]
+    assert move["moved"] is True and move["direction"] == "up" and move["low"]["ts"] == base + 3 * 3600
+    return hist, move, base
+
+
+def _mv_snap(cache_id, source, ts, price, event_urn="urn:e1", teams=("urn:t:bra",)):
+    return {"metadata": {"snapshot_id": f"{cache_id}:{_mv_iso(ts)[:13]}"}, "id": f"{cache_id}:{_mv_iso(ts)[:13]}",
+            "cache_id": cache_id, "source": source, "title": cache_id, "ts": _mv_iso(ts), "primary_price": price,
+            "event_urn": event_urn, "related_team_urns": list(teams)}
+
+
+def _mv_belief(hist, move, **extra):
+    params = {"market_id": "kalshi:BRA", "move": move, "history": hist, "min_move_bps": 200, "window_hours": 6}
+    params.setdefault("cached", {"cache_id": "kalshi:BRA", "status": "active", "event_urn": "urn:e1",
+                                 "related_team_urns": ["urn:t:bra"]})
+    params.update(extra)
+    r = explain_move_belief({"params": params})
+    assert r["status"] is True
+    return r["data"]
+
+
+def _mv_p(belief, cause):
+    return next(h["p"] for h in belief["hypotheses"] if h["cause"] == cause)
+
+
+class TestExplainMoveBelief:
+    def test_priors_only_is_undecided_and_asks_for_the_web_search(self):
+        hist, move, _ = _mv_fixture(with_volume=False)
+        b = _mv_belief(hist, move, cached={"cache_id": "kalshi:BRA"})  # no status, no liquidity -> nothing observable
+        assert b["version"] == "belief v0" and b["applicable"] is True
+        assert b["evidence"] == [] and {u["signal"] for u in b["unobserved"]} == {
+            "volume", "orderbook", "bookmaker", "sibling", "dispute", "news"}
+        assert b["top"] == {"cause": "news_or_injury", "p": 0.35}
+        assert b["undecided"] is True and b["confidence"] == "low" and b["stance"] == "insufficient_evidence"
+        assert b["needs_web_search"] is True and b["web_search_run"] is False
+        assert [h["cause"] for h in b["hypotheses"]] == [
+            "news_or_injury", "liquidity_whale", "bookmaker_catchup", "correlated_market", "resolution_ambiguity"]
+        assert abs(sum(h["p"] for h in b["hypotheses"]) - 1.0) < 1e-3
+        assert b["entropy_bits"] > 2.0  # five causes on priors alone ~ 2.1 bits
+        assert "priors alone" in b["summary"] and b["caveat"].startswith("belief v0")
+
+    def test_thin_volume_and_single_fill_point_to_a_whale_without_the_web_search(self):
+        hist, move, base = _mv_fixture(leg_volume=20)
+        state = {"trades": [{"count": 500, "yes_price": 55, "created_time": _mv_iso(base + 4 * 3600)}],
+                 "book": {"outcomes": []}}
+        b = _mv_belief(hist, move, market_state=state)
+        assert b["evidence"] == ["volume=thin", "orderbook=single_fill", "dispute=none"]
+        assert b["top"]["cause"] == "liquidity_whale" and b["top"]["p"] >= 0.7
+        assert b["confidence"] == "high" and b["undecided"] is False and b["stance"] == "reversion_likely"
+        assert b["needs_web_search"] is False and "settled" in b["web_search_reason"]
+        assert _mv_p(b, "news_or_injury") < 0.25
+        detail = {d["label"]: d for d in b["evidence_detail"]}
+        assert "500 of 500 contracts" in detail["orderbook=single_fill"]["note"]
+        assert detail["volume=thin"]["likelihood"]["liquidity_whale"] == 0.9
+        assert b["summary"].startswith("Most likely liquidity_whale") and "revert within 2h" in b["summary"]
+
+    def test_bookmaker_moved_first_leaves_it_open_until_the_web_search_finds_news(self):
+        hist, move, base = _mv_fixture(with_volume=False)
+        # bwin moved +400 bps at window hour 2 -- one hour BEFORE the venue leg started (hour 3)
+        snaps = [_mv_snap("bwin:BRA-1x2", "bwin", base + h * 3600, p) for h, p in ((0, 0.40), (1, 0.40), (2, 0.44), (4, 0.44))]
+        first = _mv_belief(hist, move, snapshots=snaps)
+        assert "bookmaker=moved_first" in first["evidence"]
+        assert {h["cause"] for h in first["hypotheses"][:2]} == {"news_or_injury", "bookmaker_catchup"}
+        assert first["undecided"] is True and first["needs_web_search"] is True
+        assert _mv_p(first, "liquidity_whale") < 0.1  # a bookmaker lead is strong evidence against a whale
+        # ...the search runs and finds an injury story -> news wins, decided, no further search
+        research = "Brazil's starting striker was ruled out with a hamstring injury hours before kickoff, per the federation."
+        second = _mv_belief(hist, move, snapshots=snaps, research=research,
+                         research_sources=[{"url": "https://example.org/news"}], research_ran=True)
+        assert second["evidence"][-1] == "news=found" and second["web_search_run"] is True
+        assert second["top"]["cause"] == "news_or_injury" and second["top"]["p"] >= 0.6
+        assert second["undecided"] is False and second["confidence"] == "medium"
+        assert second["stance"] == "price_likely_fair" and second["needs_web_search"] is False
+        assert second["web_search_reason"] == "web search already run"
+
+    def test_bookmaker_that_moved_after_the_venue_is_not_a_catchup(self):
+        hist, move, base = _mv_fixture(with_volume=False)
+        snaps = [_mv_snap("bwin:BRA-1x2", "bwin", base + h * 3600, p) for h, p in ((0, 0.40), (3, 0.40), (5, 0.45))]
+        b = _mv_belief(hist, move, snapshots=snaps)
+        assert "bookmaker=moved_after" in b["evidence"]
+        assert _mv_p(b, "bookmaker_catchup") < 0.1 and b["top"]["cause"] == "news_or_injury"
+
+    def test_sibling_move_raises_the_correlated_market_cause(self):
+        hist, move, base = _mv_fixture(with_volume=False)
+        snaps = [_mv_snap("polymarket:CHAMP-BRA", "polymarket", base + h * 3600, p, event_urn="urn:e-champ")
+                 for h, p in ((0, 0.20), (2, 0.20), (4, 0.25))]
+        b = _mv_belief(hist, move, snapshots=snaps)
+        assert "sibling=moved" in b["evidence"]
+        assert b["hypotheses"][1]["cause"] == "correlated_market" and _mv_p(b, "correlated_market") >= 0.25
+        assert b["undecided"] is True and b["needs_web_search"] is True
+        assert "+500 bps" in next(d["note"] for d in b["evidence_detail"] if d["label"] == "sibling=moved")
+
+    def test_open_dispute_dominates_when_the_rest_is_flat(self):
+        hist, move, base = _mv_fixture(with_volume=False)
+        snaps = ([_mv_snap("polymarket:CHAMP-BRA", "polymarket", base + h * 3600, p, event_urn="urn:e-champ")
+                  for h, p in ((0, 0.30), (2, 0.30), (4, 0.301))]
+                 + [_mv_snap("bwin:BRA-1x2", "bwin", base + h * 3600, 0.40) for h in (0, 2, 5)])
+        cached = {"cache_id": "kalshi:BRA", "status": "disputed", "event_urn": "urn:e1", "related_team_urns": ["urn:t:bra"]}
+        b = _mv_belief(hist, move, snapshots=snaps, cached=cached)
+        assert set(b["evidence"]) == {"dispute=open", "sibling=flat", "bookmaker=flat"}
+        assert b["top"]["cause"] == "resolution_ambiguity" and b["undecided"] is False
+        assert b["stance"] == "abstain_contract_risk"
+        assert b["needs_web_search"] is False  # news is far below the 0.25 floor once a dispute is open
+
+    def test_volume_spike_raises_news_and_normal_volume_is_mild(self):
+        hist, move, _ = _mv_fixture(leg_volume=400)
+        spike = _mv_belief(hist, move)
+        assert "volume=spike" in spike["evidence"] and _mv_p(spike, "news_or_injury") > 0.35
+        hist, move, _ = _mv_fixture(leg_volume=100)
+        normal = _mv_belief(hist, move)
+        assert "volume=normal" in normal["evidence"] and abs(_mv_p(normal, "news_or_injury") - 0.35) < 0.05
+
+    def test_thin_liquidity_stands_in_when_the_venue_history_has_no_volume(self):
+        hist, move, _ = _mv_fixture(with_volume=False)
+        b = _mv_belief(hist, move, cached={"cache_id": "polymarket:x", "liquidity": 800, "status": "active"})
+        assert b["evidence"][0] == "volume=thin"
+        assert "liquidity 800" in b["evidence_detail"][0]["note"]
+
+    def test_wide_spread_is_read_from_the_book_when_there_are_no_trades(self):
+        hist, move, _ = _mv_fixture(with_volume=False)
+        state = {"trades": [], "book": {"outcomes": [{"name": "Yes", "best_bid": 0.40, "best_ask": 0.48, "spread": 0.08,
+                                                       "bids": [{"price": 0.40, "size": 10}], "asks": [{"price": 0.48, "size": 10}]}]}}
+        b = _mv_belief(hist, move, market_state=state)
+        assert "orderbook=wide_spread" in b["evidence"]
+        deep = {"trades": [], "book": {"outcomes": [{"name": "Yes", "spread": 0.01,
+                                                      "bids": [{"price": 0.5, "size": 600}], "asks": [{"price": 0.51, "size": 600}]}]}}
+        assert "orderbook=deep" in _mv_belief(hist, move, market_state=deep)["evidence"]
+
+    def test_web_search_that_finds_nothing_lowers_news(self):
+        hist, move, _ = _mv_fixture(with_volume=False)
+        before = _mv_belief(hist, move)
+        after = _mv_belief(hist, move, research="Nothing specific was reported about this fixture in the last day.",
+                        research_sources=[], research_ran=True)
+        assert "news=not_found" in after["evidence"]
+        assert _mv_p(after, "news_or_injury") < _mv_p(before, "news_or_injury")
+        assert after["needs_web_search"] is False and after["web_search_run"] is True
+
+    def test_no_move_returns_an_inapplicable_belief(self):
+        quiet = [{"ts": _MV_T0 + i * 3600, "price": 0.50} for i in range(5)]
+        move = detect_price_move({"params": {"history": quiet, "min_move_bps": 200}})["data"]
+        b = _mv_belief(quiet, move)
+        assert b["applicable"] is False and b["hypotheses"] == [] and b["stance"] == "no_move"
+        assert b["needs_web_search"] is False and b["warnings"]
+
+    def test_same_inputs_same_belief_and_unobserved_signals_carry_reasons(self):
+        hist, move, _ = _mv_fixture(leg_volume=20)
+        a, b = _mv_belief(hist, move), _mv_belief(hist, move)
+        assert a == b
+        reasons = {u["signal"]: u["reason"] for u in a["unobserved"]}
+        assert "snapshot store" in reasons["bookmaker"] and "value-of-information" in reasons["news"]
+        assert "market_state" in reasons["orderbook"]
+
+    def test_catalog_and_likelihood_table_are_complete(self):
+        causes = set(_module.MOVE_CAUSES)
+        assert abs(sum(h["prior"] for h in _module.MOVE_HYPOTHESES) - 1.0) < 1e-9
+        for label, row in _module.MOVE_LIKELIHOOD.items():
+            assert set(row) == causes, label
+            assert all(0.0 < v <= 1.0 for v in row.values()), label
+        emitted = {"volume=spike", "volume=thin", "volume=normal", "orderbook=single_fill", "orderbook=many_fills",
+                   "orderbook=wide_spread", "orderbook=deep", "bookmaker=moved_first", "bookmaker=moved_after",
+                   "bookmaker=flat", "sibling=moved", "sibling=flat", "dispute=open", "dispute=none",
+                   "news=found", "news=not_found"}
+        assert emitted == set(_module.MOVE_LIKELIHOOD)
+        assert set(_module.MOVE_STANCE) == causes
+
+    def test_timestamps_accept_epoch_seconds_millis_and_mv_iso(self):
+        assert _module._ts_epoch(1_750_000_000) == 1_750_000_000
+        assert _module._ts_epoch(1_750_000_000_000) == 1_750_000_000
+        assert _module._ts_epoch("1750000000") == 1_750_000_000
+        assert _module._ts_epoch("2025-06-15T15:06:40Z") == 1_750_000_000
+        assert _module._ts_epoch("2025-06-15T15:06:40+00:00") == 1_750_000_000
+        assert _module._ts_epoch(None) is None and _module._ts_epoch("not a date") is None and _module._ts_epoch(True) is None

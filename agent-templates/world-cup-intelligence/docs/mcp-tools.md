@@ -114,6 +114,16 @@ Backed by `worldcup-find-market-edges`.
 
 Returns research candidates only; no execution advice.
 
+### `worldcup_explain_market_move`
+
+Backed by `worldcup-explain-market-move`.
+
+Inputs: `market_id` (`kalshi:…` | `polymarket:…`), `window_hours` (default `24`), `min_move_bps` (default `200`), `include_reasoning` (default `true`), `include_book` (default `true`).
+
+Returns `move` (size/direction of the largest move in the window) and, when it moved, `belief` — a ranked posterior over five catalog causes (`news_or_injury`, `liquidity_whale`, `bookmaker_catchup`, `correlated_market`, `resolution_ambiguity`) computed from cheap venue evidence (volume, book/trades, bookmaker line, sibling markets, dispute flags), with `evidence`, `unobserved`, `top`, `confidence`, `undecided`, `stance` and `needs_web_search`. The grounded web search runs only when the belief asks for it (top cause < 0.5 or news ≥ 0.25); `explanation` is narrated from the belief and copies its `top_cause`/`confidence`. See `docs/api-contracts.md` for the field-by-field contract.
+
+Read-only; decision support, no execution advice.
+
 ### `worldcup_stable_markets`
 
 Backed by `worldcup-stable-markets`.
