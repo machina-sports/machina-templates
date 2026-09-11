@@ -193,6 +193,11 @@ workflow:
       outputs:
         belief: "$"
         needs_web_search: "$.get('needs_web_search', False)"
+        # Reset per run. Evaluated task inputs are written into the shared
+        # workflow state, and a skipped task writes nothing, so without this
+        # reset a `research_ran` left behind by an earlier pass can leak into
+        # the next run and fire the post-search pass with no search.
+        research_ran: "False"
 
     - type: connector
       name: grounded-move-research
@@ -222,7 +227,7 @@ workflow:
     - type: connector
       name: move-belief-with-research
       description: Recompute the belief with the web search as one more piece of evidence (same inputs, replayable).
-      condition: "$.get('research_ran', False) is True"
+      condition: "$.get('move', {}).get('moved') is True and $.get('research_ran', False) is True"
       connector:
         name: worldcup-market-intelligence
         command: explain_move_belief
