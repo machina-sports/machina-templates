@@ -85,14 +85,15 @@ workflow:
     - type: document
       name: load-event-snapshots
       description: Hourly price snapshots of every market on the same event in the window (bookmaker line + siblings).
-      condition: "$.get('move', {}).get('moved') is True and $.get('cached', {}).get('event_urn', '') != ''"
+      # `or ''` -- the cached record may carry event_urn: null, and a null filter value breaks the search.
+      condition: "$.get('move', {}).get('moved') is True and ($.get('cached', {}).get('event_urn') or '') != ''"
       config:
         action: search
         search-limit: 2000
         search-vector: false
       filters:
         name: "'worldcup:market-snapshot'"
-        value.event_urn: "$.get('cached', {}).get('event_urn', '')"
+        value.event_urn: "$.get('cached', {}).get('event_urn') or ''"
         value.ts: "{'$gte': (datetime.utcnow() - timedelta(hours=int($.get('window_hours', 24)))).isoformat()}"
       outputs:
         event_snapshots: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
