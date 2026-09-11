@@ -3,16 +3,20 @@
 ## Current v4 single-story format
 
 The production producer and reader request `edition_format: 4`. Each generated
-edition contains one sport and one concrete story. The producer reads the latest
-admitted edition for rotation, prefers a different eligible sport, and only adds
-a market when it matches the selected named subject. Nine-sport discovery remains
-available; it is not a requirement to mix sports in an individual post.
+edition contains one sport and one concrete story. The producer builds a bounded,
+breadth-preserving shortlist of coherent candidate packets across every eligible
+sport it can fit. The existing single Gemini call chooses the strongest supported
+current development using newsworthiness, evidence, stakes and novelty. There is
+no sport rotation, fixed sport priority or requirement to spread editions across
+sports. The same sport may lead on successive days.
 
-The transformer keeps its v3 default for compatibility with existing records and
-rollback consumers. V4 is explicit, has its own cache filter, and permits one
-detailed source. Writing uses self-contained facts and optional earned humor,
-not compulsory jokes or comparisons. Full-article enrichment is not automated
-for every source; editor-reviewed posts must be labelled as such by consumers.
+V4 is the transformer default so an omitted format cannot silently invoke the old
+cross-sport mashup. Explicit `edition_format: 3` still reads or assembles legacy v3
+records for compatibility. Each v4 candidate has one non-market anchor and may
+carry one conservatively matched same-subject market; markets are optional and do
+not have to be cited. Writing uses self-contained facts and optional earned humor,
+not compulsory jokes or comparisons. Full-article enrichment is not automated for
+every source; editor-reviewed posts must be labelled as such by consumers.
 
 The sections below describe the discovery lanes and the legacy v3 behavior where
 they explicitly refer to cross-sport editions. The v4 selection rules above govern
@@ -30,9 +34,10 @@ tests, for the previous v2 MLB pipeline; no v3 workflow calls it, so importing i
 is optional. Credentials remain runtime-owned. Do not update unrelated connectors
 or routing policy as part of installation.
 
-- `machina-read-produce-daily`: native multi-sport collection, deterministic pure
-  compaction, one Gemini task, validation and native document save (v3).
-- `machina-read-get-latest`: native v3 document retrieval, admission and expiry
+- `machina-read-produce-daily`: native broad collection, deterministic pure
+  compaction and shortlisting, one Gemini selection/writing task, validation and
+  native v4 document save.
+- `machina-read-get-latest`: native v4 document retrieval, admission and expiry
   check only. No source calls or generation.
 - `machina-read-source-probe`: read-only installation canary for the older MLB
   lanes; not the daily producer.
@@ -88,44 +93,57 @@ older than 48 hours or dated in the future are rejected, and routine "how to
 watch", TV-listing, betting-promo, bonus and casino headlines are filtered out.
 Full articles are not retrieved and nothing inside them is verified.
 
-## Balancing and coverage
+## Shortlisting and coverage
 
-The assembler round-robins candidates across sports, preferring completed
-sporting evidence, then markets, then fixtures, then headlines, so neither
-alphabetical order nor a high-volume feed decides the edition. Every edition must
-carry at least two sports and at most 24 sources within a bounded text budget.
-The writer receives a compact, unmodified subset of this evidence from two sports,
-including a required Polymarket analysis source when one is available. The market
-assignment rotates deterministically by UTC day; no quote or factual conclusion
-is invented by selection. Full scan coverage remains recorded separately.
+The v4 assembler admits concrete results, fixtures and reported headlines as
+anchors; a static market quote cannot form a candidate by itself. It takes one
+candidate per eligible sport before considering a second from any sport, up to two
+per sport and 12 total, while enforcing the 14,000-character evidence budget and
+24,000-byte prompt budget. This is deterministic capacity control, not a local
+editorial score: feed volume cannot fill the shortlist before other represented
+sports get a candidate, and the model makes the editorial choice. A same-subject
+market can be attached only after anchor breadth is secured and only if budgets
+still permit it. Full scan coverage remains recorded separately.
+
+The producer supplies up to seven admitted prior v4 editions. Sources with the
+same normalized label and evidence text are omitted from the new shortlist, but a
+sport is never penalized merely for appearing previously. A fixture that changes
+from scheduled to final is new evidence even when its provider ID and URL stay the
+same. If every concrete development is an exact repeat, generation fails with no
+replacement rather than redating old evidence.
+
 `coverage` records which sports produced usable recent evidence, which is not a
 transport signal: a lane that answered but returned only off-season or
 unverifiable rows is reported `unavailable`. No edition claims that every sport
 played today.
 
+Explicit v3 assembly retains its legacy round-robin cross-sport behavior, source
+limits and Polymarket assignment for existing consumers. It is not the active
+production path.
+
 ## Reasoning and output
 
-Editorial voice: a short witty hook built on a contrast between two sports, a
-brief wry line where it fits, then two or three points that go from cited
-evidence to a sporting implication to an honest caveat. Humour is commentary and
-never supplies a fact; injuries, illness, tragedy and personal traits are not
-joke material, and fabricated quotes or incidents are prohibited. All provider
-text is treated as untrusted data and never as instructions.
+Editorial voice: a short, engaging factual account that names the central athlete
+or team, what happened, the competition and why it matters for a non-fan. A brief
+dry observational line is optional when the facts earn it. Humour is commentary
+and never supplies a fact; forced analogies, impersonation, injury jokes, cruelty
+and fabricated quotes or incidents are prohibited. All provider text is treated
+as untrusted data and never as instructions.
 
 The only model route is `machina-ai`, Vertex AI, `gemini-3.5-flash-lite`, with
 one call per generated edition and none at all on a cache hit. Do not substitute
 another model without approval.
 
-Before storage, the pure validator requires: a `stop` finish reason with no tool
-calls, the exact JSON field set, bounded text lengths, citations that all
-resolve, cited sources spanning at least two sports, a market citation whenever
-market evidence exists, no sport token in the prose that was not cited, and every
-number in a fragment present in the sources that same fragment cites, with the
-permitted pool built from source prose only so identifiers and URLs cannot
-launder a figure. Only cited sources and their sports are retained. These are
-deterministic checks, not a semantic guarantee for every possible model claim:
-review consequential claims, and never read movement, momentum or trader emotion
-into a single price snapshot. Jokes are not validated mechanically.
+Before storage, the pure v4 validator requires: a `stop` finish reason with no
+tool calls, the exact JSON field set, a known `selectedAnchorSourceId`, the anchor
+cited by the headline/body, bounded text lengths, and every citation bound to that
+one candidate packet. It rejects cross-candidate mixing even within the same
+sport, unbound sport references, unknown or non-string source IDs, and numbers not
+present in the source cited by that fragment. Identifiers and URLs cannot launder
+a figure. A supplied related market is not mandatory. Selection metadata is
+stripped after validation, leaving the unchanged website v4 story shape. Only
+cited sources and the selected sport are retained. These checks do not prove model
+editorial quality or every semantic claim; consequential claims still need review.
 
 `docs/machina-read-v3-contract.md` holds the fixed v3 contract shared with the
 website, including the URL allowlist and the native projection that strips only
@@ -134,10 +152,11 @@ v3.
 
 ## Cache and publication
 
-A same-day, admitted, unexpired v3 edition is reused and every provider and model
+A same-day, admitted, unexpired v4 edition is reused and every provider and model
 task is skipped. This is sequential cache reuse, not a claim of race-safe global
-once-per-day execution. Because the cache probe and the reader both require
-`schemaVersion: 3`, a stored v2 MLB edition can never be served by this pipeline.
+once-per-day execution. Because the production cache probe and reader both require
+`schemaVersion: 4`, older editions cannot be served by this pipeline. Explicit v3
+cache validation remains available only to legacy callers.
 Failed validation stores no replacement and does not extend an old expiry; reads
 never renew a TTL or rewrite a provider timestamp.
 
@@ -165,7 +184,7 @@ execution failures remain separate evidence.
 ## Checks
 
 ```
-python -m pytest tests/test_machina_read_multisport.py tests/test_machina_read_native.py -q
+python -m pytest tests/test_machina_read_multisport.py tests/test_machina_read_single_story.py tests/test_machina_read_native.py -q
 python scripts/check-machina-ai-policy.py agent-templates/machina-read/workflows/machina-read-produce-daily.yml
 ```
 

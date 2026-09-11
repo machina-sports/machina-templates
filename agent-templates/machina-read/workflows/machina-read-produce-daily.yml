@@ -1,8 +1,8 @@
 workflow:
   name: machina-read-produce-daily
-  title: Machina Read - One sport, one daily story
-  description: Native multi-sport collection through sports-skills, Polymarket and Kalshi, rotation into one concrete story,
-    one Gemini call through machina-ai, publication validation and native v4 document storage. No local runner
+  title: Machina Read - Best story of the day
+  description: Native broad sports collection through sports-skills, Polymarket and Kalshi, bounded candidate shortlisting,
+    one Gemini editorial selection through machina-ai, publication validation and native v4 document storage. No local runner
     or shadow collector. Manual/draft until activation approval.
   status: draft
   inputs: {}
@@ -50,16 +50,17 @@ workflow:
     outputs:
       read_cache: $
   - type: document
-    name: find-previous-published-edition
+    name: find-previous-published-editions
     config:
       action: search
-      search-limit: 1
+      search-limit: 7
       search-vector: false
       search-sorters:
       - - _id
         - -1
     filters:
       name: '''machina-read-edition'''
+      value.schemaVersion: '4'
       value.publicApproved: 'True'
     outputs:
       read_previous_documents: $.get('documents', [])
@@ -481,7 +482,7 @@ workflow:
     condition: $.get('read_cache', {}).get('hit') is not True
     continue_on_error: true
   - type: connector
-    name: assemble-cross-sport-context
+    name: assemble-best-story-shortlist
     connector:
       name: machina-read-multisport
       command: assemble
@@ -507,7 +508,7 @@ workflow:
       read_context: $
     condition: $.get('read_cache', {}).get('hit') is not True
   - type: connector
-    name: reason-across-sports
+    name: select-and-write-best-story
     connector:
       name: machina-ai
       command: invoke_chat
@@ -545,7 +546,7 @@ workflow:
       machina-read-edition: $.get('read_final', {}).get('edition', {})
     metadata:
       edition_date: $.get('read_clock', {}).get('date')
-      source: '''machina-read-native-v3'''
+      source: '''machina-read-native-v4-best-story'''
     outputs:
       read_saved_id: ($.get('documents', []) or [{}])[0].get('_id')
   - type: connector

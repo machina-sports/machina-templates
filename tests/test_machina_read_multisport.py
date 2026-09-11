@@ -1,4 +1,4 @@
-"""Synthetic contract tests for the native multi-sport Machina Read v3 workflow package.
+"""Synthetic contract tests for the native multi-sport Machina Read workflow package.
 
 Fixtures copy observed provider response shapes. No real payload, credential or
 execution artefact is committed here, and nothing in this module performs I/O
@@ -172,7 +172,7 @@ def blocks(**overrides):
 
 
 def pack(**overrides):
-    return call('assemble', blocks(**overrides))
+    return call('assemble', dict(blocks(**overrides), edition_format=3))
 
 
 def draft(context, sports=('motorsport', 'baseball')):
@@ -636,28 +636,28 @@ def test_available_polymarket_evidence_must_be_discussed():
 
 
 def test_cache_admits_only_a_same_day_admitted_unexpired_v3_edition():
-    result = call('cached', {'documents': [stored()], 'same_day': True})
+    result = call('cached', {'documents': [stored()], 'same_day': True, 'edition_format': 3})
     assert result['hit'] is True and result['documentId'] == 'synthetic'
     assert set(result['edition']) == set(result['stored']) - {'publicApproved', 'marketSnapshots', 'coverage'}
     for override in [{'schemaVersion': 2}, {'publicApproved': False}, {'editionDate': '2026-09-07'},
                      {'status': 'draft'}, {'expiresAt': module.iso(NOW - timedelta(minutes=1))},
                      {'observedAt': module.iso(NOW - timedelta(days=3))}]:
-        assert call('cached', {'documents': [stored(**override)]})['hit'] is False
-    assert call('cached', {'documents': []})['hit'] is False
-    assert call('cached', {'documents': [{'value': None}, 'junk', {}]})['hit'] is False
+        assert call('cached', {'documents': [stored(**override)], 'edition_format': 3})['hit'] is False
+    assert call('cached', {'documents': [], 'edition_format': 3})['hit'] is False
+    assert call('cached', {'documents': [{'value': None}, 'junk', {}], 'edition_format': 3})['hit'] is False
 
 
 def test_a_stale_v2_edition_can_never_be_reused_by_the_v3_reader():
     legacy = stored()
     legacy['value']['schemaVersion'] = 2
     legacy['value']['teams'] = [{'id': '1'}]
-    assert call('cached', {'documents': [legacy], 'same_day': False})['hit'] is False
+    assert call('cached', {'documents': [legacy], 'same_day': False, 'edition_format': 3})['hit'] is False
 
 
 def test_expiry_is_not_renewed_on_a_read(monkeypatch):
     record = stored()
     monkeypatch.setattr(module, 'now', lambda: NOW + timedelta(hours=25))
-    assert call('cached', {'documents': [record], 'same_day': False})['hit'] is False
+    assert call('cached', {'documents': [record], 'same_day': False, 'edition_format': 3})['hit'] is False
     assert record['value']['expiresAt'] == module.iso(NOW + timedelta(hours=24))
 
 
@@ -755,7 +755,7 @@ def test_reader_is_v4_only_and_touches_no_provider_or_storage():
         assert task.get('config', {}).get('action') != 'save'
 
 
-def test_producer_stores_a_v3_edition_without_forcing_an_overwrite():
+def test_producer_stores_a_v4_edition_without_forcing_an_overwrite():
     workflow = load('machina-read-produce-daily.yml')
     save = next(t for t in workflow['tasks'] if t.get('config', {}).get('action') == 'save'
                 and 'machina-read-edition' in t.get('documents', {}))
@@ -764,6 +764,9 @@ def test_producer_stores_a_v3_edition_without_forcing_an_overwrite():
     assert save['metadata']['edition_date'] == "$.get('read_clock', {}).get('date')"
     assert workflow['tasks'][1]['filters']['value.schemaVersion'] == '4'
     assert workflow['tasks'][1]['filters']['value.publicApproved'] == 'True'
+    assert save['metadata']['source'] == "'machina-read-native-v4-best-story'"
+    previous = next(t for t in workflow['tasks'] if t['name'] == 'find-previous-published-editions')
+    assert previous['filters']['value.schemaVersion'] == '4' and previous['config']['search-limit'] == 7
     assert any(t.get('config', {}).get('action') == 'save' and 'machina-read-health' in t.get('documents', {})
                for t in workflow['tasks'])
 
