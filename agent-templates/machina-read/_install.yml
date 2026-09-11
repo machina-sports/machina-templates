@@ -5,4 +5,25 @@ setup:
     - sports-intelligence
   estimatedTime: 5 minutes
   features:
-    - Bounded candi...[truncated]
+    - Bounded candidate packets across eligible sports
+    - Single Gemini editorial selection via machina-ai
+    - No sport rotation, fixed sport priority or mandatory multi-sport
+    - Optional same-subject market context
+  integrations:
+    - sports-skills
+    - machina-ai
+  status: available
+  value: agent-templates/machina-read
+  version: 1.0.0
+
+datasets:
+  - type: workflow
+    path: workflows/machina-read-produce-daily.yml
+  - type: workflow
+    path: workflows/machina-read-get-latest.yml
+  - type: workflow
+    path: workflows/machina-read-source-probe.yml
+  - type: agent
+    path: agents/machina-read-daily.yml
+  - type: connector
+    path: connectors/machina-read-multisport/machina-read-multisport.yml
