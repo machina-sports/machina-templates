@@ -8,7 +8,7 @@ and gateway config.
 | Class          | Credits | Endpoints (examples)                                          |
 |----------------|---------|---------------------------------------------------------------|
 | `health`       | free    | health (whoami/smoke)                                         |
-| `data`         | 1       | resolve, get-schedule, get-event-context, standings, squads, injuries, player-performance-context, calibration (Brier/reliability per source + weights; arithmetic only) |
+| `data`         | 1       | resolve, get-schedule, get-event-context, standings, squads, injuries, player-performance-context, calibration (Brier/reliability per source + weights; arithmetic only), competitions (registry read) |
 | `market`       | 3       | search-markets, get-market-state, market-movers, compare-market-sources |
 | `social`       | 8       | fan-pulse, fan-sentiment-context (xAI/Grok)                   |
 | `intelligence` | 12      | generate-market-brief, explain-market-move, get-match-forecast, backtest-forecasts (Google GenAI reasoning) |

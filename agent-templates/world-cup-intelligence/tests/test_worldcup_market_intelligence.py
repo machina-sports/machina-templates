@@ -2961,7 +2961,9 @@ class TestExplainMoveBelief:
         assert b["version"] == "belief v0" and b["applicable"] is True
         assert b["evidence"] == [] and {u["signal"] for u in b["unobserved"]} == {
             "volume", "orderbook", "bookmaker", "sibling", "dispute", "news"}
-        assert b["top"] == {"cause": "news_or_injury", "p": 0.35}
+        # default competition = World Cup, whose knockout catalog starts news at .31 / ambiguity at .12
+        assert b["top"] == {"cause": "news_or_injury", "p": 0.31} and b["priors_source"] == "competition"
+        assert b["competition"] == "world-cup-2026"
         assert b["undecided"] is True and b["confidence"] == "low" and b["stance"] == "insufficient_evidence"
         assert b["needs_web_search"] is True and b["web_search_run"] is False
         assert [h["cause"] for h in b["hypotheses"]] == [
@@ -3276,7 +3278,7 @@ class TestSignalWeightsProvenance:
         sig = compute_signal({"params": {"forecast": _ledger_forecast(), "markets": markets, "event_urn": "urn:ev:1"}})["data"]["signal"]
         post = sig["posterior"]
         assert post["weights_source"] == "default" and post["weights_updated_at"] is None
-        assert post["calibration_ref"] == "/world-cup/v1/calibration" and post["weights"]["kalshi"] == 0.4
+        assert post["calibration_ref"] == "/world-cup/v1/calibration?competition=world-cup-2026" and post["weights"]["kalshi"] == 0.4
 
     def test_learned_weights_replace_the_priors(self):
         markets = [_mkt("kalshi", "Brazil", 0.50, cache_id="c-bra")]
@@ -3330,3 +3332,118 @@ class TestStoreKeyRoundTrip:
         assert out["settled_count"] == 1 and len(out["ledger"]) == 1
         assert out["settled_rows"][0]["metadata"] == {"event_urn": "urn:ev:1", "outcome": "home_win"}
         assert out["settled_rows"][0]["_id"] == "urn:ev:1:home_win"
+
+
+# -- OG Edge fatia 4: competition registry -----------------------------------------------
+
+resolve_competition = _module.resolve_competition
+competition_profile = _module.competition_profile
+mint_event_identity_fn = _module.mint_event_identity
+build_event_forecasts_fn = _module.build_event_forecasts
+
+
+class TestCompetitionRegistry:
+    def test_resolution_by_slug_league_urn_and_code_with_world_cup_default(self):
+        assert competition_profile("brasileirao-2026")["api_football"]["league"] == "71"
+        assert competition_profile("71")["slug"] == "brasileirao-2026"
+        assert competition_profile("urn:machina:sport:soccer:competition:premier-league-2026:eng")["slug"] == "premier-league-2026"
+        assert competition_profile("uefa")["slug"] == "champions-league-2026"
+        default = competition_profile(None)
+        assert default["slug"] == "world-cup-2026" and default["resolved"] is True
+        unknown = competition_profile("nba-2026")
+        assert unknown["slug"] == "world-cup-2026" and unknown["resolved"] is False
+
+    def test_resolve_command_honours_explicit_overrides_and_lists_the_registry(self):
+        d = resolve_competition({"params": {"competition": "brasileirao-2026"}})["data"]
+        assert d["league"] == "71" and d["season"] == "2026" and d["competition_code"] == "bra"
+        assert d["search_query"] == "Brasileirão Série A" and d["knockout"] is False and d["warnings"] == []
+        d = resolve_competition({"params": {"competition": "brasileirao-2026", "season": "2027", "query": "Flamengo"}})["data"]
+        assert d["season"] == "2027" and d["search_query"] == "Flamengo" and d["league"] == "71"
+        d = resolve_competition({"params": {"competition": "nba-2026"}})["data"]
+        assert d["competition_slug"] == "world-cup-2026" and d["warnings"]
+        wc = resolve_competition({"params": {}})["data"]
+        assert wc["league"] == "1" and wc["sr_season_id"] == "sr:season:101177" and wc["kalshi_sport"] == "worldcup"
+        listing = resolve_competition({"params": {"list": True}})["data"]
+        assert listing["default"] == "world-cup-2026" and {c["slug"] for c in listing["competitions"]} >= {"world-cup-2026", "brasileirao-2026"}
+        assert all(isinstance(c["market_terms"], list) for c in listing["competitions"])
+
+    def test_market_gate_follows_the_competition(self):
+        rec = _poly_record(id="777", question="Will Flamengo win the 2026 Brasileirão Série A?", slug="brasileirao-2026-winner")
+        under_default = normalize_market_sources({"params": {"polymarket_markets": {"markets": [rec]}}})["data"]
+        assert under_default["count"] == 0 and "FIFA World Cup 2026" in under_default["warnings"][0]
+        under_bra = normalize_market_sources({"params": {"polymarket_markets": {"markets": [rec]}, "competition": "brasileirao-2026"}})["data"]
+        assert under_bra["count"] == 1 and under_bra["markets"][0]["competition"] == "brasileirao-2026"
+        # a World Cup market still passes the default gate and is tagged with the default slug
+        wc = normalize_market_sources({"params": {"polymarket_markets": {"markets": [_poly_record()]}}})["data"]
+        assert wc["count"] == 1 and wc["markets"][0]["competition"] == "world-cup-2026"
+
+    def test_events_are_minted_with_the_competition_code_and_urn(self):
+        fixture = {"fixture": {"id": "9001", "date": "2026-09-20T19:00:00+00:00", "status": {"short": "NS"}, "venue": {"name": "Maracanã", "city": "Rio de Janeiro"}},
+                   "teams": {"home": {"name": "Flamengo"}, "away": {"name": "Palmeiras"}}}
+        out = mint_event_identity_fn({"params": {"fixtures": [fixture], "competition_slug": "brasileirao-2026"}})["data"]
+        ev = (out.get("events") or out.get("iptc_events") or [None])[0]
+        assert ev is not None
+        assert ev["_id"].startswith("urn:machina:sport:soccer:event:") and ev["_id"].endswith(":bra")
+        assert ev["sport:competition"]["@id"] == "urn:machina:sport:soccer:competition:brasileirao-serie-a-2026:bra"
+        assert ev["sport:competition"]["name"] == "Brasileirão Série A 2026" and ev["machina_competition_slug"] == "brasileirao-2026"
+        wc = mint_event_identity_fn({"params": {"fixtures": [fixture]}})["data"]
+        wc_ev = (wc.get("events") or wc.get("iptc_events"))[0]
+        assert wc_ev["_id"].endswith(":wor") and wc_ev["machina_competition_slug"] == "world-cup-2026"
+
+    def test_forecast_signal_ledger_and_calibration_inherit_the_competition(self):
+        fc = _ledger_forecast()
+        fc["competition"] = "brasileirao-2026"
+        markets = [_mkt("kalshi", "Brazil", 0.50, cache_id="c-bra")]
+        sig = compute_signal({"params": {"forecast": fc, "markets": markets, "event_urn": "urn:ev:1"}})["data"]["signal"]
+        assert sig["posterior"]["competition"] == "brasileirao-2026"
+        assert sig["posterior"]["calibration_ref"] == "/world-cup/v1/calibration?competition=brasileirao-2026"
+        out = build_signal_ledger_rows({"params": {"forecasts": [fc], "markets": markets, "existing_ids": []}})["data"]
+        assert {r["competition"] for r in out["calibration_rows"]} == {"brasileirao-2026"}
+        default_sig = compute_signal({"params": {"forecast": _ledger_forecast(), "markets": markets, "event_urn": "urn:ev:1"}})["data"]["signal"]
+        assert default_sig["posterior"]["competition"] == "world-cup-2026"
+
+    def test_belief_priors_follow_the_competition_catalog(self):
+        hist, move, _ = _mv_fixture(with_volume=False)
+        wc = _mv_belief(hist, move, cached={"cache_id": "kalshi:BRA", "competition": "world-cup-2026"})
+        bra = _mv_belief(hist, move, cached={"cache_id": "kalshi:BRA", "competition": "brasileirao-2026"})
+        assert wc["competition"] == "world-cup-2026" and wc["priors_source"] == "competition"
+        assert bra["competition"] == "brasileirao-2026" and bra["priors_source"] == "default"
+        # knockout competition: resolution ambiguity starts higher, everything still sums to 1
+        assert _mv_p(wc, "resolution_ambiguity") > _mv_p(bra, "resolution_ambiguity") == 0.08
+        assert abs(sum(h["p"] for h in wc["hypotheses"]) - 1.0) < 1e-3
+        assert next(h["prior"] for h in wc["hypotheses"] if h["cause"] == "resolution_ambiguity") == 0.12
+        # a URN resolves too
+        by_urn = _mv_belief(hist, move, cached={"cache_id": "kalshi:BRA", "competition_urn": "urn:machina:sport:soccer:competition:uefa-champions-league-2026:uefa"})
+        assert by_urn["competition"] == "champions-league-2026"
+
+    def test_calibration_reports_split_by_competition_and_chain_their_own_weights(self):
+        rows = _cal_sample()
+        for r in rows[:30]:
+            r["competition"] = "brasileirao-2026"
+        out = compute_calibration({"params": {"rows": rows, "now_iso": _CAL_NOW, "split_by_competition": True,
+                                              "weights_by_competition": {"brasileirao-2026": {"kalshi": 0.9}},
+                                              "updated_by_competition": {"brasileirao-2026": "2026-06-20T00:00:00+00:00"}}})["data"]
+        ids = [r["_id"] for r in out["reports"]]
+        assert ids == ["worldcup:calibration-report:aggregate", "worldcup:calibration-report:brasileirao-2026", "worldcup:calibration-report:world-cup-2026"]
+        assert out["competitions"] == ["brasileirao-2026", "world-cup-2026"]
+        by = {r["calibration"]["competition"]: r["calibration"] for r in out["reports"]}
+        assert by["all"]["n_resolved"] == 60 and by["brasileirao-2026"]["n_resolved"] == 30 and by["world-cup-2026"]["n_resolved"] == 30
+        assert by["brasileirao-2026"]["weights_in_use"]["kalshi"] == 0.9          # chained from its own report
+        assert by["brasileirao-2026"]["weights_updated"] == ["kalshi", "model"] and by["brasileirao-2026"]["weights_updated_at"] == _CAL_NOW
+        assert by["brasileirao-2026"]["weights_learned"]["kalshi"] == round(0.8 * 0.9 + 0.2 * 1.0, 4)   # chained from 0.9, not 0.4
+        assert all(r["metadata"] == {"event_urn": r["_id"]} for r in out["reports"])
+        single = compute_calibration({"params": {"rows": rows, "now_iso": _CAL_NOW, "competition": "world-cup-2026"}})["data"]
+        assert single["_id"] == "worldcup:calibration-report:world-cup-2026" and "reports" not in single
+
+    def test_knockout_ties_settle_on_regulation_time(self):
+        aet = {"fixture": {"id": "500", "status": {"short": "AET"}}, "goals": {"home": 2, "away": 1},
+               "score": {"fulltime": {"home": 1, "away": 1}, "extratime": {"home": 1, "away": 0}}}
+        ft = {"fixture": {"id": "501", "status": {"short": "FT"}}, "goals": {"home": 0, "away": 3},
+              "score": {"fulltime": {"home": 0, "away": 3}}}
+        assert _module._final_results_by_fixture([aet, ft]) == {"500": (1, 1), "501": (0, 3)}
+        assert _module._final_results_by_fixture([aet], regulation_time=False) == {"500": (2, 1)}
+        row = _cal_row(1, None, 0.7, 0.9, 0.99, kalshi=0.99, status="pending")
+        row["outcome"] = "draw"
+        row["fixture_id"] = "500"
+        out = settle_calibration_rows({"params": {"rows": [row], "finished_fixtures": [aet], "now_iso": _CAL_NOW}})["data"]
+        assert out["settled_rows"][0]["actual_outcome"] == "draw" and out["settled_rows"][0]["won"] == 1

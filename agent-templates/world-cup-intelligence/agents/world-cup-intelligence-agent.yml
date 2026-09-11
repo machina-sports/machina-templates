@@ -128,6 +128,14 @@ agent:
       outputs:
         calibration: "$.get('calibration', {})"
 
+    - name: worldcup-get-competitions
+      description: Competition registry -- every competition the layer can run, with its anchors and defaults
+      inputs:
+        competition: "$.get('competition', '')"
+      outputs:
+        competitions: "$.get('competitions', [])"
+        resolved: "$.get('resolved', {})"
+
     - name: worldcup-generate-market-brief
       description: Generate a grounded World Cup market-intelligence brief
       inputs:

@@ -19,10 +19,11 @@ workflow:
       outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
       secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
   inputs:
-    league: "$.get('league', '1')"
-    season: "$.get('season', '2026')"
+    competition: "$.get('competition', 'world-cup-2026')"
+    league: "$.get('league', '')"
+    season: "$.get('season', '')"
     force: "$.get('force', False)"
-    sr_season_id: "$.get('sr_season_id', 'sr:season:101177')"
+    sr_season_id: "$.get('sr_season_id', '')"
     bwin_country: "$.get('bwin_country', 'gb')"
     bwin_competition_id: "$.get('bwin_competition_id', '102868')"
     opta_wc_tmcl: "$.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')"
@@ -32,6 +33,29 @@ workflow:
     provider_summary: "$.get('provider_summary', {})"
     workflow-status: "$.get('fixtures_count', 0) > 0 and 'executed' or 'skipped'"
   tasks:
+    - type: connector
+      name: resolve-competition
+      description: Competition registry -> league/season/URN code/search terms (World Cup by default; explicit league/season win).
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_competition
+      inputs:
+        competition: "$.get('competition', 'world-cup-2026')"
+        league: "$.get('league', '')"
+        season: "$.get('season', '')"
+        sr_season_id: "$.get('sr_season_id', '')"
+        query: "$.get('search_query', '')"
+      outputs:
+        league: "$.get('league', '')"
+        season: "$.get('season', '')"
+        sr_season_id: "$.get('sr_season_id', '')"
+        competition_slug: "$.get('competition_slug', 'world-cup-2026')"
+        competition_name: "$.get('competition_name', '')"
+        competition_urn: "$.get('competition_urn', '')"
+        search_query: "$.get('search_query', '')"
+        kalshi_sport: "$.get('kalshi_sport', 'worldcup')"
+        knockout: "$.get('knockout', False)"
+
     - type: connector
       name: fetch-fixtures
       description: Fetch fixtures from API-Football for the configured league/season.
@@ -66,7 +90,7 @@ workflow:
         command: mint_event_identity
       inputs:
         fixtures: "$.get('raw_fixtures', [])"
-        competition_slug: "'world-cup-2026'"
+        competition_slug: "$.get('competition_slug', 'world-cup-2026')"
         existing_events: "$.get('existing_events', [])"
       outputs:
         # runner strips our connector's {status,data} envelope -> $ is the data.
@@ -94,7 +118,7 @@ workflow:
         name: sportradar-soccer
         command: get-seasons/{season_id}/schedules.json
         command_attribute:
-          season_id: "$.get('sr_season_id', 'sr:season:101177')"
+          season_id: "$.get('sr_season_id', '')"
       inputs:
         api_key: "$.get('api_key')"
       outputs:
