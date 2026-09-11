@@ -18,6 +18,8 @@ connector:
       value: "select_backtest_finished_fixtures"
     - name: "Detect price move"
       value: "detect_price_move"
+    - name: "Explain move belief"
+      value: "explain_move_belief"
     - name: "Normalize standings"
       value: "normalize_standings"
     - name: "Normalize squads"

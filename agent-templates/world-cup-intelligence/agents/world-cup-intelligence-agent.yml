@@ -111,11 +111,12 @@ agent:
         edge_analysis: "$.get('analysis', {})"
 
     - name: worldcup-explain-market-move
-      description: Explain why a market price moved, with grounded evidence
+      description: Explain why a market price moved -- belief over five causes from cheap venue evidence, grounded search only when it is worth it
       inputs:
         market_id: "$.get('market_id', '')"
       outputs:
         move: "$.get('move', {})"
+        belief: "$.get('belief', {})"
         explanation: "$.get('explanation', {})"
 
     - name: worldcup-generate-market-brief
