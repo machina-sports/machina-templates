@@ -213,7 +213,11 @@ workflow:
       outputs:
         research: "$.get('answer', '')"
         research_sources: "$.get('search_results', [])"
-        research_ran: "True"
+        # The runner evaluates outputs even when a task is SKIPPED (against an
+        # empty payload), so a constant `True` here would always fire the
+        # second belief pass and stamp a false `news=not_found`. Derive it from
+        # the payload: only a search that actually ran carries these keys.
+        research_ran: "$.get('answer') is not None or $.get('search_results') is not None"
 
     - type: connector
       name: move-belief-with-research
