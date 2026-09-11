@@ -424,6 +424,8 @@ class TestNormalizeMarketState:
 detect_market_edges = _module.detect_market_edges
 detect_price_move = _module.detect_price_move
 explain_move_belief = _module.explain_move_belief
+settle_calibration_rows = _module.settle_calibration_rows
+compute_calibration = _module.compute_calibration
 
 
 def _leg(cache_id, event_id, name, price):
@@ -3099,3 +3101,188 @@ class TestExplainMoveBelief:
         assert _module._ts_epoch("2025-06-15T15:06:40Z") == 1_750_000_000
         assert _module._ts_epoch("2025-06-15T15:06:40+00:00") == 1_750_000_000
         assert _module._ts_epoch(None) is None and _module._ts_epoch("not a date") is None and _module._ts_epoch(True) is None
+
+
+# -- OG Edge fatia 3: calibration sample, settlement, Brier per source, learned weights ----
+
+def _cal_row(i, won, post, model, market, *, kalshi=None, polymarket=None, kickoff="2026-06-19T18:00:00+00:00",
+             competition="world-cup-2026", status="settled"):
+    sources = [{"source": "model", "family": "model", "p": model, "weight": 0.8, "follower_of": None}]
+    if kalshi is not None:
+        sources.append({"source": "kalshi", "family": "kalshi", "p": kalshi, "weight": 0.4, "follower_of": None})
+    if polymarket is not None:
+        sources.append({"source": "polymarket", "family": "polymarket", "p": polymarket, "weight": 0.6, "follower_of": None})
+    row = {"_id": f"urn:ev:{i}:home_win:cal", "event_urn": f"urn:ev:{i}", "outcome": "home_win",
+           "competition": competition, "kickoff": kickoff, "fixture_id": str(i),
+           "posterior_prob": post, "model_prob": model, "market_prob": market, "sources": sources, "status": status}
+    if status == "settled":
+        row["won"] = won
+    return row
+
+
+def _cal_sample(n_each=30):
+    """60 settled legs: half quoted at 0.7 (70% win), half at 0.3 (30% win).
+
+    posterior is calibrated (0.7/0.3), the market (= kalshi) is flatter (0.6/0.4), the model
+    overconfident (0.9/0.1). Brier: posterior .21, market .22, model .25 -- posterior beats market."""
+    rows = []
+    for i in range(n_each):
+        won = 1 if i < round(0.7 * n_each) else 0
+        rows.append(_cal_row(i, won, 0.7, 0.9, 0.6, kalshi=0.6))
+    for i in range(n_each):
+        won = 1 if i < round(0.3 * n_each) else 0
+        rows.append(_cal_row(100 + i, won, 0.3, 0.1, 0.4, kalshi=0.4))
+    return rows
+
+
+_CAL_NOW = "2026-07-01T00:00:00+00:00"
+
+
+class TestCalibrationSampleAndSettlement:
+    def test_ledger_builder_also_emits_one_calibration_row_per_leg(self):
+        markets = [_mkt("kalshi", "Brazil", 0.50, cache_id="c-bra"),
+                   _mkt("kalshi", "Draw", 0.30, cache_id="c-tie"),
+                   _mkt("kalshi", "Morocco", 0.22, cache_id="c-mar")]
+        out = build_signal_ledger_rows({"params": {"forecasts": [_ledger_forecast()], "markets": markets,
+                                                    "existing_ids": [], "existing_calibration_ids": []}})["data"]
+        cal = {r["_id"]: r for r in out["calibration_rows"]}
+        assert out["calibration_count"] == 3 and set(cal) == {"urn:ev:1:home_win:cal", "urn:ev:1:draw:cal", "urn:ev:1:away_win:cal"}
+        row = cal["urn:ev:1:home_win:cal"]
+        assert row["metadata"] == {"event_urn": "urn:ev:1", "outcome": "home_win", "kind": "calibration"}
+        assert row["competition"] == "world-cup-2026" and row["status"] == "pending" and row["fixture_id"] == "100"
+        assert row["market_prob"] == 0.50 and row["model_prob"] == 0.6 and row["posterior_prob"] is not None
+        assert {s["family"] for s in row["sources"]} == {"model", "kalshi"}
+        assert row["weights_used"]["kalshi"] == 0.4 and row["weights_source"] == "default"
+        # the value ledger is unchanged: only the value leg lands there
+        assert [r["_id"] for r in out["ledger_rows"]] == ["urn:ev:1:home_win"]
+
+    def test_calibration_rows_are_insert_only_and_optional(self):
+        markets = [_mkt("kalshi", "Brazil", 0.50, cache_id="c-bra")]
+        out = build_signal_ledger_rows({"params": {"forecasts": [_ledger_forecast()], "markets": markets, "existing_ids": [],
+                                                    "existing_calibration_ids": ["urn:ev:1:home_win:cal"]}})["data"]
+        assert out["calibration_rows"] == []
+        out = build_signal_ledger_rows({"params": {"forecasts": [_ledger_forecast()], "markets": markets, "existing_ids": [],
+                                                    "emit_calibration": False}})["data"]
+        assert out["calibration_rows"] == [] and out["calibration_count"] == 0
+
+    def test_learned_weights_flow_into_the_logged_posterior(self):
+        markets = [_mkt("kalshi", "Brazil", 0.50, cache_id="c-bra")]
+        out = build_signal_ledger_rows({"params": {"forecasts": [_ledger_forecast()], "markets": markets, "existing_ids": [],
+                                                    "source_weights": {"kalshi": 0.9, "model": 0.5},
+                                                    "weights_updated_at": "2026-06-18T06:00:00+00:00"}})["data"]
+        row = out["calibration_rows"][0]
+        assert row["weights_used"]["kalshi"] == 0.9 and row["weights_source"] == "learned"
+
+    def test_settlement_marks_won_and_leaves_unfinished_pending(self):
+        pending = [_cal_row(1, None, 0.7, 0.9, 0.6, kalshi=0.6, status="pending"),
+                   _cal_row(2, None, 0.3, 0.1, 0.4, kalshi=0.4, status="pending")]
+        pending[1]["outcome"] = "away_win"
+        done = _cal_row(3, 1, 0.5, 0.5, 0.5, kalshi=0.5)
+        done["settled_at"] = "earlier"
+        fixtures = [{"fixture": {"id": "1", "status": {"short": "FT"}}, "goals": {"home": 2, "away": 0}},
+                    {"fixture": {"id": "3", "status": {"short": "FT"}}, "goals": {"home": 0, "away": 1}}]
+        out = settle_calibration_rows({"params": {"rows": pending + [done], "finished_fixtures": fixtures,
+                                                   "now_iso": _CAL_NOW}})["data"]
+        by = {r["_id"]: r for r in out["rows"]}
+        assert out["settled_count"] == 1
+        assert by["urn:ev:1:home_win:cal"]["won"] == 1 and by["urn:ev:1:home_win:cal"]["actual_outcome"] == "home_win"
+        assert by["urn:ev:1:home_win:cal"]["status"] == "settled" and by["urn:ev:1:home_win:cal"]["settled_at"] == _CAL_NOW
+        assert by["urn:ev:2:home_win:cal"]["status"] == "pending"          # fixture 2 not final
+        assert by["urn:ev:3:home_win:cal"]["settled_at"] == "earlier"      # already settled -> untouched
+
+
+class TestComputeCalibration:
+    def test_scores_every_probability_and_posterior_beats_market(self):
+        rep = compute_calibration({"params": {"rows": _cal_sample(), "now_iso": _CAL_NOW}})["data"]["calibration"]
+        assert rep["version"] == "calibration v0" and rep["n_resolved"] == 60 and rep["sample_size_sufficient"] is True
+        assert rep["brier"] == 0.21 and rep["brier_market_baseline"] == 0.22 and rep["brier_model"] == 0.25
+        assert rep["posterior_beats_market"] is True
+        assert rep["brier_uniform_baseline"] == round((30 * (2 / 3) ** 2 + 30 * (1 / 3) ** 2) / 60, 4)  # 30 wins of 60 at p=1/3
+        assert rep["log_loss"] < rep["log_loss_market"]
+        assert rep["calibration_error"] == 0.0      # 0.7 came true 70%, 0.3 came true 30%
+        bins = {b["bin"]: b for b in rep["reliability"]}
+        assert bins["0.7-0.8"] == {"bin": "0.7-0.8", "predicted": 0.7, "observed": 0.7, "n": 30}
+        assert bins["0.3-0.4"]["observed"] == 0.3 and sum(b["n"] for b in rep["reliability"]) == 60
+        assert set(rep["by_source"]) == {"model", "kalshi"}
+        assert rep["by_source"]["kalshi"]["brier"] == 0.22 and rep["by_source"]["model"]["brier"] == 0.25
+        assert rep["competition"] == "all" and rep["cutoff"].startswith("2026-04-02")
+        assert "beats market" in rep["summary"]
+
+    def test_weights_move_towards_the_sharper_source_and_stay_bounded(self):
+        rep = compute_calibration({"params": {"rows": _cal_sample(), "now_iso": _CAL_NOW}})["data"]["calibration"]
+        w0, w1 = rep["weights_in_use"], rep["weights_learned"]
+        assert w0 == {"model": 0.8, "bookmaker": 1.0, "polymarket": 0.6, "kalshi": 0.4}
+        # kalshi (Brier .22) is the best eligible source -> target 1.0; model (Brier .25) -> target .88
+        assert w1["kalshi"] == round(0.8 * 0.4 + 0.2 * 1.0, 4) == 0.52
+        assert w1["model"] == round(0.8 * 0.8 + 0.2 * (0.22 / 0.25), 4)
+        assert w1["bookmaker"] == 1.0 and w1["polymarket"] == 0.6      # no rows priced by them -> unchanged
+        assert rep["weights_updated"] == ["kalshi", "model"] and rep["weights_updated_at"] == _CAL_NOW
+        assert all(0.1 <= v <= 1.0 for v in w1.values())
+        assert rep["by_source"]["kalshi"]["weight_in_use"] == 0.4 and rep["by_source"]["kalshi"]["weight_learned"] == 0.52
+
+    def test_update_chains_from_the_weights_in_use(self):
+        rep = compute_calibration({"params": {"rows": _cal_sample(), "now_iso": _CAL_NOW,
+                                              "weights_in_use": {"kalshi": 0.52, "model": 0.816}}})["data"]["calibration"]
+        assert rep["weights_learned"]["kalshi"] == round(0.8 * 0.52 + 0.2 * 1.0, 4)   # keeps drifting to 1.0
+        assert rep["weights_in_use"]["bookmaker"] == 1.0                                # defaults fill the gaps
+
+    def test_insufficient_sample_keeps_weights_and_carries_the_previous_timestamp(self):
+        rep = compute_calibration({"params": {"rows": _cal_sample(n_each=10), "now_iso": _CAL_NOW,
+                                              "previous_weights_updated_at": "2026-06-01T00:00:00+00:00"}})["data"]["calibration"]
+        assert rep["n_resolved"] == 20 and rep["sample_size_sufficient"] is False
+        assert rep["by_source"]["kalshi"]["sample_sufficient"] is False
+        assert rep["weights_learned"] == rep["weights_in_use"] and rep["weights_updated"] == []
+        assert rep["weights_updated_at"] == "2026-06-01T00:00:00+00:00"
+        assert "unchanged" in rep["summary"]
+
+    def test_window_competition_and_venue_filters(self):
+        rows = _cal_sample()
+        old = _cal_row(999, 1, 0.7, 0.9, 0.6, kalshi=0.6, kickoff="2026-01-01T18:00:00+00:00")   # outside 90d
+        other = _cal_row(998, 1, 0.7, 0.9, 0.6, kalshi=0.6, competition="copa-america")
+        pending = _cal_row(997, None, 0.7, 0.9, 0.6, kalshi=0.6, status="pending")
+        rep = compute_calibration({"params": {"rows": rows + [old, other, pending], "now_iso": _CAL_NOW,
+                                              "competition": "world-cup-2026", "venue": "kalshi"}})["data"]["calibration"]
+        assert rep["n_resolved"] == 60 and rep["n_outside_window"] == 1 and rep["n_pending"] == 1
+        assert rep["competition"] == "world-cup-2026" and rep["venue"] == "kalshi"
+        assert rep["venue_stats"] == rep["by_source"]["kalshi"] and "warnings" not in rep
+        wide = compute_calibration({"params": {"rows": rows + [old], "now_iso": _CAL_NOW, "window_days": 0}})["data"]["calibration"]
+        assert wide["n_resolved"] == 61 and wide["cutoff"] is None
+        missing = compute_calibration({"params": {"rows": rows, "now_iso": _CAL_NOW, "venue": "bookmaker"}})["data"]["calibration"]
+        assert missing["venue_stats"] is None and missing["warnings"] == ["no settled rows priced by 'bookmaker' in the window"]
+
+    def test_empty_sample_is_explicit(self):
+        rep = compute_calibration({"params": {"rows": [], "now_iso": _CAL_NOW}})["data"]["calibration"]
+        assert rep["n_resolved"] == 0 and rep["brier"] is None and rep["posterior_beats_market"] is None
+        assert rep["reliability"] == [] and rep["by_source"] == {}
+        assert rep["weights_learned"] == rep["weights_in_use"] and rep["weights_updated_at"] is None
+        assert rep["summary"].startswith("No settled calibration rows")
+
+    def test_multiple_sources_of_one_family_are_averaged_per_row(self):
+        row = _cal_row(1, 1, 0.6, 0.6, 0.6, kalshi=0.6)
+        row["sources"] += [{"source": "bwin", "family": "bookmaker", "p": 0.5}, {"source": "betano", "family": "bookmaker", "p": 0.7}]
+        rep = compute_calibration({"params": {"rows": [row], "now_iso": _CAL_NOW, "min_sample": 1}})["data"]["calibration"]
+        assert rep["by_source"]["bookmaker"]["n"] == 1 and rep["by_source"]["bookmaker"]["brier"] == round((0.6 - 1) ** 2, 4)
+
+    def test_report_is_deterministic_and_carries_the_store_id(self):
+        out = compute_calibration({"params": {"rows": _cal_sample(), "now_iso": _CAL_NOW}})["data"]
+        again = compute_calibration({"params": {"rows": _cal_sample(), "now_iso": _CAL_NOW}})["data"]
+        assert out == again and out["_id"] == "worldcup:calibration-report:aggregate"
+        assert out["metadata"] == {"event_urn": "worldcup:calibration-report:aggregate"}
+
+
+class TestSignalWeightsProvenance:
+    def test_default_weights_are_labelled_and_point_at_calibration(self):
+        markets = [_mkt("kalshi", "Brazil", 0.50, cache_id="c-bra")]
+        sig = compute_signal({"params": {"forecast": _ledger_forecast(), "markets": markets, "event_urn": "urn:ev:1"}})["data"]["signal"]
+        post = sig["posterior"]
+        assert post["weights_source"] == "default" and post["weights_updated_at"] is None
+        assert post["calibration_ref"] == "/world-cup/v1/calibration" and post["weights"]["kalshi"] == 0.4
+
+    def test_learned_weights_replace_the_priors(self):
+        markets = [_mkt("kalshi", "Brazil", 0.50, cache_id="c-bra")]
+        sig = compute_signal({"params": {"forecast": _ledger_forecast(), "markets": markets, "event_urn": "urn:ev:1",
+                                         "source_weights": {"kalshi": 0.52, "model": 0.816},
+                                         "weights_updated_at": "2026-07-01T00:00:00+00:00"}})["data"]["signal"]
+        post = sig["posterior"]
+        assert post["weights_source"] == "learned" and post["weights_updated_at"] == "2026-07-01T00:00:00+00:00"
+        assert post["weights"]["kalshi"] == 0.52

@@ -157,7 +157,7 @@ Capability semantics:
 - **`get-market-state`** — live from the source (current price, order book, history, trades).
 - **`market-movers`** — computed from the hourly `worldcup:market-snapshot` time series; needs ≥2 hourly buckets to show movement.
 - **`get-match-forecast`** — archived probabilities from `worldcup:model-forecast`; the model-vs-market comparison uses preserved market-cache evidence.
-- **Stores added by this layer:** `worldcup:model-forecast` (`_id` = canonical event URN), `worldcup:forecast-audit` (`_id` = canonical event URN; `…:aggregate` singleton), `worldcup:fifa-ranking` (`_id` = team URN), `worldcup:final-fifa-player-power-ranking` (230 published final player records plus one source manifest), `worldcup:signal-ledger` (`_id` = `{event_urn}:{outcome}`; one row per logged value pick), `worldcup:clv-report` (`…:aggregate` singleton).
+- **Stores added by this layer:** `worldcup:model-forecast` (`_id` = canonical event URN), `worldcup:forecast-audit` (`_id` = canonical event URN; `…:aggregate` singleton), `worldcup:fifa-ranking` (`_id` = team URN), `worldcup:final-fifa-player-power-ranking` (230 published final player records plus one source manifest), `worldcup:signal-ledger` (`_id` = `{event_urn}:{outcome}`; one row per logged value pick), `worldcup:clv-report` (`…:aggregate` singleton), `worldcup:calibration-sample` (`_id` = `{event_urn}:{outcome}:cal`; one row per 1X2 leg of every forecast with markets, settled by the backtest), `worldcup:calibration-report` (`…:aggregate` singleton; Brier per source + `weights_learned` read by `worldcup-get-signal`).
 
 Identity aliases are migration-safe and deterministic: both `Czech Republic` and `Czechia` resolve to `urn:machina:sport:soccer:team:czechia:cze`. Forecast and audit builders deduplicate legacy/new alias documents by API-Football fixture id and emit the canonical Czechia event URN, preventing duplicate archive records without deleting legacy source documents.
 
@@ -358,6 +358,22 @@ Returns `move` (`moved`, `net_move_bps`, `swing_bps`, `direction`, from/to price
 - `summary`: one deterministic sentence (the fallback when `include_reasoning` is false); `caveat`: likelihoods are operator judgment (belief v0) pending calibration against resolved moves.
 
 `explanation` (when `include_reasoning`): `summary`, `top_cause` (= `belief.top.cause`), `likely_drivers[]` (`driver`, `cause`, `kind` confirmed/speculative/noise), `confidence` (= `belief.top.p`), `evidence[]` (cited research when it ran), `disclaimer`.
+
+## `worldcup-get-calibration` (calibration v0, OG Edge fatia 3)
+
+Request: `{ "venue": "kalshi", "competition": "world-cup-2026", "window_days": 90 }` — all optional (`window_days: 0` = all time). Cost class **data (1)**: arithmetic over the calibration sample, no model call.
+
+**Why:** markets resolve, so the fusion weights need not stay operator priors. Every forecast with markets logs one `worldcup:calibration-sample` row per 1X2 leg — value pick or not, so the sample carries none of the value-pick selection bias of the CLV ledger — with each source's probability (`sources[]`: `source`, `family`, `p`, `weight`, `follower_of`), the posterior, the model and the best market price, and the `weights_used`. `worldcup-backtest-forecasts` settles the rows against the final score (`won`, `actual_outcome`) and publishes `worldcup:calibration-report:aggregate`; `worldcup-get-signal` reads that report's `weights_learned` into `compute_signal` (`signal.posterior.weights_source: "learned" | "default"`, `weights_updated_at`, `calibration_ref`).
+
+Returns `calibration`:
+
+- `n_resolved`, `n_pending`, `n_outside_window`, `sample_size_sufficient` (≥ 50), `competition`, `venue`, `window_days`, `cutoff`, `computed_at`.
+- `brier` (fused posterior), `brier_market_baseline` (best market price at signal time), `brier_model`, `brier_uniform_baseline` (p = 1/3 on every leg), `log_loss`, `log_loss_market`, `calibration_error` (n-weighted |predicted − observed| over the bins), `posterior_beats_market`.
+- `reliability[]` / `reliability_market[]`: `{bin: "0.5-0.6", predicted, observed, n}` per 0.1 bin of the posterior / the market price.
+- `by_source{family}`: `n`, `brier`, `log_loss`, `base_rate`, `calibration_error`, `reliability[]`, `weight_in_use`, `weight_learned`, `sample_sufficient` (≥ 30 settled rows) for `model`, `bookmaker`, `polymarket`, `kalshi` (a family with several venues in one row is averaged per row). `venue_stats` mirrors `by_source[venue]` when `venue` is given (`warnings` when it has no rows).
+- `weights_in_use`, `weights_learned`, `weights_updated[]`, `weights_updated_at`, `lambda`, `min_resolved`.
+
+**Learning rule:** for each source with ≥ 30 settled rows, `w ← (1 − λ)·w + λ·(Brier_best / Brier_source)` with λ = 0.2, clipped to [0.1, 1.0] — the sharpest source drifts to 1.0, the others to their relative sharpness, sources without sample keep their weight. The exponential blend chains from the last report's `weights_learned`, so one noisy day cannot flip the weights. `summary` states the comparison in one sentence; `caveat` carries the version and its limits.
 
 ## `worldcup-generate-market-brief`
 

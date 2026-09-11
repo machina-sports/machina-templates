@@ -30,7 +30,7 @@ setup:
     - pod-document-store
   status: available
   value: agent-templates/world-cup-intelligence
-  version: 0.8.0
+  version: 0.9.0
 
 datasets:
   - type: connector
@@ -119,6 +119,8 @@ datasets:
     path: workflows/worldcup-get-signal.yml
   - type: workflow
     path: workflows/worldcup-log-signals.yml
+  - type: workflow
+    path: workflows/worldcup-get-calibration.yml
   - type: workflow
     path: workflows/worldcup-match-preview.yml
   - type: workflow

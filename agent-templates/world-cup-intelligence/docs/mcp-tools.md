@@ -38,6 +38,7 @@ least one of these on every deployed MCP surface — without a discovery primiti
 | Skills | `match_preview`, `match_recap`, `player_spotlight`, `fan_pulse`, `market_watch` | skill (25–60) |
 | Context & markets | `get_event_context`, `search_markets`, `get_market_state` | data (1) / market (3) |
 | Forecast & intelligence | `get_match_forecast`, `get_signal`, `find_market_edges`, `explain_market_move`, `backtest_forecasts` | intelligence (12) / edge (18) |
+| Calibration | `get_calibration` | data (1) |
 
 Internal-only (never expose): `sync-*`, `ingest-*`, `seed-*`, `refresh-*`,
 `log-signals`, `coverage-gateway`.
@@ -123,6 +124,16 @@ Inputs: `market_id` (`kalshi:…` | `polymarket:…`), `window_hours` (default `
 Returns `move` (size/direction of the largest move in the window) and, when it moved, `belief` — a ranked posterior over five catalog causes (`news_or_injury`, `liquidity_whale`, `bookmaker_catchup`, `correlated_market`, `resolution_ambiguity`) computed from cheap venue evidence (volume, book/trades, bookmaker line, sibling markets, dispute flags), with `evidence`, `unobserved`, `top`, `confidence`, `undecided`, `stance` and `needs_web_search`. The grounded web search runs only when the belief asks for it (top cause < 0.5 or news ≥ 0.25); `explanation` is narrated from the belief and copies its `top_cause`/`confidence`. See `docs/api-contracts.md` for the field-by-field contract.
 
 Read-only; decision support, no execution advice.
+
+### `worldcup_get_calibration`
+
+Backed by `worldcup-get-calibration` (REST `POST /world-cup/v1/calibration`, data class).
+
+Inputs: `venue` (`kalshi` | `polymarket` | `bookmaker` | `model`, optional highlight), `competition` (optional, e.g. `world-cup-2026`), `window_days` (default `90`, `0` = all time).
+
+Returns `calibration`: the track record behind the probabilities — `brier` (fused posterior) vs `brier_market_baseline` / `brier_model` / `brier_uniform_baseline`, `log_loss`, `calibration_error`, `posterior_beats_market`, a `reliability` curve (predicted vs observed per 0.1 bin), `by_source` (Brier / log-loss / reliability / weight in use / weight learned per source family), `weights_in_use`, `weights_learned`, `weights_updated_at`, `n_resolved` and `sample_size_sufficient`. Pure arithmetic over settled legs; no model call. See `docs/api-contracts.md`.
+
+Nobody should buy a 55% posterior without seeing, in the same contract, how often 55% came true.
 
 ### `worldcup_stable_markets`
 

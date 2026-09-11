@@ -119,6 +119,15 @@ agent:
         belief: "$.get('belief', {})"
         explanation: "$.get('explanation', {})"
 
+    - name: worldcup-get-calibration
+      description: Track record behind the probabilities -- Brier, log-loss and reliability per source over settled legs, weights in use and learned
+      inputs:
+        venue: "$.get('venue', '')"
+        competition: "$.get('competition', '')"
+        window_days: "$.get('window_days', 90)"
+      outputs:
+        calibration: "$.get('calibration', {})"
+
     - name: worldcup-generate-market-brief
       description: Generate a grounded World Cup market-intelligence brief
       inputs:

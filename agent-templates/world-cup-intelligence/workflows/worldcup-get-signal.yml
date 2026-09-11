@@ -94,6 +94,21 @@ workflow:
       outputs:
         markets: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
 
+    - type: document
+      name: load-calibration-weights
+      description: Fusion weights learned from settled signals (fatia 3); the v0 priors apply when no report exists yet.
+      condition: "$.get('forecast', {}) != {}"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:calibration-report'"
+        metadata.event_urn: "'worldcup:calibration-report:aggregate'"
+      outputs:
+        calibration_weights: "((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('calibration', {}) or {}).get('weights_learned', {}) or {}"
+        calibration_updated_at: "((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('calibration', {}) or {}).get('weights_updated_at', '') or ''"
+
     - type: connector
       name: compute-signal
       description: Fuse forecast + best market price into the structured signal.
@@ -109,6 +124,8 @@ workflow:
         kelly_fraction: "$.get('kelly_fraction', 0.25)"
         bankroll: "$.get('bankroll', '')"
         fee_bps: "$.get('fee_bps', 0)"
+        source_weights: "$.get('calibration_weights', {})"
+        weights_updated_at: "$.get('calibration_updated_at', '')"
       outputs:
         signal: "$.get('signal', {})"
         recommendation: "$.get('recommendation', '')"
