@@ -3286,3 +3286,47 @@ class TestSignalWeightsProvenance:
         post = sig["posterior"]
         assert post["weights_source"] == "learned" and post["weights_updated_at"] == "2026-07-01T00:00:00+00:00"
         assert post["weights"]["kalshi"] == 0.52
+
+
+class TestStoreKeyRoundTrip:
+    """Rows read back from the document store come WITHOUT `metadata` (the runner keeps it on the
+    document, not in `value`); re-saving them must re-attach the upsert key or the whole batch
+    collapses into one document -- seen live on world-cup-2: 5 settled legs -> 1 document."""
+
+    def _loaded(self, row):
+        loaded = dict(row)
+        loaded.pop("metadata", None)   # what `d.get('value')` gives back
+        return loaded
+
+    def test_settled_calibration_rows_carry_metadata_and_id_again(self):
+        pending = [self._loaded(_cal_row(1, None, 0.7, 0.9, 0.6, kalshi=0.6, status="pending")),
+                   self._loaded(_cal_row(2, None, 0.3, 0.1, 0.4, kalshi=0.4, status="pending"))]
+        fixtures = [{"fixture": {"id": "1", "status": {"short": "FT"}}, "goals": {"home": 2, "away": 0}},
+                    {"fixture": {"id": "2", "status": {"short": "FT"}}, "goals": {"home": 1, "away": 1}}]
+        out = settle_calibration_rows({"params": {"rows": pending, "finished_fixtures": fixtures, "now_iso": _CAL_NOW}})["data"]
+        metas = [r["metadata"] for r in out["settled_rows"]]
+        assert metas == [{"event_urn": "urn:ev:1", "outcome": "home_win", "kind": "calibration"},
+                         {"event_urn": "urn:ev:2", "outcome": "home_win", "kind": "calibration"}]
+        assert [r["_id"] for r in out["settled_rows"]] == ["urn:ev:1:home_win:cal", "urn:ev:2:home_win:cal"]
+        assert len({tuple(sorted(m.items())) for m in metas}) == 2   # distinct upsert keys
+
+    def test_settlement_and_report_dedupe_a_collapsed_leftover(self):
+        pending = self._loaded(_cal_row(1, None, 0.7, 0.9, 0.6, kalshi=0.6, status="pending"))
+        stray = dict(_cal_row(1, 0, 0.7, 0.9, 0.6, kalshi=0.6))      # same _id, already settled, saved with empty metadata
+        stray["metadata"] = {}
+        out = settle_calibration_rows({"params": {"rows": [pending, stray], "finished_fixtures": [], "now_iso": _CAL_NOW}})["data"]
+        assert len(out["rows"]) == 1 and out["rows"][0]["status"] == "settled"
+        assert out["rows"][0]["metadata"] == {"event_urn": "urn:ev:1", "outcome": "home_win", "kind": "calibration"}
+        rep = compute_calibration({"params": {"rows": [pending, stray, stray], "now_iso": _CAL_NOW}})["data"]["calibration"]
+        assert rep["n_resolved"] == 1 and rep["n_pending"] == 0
+
+    def test_clv_settlement_re_attaches_the_ledger_key(self):
+        row = {"_id": "urn:ev:1:home_win", "event_urn": "urn:ev:1", "outcome": "home_win", "outcome_name": "Brazil",
+               "cache_id": "c-bra", "entry_price": 0.28, "fixture_id": "100", "kickoff": "2026-06-19T18:00:00+00:00",
+               "confidence_tier": "high", "status": "pending"}     # as loaded: no metadata
+        snaps = [_snap("c-bra", "2026-06-19T17:00:00+00:00", "Brazil", 0.34)]
+        fixtures = [{"fixture": {"id": "100", "status": {"short": "FT"}}, "goals": {"home": 1, "away": 0}}]
+        out = compute_clv({"params": {"ledger_rows": [row, dict(row)], "snapshots": snaps, "finished_fixtures": fixtures}})["data"]
+        assert out["settled_count"] == 1 and len(out["ledger"]) == 1
+        assert out["settled_rows"][0]["metadata"] == {"event_urn": "urn:ev:1", "outcome": "home_win"}
+        assert out["settled_rows"][0]["_id"] == "urn:ev:1:home_win"
