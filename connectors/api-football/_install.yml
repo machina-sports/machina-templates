@@ -49,6 +49,9 @@ datasets:
     path: "api-football-forecast.yml"
 
   - type: "connector"
+    path: "api-football-availability.yml"
+
+  - type: "connector"
     path: "api-football-event-data.yml"
 
   - type: "connector"
@@ -100,6 +103,9 @@ datasets:
 
   - type: "workflow"
     path: "sync-fixture-forecast.yml"
+
+  - type: "workflow"
+    path: "sync-fixture-availability.yml"
 
   - type: "workflow"
     path: "workflows/event-consumer-prelive.yml"

@@ -1,0 +1,7 @@
+connector:
+  name: api-football-availability
+  description: Project an API-Football fixture injury list into a bounded availability snapshot. No provider calls, no inferred absence, ruled out and doubtful kept apart.
+  filename: api-football-availability.py
+  filetype: pyscript
+  commands:
+    - {name: Build the fixture availability snapshot, value: invoke_build_availability}
