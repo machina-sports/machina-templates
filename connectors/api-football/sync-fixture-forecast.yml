@@ -1,0 +1,85 @@
+workflow:
+
+  name: "api-football-sync-fixture-forecast"
+  title: "API Football - Sync Fixture Forecast"
+  description: |
+    The provider's own pre-match forecast for one fixture, stored as an
+    expectation and never as a fact. Percentages and strength comparisons are
+    kept; the provider's betting advice is deliberately dropped, because this
+    product does not carry wager advice.
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    fixture: "$.get('fixture')"
+    event_code: "$.get('event_code')"
+    source_event_id: "$.get('source_event_id')"
+    observed_at: "$.get('observed_at')"
+  outputs:
+    forecast: "$.get('forecast-snapshot', {})"
+    workflow-status: "'executed' if $.get('forecast-snapshot', {}) != {} else 'skipped'"
+  tasks:
+
+    - type: "connector"
+      name: "fetch-fixture-forecast"
+      description: "Provider forecast for the exact fixture."
+      connector:
+        name: "api-football"
+        command: "get-predictions"
+      inputs:
+        fixture: "$.get('fixture')"
+      outputs:
+        forecast-response: "($.get('response', []) or [{}])[0] if isinstance($.get('response'), list) else {}"
+        forecast-errors: "[str(item)[:200] for item in ($.get('errors', []) or [])][:5] if isinstance($.get('errors'), list) else []"
+
+    - type: "connector"
+      name: "build-forecast-snapshot"
+      description: "Project the forecast into a bounded, non-factual snapshot."
+      condition: "$.get('forecast-response', {}) != {} and not $.get('forecast-errors', [])"
+      connector:
+        name: "api-football-forecast"
+        command: "invoke_build_forecast"
+      inputs:
+        forecast: "$.get('forecast-response', {})"
+        event_code: "$.get('event_code')"
+        source_event_id: "$.get('source_event_id')"
+        observed_at: "$.get('observed_at')"
+      outputs:
+        forecast-snapshot: "$.get('snapshot', {})"
+        forecast-allowed: "$.get('allowed', False)"
+
+    - type: "document"
+      name: "lookup-fixture-forecast"
+      condition: "$.get('forecast-allowed', False)"
+      config: {action: search, search-limit: 1, search-vector: false}
+      filters:
+        name: "'broadcast-fixture-forecast'"
+        metadata.event_code: "$.get('event_code')"
+        metadata.source_event_id: "$.get('source_event_id')"
+      outputs:
+        existing-forecast-id: "($.get('documents', []) or [{}])[0].get('_id')"
+
+    - type: "document"
+      name: "persist-fixture-forecast"
+      condition: "$.get('forecast-allowed', False) and $.get('existing-forecast-id') is None"
+      config: {action: save, embed-vector: false}
+      documents:
+        broadcast-fixture-forecast: "$.get('forecast-snapshot', {})"
+      metadata: &forecast-metadata
+        event_code: "$.get('event_code')"
+        source_event_id: "$.get('source_event_id')"
+        observed_at: "$.get('forecast-snapshot', {}).get('observed_at')"
+        fresh_until: "$.get('forecast-snapshot', {}).get('fresh_until')"
+        provider: "'api-football'"
+
+    - type: "document"
+      name: "refresh-fixture-forecast"
+      condition: "$.get('forecast-allowed', False) and $.get('existing-forecast-id') is not None"
+      config: {action: update, embed-vector: false, force-update: true}
+      filters:
+        document_id: "$.get('existing-forecast-id')"
+      documents:
+        broadcast-fixture-forecast: "$.get('forecast-snapshot', {})"
+      metadata: *forecast-metadata

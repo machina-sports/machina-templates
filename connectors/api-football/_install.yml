@@ -46,6 +46,9 @@ datasets:
     path: "api-football-roster.yml"
 
   - type: "connector"
+    path: "api-football-forecast.yml"
+
+  - type: "connector"
     path: "api-football-event-data.yml"
 
   - type: "connector"
@@ -94,6 +97,9 @@ datasets:
 
   - type: "workflow"
     path: "sync-team-players-statistics.yml"
+
+  - type: "workflow"
+    path: "sync-fixture-forecast.yml"
 
   - type: "workflow"
     path: "workflows/event-consumer-prelive.yml"

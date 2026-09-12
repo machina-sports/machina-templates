@@ -1,0 +1,7 @@
+connector:
+  name: api-football-forecast
+  description: Project an API-Football pre-match forecast into a bounded, non-factual expectation. No provider calls, no inferred outcome.
+  filename: api-football-forecast.py
+  filetype: pyscript
+  commands:
+    - {name: Build the provider fixture forecast, value: invoke_build_forecast}
