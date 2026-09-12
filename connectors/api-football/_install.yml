@@ -93,6 +93,9 @@ datasets:
     path: "sync-teams-statistics.yml"
 
   - type: "workflow"
+    path: "sync-team-players-statistics.yml"
+
+  - type: "workflow"
     path: "workflows/event-consumer-prelive.yml"
 
   - type: "workflow"
