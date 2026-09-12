@@ -26,9 +26,9 @@ The current connector directories are:
 `american-football`, `api-football`, `azure-foundry`, `bwin`,
 `byteplus-modelark`, `docling`, `elevenlabs`, `exa-search`, `fastf1`,
 `goalserve-soccer`, `google-genai`, `google-speech-to-text`, `google-storage`,
-`google-workstation`, `grok`, `groq`, `kalshi`, `mlb-statsapi`, `mongodb-atlas`,
-`nvidia-nim`, `oxylabs`, `perplexity`, `polymarket`, `resend`, `rss-feed`,
-`slack-webhook`, `sociavault`, `sportradar-mlb`, `sportradar-nba`,
+`google-workstation`, `grok`, `groq`, `kalshi`, `live-tennis-api`, `mlb-statsapi`,
+`mongodb-atlas`, `nvidia-nim`, `oxylabs`, `perplexity`, `polymarket`, `resend`,
+`rss-feed`, `slack-webhook`, `sociavault`, `sportradar-mlb`, `sportradar-nba`,
 `sportradar-nfl`, `sportradar-nhl`, `sportradar-rugby`, `sportradar-soccer`,
 `sportradar-soccer-extended`, `sportradar-tennis`, `sports-skills`, `stability`,
 `stats-perform`, `storage`, `tallysight`, `temp-downloader`, `vertex-embedding`,
@@ -656,6 +656,11 @@ The following connectors are documented with essential information only.
 **Type**: REST API
 **Purpose**: Tennis data via Sportradar
 **Key Endpoints**: `/schedule`, `/rankings`, `/match_summary`
+
+#### `live-tennis-api`
+**Type**: PyScript
+**Purpose**: Live Tennis API (livetennisapi.com) — read-only live match state with a derived break-point flag, scores, fixtures, players, tournaments, rankings, head-to-head. Vendor-contributed; key via `TEMP_CONTEXT_VARIABLE_LIVE_TENNIS_API_KEY`, never committed. Free tier 30 req/min, 100 req/day; no retries.
+**Key Commands**: `get_live_matches`, `get_match_score`, `get_fixtures`, `search_players`, `get_head_to_head`
 
 ---
 

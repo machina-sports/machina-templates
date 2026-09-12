@@ -1,0 +1,45 @@
+setup:
+  title: Live Tennis API
+  description: Connect to the Live Tennis API (livetennisapi.com) for read-only live tennis match state, scores, fixtures, players, tournaments, rankings and head-to-head across ATP, WTA, Challenger, ITF and juniors. Contributed by the vendor. Requires an API key stored in the Machina vault (TEMP_CONTEXT_VARIABLE_LIVE_TENNIS_API_KEY); the free tier is 30 requests per minute and 100 per day.
+  category:
+    - data-acquisition
+    - tennis
+  estimatedTime: 1 minute
+  features:
+    - Live matches with the current score (sets, per-set games, in-game points, server, tiebreak flag)
+    - Derived break-point flag beside every live match (null-safe, never in a tiebreak)
+    - Matches by lifecycle status, date range, tour, draw, player, country or tournament
+    - Upcoming fixtures, earliest first
+    - Player search and single-player bio, ranking and cached stats
+    - Tournament catalogue joined by the stable tournament_id
+    - Rankings and Elo listings (PRO) and per-player as-of records (ULTRA)
+    - Head-to-head across the results archive (1968-2022) and completed matches (2023-now) (BASIC)
+    - Generic read-only GET over an allow-list of documented routes
+    - Read-only. No retries on 429 so the daily budget is never burned by a loop
+  integrations:
+    - live-tennis-api
+  requirements:
+    - TEMP_CONTEXT_VARIABLE_LIVE_TENNIS_API_KEY
+  status: available
+  value: connectors/live-tennis-api
+  version: 0.1.0
+
+datasets:
+
+  # connector
+
+  - type: "connector"
+    path: "live-tennis-api.yml"
+
+  # test credentials
+
+  - type: "workflow"
+    path: "test-credentials.yml"
+
+  # workflows
+
+  - type: "workflow"
+    path: "workflows/sync-live-matches.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-fixtures.yml"
