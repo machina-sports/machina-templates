@@ -1,0 +1,120 @@
+workflow:
+
+  # api-football-sync-team-players-statistics
+  name: "api-football-sync-team-players-statistics"
+  title: "API Football - Sync Team Player Season Statistics"
+  description: |
+    Season statistics for one team's players, as verified provider fact.
+    Distinct from the fixture-level player statistics sync: this is the whole
+    season to date, so it is available before kick-off, when fixture data is not.
+    Two pages cover a senior squad; the provider reports no more for a club side.
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    league: "$.get('league')"
+    team: "$.get('team')"
+    season: "$.get('season')"
+  outputs:
+    player-count: "len($.get('players-page-one', []) + $.get('players-page-two', []))"
+    workflow-status: "'executed' if len($.get('players-page-one', [])) > 0 else 'skipped'"
+  tasks:
+
+    - type: "connector"
+      name: "api-football-get-players-page-one"
+      description: "First page of the team's player season statistics."
+      connector:
+        name: "api-football"
+        command: "get-players"
+      inputs:
+        league: "$.get('league')"
+        team: "$.get('team')"
+        season: "$.get('season')"
+        page: "1"
+      outputs:
+        players-page-one: "$.get('response', []) if isinstance($.get('response'), list) else []"
+        pages-total: "$.get('paging', {}).get('total', 1)"
+        team-name: "(($.get('response', []) or [{}])[0].get('statistics', [{}]) or [{}])[0].get('team', {}).get('name', 'Unknown')"
+        league-name: "(($.get('response', []) or [{}])[0].get('statistics', [{}]) or [{}])[0].get('league', {}).get('name', 'Unknown')"
+
+    - type: "connector"
+      name: "api-football-get-players-page-two"
+      description: "Second page, when the provider reports one."
+      condition: "$.get('pages-total', 1) > 1"
+      connector:
+        name: "api-football"
+        command: "get-players"
+      inputs:
+        league: "$.get('league')"
+        team: "$.get('team')"
+        season: "$.get('season')"
+        page: "2"
+      outputs:
+        players-page-two: "$.get('response', []) if isinstance($.get('response'), list) else []"
+
+    - type: "document"
+      name: "task-lookup-team-players-statistics"
+      description: "Find this team's existing player season statistics document."
+      condition: "len($.get('players-page-one', [])) > 0"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'players-statistics'"
+        metadata.team_id: "str($.get('team'))"
+        metadata.league_id: "str($.get('league'))"
+        metadata.season: "str($.get('season'))"
+      outputs:
+        existing-players-statistics-id: "($.get('documents', []) or [{}])[0].get('_id')"
+
+    - type: "document"
+      name: "task-save-team-players-statistics"
+      description: "Create the player season statistics document when none exists yet."
+      condition: "len($.get('players-page-one', [])) > 0 and $.get('existing-players-statistics-id') is None"
+      config:
+        action: "save"
+        embed-vector: false
+      documents:
+        players-statistics: &players-statistics-document |
+          {
+            'data': $.get('players-page-one', []) + $.get('players-page-two', []),
+            'title': f"{$.get('league-name')} - {$.get('team-name')} - {$.get('season', 'Unknown')} players",
+            'execution': datetime.utcnow(),
+            'status': 'active',
+            'parameters': {
+              'league': $.get('league'),
+              'team': $.get('team'),
+              'season': $.get('season')
+            }
+          }
+      metadata: &players-statistics-metadata
+        document_type: "'team-player-statistics'"
+        team_id: "str($.get('team'))"
+        league_id: "str($.get('league'))"
+        season: "str($.get('season'))"
+        team_name: "$.get('team-name', 'Unknown')"
+        league_name: "$.get('league-name', 'Unknown')"
+        status: "'available'"
+        provenance: |
+          {
+            'provider': 'api-football',
+            'synthetic': False,
+            'observed_at': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+          }
+
+    - type: "document"
+      name: "task-refresh-team-players-statistics"
+      description: "Refresh the existing player season statistics document in place."
+      condition: "len($.get('players-page-one', [])) > 0 and $.get('existing-players-statistics-id') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('existing-players-statistics-id')"
+      documents:
+        players-statistics: *players-statistics-document
+      metadata: *players-statistics-metadata
