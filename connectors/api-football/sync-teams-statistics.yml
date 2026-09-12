@@ -34,10 +34,27 @@ workflow:
         team-name: "$.get('response', {}).get('team', {}).get('name', 'Unknown')"
         league-name: "$.get('response', {}).get('league', {}).get('name', 'Unknown')"
 
+    # task-lookup-teams-statistics
+    - type: "document"
+      name: "task-lookup-teams-statistics"
+      description: "Find this team's existing season statistics document."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'teams-statistics'"
+        metadata.team_id: "str($.get('team'))"
+        metadata.league_id: "str($.get('league'))"
+        metadata.season: "str($.get('season'))"
+      outputs:
+        existing-statistics-id: "($.get('documents', []) or [{}])[0].get('_id')"
+
     # task-update-teams-statistics
     - type: "document"
       name: "task-update-teams-statistics"
-      description: "Update the teams statistics document."
+      description: "Create the teams statistics document when none exists yet."
+      condition: "$.get('existing-statistics-id') is None"
       config:
         action: "save"
         embed-vector: false
@@ -55,10 +72,46 @@ workflow:
               'date': $.get('date')
             }
           }
-      metadata:
+      metadata: &teams-statistics-metadata
         document_type: "'team-statistics'"
         team_id: "str($.get('team'))"
         league_id: "str($.get('league'))"
         season: "str($.get('season'))"
         team_name: "$.get('team-name', 'Unknown')"
         league_name: "$.get('league-name', 'Unknown')"
+        status: "'available'"
+        # Consumers admit season form as verified provider fact only when the
+        # document says who observed it and when, and that it was not invented.
+        provenance: |
+          {
+            'provider': 'api-football',
+            'synthetic': False,
+            'observed_at': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+          }
+
+    # task-refresh-teams-statistics
+    - type: "document"
+      name: "task-refresh-teams-statistics"
+      description: "Refresh the existing season statistics document in place."
+      condition: "$.get('existing-statistics-id') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('existing-statistics-id')"
+      documents:
+        teams-statistics: |
+          {
+            'data': $.get('teams-statistics', {}),
+            'title': f"{$.get('league-name')} - {$.get('team-name')} - {$.get('season', 'Unknown')}",
+            'execution': datetime.utcnow(),
+            'status': 'active',
+            'parameters': {
+              'league': $.get('league'),
+              'team': $.get('team'),
+              'season': $.get('season'),
+              'date': $.get('date')
+            }
+          }
+      metadata: *teams-statistics-metadata

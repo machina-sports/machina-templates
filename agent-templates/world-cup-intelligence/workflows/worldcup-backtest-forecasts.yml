@@ -19,8 +19,10 @@ workflow:
     api-football:
       x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
   inputs:
-    league: "$.get('league', '1')"
-    season: "$.get('season', '2026')"
+    competition: "$.get('competition', 'world-cup-2026')"
+    league: "$.get('league', '')"
+    season: "$.get('season', '')"
+    calibration_window_days: "$.get('calibration_window_days', 90)"
   outputs:
     finished_fixtures: "$.get('finished_fixtures', [])"
     status: "$.get('fixture_status', 'unavailable')"
@@ -30,6 +32,8 @@ workflow:
     track_record: "$.get('backtesting_report', {})"
     clv_settled_count: "len($.get('clv_settled', []))"
     clv_report: "$.get('clv_report', {})"
+    calibration_settled_count: "len($.get('calibration_settled', []))"
+    calibration_report: "$.get('calibration_report', {})"
     archive: >-
       {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
@@ -43,6 +47,29 @@ workflow:
     workflow-status: "len($.get('audits', [])) > 0 and 'executed' or 'skipped'"
   tasks:
     - type: connector
+      name: resolve-competition
+      description: Competition registry -> league/season/URN code/search terms (World Cup by default; explicit league/season win).
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_competition
+      inputs:
+        competition: "$.get('competition', 'world-cup-2026')"
+        league: "$.get('league', '')"
+        season: "$.get('season', '')"
+        sr_season_id: "$.get('sr_season_id', '')"
+        query: "$.get('search_query', '')"
+      outputs:
+        league: "$.get('league', '')"
+        season: "$.get('season', '')"
+        sr_season_id: "$.get('sr_season_id', '')"
+        competition_slug: "$.get('competition_slug', 'world-cup-2026')"
+        competition_name: "$.get('competition_name', '')"
+        competition_urn: "$.get('competition_urn', '')"
+        search_query: "$.get('search_query', '')"
+        kalshi_sport: "$.get('kalshi_sport', 'worldcup')"
+        knockout: "$.get('knockout', False)"
+
+    - type: connector
       name: fetch-finished-fixtures
       description: Prefer live API-Football final results when the provider is available.
       continue_on_error: true
@@ -50,8 +77,8 @@ workflow:
         name: api-football
         command: get-fixtures
       inputs:
-        league: "$.get('league', '1')"
-        season: "$.get('season', '2026')"
+        league: "$.get('league', '')"
+        season: "$.get('season', '')"
       outputs:
         api_finished_fixtures: "[f for f in $.get('response', []) if ((f.get('fixture', {}) or {}).get('status', {}) or {}).get('short') in ('FT', 'AET', 'PEN')]"
 
@@ -65,7 +92,7 @@ workflow:
         search-vector: false
       filters:
         name: "'worldcup:event'"
-        value.machina_competition_slug: "'world-cup-2026'"
+        value.machina_competition_slug: "$.get('competition_slug', 'world-cup-2026')"
       outputs:
         cached_events: "[document.get('value', {}) for document in ($.get('documents', []) or []) if isinstance(document, dict) and isinstance(document.get('value'), dict)]"
         cached_event_search_limit_reached: "len($.get('documents', []) or []) >= 500"
@@ -240,3 +267,99 @@ workflow:
         clv_report: "$.get('clv_report', {})"
         clv_report_id: "$.get('clv_report_id', 'worldcup:clv-report:aggregate')"
         clv_report_metadata: "$.get('clv_report_metadata', {})"
+
+    # ── Calibration (fatia 3): settle the per-leg sample, score every source, learn the weights ──
+    - type: document
+      name: load-calibration-sample
+      description: Calibration rows (one per 1X2 leg of every forecast that had markets), pending and settled.
+      condition: "$.get('fixture_provenance') == 'api-football-live'"
+      config:
+        action: search
+        search-limit: 5000
+        search-vector: false
+      filters:
+        name: "'worldcup:calibration-sample'"
+      outputs:
+        calibration_rows: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: settle-calibration
+      description: Mark newly-final legs won/lost against the actual 1X2 result.
+      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('calibration_rows', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: settle_calibration_rows
+      inputs:
+        rows: "$.get('calibration_rows', [])"
+        finished_fixtures: "$.get('finished_fixtures', [])"
+      outputs:
+        calibration_rows_all: "$.get('rows', [])"
+        calibration_settled: "$.get('settled_rows', [])"
+
+    - type: document
+      name: save-calibration-settled
+      description: Persist newly-settled calibration rows.
+      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('calibration_settled', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:calibration-sample'"
+      documents:
+        items: "$.get('calibration_settled', [])"
+      inputs:
+        calibration_settled: "$.get('calibration_settled', [])"
+
+    - type: document
+      name: load-calibration-report
+      description: Every saved report (aggregate + one per competition) so each exponential update chains from its own last run.
+      condition: "$.get('fixture_provenance') == 'api-football-live'"
+      config:
+        action: search
+        search-limit: 50
+        search-vector: false
+      filters:
+        name: "'worldcup:calibration-report'"
+      outputs:
+        weights_in_use: "next((c.get('weights_learned', {}) or {} for c in [((d.get('value', {}) or {}).get('calibration', {}) or {}) for d in ($.get('documents', []) or [])] if c.get('competition') == 'all'), {})"
+        previous_weights_updated_at: "next((c.get('weights_updated_at', '') or '' for c in [((d.get('value', {}) or {}).get('calibration', {}) or {}) for d in ($.get('documents', []) or [])] if c.get('competition') == 'all'), '')"
+        weights_by_competition: "{c.get('competition'): (c.get('weights_learned', {}) or {}) for c in [((d.get('value', {}) or {}).get('calibration', {}) or {}) for d in ($.get('documents', []) or [])] if c.get('competition') and c.get('competition') != 'all'}"
+        updated_by_competition: "{c.get('competition'): (c.get('weights_updated_at', '') or '') for c in [((d.get('value', {}) or {}).get('calibration', {}) or {}) for d in ($.get('documents', []) or [])] if c.get('competition') and c.get('competition') != 'all'}"
+
+    - type: connector
+      name: compute-calibration
+      description: Brier / log-loss / reliability per source, posterior vs market, learned weights.
+      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('calibration_rows_all', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_calibration
+      inputs:
+        rows: "$.get('calibration_rows_all', [])"
+        weights_in_use: "$.get('weights_in_use', {})"
+        previous_weights_updated_at: "$.get('previous_weights_updated_at', '')"
+        window_days: "$.get('calibration_window_days', 90)"
+        # fatia 4: the aggregate plus one report per competition, each chaining from its own last weights
+        split_by_competition: "True"
+        weights_by_competition: "$.get('weights_by_competition', {})"
+        updated_by_competition: "$.get('updated_by_competition', {})"
+      outputs:
+        calibration_report: "$.get('calibration', {})"
+        calibration_reports: "$.get('reports', [])"
+        calibration_report_id: "$.get('_id', 'worldcup:calibration-report:aggregate')"
+        calibration_report_metadata: "$.get('metadata', {})"
+
+    - type: document
+      name: save-calibration-report
+      description: Persist the calibration reports (aggregate + per competition; Brier per source + weights learned) that get-signal reads.
+      condition: "$.get('fixture_provenance') == 'api-football-live' and $.get('calibration_report', {}) != {}"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:calibration-report'"
+      documents:
+        items: "$.get('calibration_reports', []) or [{'_id': $.get('calibration_report_id', 'worldcup:calibration-report:aggregate'), 'metadata': $.get('calibration_report_metadata', {'event_urn': 'worldcup:calibration-report:aggregate'}), 'calibration': $.get('calibration_report', {})}]"
+      inputs:
+        calibration_report: "$.get('calibration_report', {})"
+        calibration_report_id: "$.get('calibration_report_id', 'worldcup:calibration-report:aggregate')"
+        calibration_report_metadata: "$.get('calibration_report_metadata', {})"

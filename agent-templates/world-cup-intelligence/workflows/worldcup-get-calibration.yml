@@ -1,0 +1,65 @@
+workflow:
+  name: worldcup-get-calibration
+  title: World Cup Intelligence - Calibration
+  description: |
+    The track record behind the probabilities the signals return: Brier, log-loss
+    and a reliability curve for the fused posterior, the model, the best market
+    price and each source family (model, bookmaker, polymarket, kalshi) over the
+    settled 1X2 legs in a window, plus the fusion weights in use and the weights
+    learned from that record. Pure arithmetic over the calibration sample -- no
+    model call. Decision support, never betting advice.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    venue: "$.get('venue', '')"
+    competition: "$.get('competition', '')"
+    window_days: "$.get('window_days', 90)"
+  outputs:
+    calibration: "$.get('calibration', {})"
+    warnings: "$.get('calibration', {}).get('warnings', [])"
+    workflow-status: "'executed'"
+  tasks:
+    - type: document
+      name: load-calibration-sample
+      description: Settled calibration rows (one per 1X2 leg of every forecast that had markets).
+      config:
+        action: search
+        search-limit: 5000
+        search-vector: false
+      filters:
+        name: "'worldcup:calibration-sample'"
+        value.status: "'settled'"
+      outputs:
+        rows: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: document
+      name: load-calibration-report
+      description: Last saved report -- the weights currently in use chain into this run's learning step.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:calibration-report'"
+        metadata.event_urn: "'worldcup:calibration-report:aggregate'"
+      outputs:
+        weights_in_use: "((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('calibration', {}) or {}).get('weights_learned', {}) or {}"
+        previous_weights_updated_at: "((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('calibration', {}) or {}).get('weights_updated_at', '') or ''"
+
+    - type: connector
+      name: compute-calibration
+      description: Brier / log-loss / reliability per source, posterior vs market, learned weights.
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_calibration
+      inputs:
+        rows: "$.get('rows', [])"
+        weights_in_use: "$.get('weights_in_use', {})"
+        previous_weights_updated_at: "$.get('previous_weights_updated_at', '')"
+        venue: "$.get('venue', '')"
+        competition: "$.get('competition', '')"
+        window_days: "$.get('window_days', 90)"
+      outputs:
+        calibration: "$.get('calibration', {})"

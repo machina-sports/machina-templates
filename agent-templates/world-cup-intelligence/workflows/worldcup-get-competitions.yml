@@ -1,0 +1,45 @@
+workflow:
+  name: worldcup-get-competitions
+  title: World Cup Intelligence - Competitions
+  description: |
+    The competition registry behind the intelligence layer (OG Edge, fatia 4): every
+    competition the template can run -- slug, name, sport, forecast model, whether it has
+    knockout ties, api-football league/season, the venue search terms and the belief-catalog
+    prior overrides. Pass one of these slugs as `competition` to ingest-fixtures,
+    sync-market-sources, sync-model-forecasts, log-signals, backtest-forecasts, get-signal,
+    explain-market-move and get-calibration. Read-only; no model call.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    competition: "$.get('competition', '')"
+  outputs:
+    competitions: "$.get('competitions', [])"
+    default: "$.get('default_competition', '')"
+    resolved: "$.get('resolved', {})"
+    workflow-status: "'executed'"
+  tasks:
+    - type: connector
+      name: list-competitions
+      description: Every registry entry.
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_competition
+      inputs:
+        list: "True"
+      outputs:
+        competitions: "$.get('competitions', [])"
+        default_competition: "$.get('default', '')"
+
+    - type: connector
+      name: resolve-requested
+      description: The anchors for the requested slug / league id / URN (when one is passed).
+      condition: "$.get('competition', '') != ''"
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_competition
+      inputs:
+        competition: "$.get('competition', '')"
+      outputs:
+        resolved: "$"

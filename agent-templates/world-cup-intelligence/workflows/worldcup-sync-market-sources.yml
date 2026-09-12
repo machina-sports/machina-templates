@@ -12,7 +12,8 @@ workflow:
   # query='Uzbekistan' in context and normalization filtered to 11 markets).
   # Workflow-level values therefore use collision-free names below.
   inputs:
-    search_query: "$.get('query', 'FIFA World Cup')"
+    competition: "$.get('competition', 'world-cup-2026')"
+    search_query: "$.get('query', '')"
     source: "$.get('source', 'all')"
     status: "$.get('status', 'open')"
     max_markets: "$.get('limit', 400)"
@@ -23,6 +24,29 @@ workflow:
     warnings: "$.get('warnings', [])"
     workflow-status: "len($.get('normalized_markets', [])) > 0 and 'executed' or 'skipped'"
   tasks:
+    - type: connector
+      name: resolve-competition
+      description: Competition registry -> league/season/URN code/search terms (World Cup by default; explicit league/season win).
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_competition
+      inputs:
+        competition: "$.get('competition', 'world-cup-2026')"
+        league: "$.get('league', '')"
+        season: "$.get('season', '')"
+        sr_season_id: "$.get('sr_season_id', '')"
+        query: "$.get('search_query', '')"
+      outputs:
+        league: "$.get('league', '')"
+        season: "$.get('season', '')"
+        sr_season_id: "$.get('sr_season_id', '')"
+        competition_slug: "$.get('competition_slug', 'world-cup-2026')"
+        competition_name: "$.get('competition_name', '')"
+        competition_urn: "$.get('competition_urn', '')"
+        search_query: "$.get('search_query', '')"
+        kalshi_sport: "$.get('kalshi_sport', 'worldcup')"
+        knockout: "$.get('knockout', False)"
+
     - type: connector
       name: fetch-sports-skills-markets
       description: Fetch football/FIFA markets using the Sports Skills market orchestrator.
@@ -67,7 +91,7 @@ workflow:
         command: invoke_kalshi
       inputs:
         command: "'search_markets'"
-        sport: "'worldcup'"
+        sport: "$.get('kalshi_sport', 'worldcup')"
         status: "$.get('status', 'open')"
         limit: "1000"
       outputs:
@@ -109,7 +133,7 @@ workflow:
       inputs:
         command: "'search_markets'"
         query: "$.get('team_query_item', '')"
-        sport: "'worldcup'"
+        sport: "$.get('kalshi_sport', 'worldcup')"
         status: "$.get('status', 'open')"
         limit: "100"
       outputs:
@@ -172,6 +196,7 @@ workflow:
         name: worldcup-market-intelligence
         command: normalize_market_sources
       inputs:
+        competition: "$.get('competition_slug', 'world-cup-2026')"
         sports_skills_markets: "$.get('sports_skills_markets', {})"
         polymarket_markets: "[$.get('polymarket_markets', {})] + ($.get('polymarket_games', []) or []) + ($.get('polymarket_advance', []) or [])"
         kalshi_markets: "[$.get('kalshi_markets', {})] + ($.get('kalshi_upcoming', []) or [])"

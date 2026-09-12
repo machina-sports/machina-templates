@@ -14,8 +14,9 @@ workflow:
     api-football:
       x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
   inputs:
-    league: "$.get('league', '1')"
-    season: "$.get('season', '2026')"
+    competition: "$.get('competition', 'world-cup-2026')"
+    league: "$.get('league', '')"
+    season: "$.get('season', '')"
     min_games_full_confidence: "$.get('min_games_full_confidence', 3)"
   outputs:
     forecasts_count: "len($.get('forecasts', []))"
@@ -23,14 +24,37 @@ workflow:
     workflow-status: "len($.get('forecasts', [])) > 0 and 'executed' or 'skipped'"
   tasks:
     - type: connector
+      name: resolve-competition
+      description: Competition registry -> league/season/URN code/search terms (World Cup by default; explicit league/season win).
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_competition
+      inputs:
+        competition: "$.get('competition', 'world-cup-2026')"
+        league: "$.get('league', '')"
+        season: "$.get('season', '')"
+        sr_season_id: "$.get('sr_season_id', '')"
+        query: "$.get('search_query', '')"
+      outputs:
+        league: "$.get('league', '')"
+        season: "$.get('season', '')"
+        sr_season_id: "$.get('sr_season_id', '')"
+        competition_slug: "$.get('competition_slug', 'world-cup-2026')"
+        competition_name: "$.get('competition_name', '')"
+        competition_urn: "$.get('competition_urn', '')"
+        search_query: "$.get('search_query', '')"
+        kalshi_sport: "$.get('kalshi_sport', 'worldcup')"
+        knockout: "$.get('knockout', False)"
+
+    - type: connector
       name: fetch-finished-fixtures
       description: All World Cup fixtures; finished ones drive the power ranking.
       connector:
         name: api-football
         command: get-fixtures
       inputs:
-        league: "$.get('league', '1')"
-        season: "$.get('season', '2026')"
+        league: "$.get('league', '')"
+        season: "$.get('season', '')"
       outputs:
         finished_fixtures: "[f for f in $.get('response', []) if ((f.get('fixture', {}) or {}).get('status', {}) or {}).get('short') in ('FT', 'AET', 'PEN')]"
 

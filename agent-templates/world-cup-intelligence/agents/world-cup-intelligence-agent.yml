@@ -119,6 +119,23 @@ agent:
         belief: "$.get('belief', {})"
         explanation: "$.get('explanation', {})"
 
+    - name: worldcup-get-calibration
+      description: Track record behind the probabilities -- Brier, log-loss and reliability per source over settled legs, weights in use and learned
+      inputs:
+        venue: "$.get('venue', '')"
+        competition: "$.get('competition', '')"
+        window_days: "$.get('window_days', 90)"
+      outputs:
+        calibration: "$.get('calibration', {})"
+
+    - name: worldcup-get-competitions
+      description: Competition registry -- every competition the layer can run, with its anchors and defaults
+      inputs:
+        competition: "$.get('competition', '')"
+      outputs:
+        competitions: "$.get('competitions', [])"
+        resolved: "$.get('resolved', {})"
+
     - name: worldcup-generate-market-brief
       description: Generate a grounded World Cup market-intelligence brief
       inputs:
