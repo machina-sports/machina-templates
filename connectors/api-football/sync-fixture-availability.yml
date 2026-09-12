@@ -1,0 +1,94 @@
+workflow:
+
+  name: "api-football-sync-fixture-availability"
+  title: "API Football - Sync Fixture Availability"
+  description: |
+    Who the provider reports as unavailable for one fixture, stored per event.
+    Ruled out and doubtful are the provider's own two states and are kept apart:
+    a doubt read as an absence is the error this exists to prevent. This is not
+    a confirmed team sheet and never replaces lineups.
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    fixture: "$.get('fixture')"
+    teams: "$.get('teams')"
+    event_code: "$.get('event_code')"
+    source_event_id: "$.get('source_event_id')"
+    observed_at: "$.get('observed_at')"
+  outputs:
+    availability: "$.get('availability-snapshot', {})"
+    workflow-status: "'executed' if $.get('availability-snapshot', {}) != {} else 'skipped'"
+  tasks:
+
+    - type: "connector"
+      name: "fetch-fixture-injuries"
+      description: "Provider availability list for the exact fixture."
+      connector:
+        name: "api-football"
+        command: "get-injuries"
+      inputs:
+        fixture: "$.get('fixture')"
+      outputs:
+        injury-rows: "$.get('response', []) if isinstance($.get('response'), list) else []"
+        injury-errors: "[str(item)[:200] for item in ($.get('errors', []) or [])][:5] if isinstance($.get('errors'), list) else []"
+
+    - type: "connector"
+      name: "build-availability-snapshot"
+      description: "Project the list into a bounded snapshot bound to this fixture."
+      condition: "len($.get('injury-rows', [])) > 0 and not $.get('injury-errors', [])"
+      connector:
+        name: "api-football-availability"
+        command: "invoke_build_availability"
+      inputs:
+        rows: "$.get('injury-rows', [])"
+        fixture_id: "$.get('fixture')"
+        teams: "$.get('teams', {})"
+        event_code: "$.get('event_code')"
+        source_event_id: "$.get('source_event_id')"
+        observed_at: "$.get('observed_at')"
+      outputs:
+        availability-snapshot: "$.get('snapshot', {})"
+        availability-allowed: "$.get('allowed', False)"
+
+    - type: "document"
+      name: "lookup-fixture-availability"
+      condition: "$.get('availability-allowed', False)"
+      config: {action: search, search-limit: 1, search-vector: false}
+      filters:
+        name: "'fixture-availability'"
+        metadata.event_code: "$.get('event_code')"
+        metadata.source_event_id: "$.get('source_event_id')"
+      outputs:
+        existing-availability-id: "($.get('documents', []) or [{}])[0].get('_id')"
+
+    - type: "document"
+      name: "persist-fixture-availability"
+      condition: "$.get('availability-allowed', False) and $.get('existing-availability-id') is None"
+      config: {action: save, embed-vector: false}
+      documents:
+        fixture-availability: "$.get('availability-snapshot', {})"
+      metadata: &availability-metadata
+        event_code: "$.get('event_code')"
+        source_event_id: "$.get('source_event_id')"
+        observed_at: "$.get('availability-snapshot', {}).get('observed_at')"
+        fresh_until: "$.get('availability-snapshot', {}).get('fresh_until')"
+        status: "'available'"
+        provenance: |
+          {
+            'provider': 'api-football',
+            'synthetic': False,
+            'observed_at': $.get('availability-snapshot', {}).get('observed_at')
+          }
+
+    - type: "document"
+      name: "refresh-fixture-availability"
+      condition: "$.get('availability-allowed', False) and $.get('existing-availability-id') is not None"
+      config: {action: update, embed-vector: false, force-update: true}
+      filters:
+        document_id: "$.get('existing-availability-id')"
+      documents:
+        fixture-availability: "$.get('availability-snapshot', {})"
+      metadata: *availability-metadata
