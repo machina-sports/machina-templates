@@ -104,6 +104,23 @@ def test_backtest_uses_the_three_outcome_mean_brier_uniform_baseline():
     assert MODULE._aggregate_audit([row])["brier_scores"]["is_better_than_random"] is False
 
 
+def test_standings_recognizes_unlabelled_third_place_table_by_exact_membership():
+    # Synthetic tables shaped like the observed provider's Group Stage aggregate.
+    def group(name, team_ids):
+        return {"name": name, "entries": [
+            {"position": rank, "team": {"id": team_id, "name": f"Team {team_id}"}}
+            for rank, team_id in enumerate(team_ids, 1)
+        ]}
+    groups = [group("Group A", [1, 2, 3, 4]), group("Group B", [5, 6, 7, 8]), group("Group Stage", [7, 3])]
+    result = MODULE.normalize_standings({"params": {"ss": {"standings": groups}}})["data"]
+    assert result["group_count"] == 2
+    assert [row["team_id"] for row in result["third_place_ranking"]] == [7, 3]
+    groups[-1] = group("Group Stage", [1, 5])  # Not the third-place teams: don't guess.
+    unrelated = MODULE.normalize_standings({"params": {"ss": {"standings": groups}}})["data"]
+    assert unrelated["group_count"] == 3
+    assert unrelated["third_place_ranking"] == []
+
+
 def test_fixture_resolution_is_exact_unique_and_never_chooses_first_ambiguity():
     events = [
         event("urn:event:brazil-morocco", "101", "Brazil", "Morocco"),

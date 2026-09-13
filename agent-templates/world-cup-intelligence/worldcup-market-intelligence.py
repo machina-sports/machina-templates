@@ -1730,8 +1730,25 @@ def normalize_standings(request_data: dict[str, Any]) -> dict[str, Any]:
     # api-football returns the WC "Ranking of third-placed teams" as an extra
     # standings table; it's not a 13th group. Split it out so group_count is the
     # real number of groups (12) and the ranking is its own field.
-    real_groups = [g for g in groups if "third" not in _lower(g.get("group"))]
     third_place = next((g for g in groups if "third" in _lower(g.get("group"))), None)
+    if third_place is None:
+        # Some API-Football responses label the third-place ranking "Group Stage".
+        # Recognize it by exact membership in the other groups' rank-3 teams,
+        # never by position, table size alone, or a hard-coded group count.
+        for candidate in groups:
+            if _lower(candidate.get("group")) != "group stage":
+                continue
+            candidate_ids = [_text(row.get("team_id")) for row in candidate["table"]]
+            other_thirds = {
+                _text(row.get("team_id")) for group in groups if group is not candidate
+                for row in group["table"] if _text(row.get("rank")) == "3" and row.get("team_id") is not None
+            }
+            if (len(candidate_ids) > 1 and all(candidate_ids)
+                    and len(set(candidate_ids)) == len(candidate_ids)
+                    and set(candidate_ids) == other_thirds):
+                third_place = candidate
+                break
+    real_groups = [g for g in groups if "third" not in _lower(g.get("group")) and g is not third_place]
 
     return {
         "status": True,
