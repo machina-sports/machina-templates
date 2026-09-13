@@ -23,23 +23,116 @@ workflow:
     include_reasoning: "$.get('include_reasoning', False)"
     min_gap_bps: "$.get('min_gap_bps', 100)"
   outputs:
-    forecast: "$.get('forecast', {})"
-    model_vs_market: "$.get('model_vs_market', {})"
-    analysis: "$.get('analysis', {})"
-    warnings: "($.get('resolution_warnings', []) or []) + ($.get('forecast_warnings', []) or []) + ($.get('integrity_warnings', []) or [])"
-    candidates: "$.get('fixture_candidates', [])"
-    forecast_integrity: "$.get('forecast_integrity', {})"
-    market_integrity: "$.get('market_integrity', {})"
+    forecast: "$.get('archive_response', {}).get('forecast') if $.get('archive_hit', False) else ($.get('forecast', {}))"
+    model_vs_market: "$.get('archive_response', {}).get('model_vs_market') if $.get('archive_hit', False) else ($.get('model_vs_market', {}))"
+    analysis: "$.get('archive_response', {}).get('analysis') if $.get('archive_hit', False) else ($.get('analysis', {}))"
+    warnings: "$.get('archive_response', {}).get('warnings', []) if $.get('archive_status', 'miss') != 'miss' else (($.get('resolution_warnings', []) or []) + ($.get('forecast_warnings', []) or []) + ($.get('integrity_warnings', []) or []))"
+    candidates: "$.get('archive_response', {}).get('candidates') if $.get('archive_hit', False) else ($.get('fixture_candidates', []))"
+    forecast_integrity: "$.get('archive_response', {}).get('forecast_integrity') if $.get('archive_hit', False) else ($.get('forecast_integrity', {}))"
+    market_integrity: "$.get('archive_response', {}).get('market_integrity') if $.get('archive_hit', False) else ($.get('market_integrity', {}))"
     archive: >-
-      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+      $.get('archive_metadata', {}) if $.get('archive_status', 'miss') != 'miss' else ({'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
        'snapshot_as_of': ($.get('forecast', {}).get('model', {}) or {}).get('computed_at'),
        'capability_status': 'historical_model' if $.get('forecast', {}) else 'unavailable',
        'provenance': ((['worldcup:model-forecast'] if $.get('forecast', {}) else []) + (['api-football'] if $.get('forecast', {}).get('data_source') in ('results', 'blend') else []) + (['fifa-ranking-seed'] if $.get('forecast', {}).get('data_source') in ('seed', 'blend') else []) + (['worldcup:market-cache'] if $.get('market_outcomes', []) else [])),
        'missing_capabilities': ((['historical_model_forecast'] if not $.get('forecast', {}) else []) + (['archived_market_comparison'] if $.get('forecast', {}) and not $.get('model_vs_market', {}) else [])),
-       'notes': ['Historical model output; forecast_integrity states whether its stored timestamp is genuinely pre-kickoff. No real-time refresh is performed.']}
-    workflow-status: "$.get('forecast', {}) and 'executed' or 'skipped'"
+       'notes': ['Historical model output; forecast_integrity states whether its stored timestamp is genuinely pre-kickoff. No real-time refresh is performed.']})
+    workflow-status: "'executed' if $.get('archive_hit', False) else ('skipped' if $.get('archive_status') == 'error' else ($.get('forecast', {}) and 'executed' or 'skipped'))"
   tasks:
+    - type: document
+      name: load-final-archive-manifest
+      config:
+        action: search
+        search-limit: 2
+        search-vector: false
+      filters:
+        name: "'worldcup:final-archive-manifest'"
+        value.archive_version: "'world-cup-2026-final-v2'"
+      outputs:
+        archive_manifest_documents: $.get('documents', []) or []
+    - type: document
+      name: load-final-archive-scope-events
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value.machina_competition_slug: "'world-cup-2026'"
+      outputs:
+        archive_scope_events: $.get('documents', []) or []
+    - type: connector
+      name: resolve-final-archive-scope
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_archived_fixture
+      inputs:
+        events: $.get('archive_scope_events', [])
+        event_urn: $.get('event_urn', '')
+        provider_event_id: $.get('provider_event_id') or $.get('fixture_id', '')
+        event: $.get('event', '')
+        team: $.get('team', '')
+        opponent: $.get('opponent', '')
+        date: $.get('date', '')
+      outputs:
+        archive_resolved_event_urn: $.get('event_urn', '')
+    - type: document
+      name: load-final-archive
+      description: Load immutable endpoint rows in a stable order before legacy execution.
+      config:
+        action: search
+        search-limit: 10
+        search-vector: false
+        search-sorters:
+          - _id
+          - 1
+      filters:
+        name: "'worldcup:final-archive'"
+        value.archive_version: "'world-cup-2026-final-v2'"
+        value.endpoint: "'worldcup-get-match-forecast'"
+        value.subject.event_urn: $.get('archive_resolved_event_urn', '')
+      outputs:
+        archive_documents: $.get('documents', []) or []
+        archive_search_limit_reached: len($.get('documents', []) or []) >= 10
+    - type: document
+      name: load-final-archive-events
+      description: Load the complete canonical tournament index used to resolve archive selectors.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+        search-sorters:
+          - _id
+          - 1
+      filters:
+        name: "'worldcup:event'"
+        value.machina_competition_slug: "'world-cup-2026'"
+      outputs:
+        archive_canonical_events: $.get('documents', []) or []
+        archive_canonical_events_search_limit_reached: len($.get('documents', []) or []) >= 500
+    - type: connector
+      name: serve-final-archive
+      description: Validate and serve an exact archive hit; clean misses alone may continue to legacy tasks.
+      connector:
+        name: worldcup-market-intelligence
+        command: serve_final_archive
+      inputs:
+        endpoint: "'worldcup-get-match-forecast'"
+        archive_version: "'world-cup-2026-final-v2'"
+        request: "{'event_urn': $.get('event_urn', ''), 'provider_event_id': $.get('provider_event_id', ''), 'event': $.get('event', ''), 'team': $.get('team', ''), 'opponent': $.get('opponent', ''), 'date': $.get('date', ''), 'include_reasoning': $.get('include_reasoning', False), 'min_gap_bps': $.get('min_gap_bps', 100)}"
+        documents: $.get('archive_documents', [])
+        archive_search_limit_reached: $.get('archive_search_limit_reached', False)
+        canonical_events: $.get('archive_canonical_events', [])
+        event_search_limit_reached: $.get('archive_canonical_events_search_limit_reached', False)
+        canonical_identities: $.get('archive_canonical_identities', [])
+        identity_search_limit_reached: $.get('archive_canonical_identities_search_limit_reached', False)
+        archive_manifest: $.get('archive_manifest_documents', [])
+      outputs:
+        archive_hit: $.get('archive_hit', False)
+        archive_status: $.get('archive_status', 'error')
+        archive_response: $.get('response', {})
+        archive_metadata: $.get('archive', {})
     - type: document
       name: resolve-load-events
       description: Load archived events for exact-id or natural-language fixture resolution.
@@ -52,6 +145,7 @@ workflow:
       outputs:
         resolve_events: "$.get('documents', []) or []"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: connector
       name: resolve-fixture
       description: Resolve exactly one archived fixture; ambiguous and unknown inputs fail closed.
@@ -74,6 +168,7 @@ workflow:
         fixture_candidates: "$.get('candidates', [])"
         resolution_warnings: "$.get('warnings', [])"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: document
       name: load-forecast
       description: Load the cached model forecast for this event.
@@ -88,10 +183,11 @@ workflow:
         forecast: "($.get('documents', []) or [{}])[0].get('value', {})"
         forecast_warnings: "[] if ($.get('documents', []) or []) else ['No model forecast for this event -- run worldcup-sync-model-forecasts.']"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: document
       name: load-event-markets
       description: Preserved market-cache records linked to this event for the historical model-vs-market comparison.
-      condition: "$.get('forecast', {}) != {}"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('forecast', {}) != {})"
       config:
         action: search
         search-limit: 200
@@ -105,7 +201,7 @@ workflow:
     - type: connector
       name: classify-archive-evidence
       description: Compare stored model and market timestamps with archived event kickoff.
-      condition: "$.get('forecast', {}) != {}"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('forecast', {}) != {})"
       connector:
         name: worldcup-market-intelligence
         command: classify_archived_forecast
@@ -122,7 +218,7 @@ workflow:
     - type: connector
       name: compute-gap
       description: Historical model 1X2 probability vs preserved market-cache price (informational).
-      condition: "$.get('forecast', {}) != {}"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('forecast', {}) != {})"
       connector:
         name: worldcup-market-intelligence
         command: compute_model_vs_market_edge
@@ -141,7 +237,7 @@ workflow:
     - type: prompt
       name: worldcup-match-forecast-explain
       description: Explain the model probabilities and any model-vs-market gaps (informational).
-      condition: "$.get('forecast', {}) != {} and $.get('include_reasoning', False) is True"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('forecast', {}) != {} and $.get('include_reasoning', False) is True)"
       connector:
         name: google-genai
         command: invoke_prompt

@@ -16,18 +16,111 @@ workflow:
     home_team: "$.get('home_team', '')"
     away_team: "$.get('away_team', '')"
   outputs:
-    squads: "$.get('squads', {})"
-    candidates: "$.get('fixture_candidates', [])"
-    warnings: "$.get('resolution_warnings', []) + ($.get('squads', {}).get('warnings', []) or [])"
+    squads: "$.get('archive_response', {}).get('squads') if $.get('archive_hit', False) else ($.get('squads', {}))"
+    candidates: "$.get('archive_response', {}).get('candidates') if $.get('archive_hit', False) else ($.get('fixture_candidates', []))"
+    warnings: "$.get('archive_response', {}).get('warnings', []) if $.get('archive_status', 'miss') != 'miss' else ($.get('resolution_warnings', []) + ($.get('squads', {}).get('warnings', []) or []))"
     archive: >-
-      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+      $.get('archive_metadata', {}) if $.get('archive_status', 'miss') != 'miss' else ({'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False, 'snapshot_as_of': $.get('squad_snapshot_as_of'),
        'capability_status': 'partial' if $.get('squads', {}).get('teams') else 'unavailable',
        'provenance': ['worldcup:identity-crosswalk'] if $.get('squads', {}).get('teams') else [],
        'missing_capabilities': ['verified_complete_official_squad_registration'] if $.get('squads', {}).get('teams') else ['squads'],
-       'notes': ['Archived tournament identity snapshot; not proof of complete FIFA squad registration.']}
-    workflow-status: "$.get('squads', {}).get('teams') and 'executed' or 'skipped'"
+       'notes': ['Archived tournament identity snapshot; not proof of complete FIFA squad registration.']})
+    workflow-status: "'executed' if $.get('archive_hit', False) else ('skipped' if $.get('archive_status') == 'error' else ($.get('squads', {}).get('teams') and 'executed' or 'skipped'))"
   tasks:
+    - type: document
+      name: load-final-archive-manifest
+      config:
+        action: search
+        search-limit: 2
+        search-vector: false
+      filters:
+        name: "'worldcup:final-archive-manifest'"
+        value.archive_version: "'world-cup-2026-final-v2'"
+      outputs:
+        archive_manifest_documents: $.get('documents', []) or []
+    - type: document
+      name: load-final-archive-scope-events
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value.machina_competition_slug: "'world-cup-2026'"
+      outputs:
+        archive_scope_events: $.get('documents', []) or []
+    - type: connector
+      name: resolve-final-archive-scope
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_archived_fixture
+      inputs:
+        events: $.get('archive_scope_events', [])
+        event_urn: $.get('event_urn', '')
+        provider_event_id: $.get('provider_event_id') or $.get('fixture_id', '')
+        event: $.get('event', '')
+        team: $.get('team', '')
+        opponent: $.get('opponent', '')
+        date: $.get('date', '')
+      outputs:
+        archive_resolved_event_urn: $.get('event_urn', '')
+    - type: document
+      name: load-final-archive
+      description: Load immutable endpoint rows in a stable order before legacy execution.
+      config:
+        action: search
+        search-limit: 10
+        search-vector: false
+        search-sorters:
+          - _id
+          - 1
+      filters:
+        name: "'worldcup:final-archive'"
+        value.archive_version: "'world-cup-2026-final-v2'"
+        value.endpoint: "'worldcup-get-squads'"
+        value.subject.event_urn: $.get('archive_resolved_event_urn', '')
+      outputs:
+        archive_documents: $.get('documents', []) or []
+        archive_search_limit_reached: len($.get('documents', []) or []) >= 10
+    - type: document
+      name: load-final-archive-events
+      description: Load the complete canonical tournament index used to resolve archive selectors.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+        search-sorters:
+          - _id
+          - 1
+      filters:
+        name: "'worldcup:event'"
+        value.machina_competition_slug: "'world-cup-2026'"
+      outputs:
+        archive_canonical_events: $.get('documents', []) or []
+        archive_canonical_events_search_limit_reached: len($.get('documents', []) or []) >= 500
+    - type: connector
+      name: serve-final-archive
+      description: Validate and serve an exact archive hit; clean misses alone may continue to legacy tasks.
+      connector:
+        name: worldcup-market-intelligence
+        command: serve_final_archive
+      inputs:
+        endpoint: "'worldcup-get-squads'"
+        archive_version: "'world-cup-2026-final-v2'"
+        request: "{'event_urn': $.get('event_urn', ''), 'provider_event_id': $.get('provider_event_id', ''), 'event': $.get('event', ''), 'team': $.get('team', ''), 'opponent': $.get('opponent', ''), 'date': $.get('date', ''), 'home_team': $.get('home_team', ''), 'away_team': $.get('away_team', '')}"
+        documents: $.get('archive_documents', [])
+        archive_search_limit_reached: $.get('archive_search_limit_reached', False)
+        canonical_events: $.get('archive_canonical_events', [])
+        event_search_limit_reached: $.get('archive_canonical_events_search_limit_reached', False)
+        canonical_identities: $.get('archive_canonical_identities', [])
+        identity_search_limit_reached: $.get('archive_canonical_identities_search_limit_reached', False)
+        archive_manifest: $.get('archive_manifest_documents', [])
+      outputs:
+        archive_hit: $.get('archive_hit', False)
+        archive_status: $.get('archive_status', 'error')
+        archive_response: $.get('response', {})
+        archive_metadata: $.get('archive', {})
     - type: document
       name: resolve-load-events
       description: Load archived events for exact-id or natural-language fixture resolution.
@@ -40,6 +133,7 @@ workflow:
       outputs:
         resolve_events: "$.get('documents', []) or []"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: connector
       name: resolve-fixture
       description: Resolve exactly one archived fixture; ambiguous and unknown inputs fail closed.
@@ -66,10 +160,11 @@ workflow:
         home_team_name: "([t.get('name') for t in ($.get('event', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [$.get('home_team', '')])[0]"
         away_team_name: "([t.get('name') for t in ($.get('event', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [$.get('away_team', '')])[0]"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: document
       name: load-team-identities
       description: Load both persisted tournament team identities.
-      condition: "($.get('home_team_urn') or '') != '' or ($.get('away_team_urn') or '') != '' or $.get('home_team', '') != '' or $.get('away_team', '') != ''"
+      condition: "$.get('archive_status', 'miss') == 'miss' and (($.get('home_team_urn') or '') != '' or ($.get('away_team_urn') or '') != '' or $.get('home_team', '') != '' or $.get('away_team', '') != '')"
       config:
         action: search
         search-limit: 100
@@ -84,7 +179,7 @@ workflow:
     - type: document
       name: load-tournament-players
       description: Load persisted World Cup 2026 player identities for deterministic team joins.
-      condition: "($.get('home_team_urn') or '') != '' or ($.get('away_team_urn') or '') != '' or $.get('home_team_name', '') != '' or $.get('away_team_name', '') != '' or $.get('home_team', '') != '' or $.get('away_team', '') != ''"
+      condition: "$.get('archive_status', 'miss') == 'miss' and (($.get('home_team_urn') or '') != '' or ($.get('away_team_urn') or '') != '' or $.get('home_team_name', '') != '' or $.get('away_team_name', '') != '' or $.get('home_team', '') != '' or $.get('away_team', '') != '')"
       config:
         action: search
         search-limit: 2000
@@ -112,3 +207,4 @@ workflow:
       outputs:
         squads: "$"
         squad_snapshot_as_of: "max([str(p.get('source_timestamp')) for t in ($.get('teams', []) or []) for p in (t.get('players', []) or []) if p.get('source_timestamp')], default=None)"
+      condition: $.get('archive_status', 'miss') == 'miss'

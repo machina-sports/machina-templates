@@ -38,12 +38,12 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
 **Identity & fixtures**
 - `worldcup-resolve` — any provider id / URN → canonical entity + cross-provider ids
 - `worldcup-get-schedule` — fixtures, filter by date/team/status
-- `worldcup-get-event-context` — enriched match context (event + grounded prematch research + sports context)
+- `worldcup-get-event-context` — precomputed match context (event + any archived prematch research and sports context)
 - `worldcup-get-iptc-event-context` — IPTC/semantic event shape
-- `worldcup-get-standings` — group tables
+- `worldcup-get-standings` — archived final group tables
 - `worldcup-get-squads` — both fixture sides joined to persisted World Cup 2026 player and team identities; this is an archived tournament identity snapshot, not proof of complete FIFA registration
-- `worldcup-get-injuries` — fixture-scoped injuries/suspensions from API-Football
-- `worldcup-get-player-performance-context` — player performance signals merged with persisted verified final FIFA player Power Ranking records by canonical player URN/name; caller-supplied official ranking overrides are ignored
+- `worldcup-get-injuries` — archived fixture-scoped injuries/suspensions; empty data remains explicitly incomplete unless source coverage proves otherwise
+- `worldcup-get-player-performance-context` — archived player performance signals merged with persisted verified final FIFA player Power Ranking records by canonical player URN/name; caller-supplied official ranking overrides are ignored
 
 **Market intelligence**
 - `worldcup-search-markets` — market search (Kalshi + Polymarket, URN-linked)
@@ -57,7 +57,7 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
 
 **Forecast & accuracy**
 - `worldcup-get-match-forecast` — archived model-implied 1X2/O-U/scoreline probabilities (Dixon-Coles) for one event + a comparison with preserved market-cache evidence. Informational only.
-- `worldcup-backtest-forecasts` — read-only completed-tournament backtest over archived events and original forecasts. It excludes missing/unparseable/late forecast timestamps and AET/PEN fixtures without 90-minute evidence, and reports total/included/excluded counts with reasons. Other competitions retain the live settlement path.
+- `worldcup-backtest-forecasts` — precomputed completed-tournament backtest over archived events and original forecasts. It reports total/included/excluded counts with reasons and performs no request-time audit recomputation or writes.
 
 **Signals (decision support)**
 - `worldcup-get-signal` — structured betting signal for one fixture (1X2). Fuses the model forecast
@@ -89,26 +89,28 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
   `entropy_bits`, `uncertainty`, `effective_sources`, `abstain_reasons`, `top_pick`, `summary`). The legacy
   model-vs-price fields and `recommendation` are unchanged. Design: note "Bayes no OG Edge", fatia 1.
 
-**Composite Skills (cached editorial cards)** — each serves a scoped cached candidate (idle cost = one doc search) or authors a new one on a cache miss / `force_regen`. Live-oriented cards use a TTL; final archive cards may be evergreen. Output is `skill_card` (the structured `body`) + `served_from` (`cache`|`generated`). All read-only/informational with the standard disclaimer; market-bearing cards keep resolution/liquidity/freshness caveats.
+**Composite Skills** — live-oriented cards retain their normal cache/generation policy. The two completed-catalog skills below check the immutable archive first. Valid hits bypass generation even when `force_regen` is true; clean misses retain the legacy cache/generation path during canary migration.
 - `worldcup-match-preview` (`event_urn`) — grounded preview; composes event + grounded news + optional model forecast + market snapshot. TTL 6h (FRESH).
-- `worldcup-match-recap` (`event_urn`) — grounded recap; authored ONLY once `sport:status` ∈ FT/AET/PEN, then cached EVERGREEN (once per match).
-- `worldcup-player-spotlight` (`player_urn`) — tournament-only player card from the persisted World Cup squad identity. It does not research or cache club contracts, club form, transfers, managers, or post-tournament claims; archive-scoped cards are reusable without a live-data TTL.
+- `worldcup-match-recap` (`event_urn`) — the original stored recap and generation provenance; retrospective copy retains its retrospective label and is never presented as matchday copy.
+- `worldcup-player-spotlight` (`player_urn`) — the finite source-manifest target set of original tournament-only player cards. It does not research club contracts, club form, transfers, managers, or post-tournament claims.
 - `worldcup-fan-pulse` (`query`/`event_urn`) — wraps `worldcup-fan-sentiment-context` (grok); caches the structured pulse. TTL 1h (HOT_SYNC).
 - `worldcup-market-watch` (global) — composes movers + informational edges into a summary card. TTL ~20min (HOT_SYNC).
 
-Candidate docs live in `worldcup:skill-<skill>` (upsert key `metadata{skill, subject_urn}`; `subject_urn` = event/player URN or `global`). The cron agent `worldcup-content-author` keeps the two global hot cards (market-watch, fan-pulse) warm when matches are live/upcoming; per-event/player cards are authored on first request and served from cache after.
+Original candidate docs remain in `worldcup:skill-<skill>`. Published completed-catalog responses live in `worldcup:final-archive`; public reads never update either store. The cron agent `worldcup-content-author` applies only to live-oriented cards outside the eleven-route completed catalog.
 
 **Agents (conversational)** — `world-cup-intelligence-agent` (full read+market), `world-cup-market-analyst-agent` (market-focused). Activate before exposing.
 
 ## Final archive metadata
 
-The following 11 workflows preserve their existing response fields and add an `archive` object: `worldcup-resolve`, `worldcup-get-schedule`, `worldcup-get-event-context`, `worldcup-get-standings`, `worldcup-get-squads`, `worldcup-get-injuries`, `worldcup-get-player-performance-context`, `worldcup-get-match-forecast`, `worldcup-backtest-forecasts`, `worldcup-match-recap`, and `worldcup-player-spotlight`.
+The following 11 workflows preserve their existing response fields and check `worldcup:final-archive` version `world-cup-2026-final-v2` first: `worldcup-resolve`, `worldcup-get-schedule`, `worldcup-get-event-context`, `worldcup-get-standings`, `worldcup-get-squads`, `worldcup-get-injuries`, `worldcup-get-player-performance-context`, `worldcup-get-match-forecast`, `worldcup-backtest-forecasts`, `worldcup-match-recap`, and `worldcup-player-spotlight`. Valid hits skip every legacy provider/model/write task. Clean misses run the original task graph; invalidated, malformed, ambiguous, or truncated lookups fail closed with `archive.status: error`. Archive version selection is server-owned and is not a public workflow input. During the connector-first deployment handoff, requests from still-installed v1 workflow definitions return a clean archive miss and continue through their legacy task graph.
 
 Every `archive` object contains:
 
 ```json
 {
   "mode": "final_archive",
+  "version": "world-cup-2026-final-v2",
+  "status": "hit",
   "competition": "FIFA World Cup 2026",
   "competition_status": "completed",
   "live": false,
@@ -119,6 +121,11 @@ Every `archive` object contains:
   "notes": []
 }
 ```
+
+Archive hits also carry `response_sha256`, `source_manifest_sha256`, and
+`request_identity_sha256`. Published rows have no timed expiry. See
+[archive-first-serving.md](archive-first-serving.md) for identity, invalidation,
+and offline preparation rules.
 
 `snapshot_as_of` never uses request time. It is taken from stored document evidence, a model `computed_at`, an audit cutoff, or a cached editorial `generated_at`; it is `null` when the source shape has no stored timestamp.
 
@@ -133,8 +140,8 @@ Capability semantics:
 | player performance | `complete` with provider statistics and a terminal official final state (`available`, `not_ranked`, or proven `not_eligible`); unresolved identity is `partial`; `pending` is reserved for a missing final snapshot |
 | match forecast | `historical_model` when the stored model exists; otherwise `unavailable` |
 | forecast backtest | `historical_aggregate` when the aggregate exists; otherwise `unavailable`. The archive object also exposes `sample_size` and `cutoff`. |
-| match recap | `evergreen_editorial` when cached or generated; cached responses expose `generated_at` as `snapshot_as_of` |
-| player spotlight | `archived_editorial` when cached or generated; cached responses expose `generated_at` as `snapshot_as_of` |
+| match recap | `evergreen_editorial` for a published original archive card; its original `generated_at` is `snapshot_as_of` |
+| player spotlight | `archived_editorial` for a published target-set card; its original `generated_at` is `snapshot_as_of` |
 
 `missing_capabilities` records gaps without changing the existing endpoint payload. In particular, an empty injury list is not evidence of complete historical coverage, and a provisional player-performance score is not an official FIFA ranking.
 
@@ -161,8 +168,8 @@ gate for any future mutation are documented in [archive-repair.md](archive-repai
 - **Market cache** (`search-markets`) — refreshed every 30 min; responses carry a staleness warning past 15 min.
 - **`get-market-state`** — live from the source (current price, order book, history, trades).
 - **`market-movers`** — computed from the hourly `worldcup:market-snapshot` time series; needs ≥2 hourly buckets to show movement.
-- **`get-match-forecast`** — archived probabilities from `worldcup:model-forecast`; the model-vs-market comparison uses preserved market-cache evidence.
-- **Stores added by this layer:** `worldcup:model-forecast` (`_id` = canonical event URN), `worldcup:forecast-audit` (`_id` = canonical event URN; `…:aggregate` singleton), `worldcup:fifa-ranking` (`_id` = team URN), `worldcup:final-fifa-player-power-ranking` (230 published final player records plus one source manifest), `worldcup:signal-ledger` (`_id` = `{event_urn}:{outcome}`; one row per logged value pick), `worldcup:clv-report` (`…:aggregate` singleton), `worldcup:calibration-sample` (`_id` = `{event_urn}:{outcome}:cal`; one row per 1X2 leg of every forecast with markets, settled by the backtest), `worldcup:calibration-report` (`…:aggregate` singleton; Brier per source + `weights_learned` read by `worldcup-get-signal`).
+- **The eleven completed-catalog routes** — immutable `worldcup:final-archive` rows with explicit version/hash invalidation and no request-time expiry.
+- **Stores added by this layer:** `worldcup:final-archive`, `worldcup:model-forecast` (`_id` = canonical event URN), `worldcup:forecast-audit` (`_id` = canonical event URN; `…:aggregate` singleton), `worldcup:fifa-ranking` (`_id` = team URN), `worldcup:final-fifa-player-power-ranking` (230 published final player records plus one source manifest), `worldcup:signal-ledger` (`_id` = `{event_urn}:{outcome}`; one row per logged value pick), `worldcup:clv-report` (`…:aggregate` singleton), `worldcup:calibration-sample` (`_id` = `{event_urn}:{outcome}:cal`; one row per 1X2 leg of every forecast with markets), `worldcup:calibration-report` (`…:aggregate` singleton; Brier per source + `weights_learned` read by `worldcup-get-signal`).
 
 Identity aliases are migration-safe and deterministic: both `Czech Republic` and `Czechia` resolve to `urn:machina:sport:soccer:team:czechia:cze`. Forecast and audit builders deduplicate legacy/new alias documents by API-Football fixture id and emit the canonical Czechia event URN, preventing duplicate archive records without deleting legacy source documents.
 
@@ -171,9 +178,13 @@ Identity aliases are migration-safe and deterministic: both `Czech Republic` and
 - Grounded search steps (`invoke_search`: prematch enrichment, brief context, move news) → **`gemini-3.1-flash-lite`** (fast; Google grounding carries factual quality).
 - Reasoning/synthesis steps (`invoke_prompt`: brief synthesis, move explanation, edge analysis) → **`gemini-3.5-flash`**.
 - Fan sentiment / live social (`grok` `post-responses`) → **`grok-4.3`**.
-- **Forecast layer** (`worldcup-get-match-forecast` / `-sync-model-forecasts` / `-backtest-forecasts`) is **pure-stdlib math, no AI** — only the optional `worldcup-match-forecast-explain` (reasoning, gemini-3.5-flash) and the `worldcup-seed-fifa-ranking` bootstrap (grounded lite + flash extract) call models.
+- **Completed-catalog forecast reads** (`worldcup-get-match-forecast`, `worldcup-backtest-forecasts`) are immutable archive reads with no request-time math or AI. Internal forecast sync and preparation remain separate operator paths.
 
 ## Connector and secret requirements
+
+Warmed archive hits require only the document store and the local
+`worldcup-market-intelligence` connector. The integrations below remain
+requirements for clean-miss legacy execution and live/internal workflows.
 
 - `api-football` connector + vault secret `TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY` (fixtures, standings, fixture-scoped injuries, player stats). The completed-tournament squads endpoint reads persisted identities instead of current roster APIs.
 - `sports-skills` connector (Kalshi/Polymarket/ESPN orchestration).
@@ -292,7 +303,7 @@ Response: `{ forecast {...original stored fields}, forecast_integrity {classific
 
 ## `worldcup-backtest-forecasts` (accuracy track record)
 
-For the completed World Cup, the endpoint compares archived original forecasts to archived event truth without provider calls or document writes. Forecasts with missing, unparseable, or at/after-kickoff `model.computed_at` are excluded. AET/PEN fixtures are included only when a separate 90-minute `score.fulltime` exists; extra-time and shootout winners never determine the 1X2 result.
+For the completed World Cup, the endpoint serves the already computed, versioned aggregate without provider calls, document writes, or audit recomputation. Its preparation excludes forecasts with missing, unparseable, or at/after-kickoff `model.computed_at`. AET/PEN fixtures are included only when a separate 90-minute `score.fulltime` exists; extra-time and shootout winners never determine the 1X2 result.
 
 Response metadata includes `total_count`, `included_count`, `excluded_count`, `exclusion_reasons`, and `sources`, alongside `backtesting_report { brier_scores{avg_1x2, avg_over_2_5, baseline_random: 0.25, is_better_than_random}, accuracy{correct,total,accuracy_percent}, calibration{avg_calibration_error, curve[10 bins]}, sample_size_sufficient (≥50), recommendation }`.
 
@@ -380,7 +391,7 @@ Request: `{ "competition": "brasileirao-2026" }` (optional) → `competitions[]`
 - `worldcup-log-signals` / `worldcup-backtest-forecasts`: calibration rows inherit the forecast's competition; the backtest publishes the aggregate report **and one report per competition** (`worldcup:calibration-report:<slug>`), each chaining its learned weights from its own previous report.
 - **Regulation time:** CLV and calibration settle 1X2 legs on `score.fulltime` when present (`_final_results_by_fixture`), so a knockout tie decided in extra time or on penalties scores as the 90-minute result the markets and the model are about.
 
-Activating a second competition in a pod is an operator decision: run `worldcup-ingest-fixtures`, `worldcup-sync-market-sources`, `worldcup-sync-model-forecasts`, `worldcup-log-signals` and `worldcup-backtest-forecasts` with `{"competition": "<slug>"}`; the public read endpoints then see its fixtures, markets, signals and calibration next to the World Cup's. Other sports need a forecast model per sport (`model` in the registry); the fusion, belief and calibration layers are already sport-agnostic.
+Activating a second competition in a pod is an operator decision for the live/internal workflows. The completed World Cup storefront remains pinned to its explicit archive version; exposing another competition requires a separately prepared archive contract and version. Other sports need a forecast model per sport (`model` in the registry); the fusion, belief and calibration layers are already sport-agnostic.
 
 ## `worldcup-get-calibration` (calibration v0, OG Edge fatia 3)
 
@@ -412,7 +423,7 @@ Returns `fan_sentiment` (home/away narratives, breaking_news, buzz_level, narrat
 
 ## `worldcup-get-player-performance-context`
 
-Player-level context from API-Football fixture player stats plus the persisted final FIFA Power Ranking record matched by canonical player URN or name. Official FIFA fields and Machina provisional signals are kept separate. Scale 0–10. A published official row is `available`; a resolved tournament player absent from the completed leaderboard is `not_ranked`; `not_eligible` requires trusted tournament-minute evidence loaded from the internal player identity document. Callers cannot supply that evidence, and fixture-only minutes never prove tournament ineligibility. Unresolved identity is `unmatched`; `pending` is used only when the completed snapshot manifest is unavailable. Caller-supplied `official_fifa_power_ranking` values are ignored by this public workflow; official fields come only from the persisted verified snapshot.
+Player-level context from an archived fixture-statistics response plus the persisted final FIFA Power Ranking record matched by canonical player URN or name. Official FIFA fields and Machina provisional signals are kept separate. Scale 0–10. A published official row is `available`; a resolved tournament player absent from the completed leaderboard is `not_ranked`; `not_eligible` requires trusted tournament-minute evidence loaded from the archived identity. Callers cannot supply that evidence, and fixture-only minutes never prove tournament ineligibility. Unresolved identity is `unmatched`; `pending` is used only when the completed snapshot manifest is unavailable. Caller-supplied `official_fifa_power_ranking` values are ignored by this public workflow; official fields come only from the published archive.
 
 ## Guardrails
 

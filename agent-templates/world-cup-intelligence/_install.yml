@@ -1,6 +1,6 @@
 setup:
   title: World Cup Intelligence
-  description: Hosted World Cup market-intelligence workflows combining API-Football match truth, IPTC semantic mapping, Sports Skills context, Kalshi/Polymarket markets, Google GenAI reasoning/grounding, and xAI/Grok fan sentiment/news.
+  description: Hosted World Cup market-intelligence workflows with immutable archive-first serving for the completed tournament plus separately operated live market intelligence.
   category:
     - sports
     - prediction-markets
@@ -10,12 +10,12 @@ setup:
   features:
     - API-Football fixture ingestion normalized to IPTC Sport Schema with provider URNs.
     - World Cup market search across Kalshi and Polymarket.
-    - Event context using Sports Skills, API-Football, and semantic-layer cache.
+    - Eleven standard completed-tournament endpoints use a versioned archive first; valid hits skip provider/model/write work and clean misses preserve legacy behavior during canary migration.
     - Google GenAI grounded reasoning for structured market briefs.
     - xAI/Grok fan sentiment and live news pulse.
     - Market edge and arbitrage-candidate analysis for agent workflows.
     - Statistical match forecasts (Dixon-Coles) with model-vs-market gaps + Brier/calibration backtesting.
-    - Composite editorial Skills (match-preview, match-recap, player-spotlight, fan-pulse, market-watch) as TTL-cached cards.
+    - Original match recaps and the finite tournament spotlight catalog preserved with their generation dates and provenance.
     - Structured betting signal (recommendation + edge% + EV + Kelly stake + risk flags), line-shopped + de-vigged.
     - Perfect-bracket simulator (wcbracket-*) -- Monte Carlo of the knockout tree (R32 -> Final) with per-team advancement + champion odds, market-anchored where priced.
     - Read-only workflows suitable for API/MCP productization.
@@ -30,7 +30,7 @@ setup:
     - pod-document-store
   status: available
   value: agent-templates/world-cup-intelligence
-  version: 0.10.1
+  version: 0.11.0
 
 datasets:
   - type: connector
@@ -83,6 +83,8 @@ datasets:
     path: workflows/worldcup-refresh-live-status.yml
   - type: workflow
     path: workflows/worldcup-get-player-performance-context.yml
+  - type: workflow
+    path: workflows/worldcup-archive-capture-players.yml
   - type: workflow
     path: workflows/worldcup-import-final-fifa-player-rankings.yml
   - type: workflow

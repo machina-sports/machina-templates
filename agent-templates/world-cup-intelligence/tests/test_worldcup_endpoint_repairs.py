@@ -167,7 +167,7 @@ def test_fixture_scoped_workflows_use_the_safe_resolver_before_provider_calls():
         resolver = task(flow, "resolve-fixture")
         assert resolver["connector"]["command"] == "resolve_archived_fixture"
         assert resolver["inputs"]["events"] == "$.get('resolve_events', [])"
-        assert "condition" not in resolver
+        assert resolver["condition"] == "$.get('archive_status', 'miss') == 'miss'"
         assert "candidates" in flow["outputs"]
         assert "resolution_warnings" in flow["outputs"]["warnings"]
 
@@ -347,7 +347,7 @@ def test_archive_backtest_filters_late_forecasts_and_requires_regulation_scores(
 
     flow = workflow("worldcup-backtest-forecasts")
     assert "world-cup-2026" in task(flow, "fetch-finished-fixtures")["condition"]
-    assert task(flow, "aggregate-audit")["condition"] == "len($.get('audits', [])) > 0"
+    assert task(flow, "aggregate-audit")["condition"].endswith("(len($.get('audits', [])) > 0)")
     for item in flow["tasks"]:
         if item["name"].startswith("save-") or item["name"] in {"settle-clv", "settle-calibration", "compute-calibration"}:
             assert "api-football-live" in item.get("condition", "")
@@ -355,7 +355,7 @@ def test_archive_backtest_filters_late_forecasts_and_requires_regulation_scores(
 
 def test_recap_and_spotlight_cache_hits_still_return_archived_sources():
     recap = workflow("worldcup-match-recap")
-    assert task(recap, "load-event")["condition"] == "$.get('event_urn', '') != ''"
+    assert task(recap, "load-event")["condition"].endswith("($.get('event_urn', '') != '')")
     assert "historical_perspective" in recap["outputs"]["skill_card"]
     assert "event_sources" in recap["outputs"]["skill_card"]
     recap_prompt = yaml.safe_load((TEMPLATE_ROOT / "prompts/worldcup-match-recap.yml").read_text())["prompts"][0]
@@ -374,7 +374,7 @@ def test_recap_and_spotlight_cache_hits_still_return_archived_sources():
     assert recap["inputs"]["provider_event_id"] == "$.get('provider_event_id', '')"
 
     spotlight = workflow("worldcup-player-spotlight")
-    assert task(spotlight, "load-player")["condition"] == "$.get('player_urn', '') != ''"
+    assert task(spotlight, "load-player")["condition"].endswith("($.get('player_urn', '') != '')")
     ranking = task(spotlight, "load-final-fifa-performance")
     assert ranking["filters"]["value.player_urn"] == "$.get('player_urn', '')"
     assert "performance_context" in spotlight["outputs"]["skill_card"]

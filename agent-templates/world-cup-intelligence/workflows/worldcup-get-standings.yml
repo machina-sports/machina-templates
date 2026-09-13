@@ -14,20 +14,70 @@ workflow:
     league: "$.get('league', '')"
     season: "$.get('season', '')"
   outputs:
-    standings: "$.get('standings', {})"
+    standings: "$.get('archive_response', {}).get('standings') if $.get('archive_hit', False) else ($.get('standings', {}))"
     archive: >-
-      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+      $.get('archive_metadata', {}) if $.get('archive_status', 'miss') != 'miss' else ({'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False, 'snapshot_as_of': None,
        'capability_status': 'complete' if $.get('standings', {}).get('groups') else 'unavailable',
        'provenance': [$.get('standings', {}).get('source')] if $.get('standings', {}).get('source') not in (None, '', 'none') else [],
        'missing_capabilities': [] if $.get('standings', {}).get('groups') else ['standings'],
-       'notes': ['Final group tables; no stored source timestamp is available.']}
-    workflow-status: "$.get('standings', {}).get('groups') and 'executed' or 'skipped'"
+       'notes': ['Final group tables; no stored source timestamp is available.']})
+    workflow-status: "'executed' if $.get('archive_hit', False) else ('skipped' if $.get('archive_status') == 'error' else ($.get('standings', {}).get('groups') and 'executed' or 'skipped'))"
   tasks:
+    - type: document
+      name: load-final-archive-manifest
+      config:
+        action: search
+        search-limit: 2
+        search-vector: false
+      filters:
+        name: "'worldcup:final-archive-manifest'"
+        value.archive_version: "'world-cup-2026-final-v2'"
+      outputs:
+        archive_manifest_documents: $.get('documents', []) or []
+    - type: document
+      name: load-final-archive
+      description: Load immutable endpoint rows in a stable order before legacy execution.
+      config:
+        action: search
+        search-limit: 5000
+        search-vector: false
+        search-sorters:
+          - _id
+          - 1
+      filters:
+        name: "'worldcup:final-archive'"
+        value.archive_version: "'world-cup-2026-final-v2'"
+        value.endpoint: "'worldcup-get-standings'"
+      outputs:
+        archive_documents: $.get('documents', []) or []
+        archive_search_limit_reached: len($.get('documents', []) or []) >= 5000
+    - type: connector
+      name: serve-final-archive
+      description: Validate and serve an exact archive hit; clean misses alone may continue to legacy tasks.
+      connector:
+        name: worldcup-market-intelligence
+        command: serve_final_archive
+      inputs:
+        endpoint: "'worldcup-get-standings'"
+        archive_version: "'world-cup-2026-final-v2'"
+        request: "{'event_urn': $.get('event_urn', ''), 'provider_event_id': $.get('provider_event_id', ''), 'league': $.get('league', ''), 'season': $.get('season', '')}"
+        documents: $.get('archive_documents', [])
+        archive_search_limit_reached: $.get('archive_search_limit_reached', False)
+        canonical_events: $.get('archive_canonical_events', [])
+        event_search_limit_reached: $.get('archive_canonical_events_search_limit_reached', False)
+        canonical_identities: $.get('archive_canonical_identities', [])
+        identity_search_limit_reached: $.get('archive_canonical_identities_search_limit_reached', False)
+        archive_manifest: $.get('archive_manifest_documents', [])
+      outputs:
+        archive_hit: $.get('archive_hit', False)
+        archive_status: $.get('archive_status', 'error')
+        archive_response: $.get('response', {})
+        archive_metadata: $.get('archive', {})
     - type: document
       name: lookup-event
       description: Resolve league id + season year + sports-skills season slug from the cached event, by machina event_urn or api-football provider_event_id (fixture id).
-      condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('event_urn', '') != '' or $.get('provider_event_id', '') != '')"
       config:
         action: search
         search-limit: 1
@@ -56,10 +106,11 @@ workflow:
         standings_af: "$"
         af_group_count: "len(((($.get('response') or [{}])[0] or {}).get('league', {}) or {}).get('standings', []) or [])"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: connector
       name: fetch-standings-ss
       description: Sports Skills (ESPN) standings fallback.
-      condition: "$.get('af_group_count', 0) == 0"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('af_group_count', 0) == 0)"
       continue_on_error: true
       connector:
         name: sports-skills
@@ -85,3 +136,4 @@ workflow:
         # worldcup-market-intelligence returns {status,data}; the runner strips
         # that envelope, so $ is already the data dict (groups/warnings/...).
         standings: "$"
+      condition: $.get('archive_status', 'miss') == 'miss'

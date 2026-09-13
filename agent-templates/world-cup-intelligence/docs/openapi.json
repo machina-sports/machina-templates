@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Machina Sports World Cup Intelligence",
-    "version": "1.0.0",
-    "description": "The canonical eleven-route World Cup 2026 storefront contract. Completed-tournament routes serve archived provider-backed records or cached documents; caveats in each operation describe evidence limits."
+    "version": "1.1.0",
+    "description": "The canonical eleven-route World Cup 2026 storefront contract. Routes use the immutable versioned archive first; valid hits skip legacy work, clean misses retain it during canary migration, and archive errors fail closed."
   },
   "servers": [
     {
@@ -136,21 +136,21 @@
     "/world-cup/v1/skills/match-recap": {
       "post": {
         "summary": "Match recap",
-        "description": "Returns original cached matchday copy with a historical-perspective annotation and archived event references, or authors one retrospective at a time when missing. force_regen defaults false.",
+        "description": "Returns original archived copy with its generation date, historical-perspective annotation, and event references when warmed. A clean miss retains legacy behavior during canary migration; force_regen cannot bypass a valid archive hit.",
         "x-zeroclick-services": ["finished-content"],
         "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "400000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.400000 per call (match_recap, service finished-content)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.400000"}, "rates": [{"service": "finished-content", "meter": "match_recap", "unit": "call", "unitSize": 1, "priceUsd": "0.400000", "includedUnits": 0}]},
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"allOf": [{"$ref": "#/components/schemas/FixtureSelector"}, {"type": "object", "properties": {"force_regen": {"type": "boolean", "default": false}}}]}, "examples": {"cached": {"value": {"event": "Brazil vs Morocco"}}, "scopedRegeneration": {"value": {"event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor", "force_regen": true}}}}}},
-        "responses": {"200": {"description": "Source-annotated cached or newly authored retrospective recap."}, "400": {"description": "Fixture is missing, ambiguous, unknown, or unfinished."}, "402": {"description": "Payment required."}}
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"allOf": [{"$ref": "#/components/schemas/FixtureSelector"}, {"type": "object", "properties": {"force_regen": {"type": "boolean", "default": false, "deprecated": true, "description": "Ignored by archive serving."}}}]}, "examples": {"archived": {"value": {"event": "Brazil vs Morocco"}}}}}},
+        "responses": {"200": {"description": "Source-annotated archived recap or explicit archive miss."}, "400": {"description": "Fixture is missing, ambiguous, unknown, or unfinished."}, "402": {"description": "Payment required."}}
       }
     },
     "/world-cup/v1/skills/player-spotlight": {
       "post": {
         "summary": "Player spotlight",
-        "description": "Tournament-only player card enriched with the official final FIFA performance record when published. Missing rankings are reported as unavailable and never inferred.",
+        "description": "Original tournament-only player card from the finite archive target set when warmed. A clean miss retains legacy behavior during canary migration; force_regen cannot bypass a valid archive hit.",
         "x-zeroclick-services": ["finished-content"],
         "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "400000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.400000 per call (player_spotlight, service finished-content)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.400000"}, "rates": [{"service": "finished-content", "meter": "player_spotlight", "unit": "call", "unitSize": 1, "priceUsd": "0.400000", "includedUnits": 0}]},
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"player_urn": {"type": "string"}, "player": {"type": "string"}, "team": {"type": "string"}, "force_regen": {"type": "boolean", "default": false}}, "anyOf": [{"required": ["player_urn"]}, {"required": ["player"]}]}, "examples": {"namedPlayer": {"value": {"player": "Vinicius Junior", "team": "Brazil"}}}}}},
-        "responses": {"200": {"description": "Cached or generated tournament card with structured FIFA performance context and sources."}, "400": {"description": "Player selector is missing, ambiguous, or unknown."}, "402": {"description": "Payment required."}}
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"player_urn": {"type": "string"}, "player": {"type": "string"}, "team": {"type": "string"}, "force_regen": {"type": "boolean", "default": false, "deprecated": true, "description": "Ignored by archive serving."}}, "anyOf": [{"required": ["player_urn"]}, {"required": ["player"]}]}, "examples": {"namedPlayer": {"value": {"player": "Vinicius Junior", "team": "Brazil"}}}}}},
+        "responses": {"200": {"description": "Archived tournament card or explicit archive miss, with structured FIFA performance context and sources."}, "400": {"description": "Player selector is missing, ambiguous, or unknown."}, "402": {"description": "Payment required."}}
       }
     }
   }

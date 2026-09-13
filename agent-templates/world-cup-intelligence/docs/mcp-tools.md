@@ -21,8 +21,17 @@ fixture-scoped tool now accepts human identifiers and resolves internally:
 - If nothing resolves, the tool returns an explicit `recommendation` /
   `warnings` message ("No fixture resolved …") rather than an empty payload.
 
-Resolution is deterministic (substring/slug matching over same-pod cached
-docs) — no LLM call, no extra credits, no hallucinated-URN risk.
+Resolution is deterministic (substring/slug matching over the active
+`worldcup:final-archive` version) — no LLM call, no extra credits, no
+hallucinated-URN risk.
+
+The eleven completed-catalog tools listed in `docs/api-contracts.md` are
+archive-first. Sorted archive and canonical-index reads are followed by local
+hash validation, identity selection, and optional schedule filtering. A valid
+hit skips provider, LLM, and document-write tasks. A clean miss preserves the
+legacy path during canary migration; malformed, invalidated, duplicate,
+ambiguous, and truncated states fail closed. Live market tools remain outside
+that set.
 
 To discover URNs directly, expose **`worldcup_get_schedule`** (filter by
 `team`/`opponent`/`date_from`/`date_to`; returns fixtures with `event_urn`) and

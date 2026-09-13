@@ -8208,3 +8208,984 @@ def compute_calibration(request_data: dict[str, Any]) -> dict[str, Any]:
         data["reports"] = reports
         data["competitions"] = slugs
     return {"status": True, "data": data}
+
+
+# -- Completed-tournament archive serving -----------------------------------
+
+LEGACY_FINAL_ARCHIVE_VERSION = "world-cup-2026-final-v1"
+FINAL_ARCHIVE_VERSION = "world-cup-2026-final-v2"
+FINAL_RESULT_DETAILS_VERSION = "worldcup-result-details-v1"
+FINAL_ARCHIVE_DOCUMENT = "worldcup:final-archive"
+FINAL_ARCHIVE_MANIFEST_DOCUMENT = "worldcup:final-archive-manifest"
+FINAL_ARCHIVE_FIXTURE_ENDPOINTS = {
+    "worldcup-get-event-context",
+    "worldcup-get-squads",
+    "worldcup-get-injuries",
+    "worldcup-get-player-performance-context",
+    "worldcup-get-match-forecast",
+    "worldcup-match-recap",
+}
+FINAL_ARCHIVE_ENDPOINTS = {
+    "worldcup-resolve",
+    "worldcup-get-schedule",
+    "worldcup-get-event-context",
+    "worldcup-get-standings",
+    "worldcup-get-squads",
+    "worldcup-get-injuries",
+    "worldcup-get-player-performance-context",
+    "worldcup-get-match-forecast",
+    "worldcup-backtest-forecasts",
+    "worldcup-match-recap",
+    "worldcup-player-spotlight",
+}
+
+
+def _closure_manifest_payload(value: dict[str, Any]) -> dict[str, Any]:
+    return {key: item for key, item in value.items() if key != "manifest_sha256"}
+
+
+def validate_final_archive_manifest(manifest: Any) -> tuple[str, dict[str, Any], list[str]]:
+    """Return migration/closed/error for the single active final-archive manifest."""
+    values = []
+    for document in _as_list(manifest):
+        value, _ = _document_value(document)
+        if value.get("archive_version") == FINAL_ARCHIVE_VERSION:
+            values.append(value)
+    if not values:
+        return "migration", {}, []
+    if len(values) != 1:
+        return "error", {}, ["Final archive closure manifest is duplicated."]
+    value = values[0]
+    failures = []
+    if value.get("_id") != FINAL_ARCHIVE_VERSION:
+        failures.append("_id")
+    if value.get("active") is not True or value.get("publication_ready") is not True:
+        failures.append("publication state")
+    if value.get("canonical_event_count") != 104 or len(_as_list(value.get("fixture_urns"))) != 104:
+        failures.append("104-fixture enumeration")
+    if value.get("manifest_sha256") != _archive_sha256(_closure_manifest_payload(value)):
+        failures.append("manifest_sha256")
+    if failures:
+        return "error", value, ["Final archive closure manifest is invalid: " + ", ".join(failures) + "."]
+    return "closed", value, []
+
+
+def build_final_archive_manifest(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Build the activation row only after exact 104-fixture coverage checks pass."""
+    params = _params(request_data)
+    raw_fixture_urns = [_text(item) for item in _as_list(params.get("fixture_urns")) if _text(item)]
+    fixture_urns = sorted(set(raw_fixture_urns))
+    coverage = params.get("fixture_coverage") if isinstance(params.get("fixture_coverage"), dict) else {}
+    raw_recap_urns = [_text(item) for item in _as_list(params.get("grounded_recap_fixture_urns")) if _text(item)]
+    recap_urns = sorted(set(raw_recap_urns))
+    required = sorted(FINAL_ARCHIVE_FIXTURE_ENDPOINTS)
+    if len(raw_fixture_urns) != 104 or len(fixture_urns) != 104:
+        raise ValueError("closure requires exactly 104 unique fixture URNs")
+    if set(coverage) != set(fixture_urns):
+        raise ValueError("closure fixture coverage must exactly match the 104-fixture enumeration")
+    allowed_states = {"complete", "partial", "unavailable", "historical_model", "evergreen_editorial"}
+    for fixture_urn in fixture_urns:
+        states = coverage.get(fixture_urn)
+        if not isinstance(states, dict) or set(states) != set(required):
+            raise ValueError(f"closure fixture capabilities are incomplete for {fixture_urn}")
+        invalid = {name: state for name, state in states.items() if state not in allowed_states}
+        if invalid:
+            raise ValueError(f"closure fixture capability has an error state for {fixture_urn}: {invalid}")
+        if states["worldcup-match-recap"] != "evergreen_editorial":
+            raise ValueError(f"closure requires a valid grounded recap for {fixture_urn}")
+    if len(raw_recap_urns) != 104 or recap_urns != fixture_urns:
+        raise ValueError("closure requires grounded recap coverage for all 104 fixtures")
+    baseline_forecast_hash = _text(params.get("forecast_baseline_sha256"))
+    readback_forecast_hash = _text(params.get("forecast_readback_sha256"))
+    if not baseline_forecast_hash or baseline_forecast_hash != readback_forecast_hash:
+        raise ValueError("closure forecast baseline changed")
+    raw_document_ids = [_text(item) for item in _as_list(params.get("archive_document_ids")) if _text(item)]
+    document_ids = sorted(set(raw_document_ids))
+    expected_count = params.get("expected_archive_count")
+    if not isinstance(expected_count, int) or expected_count <= 0 or len(raw_document_ids) != expected_count or len(document_ids) != expected_count:
+        raise ValueError("closure archive document enumeration/count mismatch")
+    fixture_player_urns = params.get("fixture_player_urns") if isinstance(params.get("fixture_player_urns"), dict) else {}
+    if set(fixture_player_urns) != set(fixture_urns):
+        raise ValueError("closure fixture/player coverage must enumerate every fixture")
+    if any(
+        len(_as_list(fixture_player_urns[fixture_urn])) != len(set(_as_list(fixture_player_urns[fixture_urn])))
+        for fixture_urn in fixture_urns
+    ):
+        raise ValueError("closure fixture/player coverage contains duplicate player URNs")
+    value = {
+        "_id": FINAL_ARCHIVE_VERSION,
+        "archive_version": FINAL_ARCHIVE_VERSION,
+        "active": True,
+        "publication_ready": True,
+        "canonical_event_count": 104,
+        "fixture_urns": fixture_urns,
+        "fixture_coverage": {key: coverage[key] for key in fixture_urns},
+        "grounded_recap_fixture_urns": recap_urns,
+        "fixture_player_urns": {key: sorted(set(_as_list(fixture_player_urns[key]))) for key in fixture_urns},
+        "spotlight_targets": sorted({_text(item) for item in _as_list(params.get("spotlight_targets")) if _text(item)}),
+        "spotlight_generation_enabled": False,
+        "expected_archive_count": expected_count,
+        "archive_document_ids_sha256": _archive_sha256(document_ids),
+        "forecast_baseline_sha256": baseline_forecast_hash,
+        "forecast_readback_sha256": readback_forecast_hash,
+        "closed_at": _text(params.get("closed_at")),
+    }
+    if not value["closed_at"]:
+        raise ValueError("closure requires an explicit closed_at timestamp")
+    value["manifest_sha256"] = _archive_sha256(_closure_manifest_payload(value))
+    return {"name": FINAL_ARCHIVE_MANIFEST_DOCUMENT, "value": value}
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def _archive_sha256(value: Any) -> str:
+    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _archive_event_teams(event: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    competitors = [item for item in _as_list(event.get("sport:competitors") or event.get("teams")) if isinstance(item, dict)]
+    home = next((item for item in competitors if _lower(item.get("sport:qualifier") or item.get("qualifier")) == "home"), {})
+    away = next((item for item in competitors if _lower(item.get("sport:qualifier") or item.get("qualifier")) == "away"), {})
+    if not home and competitors:
+        home = competitors[0]
+    if not away and len(competitors) > 1:
+        away = competitors[1]
+    return home, away
+
+
+def validate_grounded_match_recap(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Validate final-result facts separately from the recap's storage format."""
+    params = _params(request_data)
+    event = params.get("event") if isinstance(params.get("event"), dict) else {}
+    recap = params.get("recap") if isinstance(params.get("recap"), dict) else {}
+    body = recap.get("body") if isinstance(recap.get("body"), dict) else recap
+    event_urn = _text(_first(event, "_id", "@id", "id", "event_urn"))
+    status = _text(_first(event, "sport:status", "status")).upper()
+    score = event.get("live_score") if isinstance(event.get("live_score"), dict) else event.get("score")
+    score = score if isinstance(score, dict) else {}
+    home, away = _archive_event_teams(event)
+    factual_failures = []
+    if status not in {"FT", "AET", "PEN"}:
+        factual_failures.append("fixture_status")
+    if not event_urn or not _text(home.get("name")) or not _text(away.get("name")):
+        factual_failures.append("fixture_identity")
+    if score.get("home") is None or score.get("away") is None:
+        factual_failures.append("final_score_source")
+    score_text = _text(body.get("final_score"))
+    score_match = re.search(r"(?<!\d)(\d+)\s*[-–—]\s*(\d+)(?!\d)", score_text)
+    expected_score = [int(_to_float(score.get("home"))), int(_to_float(score.get("away")))] if score.get("home") is not None and score.get("away") is not None else []
+    if not score_match or [int(score_match.group(1)), int(score_match.group(2))] != expected_score:
+        factual_failures.append("final_score")
+    elif score_match:
+        prefix_text = score_text[:score_match.start()].strip()
+        suffix_text = score_text[score_match.end():].strip()
+        prefix = _canonical_team_slug(prefix_text) if prefix_text else ""
+        suffix = _canonical_team_slug(suffix_text) if suffix_text else ""
+        home_slug = _canonical_team_slug(home.get("name"))
+        away_slug = _canonical_team_slug(away.get("name"))
+        if prefix and home_slug and prefix != home_slug:
+            factual_failures.append("home_team")
+        result_only_suffixes = {"aet", "pen", "pens", "penalties", "after-extra-time", "after-penalties"}
+        if suffix and suffix not in result_only_suffixes and away_slug and not (suffix == away_slug or suffix.startswith(away_slug + "-")):
+            factual_failures.append("away_team")
+    recap_event_urn = _text(body.get("event_urn") or recap.get("event_urn") or recap.get("subject_urn"))
+    if recap_event_urn and recap_event_urn != event_urn:
+        factual_failures.append("event_urn")
+    grounding = body.get("grounding") if isinstance(body.get("grounding"), dict) else {}
+    required = {"headline", "summary", "final_score", "forecast_scorecard", "standout_players", "turning_points", "what_it_means", "historical_perspective", "sources", "grounding"}
+    archive_format = "grounded_v2" if required <= set(body) else "legacy_original_copy"
+    format_failures = []
+    if archive_format == "grounded_v2":
+        if grounding.get("event_sha256") != _archive_sha256(event):
+            format_failures.append("event_grounding")
+        if grounding.get("claims_scope") != "final_result_only":
+            format_failures.append("claims_scope")
+    return {"status": True, "data": {
+        "valid": not factual_failures and not format_failures,
+        "factually_valid": not factual_failures,
+        "format_valid": not format_failures,
+        "format": archive_format,
+        "failures": sorted(set(factual_failures + format_failures)),
+        "factual_failures": sorted(set(factual_failures)),
+        "format_failures": sorted(set(format_failures)),
+        "event_urn": event_urn,
+    }}
+
+
+def build_grounded_match_recap(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Build conservative retrospective copy from event truth and the original forecast."""
+    params = _params(request_data)
+    event = params.get("event") if isinstance(params.get("event"), dict) else {}
+    forecast = params.get("forecast") if isinstance(params.get("forecast"), dict) else {}
+    result_details = params.get("result_details") if isinstance(params.get("result_details"), dict) else {}
+    generated_at = _text(params.get("generated_at"))
+    event_urn = _text(_first(event, "_id", "@id", "id", "event_urn"))
+    status = _text(_first(event, "sport:status", "status")).upper()
+    score = event.get("live_score") if isinstance(event.get("live_score"), dict) else event.get("score")
+    score = score if isinstance(score, dict) else {}
+    home, away = _archive_event_teams(event)
+    home_name, away_name = _text(home.get("name")), _text(away.get("name"))
+    if status not in {"FT", "AET", "PEN"} or not event_urn or not home_name or not away_name:
+        raise ValueError("grounded recap requires one terminal fixture with two identified opponents")
+    if score.get("home") is None or score.get("away") is None or not generated_at:
+        raise ValueError("grounded recap requires a final score and explicit generated_at")
+    home_score, away_score = int(score["home"]), int(score["away"])
+    result_label = "draw" if home_score == away_score else (f"{home_name} win" if home_score > away_score else f"{away_name} win")
+    status_note = {"FT": "full time", "AET": "after extra time", "PEN": "after penalties"}[status]
+    probabilities = forecast.get("probabilities") if isinstance(forecast.get("probabilities"), dict) else {}
+    outcomes = [("home_win", home_name + " Win"), ("draw", "Draw"), ("away_win", away_name + " Win")]
+    available = [(key, label, probabilities.get(key)) for key, label in outcomes if isinstance(probabilities.get(key), (int, float))]
+    predicted = max(available, key=lambda item: item[2])[1] if available else "Unavailable"
+    actual = "Draw" if home_score == away_score else (home_name + " Win" if home_score > away_score else away_name + " Win")
+    provider_fixture_id = _text((event.get("provider_ids") or {}).get("api_football"))
+    verified_details = (
+        result_details
+        if result_details.get("schema_version") == FINAL_RESULT_DETAILS_VERSION
+        and _text(result_details.get("fixture_id")) == provider_fixture_id
+        and _text(result_details.get("status")).upper() == status
+        else {}
+    )
+    regulation_score = None
+    try:
+        if verified_details:
+            regulation_score = _normalize_score_pair(
+                verified_details.get("regulation_time_score")
+                if isinstance(verified_details.get("regulation_time_score"), dict)
+                else {}
+            )
+    except ValueError:
+        regulation_score = None
+    if status in {"AET", "PEN"} and regulation_score is None:
+        forecast_scorecard = {
+            "actual_outcome": None,
+            "predicted_outcome": predicted,
+            "predicted_score": forecast.get("most_likely_score"),
+            "hit": None,
+            "regulation_outcome_status": "unavailable",
+            "note": "The archived final score includes extra time or penalties, but no source-backed regulation-time result is stored; the regulation 1X2 forecast is not scored.",
+        }
+    else:
+        evaluated_score = regulation_score or {"home": home_score, "away": away_score}
+        actual = "Draw" if evaluated_score["home"] == evaluated_score["away"] else (home_name + " Win" if evaluated_score["home"] > evaluated_score["away"] else away_name + " Win")
+        forecast_scorecard = {
+            "actual_outcome": actual,
+            "predicted_outcome": predicted,
+            "predicted_score": forecast.get("most_likely_score"),
+            "hit": predicted == actual if available else None,
+            "regulation_outcome_status": "available",
+            "note": "Compared with the preserved pre-kickoff regulation-time forecast using verified score.fulltime evidence; no post-match model generation was performed." if regulation_score is not None else ("Compared with the preserved pre-kickoff regulation-time forecast; no post-match model generation was performed." if forecast else "No verified original forecast was available."),
+        }
+    final_score = f"{home_name} {home_score}-{away_score} {away_name}"
+    body = {
+        "event_urn": event_urn,
+        "headline": f"{home_name} {home_score}-{away_score} {away_name}",
+        "summary": f"The archived final result records {home_name} {home_score}-{away_score} {away_name} ({status_note}).",
+        "final_score": final_score,
+        "forecast_scorecard": forecast_scorecard,
+        "standout_players": [],
+        "turning_points": [],
+        "what_it_means": f"The tournament archive records this fixture as final with status {status}.",
+        "historical_perspective": "retrospective_completed_tournament",
+        "generation_method": "deterministic_source_only",
+        "sources": [{"source": "worldcup:event", "event_urn": event_urn, "provider_ids": dict(event.get("provider_ids") or {})}],
+        "grounding": {
+            "claims_scope": "final_result_only",
+            "event_sha256": _archive_sha256(event),
+            "forecast_sha256": _archive_sha256(forecast) if forecast else None,
+            "unsupported_claims_included": False,
+        },
+        "disclaimer": "Informational sports market intelligence only. Not betting, trading, financial, or investment advice.",
+    }
+    if verified_details:
+        body["result_details"] = result_details
+        body["sources"].append({
+            "source": "api-football",
+            "fixture_id": provider_fixture_id,
+            **dict(result_details.get("provenance") or {}),
+        })
+    if status == "PEN" and verified_details:
+        shootout = verified_details.get("shootout_score") if isinstance(verified_details.get("shootout_score"), dict) else {}
+        winner = verified_details.get("winner") if isinstance(verified_details.get("winner"), dict) else {}
+        if shootout.get("home") is not None and shootout.get("away") is not None and _text(winner.get("name")):
+            winner_name = _text(winner["name"])
+            winner_score = shootout["home"] if winner.get("qualifier") == "home" else shootout["away"]
+            loser_score = shootout["away"] if winner.get("qualifier") == "home" else shootout["home"]
+            body.update({
+                "headline": f"{winner_name} wins {winner_score}-{loser_score} on penalties after {home_name} {home_score}-{away_score} {away_name}",
+                "summary": f"The match was tied {home_name} {home_score}-{away_score} {away_name} after extra time before {winner_name} won the shootout {winner_score}-{loser_score}.",
+                "shootout_score": f"{home_name} {shootout['home']}-{shootout['away']} {away_name}",
+                "winner": winner,
+                "what_it_means": f"{winner_name} advanced after winning the penalty shootout; the match score remained {home_score}-{away_score} after extra time.",
+            })
+            result_label = f"{winner_name} win on penalties"
+    validation = validate_grounded_match_recap({"params": {"event": event, "recap": body}})["data"]
+    if not validation["valid"]:
+        raise ValueError("assembled recap failed grounding validation: " + ", ".join(validation["failures"]))
+    return {"status": True, "data": {"body": body, "generated_at": generated_at, "validation": validation, "result_label": result_label}}
+
+
+def build_fixture_player_pack(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Normalize one raw fixture payload and retain all participants in one scoped pack."""
+    params = _params(request_data)
+    event = params.get("event") if isinstance(params.get("event"), dict) else {}
+    event_urn = _text(_first(event, "_id", "@id", "id", "event_urn"))
+    identities = []
+    for document in _as_list(params.get("identities")):
+        value, _ = _document_value(document)
+        if "sport:Player" in _as_list(value.get("@type")):
+            identities.append(value)
+    rankings = [_document_value(row)[0] for row in _as_list(params.get("rankings"))]
+    ranking_manifest = next((row for row in rankings if row.get("record_type") == "snapshot_manifest"), {})
+    ranking_records = [row for row in rankings if row.get("record_type") == "player_power_ranking"]
+    normalized = normalize_player_match_stats({"params": {
+        "event_urn": event_urn,
+        "player_stats": params.get("player_stats"),
+    }})["data"]
+    fixture_candidates = normalize_schedule({"params": {"events": [event], "limit": 1}})["data"].get("events", [])
+    packed = []
+    warnings = list(normalized.get("warnings") or [])
+    for player in normalized.get("players", []):
+        player_id = _text(player.get("player_id"))
+        team_name = _canonical_team_slug(player.get("team_name"))
+        matches = []
+        for identity in identities:
+            ids = identity.get("provider_ids") if isinstance(identity.get("provider_ids"), dict) else {}
+            identity_team = identity.get("team") if isinstance(identity.get("team"), dict) else {}
+            if _text(ids.get("api_football")) != player_id:
+                continue
+            if team_name and team_name not in {
+                _canonical_team_slug(identity_team.get("name")),
+                _canonical_team_slug(identity.get("nationality")),
+            }:
+                continue
+            matches.append(identity)
+        if len(matches) > 1:
+            warnings.append(f"Ambiguous canonical identity for fixture player {player_id}; participant omitted.")
+            continue
+        identity = matches[0] if matches else {}
+        player_urn = _text(_first(identity, "_id", "@id", "player_urn"))
+        official = select_official_player_power_ranking({"params": {
+            "records": ranking_records,
+            "snapshot_manifest": ranking_manifest,
+            "player_urn": player_urn,
+            "player_name": identity.get("name") or player.get("name"),
+            "identity_resolved": bool(identity),
+            "tournament_player": bool(identity),
+            "trusted_minutes_evidence": identity.get("tournament_minutes_evidence", {}),
+        }})["data"]["official_fifa_power_ranking"]
+        provisional = score_provisional_player_performance({"params": {"player": player}})["data"]["machina_provisional_performance_signal"]
+        context = merge_official_and_provisional_performance({"params": {
+            "event": event,
+            "player": player,
+            "provisional_signal": provisional,
+            "official_fifa_power_ranking": official,
+            "fallback_path": ["api-football"],
+            "freshness": {"provider_stats_fetched": True, "official_fifa_expected_lag_hours": 4},
+        }})["data"]["player_performance_context"]
+        canonical = {
+            "_id": player_urn or None,
+            "name": _text(identity.get("name") or player.get("name")),
+            "aliases": list(identity.get("aliases") or []),
+            "nationality": identity.get("nationality"),
+            "team": dict(identity.get("team") or {}),
+            "team_id": player.get("team_id"),
+            "team_name": player.get("team_name"),
+            "provider_ids": dict(identity.get("provider_ids") or {"api_football": player_id}),
+        }
+        packed.append({
+            "player": canonical,
+            "response": {
+                "player_performance_context": context,
+                "status": "available" if player else "unavailable",
+                "candidates": fixture_candidates,
+                "player_candidates": [{"player_urn": player_urn or None, "name": canonical["name"], "provider_ids": canonical["provider_ids"], "team": canonical["team_name"]}],
+                "warnings": [],
+            },
+        })
+    packed.sort(key=lambda item: (_text(item["player"].get("_id")), _text((item["player"].get("provider_ids") or {}).get("api_football"))))
+    return {"status": True, "data": {
+        "fixture_player_pack": {
+            "event_urn": event_urn,
+            "fixture_id": _text((event.get("provider_ids") or {}).get("api_football")),
+            "players": packed,
+            "player_count": len(packed),
+            "raw_player_count": normalized.get("count", 0),
+            "warnings": warnings,
+        }
+    }}
+
+
+def _archive_parameter_identity(endpoint: str, subject: dict[str, Any], parameters: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "archive_version": FINAL_ARCHIVE_VERSION,
+        "endpoint": endpoint,
+        "subject": subject,
+        "parameters": parameters,
+    }
+
+
+def build_final_archive_document(
+    endpoint: str,
+    subject: dict[str, Any],
+    parameters: dict[str, Any],
+    response: dict[str, Any],
+    source_manifest: list[dict[str, Any]],
+    *,
+    invalidated: bool = False,
+) -> dict[str, Any]:
+    """Build one deterministic document-store import value for the final archive."""
+    if endpoint not in FINAL_ARCHIVE_ENDPOINTS:
+        raise ValueError(f"unsupported final archive endpoint: {endpoint}")
+    subject_key = _text(subject.get("key"))
+    if not subject_key:
+        raise ValueError("final archive subject.key is required")
+    if not isinstance(response, dict):
+        raise ValueError("final archive response must be an object")
+    if not isinstance(source_manifest, list) or not source_manifest:
+        raise ValueError("final archive source_manifest must be a non-empty list")
+    archive = response.get("archive") if isinstance(response.get("archive"), dict) else {}
+    required_archive_fields = {
+        "mode", "competition", "competition_status", "live", "snapshot_as_of",
+        "capability_status", "provenance", "missing_capabilities", "notes",
+    }
+    missing_archive_fields = sorted(required_archive_fields - set(archive))
+    if missing_archive_fields:
+        raise ValueError(f"final archive response metadata is missing: {missing_archive_fields}")
+    if (
+        archive.get("mode") != "final_archive"
+        or archive.get("competition") != "FIFA World Cup 2026"
+        or archive.get("competition_status") != "completed"
+        or archive.get("live") is not False
+    ):
+        raise ValueError("final archive response metadata has invalid tournament constants")
+    for field in ("provenance", "missing_capabilities", "notes"):
+        if not isinstance(archive.get(field), list):
+            raise ValueError(f"final archive response metadata {field} must be a list")
+    if endpoint in {"worldcup-match-recap", "worldcup-player-spotlight"} and response.get("skill_card"):
+        if not archive.get("snapshot_as_of"):
+            raise ValueError(f"{endpoint} must preserve its original generation timestamp")
+        source_times = {_text(source.get("generated_at")) for source in source_manifest if isinstance(source, dict)}
+        if archive.get("snapshot_as_of") not in source_times:
+            raise ValueError(f"{endpoint} snapshot_as_of must match source_manifest generated_at")
+    if endpoint == "worldcup-match-recap" and response.get("skill_card"):
+        perspective = response["skill_card"].get("historical_perspective")
+        if perspective not in {"original_cached_matchday_copy", "retrospective_completed_tournament"}:
+            raise ValueError("match recap must preserve its original historical perspective")
+    if endpoint == "worldcup-get-match-forecast" and response.get("forecast"):
+        forecast_time = ((response.get("forecast", {}).get("model") or {}).get("computed_at"))
+        if not forecast_time or archive.get("snapshot_as_of") != forecast_time:
+            raise ValueError("forecast archive must preserve model.computed_at as snapshot_as_of")
+        kickoff = _text((subject.get("event") or {}).get("schema:startDate"))
+        computed_at = _parse_iso(forecast_time)
+        kickoff_at = _parse_iso(kickoff)
+        verified = computed_at is not None and kickoff_at is not None and computed_at < kickoff_at
+        integrity = response.get("forecast_integrity") if isinstance(response.get("forecast_integrity"), dict) else {}
+        if integrity.get("verified_pre_kickoff") is not verified:
+            raise ValueError("forecast archive integrity classification contradicts its stored timestamp")
+    identity = _archive_parameter_identity(endpoint, subject, parameters)
+    identity_hash = _archive_sha256(identity)
+    return {
+        "_id": f"{FINAL_ARCHIVE_VERSION}:{endpoint}:{subject_key}:{identity_hash}",
+        "archive_version": FINAL_ARCHIVE_VERSION,
+        "endpoint": endpoint,
+        "subject": subject,
+        "subject_sha256": _archive_sha256(subject),
+        "parameter_identity": parameters,
+        "parameter_identity_sha256": identity_hash,
+        "response": response,
+        "response_sha256": _archive_sha256(response),
+        "source_manifest": source_manifest,
+        "source_manifest_sha256": _archive_sha256(source_manifest),
+        "invalidated": bool(invalidated),
+    }
+
+
+def _archive_bool(value: Any, default: bool) -> bool:
+    if value is None or value == "":
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    normalized = _lower(value)
+    if normalized in {"true", "1", "yes", "on"}:
+        return True
+    if normalized in {"false", "0", "no", "off"}:
+        return False
+    return default
+
+
+def _archive_parameters(endpoint: str, request_params: dict[str, Any]) -> dict[str, Any]:
+    """Normalize every non-selector input that can change an endpoint result."""
+    if endpoint == "worldcup-get-event-context":
+        return {
+            "include_prematch_research": _archive_bool(request_params.get("include_prematch_research"), True),
+            "include_social_pulse": _archive_bool(request_params.get("include_social_pulse"), False),
+        }
+    if endpoint in {"worldcup-get-standings", "worldcup-get-injuries"}:
+        return {
+            "league": _text(request_params.get("league")) or "1",
+            "season": _text(request_params.get("season")) or "2026",
+        }
+    if endpoint == "worldcup-get-player-performance-context":
+        return {"team_id": _text(request_params.get("team_id"))}
+    if endpoint == "worldcup-get-match-forecast":
+        try:
+            min_gap_bps = max(0, int(request_params.get("min_gap_bps", 100)))
+        except (TypeError, ValueError):
+            min_gap_bps = -1
+        return {
+            "include_reasoning": _archive_bool(request_params.get("include_reasoning"), False),
+            "min_gap_bps": min_gap_bps,
+        }
+    if endpoint == "worldcup-backtest-forecasts":
+        try:
+            window = int(request_params.get("calibration_window_days", 90))
+        except (TypeError, ValueError):
+            window = -1
+        return {
+            "competition": _text(request_params.get("competition")) or "world-cup-2026",
+            "league": _text(request_params.get("league")),
+            "season": _text(request_params.get("season")),
+            "calibration_window_days": window,
+        }
+    return {}
+
+
+def _archive_request_fields(endpoint: str, request_params: dict[str, Any]) -> dict[str, Any]:
+    """Identity fields exposed for observability, including local schedule filters."""
+    if endpoint == "worldcup-get-schedule":
+        try:
+            limit = max(1, min(int(request_params.get("limit") or 100), 500))
+        except (TypeError, ValueError):
+            limit = -1
+        return {
+            "date_from": _text(request_params.get("date_from"))[:10],
+            "date_to": _text(request_params.get("date_to"))[:10],
+            "team": _slugify(request_params.get("team")) if _text(request_params.get("team")) else "",
+            "opponent": _slugify(request_params.get("opponent")) if _text(request_params.get("opponent")) else "",
+            "status": _lower(request_params.get("status")),
+            "limit": limit,
+        }
+    return _archive_parameters(endpoint, request_params)
+
+
+def _archive_player_matches(player: dict[str, Any], request_params: dict[str, Any]) -> bool:
+    player_urn = _text(request_params.get("player_urn"))
+    player_id = _text(request_params.get("player_id"))
+    player_name = _slugify(request_params.get("player")) if _text(request_params.get("player")) else ""
+    team = _canonical_team_slug(request_params.get("team")) if _text(request_params.get("team")) else ""
+    team_id = _text(request_params.get("team_id"))
+    ids = player.get("provider_ids") if isinstance(player.get("provider_ids"), dict) else {}
+    player_team = player.get("team") if isinstance(player.get("team"), dict) else {}
+    aliases = {_slugify(player.get("name"))}
+    aliases.update(_slugify(alias) for alias in _as_list(player.get("aliases")) if _text(alias))
+    team_aliases = {
+        _canonical_team_slug(player_team.get("name")),
+        _canonical_team_slug(player_team.get("@id")),
+        _canonical_team_slug(player.get("team_urn")),
+        _canonical_team_slug(player.get("nationality")),
+    }
+    checks = []
+    if player_urn:
+        checks.append(_text(_first(player, "_id", "@id", "player_urn")) == player_urn)
+    if player_id:
+        checks.append(_text(ids.get("api_football")) == player_id)
+    if player_name:
+        tokens = [token for token in player_name.split("-") if token]
+        checks.append(any(all(token in alias for token in tokens) for alias in aliases))
+    if team:
+        checks.append(team in team_aliases)
+    if team_id:
+        checks.append(_text(player.get("team_id")) == team_id or _text((player_team.get("provider_ids") or {}).get("api_football")) == team_id)
+    return bool(checks) and all(checks)
+
+
+def _archive_exact_player_name(player: dict[str, Any], requested_name: Any) -> bool:
+    requested = _slugify(requested_name)
+    if not requested:
+        return False
+    aliases = {_slugify(player.get("name"))}
+    aliases.update(_slugify(alias) for alias in _as_list(player.get("aliases")) if _text(alias))
+    return requested in aliases
+
+
+def _archive_subject_event(value: dict[str, Any]) -> dict[str, Any]:
+    subject = value.get("subject") if isinstance(value.get("subject"), dict) else {}
+    event = subject.get("event") if isinstance(subject.get("event"), dict) else {}
+    if event:
+        return event
+    response = value.get("response") if isinstance(value.get("response"), dict) else {}
+    context = response.get("event_context") if isinstance(response.get("event_context"), dict) else {}
+    candidate = context.get("event") if isinstance(context.get("event"), dict) else {}
+    return candidate
+
+
+def _archive_subject_player(value: dict[str, Any]) -> dict[str, Any]:
+    subject = value.get("subject") if isinstance(value.get("subject"), dict) else {}
+    player = subject.get("player") if isinstance(subject.get("player"), dict) else {}
+    if player:
+        return player
+    response = value.get("response") if isinstance(value.get("response"), dict) else {}
+    player = response.get("resolved_player") if isinstance(response.get("resolved_player"), dict) else {}
+    if player and "_id" not in player and player.get("player_urn"):
+        player = dict(player, _id=player.get("player_urn"))
+    return player
+
+
+def _archive_base(status: str, *, warnings: list[str], version: str = FINAL_ARCHIVE_VERSION) -> dict[str, Any]:
+    return {
+        "mode": "final_archive",
+        "version": version,
+        "status": status,
+        "competition": "FIFA World Cup 2026",
+        "competition_status": "completed",
+        "live": False,
+        "snapshot_as_of": None,
+        "capability_status": "unavailable",
+        "provenance": [],
+        "missing_capabilities": ["archived_response"],
+        "notes": warnings,
+    }
+
+
+def _final_archive_result(
+    status: str,
+    *,
+    response: dict[str, Any] | None = None,
+    row: dict[str, Any] | None = None,
+    request_identity: dict[str, Any] | None = None,
+    warnings: list[str] | None = None,
+    version: str = FINAL_ARCHIVE_VERSION,
+) -> dict[str, Any]:
+    response = dict(response or {})
+    row = row or {}
+    warnings = list(warnings or [])
+    archive = dict(response.get("archive") or {})
+    if status != "hit":
+        archive = _archive_base(status, warnings=warnings, version=version)
+    else:
+        archive.update({
+            "mode": "final_archive",
+            "version": version,
+            "status": "hit",
+            "competition": "FIFA World Cup 2026",
+            "competition_status": "completed",
+            "live": False,
+            "response_sha256": row.get("response_sha256"),
+            "source_manifest_sha256": row.get("source_manifest_sha256"),
+            "request_identity_sha256": _archive_sha256(request_identity or {}),
+        })
+        archive.setdefault("snapshot_as_of", None)
+        archive.setdefault("capability_status", "unavailable")
+        archive.setdefault("provenance", [])
+        archive.setdefault("missing_capabilities", [])
+        archive.setdefault("notes", [])
+    response["archive"] = archive
+    response_warnings = response.get("warnings") if isinstance(response.get("warnings"), list) else []
+    response["warnings"] = response_warnings + [warning for warning in warnings if warning not in response_warnings]
+    return {"status": True, "data": {
+        "archive_hit": status == "hit",
+        "archive_status": status,
+        "response": response,
+        "archive": archive,
+        "warnings": response["warnings"],
+    }}
+
+
+def _archive_has_warmed_player_selector(rows: list[dict[str, Any]], request: dict[str, Any], identities: Any) -> bool:
+    canonical = {}
+    for document in _as_list(identities):
+        player, _ = _document_value(document)
+        canonical[_text(_first(player, "_id", "@id", "player_urn"))] = player
+    players = [_archive_subject_player(row) for row in rows]
+    players = [canonical.get(_text(_first(player, "_id", "@id", "player_urn")), player) for player in players]
+    return any(
+        _text(request.get(key)) and _archive_player_matches(player, {key: request[key]})
+        for player in players for key in ("player_urn", "player_id", "player", "team_id")
+    )
+
+
+def _select_fixture_player_pack(rows: list[dict[str, Any]], request: dict[str, Any]) -> tuple[str, dict[str, Any], list[str]]:
+    packs = []
+    for row in rows:
+        response = row.get("response") if isinstance(row.get("response"), dict) else {}
+        pack = response.get("fixture_player_pack") if isinstance(response.get("fixture_player_pack"), dict) else None
+        if pack is not None:
+            packs.append((row, pack))
+    if not packs:
+        return "none", {}, []
+    if len(packs) != 1:
+        return "error", {}, ["Fixture player pack identity is ambiguous."]
+    row, pack = packs[0]
+    supplied = [key for key in ("player_urn", "player_id", "player", "team", "team_id") if _text(request.get(key))]
+    if not supplied:
+        return "miss", {}, ["A player selector is required for the fixture player pack."]
+    players = [item for item in _as_list(pack.get("players")) if isinstance(item, dict) and isinstance(item.get("player"), dict)]
+    matches = [item for item in players if _archive_player_matches(item["player"], request)]
+    if _text(request.get("player")):
+        exact = [item for item in matches if _archive_exact_player_name(item["player"], request.get("player"))]
+        if exact:
+            matches = exact
+    if len(matches) > 1:
+        return "miss", {}, ["Canonical player selector is ambiguous; add an exact player URN or provider id."]
+    if not matches:
+        single_selector_hits = {
+            key: any(_archive_player_matches(item["player"], {key: request[key]}) for item in players)
+            for key in supplied
+        }
+        status = "error" if len(supplied) > 1 and any(single_selector_hits.values()) else "miss"
+        warning = "Conflicting canonical player identifiers; no fallback was allowed." if status == "error" else "Player is unavailable in the archived fixture pack."
+        return status, {}, [warning]
+    response = dict(matches[0].get("response") or {})
+    response["fixture_player_pack"] = {
+        "event_urn": pack.get("event_urn"),
+        "fixture_id": pack.get("fixture_id"),
+        "player_count": pack.get("player_count", len(players)),
+    }
+    return "hit", {"row": row, "response": response}, []
+
+
+def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Validate and serve one immutable completed-tournament archive response."""
+    params = _params(request_data)
+    endpoint = _text(params.get("endpoint"))
+    request_params = params.get("request") if isinstance(params.get("request"), dict) else {}
+    version = _text(params.get("archive_version")) or FINAL_ARCHIVE_VERSION
+    if endpoint not in FINAL_ARCHIVE_ENDPOINTS:
+        return _final_archive_result("error", warnings=["Unsupported final archive endpoint or version."])
+    if version == LEGACY_FINAL_ARCHIVE_VERSION:
+        return _final_archive_result(
+            "miss",
+            version=version,
+            warnings=["Legacy v1 workflow request received during the v2 definitions handoff; continuing through the legacy task graph."],
+        )
+    if version != FINAL_ARCHIVE_VERSION:
+        return _final_archive_result("error", version=version, warnings=["Unsupported final archive endpoint or version."])
+    closure_state, closure_manifest, closure_warnings = validate_final_archive_manifest(params.get("archive_manifest"))
+    if closure_state == "error":
+        return _final_archive_result("error", warnings=closure_warnings)
+    closed = closure_state == "closed"
+    if endpoint == "worldcup-backtest-forecasts" and _text(request_params.get("competition")) not in {"", "world-cup-2026"}:
+        closed = False
+    if endpoint == "worldcup-get-standings" and (
+        _text(request_params.get("league")) not in {"", "1"}
+        or _text(request_params.get("season")) not in {"", "2026"}
+    ):
+        # Closing this tournament must not disable other league/season reads.
+        closed = False
+    miss_status = "unavailable" if closed else "miss"
+
+    fixture_endpoints = FINAL_ARCHIVE_FIXTURE_ENDPOINTS
+    event_index_endpoints = fixture_endpoints | {"worldcup-resolve", "worldcup-get-schedule"}
+    identity_index_endpoints = {
+        "worldcup-resolve", "worldcup-get-player-performance-context", "worldcup-player-spotlight",
+    }
+    bound_failures = []
+    if params.get("archive_search_limit_reached") is True or len(_as_list(params.get("documents"))) >= 5000:
+        bound_failures.append("archive response scan reached its 5000-row safety bound")
+    if endpoint in event_index_endpoints and params.get("event_search_limit_reached") is True:
+        bound_failures.append("canonical event index reached its safety bound")
+    if endpoint in identity_index_endpoints and params.get("identity_search_limit_reached") is True:
+        bound_failures.append("canonical identity index reached its 5000-row safety bound")
+    if bound_failures:
+        return _final_archive_result(
+            "error",
+            warnings=["Final archive lookup is incomplete; no response or legacy fallback was allowed."] + bound_failures,
+        )
+
+    rows: list[dict[str, Any]] = []
+    malformed: list[str] = []
+    for document in _as_list(params.get("documents")):
+        value, _ = _document_value(document)
+        if value.get("archive_version") != version or value.get("endpoint") != endpoint:
+            continue
+        subject = value.get("subject") if isinstance(value.get("subject"), dict) else {}
+        parameters = value.get("parameter_identity") if isinstance(value.get("parameter_identity"), dict) else {}
+        response = value.get("response") if isinstance(value.get("response"), dict) else None
+        sources = value.get("source_manifest") if isinstance(value.get("source_manifest"), list) else None
+        subject_key = _text(subject.get("key"))
+        expected_identity = _archive_parameter_identity(endpoint, subject, parameters)
+        expected_identity_hash = _archive_sha256(expected_identity)
+        failures = []
+        if value.get("invalidated") is not False:
+            failures.append("invalidated")
+        if not subject_key:
+            failures.append("subject.key")
+        if value.get("subject_sha256") != _archive_sha256(subject):
+            failures.append("subject_sha256")
+        if response is None:
+            failures.append("response")
+        if not sources:
+            failures.append("source_manifest")
+        if value.get("parameter_identity_sha256") != expected_identity_hash:
+            failures.append("parameter_identity_sha256")
+        expected_id = f"{FINAL_ARCHIVE_VERSION}:{endpoint}:{subject_key}:{expected_identity_hash}"
+        if value.get("_id") != expected_id:
+            failures.append("_id")
+        if response is not None and value.get("response_sha256") != _archive_sha256(response):
+            failures.append("response_sha256")
+        if sources is not None and value.get("source_manifest_sha256") != _archive_sha256(sources):
+            failures.append("source_manifest_sha256")
+        if failures:
+            malformed.append(f"{value.get('_id') or '<missing-id>'}: {', '.join(failures)}")
+        else:
+            rows.append(value)
+
+    if malformed:
+        return _final_archive_result(
+            "error",
+            warnings=["Final archive validation failed; no response was served."] + malformed[:5],
+        )
+    if not rows:
+        return _final_archive_result(miss_status, warnings=[f"No {version} archive row is available for {endpoint}."])
+    if endpoint in {"worldcup-resolve", *fixture_endpoints} and not _as_list(params.get("canonical_events")):
+        return _final_archive_result("error", warnings=["Canonical event index is unavailable; no legacy fallback was allowed."])
+    has_fixture_player_pack = endpoint == "worldcup-get-player-performance-context" and any(
+        isinstance((row.get("response") or {}).get("fixture_player_pack"), dict) for row in rows
+    )
+    if endpoint in identity_index_endpoints and not has_fixture_player_pack and not _as_list(params.get("canonical_identities")):
+        return _final_archive_result("error", warnings=["Canonical identity index is unavailable; no legacy fallback was allowed."])
+
+    subject_key = ""
+    candidates = rows
+    if endpoint == "worldcup-resolve":
+        requested = _text(request_params.get("id"))
+        canonical_matches = []
+        for document in _as_list(params.get("canonical_identities")) + _as_list(params.get("canonical_events")):
+            value, _ = _document_value(document)
+            ids = value.get("provider_ids") if isinstance(value.get("provider_ids"), dict) else {}
+            aliases = {_text(_first(value, "_id", "@id", "id", "event_urn"))}
+            aliases.update(_text(item) for item in ids.values() if _text(item))
+            if requested and requested in aliases:
+                canonical_matches.append(value)
+        canonical_keys = {_text(_first(value, "_id", "@id", "id", "event_urn")) for value in canonical_matches}
+        if len(canonical_keys) > 1:
+            return _final_archive_result(miss_status, warnings=["Canonical entity selector is ambiguous."])
+        subject_key = next(iter(canonical_keys), "")
+        candidates = [row for row in rows if _text(row["subject"].get("key")) == subject_key]
+    elif endpoint == "worldcup-get-schedule":
+        candidates = [row for row in rows if _text(row["subject"].get("key")) == "tournament"]
+        subject_key = "tournament"
+    elif endpoint in fixture_endpoints:
+        resolved = resolve_archived_fixture({"params": {
+            "events": _as_list(params.get("canonical_events")),
+            "event_urn": request_params.get("event_urn"),
+            "provider_event_id": request_params.get("provider_event_id") or request_params.get("fixture_id"),
+            "event": request_params.get("event"),
+            "team": request_params.get("team") or request_params.get("home_team"),
+            "opponent": request_params.get("opponent") or request_params.get("away_team"),
+            "date": request_params.get("date"),
+        }})["data"]
+        subject_key = _text(resolved.get("event_urn"))
+        if not subject_key:
+            miss = _final_archive_result(miss_status, warnings=resolved.get("warnings") or ["Archived fixture was not resolved."])
+            miss["data"]["response"]["candidates"] = resolved.get("candidates", [])
+            return miss
+        if closed and subject_key not in set(_as_list(closure_manifest.get("fixture_urns"))):
+            return _final_archive_result("unavailable", warnings=["Fixture is outside the closed 104-match archive manifest."])
+        candidates = [row for row in rows if _text(row["subject"].get("event_urn") or row["subject"].get("key")) == subject_key]
+        if endpoint == "worldcup-get-player-performance-context":
+            pack_status, packed, pack_warnings = _select_fixture_player_pack(candidates, request_params)
+            if pack_status != "none":
+                if pack_status != "hit":
+                    return _final_archive_result("unavailable" if closed and pack_status == "miss" else pack_status, warnings=pack_warnings)
+                row = packed["row"]
+                response = packed["response"]
+                stored_response = row.get("response") if isinstance(row.get("response"), dict) else {}
+                response["archive"] = dict(stored_response.get("archive") or {})
+                request_identity = _archive_parameter_identity(endpoint, row["subject"], _archive_request_fields(endpoint, request_params))
+                return _final_archive_result("hit", response=response, row=row, request_identity=request_identity)
+            if not _archive_has_warmed_player_selector(candidates, request_params, params.get("canonical_identities")):
+                return _final_archive_result(miss_status, warnings=["Player request is outside the warmed fixture/player set."])
+            selectors = [key for key in ("player_urn", "player_id", "player", "team") if _text(request_params.get(key))]
+            canonical_players = []
+            for document in _as_list(params.get("canonical_identities")):
+                player, _ = _document_value(document)
+                types = _as_list(player.get("@type"))
+                if "sport:Player" in types and _archive_player_matches(player, request_params):
+                    canonical_players.append(player)
+            exact_players = [player for player in canonical_players if _archive_exact_player_name(player, request_params.get("player"))]
+            if len(exact_players) == 1:
+                canonical_players = exact_players
+            player_urns = {_text(_first(player, "_id", "@id", "player_urn")) for player in canonical_players}
+            if len(player_urns) > 1:
+                return _final_archive_result(miss_status, warnings=["Canonical player selector is ambiguous."])
+            if not player_urns and len(selectors) > 1:
+                return _final_archive_result("error", warnings=["Conflicting canonical player identifiers; no legacy fallback was allowed."])
+            selected_player_urn = next(iter(player_urns), "")
+            candidates = [
+                row for row in candidates
+                if _text(_first(_archive_subject_player(row), "_id", "@id", "player_urn")) == selected_player_urn
+            ]
+            if len(candidates) == 1:
+                subject_key = _text(candidates[0]["subject"].get("key"))
+    elif endpoint == "worldcup-player-spotlight":
+        if not _archive_has_warmed_player_selector(rows, request_params, params.get("canonical_identities")):
+            return _final_archive_result(miss_status, warnings=["Player request is outside the archived spotlight set."])
+        selectors = [key for key in ("player_urn", "player", "team") if _text(request_params.get(key))]
+        canonical_players = []
+        for document in _as_list(params.get("canonical_identities")):
+            player, _ = _document_value(document)
+            if "sport:Player" in _as_list(player.get("@type")) and _archive_player_matches(player, request_params):
+                canonical_players.append(player)
+        exact_players = [player for player in canonical_players if _archive_exact_player_name(player, request_params.get("player"))]
+        if len(exact_players) == 1:
+            canonical_players = exact_players
+        player_urns = {_text(_first(player, "_id", "@id", "player_urn")) for player in canonical_players}
+        if len(player_urns) > 1:
+            return _final_archive_result(miss_status, warnings=["Canonical player selector is ambiguous."])
+        if not player_urns and len(selectors) > 1:
+            return _final_archive_result("error", warnings=["Conflicting canonical player identifiers; no legacy fallback was allowed."])
+        selected_player_urn = next(iter(player_urns), "")
+        if closed and selected_player_urn not in set(_as_list(closure_manifest.get("spotlight_targets"))):
+            return _final_archive_result("unavailable", warnings=["Player spotlight is outside the finite closed archive catalog."])
+        candidates = [
+            row for row in rows
+            if _text(_first(_archive_subject_player(row), "_id", "@id", "player_urn")) == selected_player_urn
+        ]
+        subject_key = _text(candidates[0]["subject"].get("key")) if len(candidates) == 1 else ""
+    else:
+        requested_competition = _text(request_params.get("competition")) or "world-cup-2026"
+        subject_key = requested_competition if endpoint == "worldcup-backtest-forecasts" else "world-cup-2026"
+        candidates = [row for row in rows if _text(row["subject"].get("key")) == subject_key]
+
+    expected_parameters = _archive_parameters(endpoint, request_params)
+    candidates = [row for row in candidates if row.get("parameter_identity") == expected_parameters]
+    if len(candidates) != 1:
+        reason = "ambiguous" if len(candidates) > 1 else "not warmed"
+        return _final_archive_result(
+            "error" if len(candidates) > 1 else miss_status,
+            warnings=[f"Final archive request identity is {reason} for {endpoint}; no fallback execution is allowed."],
+        )
+
+    row = candidates[0]
+    response = dict(row["response"])
+    if endpoint == "worldcup-get-schedule":
+        schedule = response.get("schedule") if isinstance(response.get("schedule"), dict) else {}
+        filtered = normalize_schedule({"params": {
+            "events": schedule.get("events", []),
+            "date_from": request_params.get("date_from"),
+            "date_to": request_params.get("date_to"),
+            "team": request_params.get("team"),
+            "opponent": request_params.get("opponent"),
+            "status": request_params.get("status"),
+            "limit": request_params.get("limit", 100),
+        }})["data"]
+        # Filtering may normalize legacy canonical events, but already-normalized
+        # snapshot rows must retain fixture IDs, team URNs/qualifiers and venue.
+        snapshot_rows = {
+            event["event_urn"]: event for event in schedule.get("events", [])
+            if isinstance(event, dict) and event.get("event_urn")
+        }
+        filtered["events"] = [snapshot_rows.get(event.get("event_urn"), event) for event in filtered["events"]]
+        response["schedule"] = filtered
+
+    request_identity = _archive_parameter_identity(
+        endpoint,
+        row["subject"],
+        _archive_request_fields(endpoint, request_params),
+    )
+    return _final_archive_result("hit", response=response, row=row, request_identity=request_identity)

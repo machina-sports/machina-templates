@@ -1,0 +1,40 @@
+workflow:
+  name: worldcup-archive-capture-players
+  title: "World Cup archive operator: fixture player snapshot"
+  description: On-demand operator capture of provider statistics for one verified archived fixture. No generation or source mutations.
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    provider_event_id: "$.get('provider_event_id', '')"
+  outputs:
+    event_urn: "$.get('event_urn', '')"
+    provider_event_id: "$.get('provider_event_id', '')"
+    player_stats: "$.get('player_stats', {})"
+    provider_errors: "$.get('player_stats', {}).get('errors', [])"
+    workflow-status: "'executed' if $.get('event_urn', '') and $.get('player_stats', {}) else 'skipped'"
+  tasks:
+    - type: document
+      name: lookup-archived-fixture
+      config:
+        action: search
+        search-limit: 2
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value.provider_ids.api_football: "$.get('provider_event_id', '')"
+        value.machina_competition_slug: "'world-cup-2026'"
+      outputs:
+        event_urn: "(($.get('documents', []) or [{}])[0].get('value', {}).get('_id', '') if len($.get('documents', [])) == 1 else '')"
+    - type: connector
+      name: capture-fixture-players
+      condition: "$.get('event_urn', '') != ''"
+      connector:
+        name: api-football
+        command: get-fixtures/players
+      inputs:
+        fixture: "$.get('provider_event_id')"
+      outputs:
+        player_stats: "$"

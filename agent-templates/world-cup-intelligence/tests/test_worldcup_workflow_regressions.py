@@ -474,7 +474,7 @@ def test_player_context_returns_structured_unavailable_status_and_warnings():
         "resolved_official_fifa_power_ranking": {},
     }
 
-    assert merge["condition"] == "len($.get('normalized_players', [])) > 0"
+    assert merge["condition"].endswith("(len($.get('normalized_players', [])) > 0)")
     assert merge["inputs"]["fallback_path"] == "['api-football']"
     assert evaluate(workflow["outputs"]["status"], context) == "unavailable"
     safe_context = evaluate(workflow["outputs"]["player_performance_context"], context)
