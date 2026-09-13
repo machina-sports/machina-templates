@@ -11,10 +11,16 @@ workflow:
   inputs:
     event_urn: "$.get('event_urn', '')"
     provider_event_id: "$.get('provider_event_id', '')"
+    event: "$.get('event', '')"
+    team: "$.get('team', '')"
+    opponent: "$.get('opponent', '')"
+    date: "$.get('date', '')"
     league: "$.get('league', '')"
     season: "$.get('season', '')"
   outputs:
     injuries: "$.get('injuries', {})"
+    candidates: "$.get('fixture_candidates', [])"
+    warnings: "($.get('resolution_warnings', []) or []) + ($.get('injuries', {}).get('warnings', []) or [])"
     archive: >-
       {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False, 'snapshot_as_of': None,
@@ -25,23 +31,43 @@ workflow:
     workflow-status: "$.get('injuries', {}).get('teams') and 'executed' or 'skipped'"
   tasks:
     - type: document
-      name: lookup-event
-      description: Resolve home/away api-football team ids/names, league id and season from the cached event, by machina event_urn or api-football provider_event_id (fixture id).
-      condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
+      name: resolve-load-events
+      description: Load archived events for exact-id or natural-language fixture resolution.
       config:
         action: search
-        search-limit: 1
+        search-limit: 500
         search-vector: false
       filters:
         name: "'worldcup:event'"
-        value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
-        value.provider_ids.api_football: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
       outputs:
-        home_team_urn: "([t.get('@id') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
-        away_team_urn: "([t.get('@id') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
-        home_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
-        away_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
-        resolved_fixture_id: "((($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football') or $.get('provider_event_id'))"
+        resolve_events: "$.get('documents', []) or []"
+
+    - type: connector
+      name: resolve-fixture
+      description: Resolve exactly one archived fixture; ambiguous and unknown inputs fail closed.
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_archived_fixture
+      inputs:
+        events: "$.get('resolve_events', [])"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
+        event: "$.get('event', '')"
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date: "$.get('date', '')"
+      outputs:
+        event_document: "$.get('event', {})"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
+        resolved_fixture_id: "$.get('provider_event_id', '')"
+        resolved_fixture: "$.get('resolved_fixture', {})"
+        fixture_candidates: "$.get('candidates', [])"
+        resolution_warnings: "$.get('warnings', [])"
+        home_team_urn: "([t.get('@id') for t in ($.get('event', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
+        away_team_urn: "([t.get('@id') for t in ($.get('event', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
+        home_team_name: "([t.get('name') for t in ($.get('event', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
+        away_team_name: "([t.get('name') for t in ($.get('event', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
 
     - type: document
       name: lookup-teams

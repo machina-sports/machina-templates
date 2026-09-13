@@ -15,13 +15,21 @@ workflow:
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     event_urn: "$.get('event_urn', '')"
+    provider_event_id: "$.get('provider_event_id', '')"
+    event: "$.get('event', '')"
+    team: "$.get('team', '')"
+    opponent: "$.get('opponent', '')"
+    date: "$.get('date', '')"
     include_reasoning: "$.get('include_reasoning', False)"
     min_gap_bps: "$.get('min_gap_bps', 100)"
   outputs:
     forecast: "$.get('forecast', {})"
     model_vs_market: "$.get('model_vs_market', {})"
     analysis: "$.get('analysis', {})"
-    warnings: "$.get('forecast_warnings', [])"
+    warnings: "($.get('resolution_warnings', []) or []) + ($.get('forecast_warnings', []) or []) + ($.get('integrity_warnings', []) or [])"
+    candidates: "$.get('fixture_candidates', [])"
+    forecast_integrity: "$.get('forecast_integrity', {})"
+    market_integrity: "$.get('market_integrity', {})"
     archive: >-
       {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
@@ -29,9 +37,43 @@ workflow:
        'capability_status': 'historical_model' if $.get('forecast', {}) else 'unavailable',
        'provenance': ((['worldcup:model-forecast'] if $.get('forecast', {}) else []) + (['api-football'] if $.get('forecast', {}).get('data_source') in ('results', 'blend') else []) + (['fifa-ranking-seed'] if $.get('forecast', {}).get('data_source') in ('seed', 'blend') else []) + (['worldcup:market-cache'] if $.get('market_outcomes', []) else [])),
        'missing_capabilities': ((['historical_model_forecast'] if not $.get('forecast', {}) else []) + (['archived_market_comparison'] if $.get('forecast', {}) and not $.get('model_vs_market', {}) else [])),
-       'notes': ['Historical pre-match model output; no real-time refresh is performed.']}
+       'notes': ['Historical model output; forecast_integrity states whether its stored timestamp is genuinely pre-kickoff. No real-time refresh is performed.']}
     workflow-status: "$.get('forecast', {}) and 'executed' or 'skipped'"
   tasks:
+    - type: document
+      name: resolve-load-events
+      description: Load archived events for exact-id or natural-language fixture resolution.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        resolve_events: "$.get('documents', []) or []"
+
+    - type: connector
+      name: resolve-fixture
+      description: Resolve exactly one archived fixture; ambiguous and unknown inputs fail closed.
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_archived_fixture
+      inputs:
+        events: "$.get('resolve_events', [])"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
+        event: "$.get('event', '')"
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date: "$.get('date', '')"
+      outputs:
+        event_document: "$.get('event', {})"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
+        resolved_fixture: "$.get('resolved_fixture', {})"
+        fixture_candidates: "$.get('candidates', [])"
+        resolution_warnings: "$.get('warnings', [])"
+
     - type: document
       name: load-forecast
       description: Load the cached model forecast for this event.
@@ -58,7 +100,24 @@ workflow:
         name: "'worldcup:market-cache'"
         value.event_urn: "$.get('event_urn', '')"
       outputs:
-        market_outcomes: "[o for d in ($.get('documents', []) or []) for o in (d.get('value', {}).get('outcomes') or [])]"
+        market_documents: "$.get('documents', []) or []"
+
+    - type: connector
+      name: classify-archive-evidence
+      description: Compare stored model and market timestamps with archived event kickoff.
+      condition: "$.get('forecast', {}) != {}"
+      connector:
+        name: worldcup-market-intelligence
+        command: classify_archived_forecast
+      inputs:
+        forecast: "$.get('forecast', {})"
+        event: "$.get('event_document', {})"
+        markets: "$.get('market_documents', [])"
+      outputs:
+        forecast_integrity: "$.get('forecast_integrity', {})"
+        market_integrity: "$.get('market_integrity', {})"
+        market_outcomes: "$.get('market_outcomes', [])"
+        integrity_warnings: "$.get('warnings', [])"
 
     - type: connector
       name: compute-gap
@@ -74,6 +133,8 @@ workflow:
         home_team: "$.get('forecast', {}).get('home_team', {}).get('name', '')"
         away_team: "$.get('forecast', {}).get('away_team', {}).get('name', '')"
         min_gap_bps: "$.get('min_gap_bps', 100)"
+        market_integrity: "$.get('market_integrity', {})"
+        forecast_integrity: "$.get('forecast_integrity', {})"
       outputs:
         model_vs_market: "$"
 
@@ -90,6 +151,8 @@ workflow:
       inputs:
         forecast: "$.get('forecast', {})"
         model_vs_market: "$.get('model_vs_market', {})"
+        forecast_integrity: "$.get('forecast_integrity', {})"
+        market_integrity: "$.get('market_integrity', {})"
         timeout: 120
       outputs:
         analysis: "$"

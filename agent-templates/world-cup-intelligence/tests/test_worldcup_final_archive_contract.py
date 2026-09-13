@@ -118,12 +118,15 @@ def test_complete_collection_endpoints_require_data():
         "worldcup-resolve": ({"entities": [{}]}, {"entities": []}),
         "worldcup-get-schedule": ({"schedule": {"events": [{}]}}, {"schedule": {"events": []}}),
         "worldcup-get-standings": ({"standings": {"groups": [{}]}}, {"standings": {"groups": []}}),
-        "worldcup-get-squads": ({"squads": {"teams": [{}]}}, {"squads": {"teams": []}}),
     }
 
     for name, (populated, empty) in cases.items():
         assert archive(name, populated)["capability_status"] == "complete"
         assert archive(name, empty)["capability_status"] == "unavailable"
+
+    squads = archive("worldcup-get-squads", {"squads": {"teams": [{}]}})
+    assert squads["capability_status"] == "partial"
+    assert squads["missing_capabilities"] == ["verified_complete_official_squad_registration"]
 
 
 def test_event_context_is_partial_without_optional_enrichment():

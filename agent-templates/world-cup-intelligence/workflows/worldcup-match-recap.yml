@@ -14,17 +14,19 @@ workflow:
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     event_urn: "$.get('event_urn', '')"
+    provider_event_id: "$.get('provider_event_id', '')"
     event: "$.get('event', '')"
     team: "$.get('team', '')"
     opponent: "$.get('opponent', '')"
     date: "$.get('date', '')"
     force_regen: "$.get('force_regen', False)"
   outputs:
-    skill_card: "dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('recap', {})), event_urn=$.get('event_urn', ''))"
+    skill_card: "dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('recap', {})), event_urn=$.get('event_urn', ''), historical_perspective=('original_cached_matchday_copy' if $.get('cached') else 'retrospective_completed_tournament'), sources=($.get('event_sources', []) + (($.get('cached', {}).get('research_sources', []) or []) if $.get('cached') else ($.get('research_sources', []) or []))))"
     event_urn: "$.get('event_urn', '')"
     resolved_fixture: "$.get('resolved_fixture', {})"
+    candidates: "$.get('fixture_candidates', [])"
     served_from: "'cache' if $.get('cached') else 'generated'"
-    warnings: "[] if $.get('event_urn', '') else ['No fixture resolved -- pass event_urn, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.']"
+    warnings: "$.get('resolution_warnings', [])"
     archive: >-
       {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
@@ -37,8 +39,7 @@ workflow:
   tasks:
     - type: document
       name: resolve-load-events
-      description: When no event_urn is supplied, load cached events to resolve the fixture from event/team/opponent/date.
-      condition: "$.get('event_urn', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
+      description: Load archived events for exact-id or natural-language fixture resolution.
       config:
         action: search
         search-limit: 500
@@ -46,26 +47,28 @@ workflow:
       filters:
         name: "'worldcup:event'"
       outputs:
-        resolve_events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+        resolve_events: "$.get('documents', []) or []"
 
     - type: connector
       name: resolve-fixture
-      description: Filter cached events by event/team/opponent/date, then pin the matching event_urn (also keys the cache lookup).
-      condition: "$.get('event_urn', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
+      description: Resolve exactly one archived fixture; ambiguous and unknown inputs fail closed.
       connector:
         name: worldcup-market-intelligence
-        command: normalize_schedule
+        command: resolve_archived_fixture
       inputs:
         events: "$.get('resolve_events', [])"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
         event: "$.get('event', '')"
         team: "$.get('team', '')"
         opponent: "$.get('opponent', '')"
-        date_from: "$.get('date', '')"
-        date_to: "$.get('date', '')"
-        limit: 10
+        date: "$.get('date', '')"
       outputs:
-        resolved_fixture: "($.get('events', [{}]) or [{}])[0]"
-        event_urn: "($.get('events', [{}]) or [{}])[0].get('event_urn', '')"
+        resolved_fixture: "$.get('resolved_fixture', {})"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
+        fixture_candidates: "$.get('candidates', [])"
+        resolution_warnings: "$.get('warnings', [])"
 
     - type: document
       name: load-cached
@@ -84,7 +87,7 @@ workflow:
     - type: document
       name: load-event
       description: Event doc (final status + score live merged).
-      condition: "not $.get('cached')"
+      condition: "$.get('event_urn', '') != ''"
       config:
         action: search
         search-limit: 1
@@ -95,6 +98,7 @@ workflow:
       outputs:
         event: "($.get('documents', []) or [{}])[0].get('value', {})"
         is_final: "($.get('documents', []) or [{}])[0].get('value', {}).get('sport:status') in ('FT', 'AET', 'PEN')"
+        event_sources: "[{'source': 'worldcup:event', 'event_urn': (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('_id'), 'provider_ids': (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('provider_ids', {}), 'start_date': (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('schema:startDate'), 'source_timestamp': ($.get('documents', []) or [{}])[0].get('date')}] if ($.get('documents', []) or []) else []"
 
     - type: document
       name: load-forecast
@@ -123,11 +127,12 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        search_query: "$.get('event', {}).get('name', 'FIFA World Cup 2026') + ' result match report goals key moments'"
-        recency_days: 3
+        search_query: "$.get('event', {}).get('name', 'FIFA World Cup 2026') + ' completed 2026 result official match report'"
+        recency_days: 3650
         timeout: 120
       outputs:
         research: "$.get('answer', '')"
+        research_sources: "$.get('search_results', []) or []"
 
     - type: prompt
       name: worldcup-match-recap
@@ -143,6 +148,7 @@ workflow:
         event: "$.get('event', {})"
         forecast: "$.get('forecast', {})"
         research: "$.get('research', '')"
+        sources: "$.get('event_sources', []) + ($.get('research_sources', []) or [])"
         timeout: 120
       outputs:
         recap: "$"
@@ -166,6 +172,8 @@ workflow:
             'event_urn': $.get('event_urn', ''),
             'freshness': 'EVERGREEN',
             'body': $.get('recap', {}),
+            'sources': $.get('event_sources', []),
+            'research_sources': $.get('research_sources', []) or [],
             'generated_at': datetime.utcnow().isoformat() + 'Z',
             'expires_at': (datetime.utcnow() + timedelta(days=365)).isoformat() + 'Z',
             'source_freshness': {'model_forecast_available': bool($.get('forecast', {}))},

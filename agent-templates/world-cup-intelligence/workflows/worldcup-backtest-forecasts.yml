@@ -2,10 +2,10 @@ workflow:
   name: worldcup-backtest-forecasts
   title: World Cup Intelligence - Backtest Forecasts
   description: |
-    Post-match accuracy audit. Compares each model forecast to the actual result
-    (Brier score + calibration), saves a per-event worldcup:forecast-audit doc, and
-    rolls them up into the worldcup:forecast-audit:aggregate track-record (Brier vs
-    0.25 random baseline + calibration curve). Read-only. The aggregate gates on
+    Post-match accuracy audit. The completed World Cup path compares archived original
+    forecasts with archived event truth without provider calls or document writes, and
+    rolls the eligible sample into a response-only track record (Brier vs
+    0.25 random baseline + calibration curve). The aggregate gates on
     sample_size_sufficient (>=50) so early numbers are not over-read.
 
     Also settles Closing Line Value (CLV): for each logged signal-ledger entry whose
@@ -29,6 +29,11 @@ workflow:
     provenance: "$.get('fixture_provenance', 'none')"
     warnings: "$.get('fixture_warnings', [])"
     audited_count: "len($.get('audits', []))"
+    total_count: "$.get('audit_total_count', 0)"
+    included_count: "$.get('audit_included_count', 0)"
+    excluded_count: "$.get('audit_excluded_count', 0)"
+    exclusion_reasons: "$.get('audit_exclusion_reasons', {})"
+    sources: "$.get('audit_sources', [])"
     track_record: "$.get('backtesting_report', {})"
     clv_settled_count: "len($.get('clv_settled', []))"
     clv_report: "$.get('clv_report', {})"
@@ -71,7 +76,8 @@ workflow:
 
     - type: connector
       name: fetch-finished-fixtures
-      description: Prefer live API-Football final results when the provider is available.
+      description: Fetch provider finals only for non-archived competitions; completed World Cup uses persisted truth.
+      condition: "$.get('competition_slug', 'world-cup-2026') != 'world-cup-2026'"
       continue_on_error: true
       connector:
         name: api-football
@@ -85,7 +91,7 @@ workflow:
     - type: document
       name: load-cached-final-events
       description: Load only cached World Cup 2026 events for explicit fallback selection.
-      condition: "len($.get('api_finished_fixtures', [])) == 0"
+      condition: "$.get('competition_slug', 'world-cup-2026') == 'world-cup-2026' or len($.get('api_finished_fixtures', [])) == 0"
       config:
         action: search
         search-limit: 500
@@ -106,12 +112,17 @@ workflow:
       inputs:
         live_fixtures: "$.get('api_finished_fixtures', [])"
         cached_events: "$.get('cached_events', [])"
+        competition: "$.get('competition_slug', 'world-cup-2026')"
         cached_search_limit_reached: "$.get('cached_event_search_limit_reached', False)"
       outputs:
         finished_fixtures: "$.get('finished_fixtures', [])"
         fixture_status: "$.get('fixture_status', 'unavailable')"
         fixture_provenance: "$.get('provenance', 'none')"
         fixture_warnings: "$.get('warnings', [])"
+        fixture_total_count: "$.get('total_count', 0)"
+        fixture_included_count: "$.get('included_count', 0)"
+        fixture_excluded_count: "$.get('excluded_count', 0)"
+        fixture_exclusion_reasons: "$.get('exclusion_reasons', {})"
 
     - type: document
       name: load-forecasts
@@ -136,8 +147,15 @@ workflow:
         mode: "'batch'"
         forecasts: "$.get('forecasts', [])"
         finished_fixtures: "$.get('finished_fixtures', [])"
+        events: "$.get('cached_events', [])"
+        require_pre_kickoff: "$.get('competition_slug', 'world-cup-2026') == 'world-cup-2026'"
       outputs:
         audits: "$.get('audits', [])"
+        audit_total_count: "$.get('total_count', 0)"
+        audit_included_count: "$.get('included_count', 0)"
+        audit_excluded_count: "$.get('excluded_count', 0)"
+        audit_exclusion_reasons: "$.get('exclusion_reasons', {})"
+        audit_sources: "$.get('sources', [])"
 
     - type: document
       name: save-audits
@@ -156,7 +174,7 @@ workflow:
     - type: connector
       name: aggregate-audit
       description: Roll up audits into the Brier/calibration track record.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('audits', [])) > 0"
+      condition: "len($.get('audits', [])) > 0"
       connector:
         name: worldcup-market-intelligence
         command: compute_forecast_audit
@@ -187,6 +205,7 @@ workflow:
     - type: document
       name: load-signal-ledger
       description: Logged signal entries to settle for CLV.
+      condition: "$.get('fixture_provenance') == 'api-football-live'"
       config:
         action: search
         search-limit: 2000

@@ -122,9 +122,9 @@ def test_backtest_uses_scoped_cached_final_events_when_live_provider_is_unavaila
 
     assert fetch["continue_on_error"] is True
     assert cached["filters"]["name"] == "'worldcup:event'"
-    assert cached["filters"]["value.machina_competition_slug"] == "'world-cup-2026'"
+    assert "world-cup-2026" in cached["filters"]["value.machina_competition_slug"]
     assert evaluate(cached["condition"], {"api_finished_fixtures": []}) is True
-    assert evaluate(cached["condition"], {"api_finished_fixtures": [{}]}) is False
+    assert evaluate(cached["condition"], {"api_finished_fixtures": [{}]}) is True
     assert "$.context" not in str(workflow)
     cached_events = evaluate(cached["outputs"]["cached_events"], {"documents": documents})
     result = MODULE.select_backtest_finished_fixtures({
@@ -143,11 +143,11 @@ def test_backtest_uses_scoped_cached_final_events_when_live_provider_is_unavaila
         },
         {
             "fixture": {"id": "102", "status": {"short": "AET"}},
-            "goals": {"home": 2, "away": 1},
+            "goals": {"home": 1, "away": 1},
         },
         {
             "fixture": {"id": "103", "status": {"short": "PEN"}},
-            "goals": {"home": 2, "away": 2},
+            "goals": {"home": 1, "away": 1},
             "score": {"penalty": {"home": 5, "away": 4}},
         },
     ]
@@ -217,11 +217,7 @@ def test_cached_final_events_dedupe_same_score_to_richest_final_state():
         },
     ]
 
-    expected = [{
-        "fixture": {"id": "201", "status": {"short": "PEN"}},
-        "goals": {"home": 2, "away": 2},
-        "score": {"penalty": {"home": 10, "away": 9}},
-    }]
+    expected = []
     forward = MODULE.select_backtest_finished_fixtures({
         "params": {"live_fixtures": [], "cached_events": events}
     })["data"]
@@ -233,7 +229,7 @@ def test_cached_final_events_dedupe_same_score_to_richest_final_state():
     assert reverse["finished_fixtures"] == expected
 
 
-def test_cached_aet_prefers_authoritative_extratime_over_stale_live_score():
+def test_cached_aet_uses_regulation_score_for_one_x_two():
     result = MODULE.select_backtest_finished_fixtures({
         "params": {
             "live_fixtures": [],
@@ -250,7 +246,7 @@ def test_cached_aet_prefers_authoritative_extratime_over_stale_live_score():
         }
     })["data"]
 
-    assert result["finished_fixtures"][0]["goals"] == {"home": 2, "away": 1}
+    assert result["finished_fixtures"][0]["goals"] == {"home": 1, "away": 1}
 
 
 def test_cached_ft_prefers_fulltime_and_does_not_emit_penalties_as_goals():
@@ -347,8 +343,8 @@ def test_cached_final_events_prefer_provably_newer_elapsed_score():
     })["data"]
 
     expected = [{
-        "fixture": {"id": "203", "status": {"short": "AET"}},
-        "goals": {"home": 2, "away": 1},
+        "fixture": {"id": "203", "status": {"short": "FT"}},
+        "goals": {"home": 1, "away": 1},
     }]
     assert result["finished_fixtures"] == expected
     assert reversed_result["finished_fixtures"] == expected
@@ -411,8 +407,9 @@ def test_stale_inferred_cached_final_cannot_persist_audit_or_drive_clv():
         "clv_ledger": [{}],
         "clv_report": {"sample_size": 1},
     }
-    for task_name in ("save-audits", "aggregate-audit", "save-aggregate"):
+    for task_name in ("save-audits", "save-aggregate"):
         assert evaluate(task(workflow, task_name)["condition"], cached_context) is False
+    assert evaluate(task(workflow, "aggregate-audit")["condition"], cached_context) is True
     for task_name in ("settle-clv", "save-clv-settled", "aggregate-clv", "save-clv-report"):
         assert evaluate(task(workflow, task_name)["condition"], cached_context) is False
 
@@ -427,7 +424,7 @@ def test_backtest_prefers_live_final_fixtures_and_reuses_selection_downstream():
     ]
 
     result = MODULE.select_backtest_finished_fixtures({
-        "params": {"live_fixtures": live, "cached_events": []}
+        "params": {"competition": "other-competition", "live_fixtures": live, "cached_events": []}
     })["data"]
 
     assert result["finished_fixtures"] == live
@@ -536,7 +533,7 @@ def test_player_context_loads_and_selects_persisted_final_fifa_ranking():
 
     assert identity["filters"]["value.machina_competition_slug"] == "'world-cup-2026'"
     assert load_rankings["filters"]["name"] == "'worldcup:final-fifa-player-power-ranking'"
-    assert select["inputs"]["override"] == "$.get('official_fifa_power_ranking', {})"
+    assert select["inputs"]["override"] == "{}"  # Public callers cannot supply official FIFA evidence.
     assert select["inputs"]["snapshot_manifest"] == "$.get('final_fifa_player_ranking_manifest', {})"
     assert "tournament_minutes_played" not in workflow["inputs"]
     assert "tournament_minutes_evidence" not in workflow["inputs"]
@@ -548,25 +545,24 @@ def test_player_context_loads_and_selects_persisted_final_fifa_ranking():
 
 def test_injuries_fetch_and_normalization_are_fixture_scoped():
     workflow = load_yaml("workflows/worldcup-get-injuries.yml")["workflow"]
-    lookup = task(workflow, "lookup-event")
+    lookup = task(workflow, "resolve-fixture")
     fetch = task(workflow, "fetch-injuries-af")
     normalize = task(workflow, "normalize-injuries")
 
-    assert "provider_ids" in lookup["outputs"]["resolved_fixture_id"]
+    assert lookup["connector"]["command"] == "resolve_archived_fixture"
     assert fetch["inputs"] == {"fixture": "$.get('resolved_fixture_id') or $.get('provider_event_id')"}
     assert normalize["inputs"]["fixture_id"] == "$.get('resolved_fixture_id') or $.get('provider_event_id')"
     assert "league" not in fetch["inputs"] and "season" not in fetch["inputs"]
 
 
-def test_squad_fallback_gates_use_shape_normalized_api_football_counts():
+def test_squads_use_only_archived_tournament_identity_documents():
     workflow = load_yaml("workflows/worldcup-get-squads.yml")["workflow"]
-    inspect = task(workflow, "inspect-api-football-squads")
-    home_fallback = task(workflow, "resolve-home-ss")
-    normalized = {"teams": [{"side": "home", "source": "api-football", "count": 2}]}
+    normalize = task(workflow, "normalize-squads")
+    commands = {(item.get("connector") or {}).get("command") for item in workflow["tasks"]}
 
-    assert inspect["connector"]["command"] == "normalize_squads"
-    assert evaluate(inspect["outputs"]["home_af_count"], normalized) == 2
-    assert evaluate(home_fallback["condition"], {"home_af_count": 2, "home_team_name": "Brazil"}) is False
+    assert normalize["connector"]["command"] == "build_archived_tournament_squads"
+    assert "get-players/squads" not in commands
+    assert "invoke_football" not in commands
 
 
 def test_player_spotlight_is_tournament_only_and_uses_scoped_cache():

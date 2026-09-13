@@ -1,125 +1,46 @@
 workflow:
   name: worldcup-backfill-model-forecasts
-  title: World Cup Intelligence - Backfill Model Forecasts (One-Time)
+  title: World Cup Intelligence - Forecast Archive Coverage Assessment
   description: |
-    One-time backfill for the completed FIFA World Cup 2026 tournament.
-    Generates Dixon-Coles model forecasts for ALL 104 fixtures (not just upcoming).
-    The regular sync workflow only forecasts upcoming fixtures - this produces
-    the full historical record of what the model predicted for every match.
-
-  context-variables:
-    debugger:
-      enabled: true
-    api-football:
-      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
-
+    Read-only coverage assessment for forecasts stored before kickoff. Missing or
+    post-kickoff forecasts fail closed; this workflow never computes or overwrites forecasts.
   inputs:
-    competition: "$.get('competition', 'world-cup-2026')"
-    league: "$.get('league', '1')"
-    season: "$.get('season', '2026')"
-    min_games_full_confidence: "$.get('min_games_full_confidence', 3)"
-
+    offset: "$.get('offset', 0)"
+    batch_size: "$.get('batch_size', 20)"
+    expected_fixture_count: "$.get('expected_fixture_count', 104)"
+    expected_event_urns: "$.get('expected_event_urns', [])"
   outputs:
-    forecasts_count: "$.get('forecasts_count', 0)"
-    field_size: "$.get('field_size', 0)"
-    workflow-status: "$.get('forecasts_count', 0) > 0 and 'executed' or 'skipped'"
-
+    assessment: "$.get('assessment', {})"
+    workflow-status: "'executed' if $.get('assessment', {}) else 'skipped'"
   tasks:
-    # 1. Resolve competition to league/season
-    - type: connector
-      name: resolve-competition
-      description: Competition registry -> league/season/URN code/search terms.
-      connector:
-        name: worldcup-market-intelligence
-        command: resolve_competition
-      inputs:
-        competition: "$.get('competition', 'world-cup-2026')"
-        league: "$.get('league', '')"
-        season: "$.get('season', '')"
-      outputs:
-        league: "$.get('league', '')"
-        season: "$.get('season', '')"
-        competition_urn: "$.get('competition_urn', '')"
-
-    # 2. Load ALL finished fixtures (for form/power ranking)
-    - type: connector
-      name: fetch-finished-fixtures
-      description: All World Cup fixtures; finished ones drive the power ranking.
-      connector:
-        name: api-football
-        command: get-fixtures
-      inputs:
-        league: "$.get('league', '')"
-        season: "$.get('season', '')"
-      outputs:
-        finished_fixtures: "[f for f in $.get('response', []) if ((f.get('fixture', {}) or {}).get('status', {}) or {}).get('short') in ('FT', 'AET', 'PEN')]"
-
-    # 3. Load FIFA ranking seed
     - type: document
-      name: load-seed-ratings
-      description: FIFA-ranking seed prior (optional — power ranking falls back to 0.5).
-      continue_on_error: true
+      name: load-archive-evidence
+      description: Load bounded event and existing forecast evidence in stable document-id order.
       config:
         action: search
-        search-limit: 100
+        search-limit: 5000
         search-vector: false
+        search-sorters: ["_id", 1]
       filters:
-        name: "'worldcup:fifa-ranking'"
+        name:
+          $in: ["worldcup:event", "worldcup:model-forecast"]
       outputs:
-        seed_ratings: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+        archive_evidence: "[{'document_id': str(d.get('_id') or ''), 'name': d.get('name', ''), 'metadata': d.get('metadata', {}), 'value': d.get('value', {}), 'created': d.get('created'), 'updated': d.get('updated')} for d in ($.get('documents', []) or []) if isinstance(d, dict)]"
+        archive_search_limit_reached: "len($.get('documents', []) or []) >= 5000"
 
-    # 4. Compute power ranking from finished fixtures
     - type: connector
-      name: compute-power-ranking
-      description: Group-relative power ranking blended with the FIFA seed.
+      name: assess-archive
+      description: Verify stored forecast joins and model time without forecast computation.
       connector:
         name: worldcup-market-intelligence
-        command: compute_power_ranking
+        command: plan_archive_repair
       inputs:
-        finished_fixtures: "$.get('finished_fixtures', [])"
-        seed_ratings: "$.get('seed_ratings', [])"
-        min_games_full_confidence: "$.get('min_games_full_confidence', 3)"
+        mode: "'forecasts'"
+        evidence: "$.get('archive_evidence', [])"
+        search_limit_reached: "$.get('archive_search_limit_reached', False)"
+        offset: "$.get('offset', 0)"
+        batch_size: "$.get('batch_size', 20)"
+        expected_fixture_count: "$.get('expected_fixture_count', 104)"
+        expected_event_urns: "$.get('expected_event_urns', [])"
       outputs:
-        team_index: "$.get('team_index', {})"
-        field_size: "$.get('field_size', 0)"
-
-    # 5. Load ALL events (both finished and unfinished) as forecast targets
-    - type: document
-      name: load-all-events
-      description: All World Cup event docs — forecast targets for the complete historical record.
-      config:
-        action: search
-        search-limit: 500
-        search-vector: false
-      filters:
-        name: "'worldcup:event'"
-      outputs:
-        all_events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
-
-    # 6. Build forecasts for ALL events (not just upcoming)
-    - type: connector
-      name: build-forecasts
-      description: Derive a Dixon-Coles forecast per event from the team index.
-      condition: "len($.get('all_events', [])) > 0"
-      connector:
-        name: worldcup-market-intelligence
-        command: build_event_forecasts
-      inputs:
-        events: "$.get('all_events', [])"
-        team_index: "$.get('team_index', {})"
-      outputs:
-        forecasts: "$.get('forecasts', [])"
-
-    # 7. Save forecasts
-    - type: document
-      name: save-forecasts
-      description: Persist the model forecasts keyed by event URN.
-      condition: "len($.get('forecasts', [])) > 0"
-      config:
-        action: bulk-update
-        embed-vector: false
-        force-update: true
-      inputs:
-        documents: "[{'name': 'worldcup:model-forecast', 'value._id': item.get('event_urn'), 'value': item} for item in $.get('forecasts', []) if item.get('event_urn')]"
-      outputs:
-        forecasts_count: "len($.get('forecasts', []))"
+        assessment: "$"

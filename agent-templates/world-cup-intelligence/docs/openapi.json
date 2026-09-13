@@ -1,0 +1,157 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Machina Sports World Cup Intelligence",
+    "version": "1.0.0",
+    "description": "The canonical eleven-route World Cup 2026 storefront contract. Completed-tournament routes serve archived provider-backed records or cached documents; caveats in each operation describe evidence limits."
+  },
+  "servers": [
+    {
+      "url": "https://agents.machina.gg/zcj/ajgpivnid8bn",
+      "description": "Pay-per-use access to Machina Sports's API"
+    }
+  ],
+  "security": [{"payPerUse": []}],
+  "components": {
+    "securitySchemes": {
+      "payPerUse": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-payment",
+        "description": "Pay-per-use access. An unpaid call returns 402 Payment Required with a signed challenge; settle it with x402 or MPP and retry."
+      }
+    },
+    "schemas": {
+      "FixtureSelector": {
+        "type": "object",
+        "anyOf": [
+          {"required": ["event_urn"]},
+          {"required": ["provider_event_id"]},
+          {"required": ["event"]},
+          {"required": ["team"]}
+        ],
+        "properties": {
+          "event_urn": {"type": "string", "description": "Canonical event URN."},
+          "provider_event_id": {"type": "string", "description": "API-Football fixture id."},
+          "event": {"type": "string", "description": "Fixture label such as Brazil vs Morocco."},
+          "team": {"type": "string", "description": "One team name."},
+          "opponent": {"type": "string", "description": "Opponent name used to disambiguate."},
+          "date": {"type": "string", "format": "date", "description": "Fixture date, YYYY-MM-DD."}
+        },
+        "description": "Supply an exact id or enough team/date information to resolve exactly one fixture. Ambiguous requests return candidates and do not call a provider."
+      }
+    }
+  },
+  "paths": {
+    "/world-cup/v1/backtest-forecasts": {
+      "post": {
+        "summary": "Historical forecast backtests",
+        "description": "Scores only original archived forecasts computed before kickoff against archived 90-minute results. Missing, invalid, late, AET, or penalty-shootout evidence is excluded with counts and reasons. This completed World Cup path is read-only.",
+        "x-zeroclick-services": ["forecasts"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "120000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.120000 per call (backtest, service forecasts)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.120000"}, "rates": [{"service": "forecasts", "meter": "backtest", "unit": "call", "unitSize": 1, "priceUsd": "0.120000", "includedUnits": 0}]},
+        "requestBody": {"required": false, "content": {"application/json": {"schema": {"type": "object", "properties": {"competition": {"type": "string", "default": "world-cup-2026"}}}, "examples": {"completedTournament": {"value": {"competition": "world-cup-2026"}}}}}},
+        "responses": {"200": {"description": "Archive backtest with total, included, excluded, sources, reasons, and track record."}, "400": {"description": "Invalid competition or request value."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-event-context": {
+      "post": {
+        "summary": "Enriched context for one match",
+        "description": "Archived event truth plus optional enrichment. Ambiguous selectors return candidates instead of an arbitrary fixture.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (event_context, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "event_context", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FixtureSelector"}, "examples": {"canonical": {"value": {"event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor"}}, "plainEnglish": {"value": {"team": "Brazil", "opponent": "Morocco", "date": "2026-06-13"}}}}}},
+        "responses": {"200": {"description": "Resolved archived event context, or warnings and candidates."}, "400": {"description": "Missing, invalid, or ambiguous fixture selector."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-injuries": {
+      "post": {
+        "summary": "Archived fixture injury reports",
+        "description": "Fixture-scoped provider evidence. An empty response does not prove complete historical injury coverage.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (injuries, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "injuries", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FixtureSelector"}, "examples": {"fixture": {"value": {"event": "Brazil vs Morocco"}}}}}},
+        "responses": {"200": {"description": "Fixture-scoped injury evidence with coverage caveats."}, "400": {"description": "Missing, invalid, or ambiguous fixture selector."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-match-forecast": {
+      "post": {
+        "summary": "Archived match forecast probabilities",
+        "description": "Preserves the stored model probabilities and computed_at timestamp. Reports whether the model predates kickoff; market gaps are suppressed unless the cache is a verifiable historical pre-match quote.",
+        "x-zeroclick-services": ["forecasts"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "120000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.120000 per call (match_forecast, service forecasts)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.120000"}, "rates": [{"service": "forecasts", "meter": "match_forecast", "unit": "call", "unitSize": 1, "priceUsd": "0.120000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"allOf": [{"$ref": "#/components/schemas/FixtureSelector"}, {"type": "object", "properties": {"include_reasoning": {"type": "boolean", "default": false}, "min_gap_bps": {"type": "integer", "minimum": 0, "default": 100}}}]}, "examples": {"forecast": {"value": {"event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor", "include_reasoning": false}}}}}},
+        "responses": {"200": {"description": "Stored forecast with forecast and market integrity classifications."}, "400": {"description": "Missing, invalid, or ambiguous fixture selector."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-player-performance-context": {
+      "post": {
+        "summary": "Player performance context",
+        "description": "Fixture-scoped player evidence with explicit player identity. Official FIFA values remain separate from Machina provisional estimates; ambiguous names return candidates.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (player_performance, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "player_performance", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"allOf": [{"$ref": "#/components/schemas/FixtureSelector"}, {"type": "object", "properties": {"player_urn": {"type": "string"}, "player": {"type": "string"}, "player_id": {"type": "string"}, "team_id": {"type": "string"}}, "anyOf": [{"required": ["player_urn"]}, {"required": ["player"]}, {"required": ["player_id"]}]}]}, "examples": {"namedPlayer": {"value": {"event": "Brazil vs Morocco", "player": "Vinicius Junior", "team": "Brazil"}}}}}},
+        "responses": {"200": {"description": "Explicit player context or unavailable/ambiguous evidence status."}, "400": {"description": "Fixture or player selector is missing, invalid, or ambiguous."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-schedule": {
+      "post": {
+        "summary": "Tournament fixtures",
+        "description": "Archived World Cup 2026 fixtures and final results, filterable by team, opponent, status, and inclusive date range.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (schedule, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "schedule", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": false, "content": {"application/json": {"schema": {"type": "object", "properties": {"team": {"type": "string"}, "opponent": {"type": "string"}, "date_from": {"type": "string", "format": "date"}, "date_to": {"type": "string", "format": "date"}, "status": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100}}}, "examples": {"teamSchedule": {"value": {"team": "Brazil", "limit": 100}}}}}},
+        "responses": {"200": {"description": "Archived fixture list with canonical and provider ids."}, "400": {"description": "Invalid date, status, or limit."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-squads": {
+      "post": {
+        "summary": "Archived tournament squad identities",
+        "description": "Joins persisted World Cup 2026 player identities to both fixture teams. This is an archived tournament identity snapshot, not proof of complete FIFA squad registration.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (squads, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "squads", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/FixtureSelector"}, {"type": "object", "required": ["home_team", "away_team"], "properties": {"home_team": {"type": "string"}, "away_team": {"type": "string"}}}]}, "examples": {"fixture": {"value": {"event": "Brazil vs Morocco"}}, "teamPair": {"value": {"home_team": "Brazil", "away_team": "Morocco"}}}}}},
+        "responses": {"200": {"description": "Both team identities and linked persisted tournament players with original timestamps."}, "400": {"description": "Missing, invalid, or ambiguous fixture selector."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-standings": {
+      "post": {
+        "summary": "Final tournament standings",
+        "description": "Final World Cup 2026 group tables. An empty body defaults to API-Football league 1 and season 2026.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (standings, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "standings", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": false, "content": {"application/json": {"schema": {"type": "object", "properties": {"league": {"type": "string", "default": "1"}, "season": {"type": "string", "default": "2026"}, "event_urn": {"type": "string"}, "provider_event_id": {"type": "string"}}}, "examples": {"defaultTournament": {"value": {}}, "explicit": {"value": {"league": "1", "season": "2026"}}}}}},
+        "responses": {"200": {"description": "Final group tables and third-place ranking when available."}, "400": {"description": "Invalid league or season."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/resolve": {
+      "post": {
+        "summary": "Resolve a provider id to a canonical entity",
+        "description": "Exact-id resolution over archived identity and event records.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (resolve, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "resolve", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["id"], "properties": {"id": {"type": "string", "minLength": 1, "description": "Provider id or canonical Machina URN."}}}, "examples": {"canonicalTeam": {"value": {"id": "urn:machina:sport:soccer:team:brazil:bra"}}, "providerFixture": {"value": {"id": "1489417"}}}}}},
+        "responses": {"200": {"description": "Resolved entity and cross-provider identifiers, or an explicit not-found warning."}, "400": {"description": "The id is missing or empty."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/skills/match-recap": {
+      "post": {
+        "summary": "Match recap",
+        "description": "Returns original cached matchday copy with a historical-perspective annotation and archived event references, or authors one retrospective at a time when missing. force_regen defaults false.",
+        "x-zeroclick-services": ["finished-content"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "400000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.400000 per call (match_recap, service finished-content)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.400000"}, "rates": [{"service": "finished-content", "meter": "match_recap", "unit": "call", "unitSize": 1, "priceUsd": "0.400000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"allOf": [{"$ref": "#/components/schemas/FixtureSelector"}, {"type": "object", "properties": {"force_regen": {"type": "boolean", "default": false}}}]}, "examples": {"cached": {"value": {"event": "Brazil vs Morocco"}}, "scopedRegeneration": {"value": {"event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor", "force_regen": true}}}}}},
+        "responses": {"200": {"description": "Source-annotated cached or newly authored retrospective recap."}, "400": {"description": "Fixture is missing, ambiguous, unknown, or unfinished."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/skills/player-spotlight": {
+      "post": {
+        "summary": "Player spotlight",
+        "description": "Tournament-only player card enriched with the official final FIFA performance record when published. Missing rankings are reported as unavailable and never inferred.",
+        "x-zeroclick-services": ["finished-content"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "400000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.400000 per call (player_spotlight, service finished-content)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.400000"}, "rates": [{"service": "finished-content", "meter": "player_spotlight", "unit": "call", "unitSize": 1, "priceUsd": "0.400000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"player_urn": {"type": "string"}, "player": {"type": "string"}, "team": {"type": "string"}, "force_regen": {"type": "boolean", "default": false}}, "anyOf": [{"required": ["player_urn"]}, {"required": ["player"]}]}, "examples": {"namedPlayer": {"value": {"player": "Vinicius Junior", "team": "Brazil"}}}}}},
+        "responses": {"200": {"description": "Cached or generated tournament card with structured FIFA performance context and sources."}, "400": {"description": "Player selector is missing, ambiguous, or unknown."}, "402": {"description": "Payment required."}}
+      }
+    }
+  }
+}

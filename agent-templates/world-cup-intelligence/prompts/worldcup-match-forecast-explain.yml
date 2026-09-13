@@ -10,7 +10,10 @@ prompts:
       form-based statistical estimates, NOT market-calibrated forecasts, and that
       pre-tournament confidence is low. Describe what a gap could mean and what to verify
       (resolution rules, liquidity, fees) before any external action. A gap is
-      informational only — it is NOT a value bet or a recommendation. Never use
+      informational only — it is NOT a value bet or a recommendation. Use
+      `forecast_integrity` to say whether the stored model was genuinely computed before
+      kickoff. Use `market_integrity` to distinguish a historical pre-match quote from a
+      settled/late/unknown cache, and never describe a suppressed comparison as an edge. Never use
       "guaranteed", "value bet", "edge to bet", or "bet this" language. Do not give
       personalized financial advice or execute trades.
     schema:

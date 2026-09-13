@@ -1,129 +1,48 @@
 workflow:
   name: worldcup-backfill-editorial-content
-  title: World Cup Intelligence - Backfill Editorial Content (Recaps & Spotlights)
+  title: World Cup Intelligence - Editorial Archive Coverage Assessment
   description: |
-    One-time editorial backfill for the completed FIFA World Cup 2026 tournament.
-    Generates evergreen match recaps for all 104 finished fixtures and player spotlights
-    for top performers. Uses the skill workflows with force_regen=true.
-    Run after data backfill (injuries, squads, player performance) is complete.
-
-  context-variables:
-    debugger:
-      enabled: true
-    google-genai:
-      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
-      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-
+    Read-only assessment of existing match recaps and approved player-spotlight targets.
+    It performs no search, prompt, generation, cache write, or simulated success.
   inputs:
-    competition: "$.get('competition', 'world-cup-2026')"
-    limit_fixtures: "$.get('limit_fixtures', 0)"  # 0 = all 104 fixtures
-    offset_fixtures: "$.get('offset_fixtures', 0)"
-    force_regen: "$.get('force_regen', True)"
-
+    offset: "$.get('offset', 0)"
+    batch_size: "$.get('batch_size', 20)"
+    expected_fixture_count: "$.get('expected_fixture_count', 104)"
+    expected_event_urns: "$.get('expected_event_urns', [])"
+    target_player_urns: "$.get('target_player_urns', [])"
   outputs:
-    fixtures_processed: "$.get('fixtures_processed', 0)"
-    recaps_generated: "$.get('recaps_generated', 0)"
-    spotlights_generated: "$.get('spotlights_generated', 0)"
-    warnings: "$.get('warnings', [])"
-    workflow-status: "$.get('fixtures_processed', 0) > 0 and 'executed' or 'skipped'"
-
+    assessment: "$.get('assessment', {})"
+    workflow-status: "'executed' if $.get('assessment', {}) else 'skipped'"
   tasks:
-    # 1. Load ALL finished fixtures
     - type: document
-      name: load-all-finished-fixtures
-      description: Load all 104 World Cup events that are finished (FT/AET/PEN).
-      config:
-        action: search
-        search-limit: 200
-        search-vector: false
-      filters:
-        name: "'worldcup:event'"
-      outputs:
-        all_events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
-        finished_events: "[e for e in ($.get('all_events', []) or []) if (e.get('sport:status') or e.get('status') or 'NS') in ('FT', 'AET', 'PEN')]"
-
-    # 2. Apply pagination
-    - type: document
-      name: paginate-fixtures
-      description: Slice the finished fixtures for batch processing.
-      config:
-        action: create
-        embed-vector: false
-      inputs:
-        name: "'worldcup:fixture-batch'"
-        value._id: "'batch-' + datetime.utcnow().strftime('%Y%m%d-%H%M%S')"
-        value: >
-          {
-            'fixtures': ($.get('finished_events', []) or [])[
-              $.get('offset_fixtures', 0):
-              ($.get('offset_fixtures', 0) + $.get('limit_fixtures', len($.get('finished_events', [])))) if $.get('limit_fixtures', 0) > 0
-              else ($.get('finished_events', []) or [])
-            ],
-            'total': len($.get('finished_events', []) or [])
-          }
-      outputs:
-        fixtures_batch: "($.get('documents', []) or [{}])[0].get('value', {}).get('fixtures', [])"
-        total_fixtures: "($.get('documents', []) or [{}])[0].get('value', {}).get('total', 0)"
-
-    # 3. For each fixture: generate match recap
-    - type: connector
-      name: backfill-match-recaps
-      description: Generate evergreen match recap for each fixture in batch.
-      condition: "len($.get('fixtures_batch', [])) > 0"
-      continue_on_error: true
-      connector:
-        name: worldcup-market-intelligence
-        command: normalize_schedule  # placeholder - actual execution via execute_workflow
-      foreach:
-        concurrent: false
-        name: fixture
-        expr: $
-        value: "$.get('fixtures_batch', [])"
-      inputs:
-        event_urn: "$.get('fixture', {}).get('_id')"
-        force_regen: "$.get('force_regen', True)"
-      outputs:
-        recap_results: "[$]"
-
-    # 4. For each fixture: generate player spotlights for top players
-    - type: document
-      name: load-player-identities
-      description: Load all player identities from the crosswalk for spotlight candidates.
+      name: load-archive-evidence
+      description: Load bounded event, identity, and cached editorial evidence in stable order.
       config:
         action: search
         search-limit: 5000
         search-vector: false
+        search-sorters: ["_id", 1]
       filters:
-        name: "'worldcup:identity-crosswalk'"
-        "value.@type": "'sport:Player'"
+        name:
+          $in: ["worldcup:event", "worldcup:identity-crosswalk", "worldcup:skill-match-recap", "worldcup:skill-player-spotlight"]
       outputs:
-        all_players: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+        archive_evidence: "[{'document_id': str(d.get('_id') or ''), 'name': d.get('name', ''), 'metadata': d.get('metadata', {}), 'value': d.get('value', {}), 'created': d.get('created'), 'updated': d.get('updated')} for d in ($.get('documents', []) or []) if isinstance(d, dict)]"
+        archive_search_limit_reached: "len($.get('documents', []) or []) >= 5000"
 
-    # Note: Player spotlights should target top performers per match.
-    # Since we don't have a programmatic "top performer" selector yet,
-    # this workflow generates the recap batch. Spotlights can be generated
-    # by calling worldcup-player-spotlight directly for specific players.
-
-    # 5. Summary
-    - type: document
-      name: summarize
-      description: Count processed fixtures and write summary.
-      config:
-        action: create
-        embed-vector: false
+    - type: connector
+      name: assess-archive
+      description: Report stored cards and exact approved-target gaps without generation.
+      connector:
+        name: worldcup-market-intelligence
+        command: plan_archive_repair
       inputs:
-        name: "'worldcup:editorial-backfill-summary'"
-        value._id: "'worldcup-editorial-backfill-' + datetime.utcnow().strftime('%Y%m%d-%H%M%S')"
-        value: >
-          {
-            'competition': 'FIFA World Cup 2026',
-            'fixtures_total': $.get('total_fixtures', 0),
-            'fixtures_processed': len($.get('fixtures_batch', [])),
-            'recaps_generated': len($.get('fixtures_batch', [])),  # one per fixture attempted
-            'spotlights_generated': 0,
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
-            'status': 'completed'
-          }
+        mode: "'editorial'"
+        evidence: "$.get('archive_evidence', [])"
+        search_limit_reached: "$.get('archive_search_limit_reached', False)"
+        offset: "$.get('offset', 0)"
+        batch_size: "$.get('batch_size', 20)"
+        expected_fixture_count: "$.get('expected_fixture_count', 104)"
+        expected_event_urns: "$.get('expected_event_urns', [])"
+        target_player_urns: "$.get('target_player_urns', [])"
       outputs:
-        fixtures_processed: "len($.get('fixtures_batch', []))"
-        recaps_generated: "len($.get('fixtures_batch', []))"
+        assessment: "$"

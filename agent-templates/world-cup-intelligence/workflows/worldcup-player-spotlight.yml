@@ -18,19 +18,19 @@ workflow:
     team: "$.get('team', '')"
     force_regen: "$.get('force_regen', False)"
   outputs:
-    skill_card: "dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('spotlight', {})), player_urn=$.get('player_urn', ''))"
+    skill_card: "dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('spotlight', {})), player_urn=$.get('player_urn', ''), performance_context=$.get('player_overview', {}).get('performance_context', {'status': 'not_published', 'source': 'fifa.com'}), sources=$.get('player_overview', {}).get('sources', []))"
     player_urn: "$.get('player_urn', '')"
     resolved_player: "$.get('resolved_player', {})"
     candidates: "$.get('player_candidates', [])"
     player_overview: "($.get('cached', {}) or {}).get('player_overview', {}) or $.get('player_overview', {})"
     served_from: "'cache' if $.get('cached') else 'generated'"
-    warnings: "([] if $.get('player_urn', '') else (($.get('resolve_warnings', []) or []) or ['No player resolved -- pass player_urn, or player (name) + optional team.']))"
+    warnings: "($.get('resolve_warnings', []) or []) + ($.get('overview_warnings', []) or [])"
     archive: >-
       {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
        'snapshot_as_of': ($.get('cached', {}) or {}).get('generated_at'),
        'capability_status': 'archived_editorial' if ($.get('cached') or $.get('spotlight', {})) else 'unavailable',
-        'provenance': ((['worldcup:skill-player-spotlight'] if $.get('cached') else []) + (['worldcup:identity-crosswalk'] if not $.get('cached') and $.get('player_overview', {}) else [])),
+         'provenance': ((['worldcup:skill-player-spotlight'] if $.get('cached') else []) + (['worldcup:identity-crosswalk'] if $.get('player_overview', {}) else []) + (['fifa.com'] if $.get('official_fifa_performance', {}) else [])),
        'missing_capabilities': [] if ($.get('cached') or $.get('spotlight', {})) else ['archived_player_spotlight'],
        'notes': ['Archived player editorial; cached generated_at is exposed when stored evidence is served.']}
     workflow-status: "($.get('cached') or $.get('spotlight', {})) and 'executed' or 'skipped'"
@@ -58,6 +58,7 @@ workflow:
         command: resolve_player
       inputs:
         players: "$.get('resolve_players', [])"
+        player_urn: "$.get('player_urn', '')"
         player: "$.get('player', '')"
         team: "$.get('team', '')"
         limit: 5
@@ -84,7 +85,7 @@ workflow:
     - type: document
       name: load-player
       description: Player identity-crosswalk doc.
-      condition: "not $.get('cached')"
+      condition: "$.get('player_urn', '') != ''"
       config:
         action: search
         search-limit: 1
@@ -96,17 +97,34 @@ workflow:
       outputs:
         player: "($.get('documents', []) or [{}])[0].get('value', {})"
 
+    - type: document
+      name: load-final-fifa-performance
+      description: Load the official final FIFA performance record by canonical player URN for cache hits and new cards.
+      condition: "$.get('player_urn', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:final-fifa-player-power-ranking'"
+        value.player_urn: "$.get('player_urn', '')"
+        value.record_type: "'player_power_ranking'"
+      outputs:
+        official_fifa_performance: "($.get('documents', []) or [{}])[0].get('value', {})"
+
     - type: connector
       name: build-player-overview
       description: Build a tournament-only player overview; provider tournament position wins and identity position is fallback.
-      condition: "not $.get('cached') and $.get('player', {}) != {}"
+      condition: "$.get('player', {}) != {}"
       connector:
         name: worldcup-market-intelligence
         command: build_tournament_player_overview
       inputs:
         player: "$.get('player', {})"
+        official_fifa_performance: "$.get('official_fifa_performance', {})"
       outputs:
         player_overview: "$.get('player_overview', {})"
+        overview_warnings: "$.get('warnings', [])"
 
     - type: prompt
       name: worldcup-player-spotlight
@@ -120,6 +138,8 @@ workflow:
         provider: vertex_ai
       inputs:
         player: "$.get('player_overview', {})"
+        performance_context: "$.get('player_overview', {}).get('performance_context', {})"
+        sources: "$.get('player_overview', {}).get('sources', [])"
         timeout: 120
       outputs:
         spotlight: "$"
@@ -144,6 +164,8 @@ workflow:
             'source': 'worldcup:identity-crosswalk',
             'freshness': 'FRESH',
             'player_overview': $.get('player_overview', {}),
+            'performance_context': $.get('player_overview', {}).get('performance_context', {}),
+            'sources': $.get('player_overview', {}).get('sources', []),
             'body': $.get('spotlight', {}),
             'generated_at': datetime.utcnow().isoformat() + 'Z',
             'version_control': {'processing': False, 'finished': True, 'source': 'worldcup-player-spotlight'},

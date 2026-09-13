@@ -19,6 +19,7 @@ workflow:
     event_context: "$.get('event_context', {})"
     event_urn: "$.get('event_urn', '')"
     resolved_fixture: "$.get('resolved_fixture', {})"
+    candidates: "$.get('fixture_candidates', [])"
     archive: >-
       {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
@@ -27,13 +28,12 @@ workflow:
        'provenance': ((['worldcup:event'] if ($.get('event_context', {}).get('event') or $.get('event_document', {})) else []) + (['sports-skills'] if $.get('event_context', {}).get('sports_context') else []) + (['google-genai-grounded-search'] if $.get('event_context', {}).get('prematch_research') else []) + (['grok'] if $.get('event_context', {}).get('social_pulse') else [])),
        'missing_capabilities': (['event_context'] if not ($.get('event_context', {}).get('event') or $.get('event_document', {})) else (['event_enrichment'] if not ($.get('event_context', {}).get('sports_context') or $.get('event_context', {}).get('prematch_research') or $.get('event_context', {}).get('social_pulse')) else [])),
        'notes': ['Archived event truth is complete independently of optional enrichment.']}
-    warnings: "[] if ($.get('event_urn', '') or $.get('provider_event_id', '')) else ['No fixture resolved -- pass event_urn, provider_event_id, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.']"
+    warnings: "$.get('resolution_warnings', [])"
     workflow-status: "$.get('event_context', {}) != {} and 'executed' or 'skipped'"
   tasks:
     - type: document
       name: resolve-load-events
-      description: When no event_urn/provider_event_id is supplied, load cached events to resolve the fixture from event/team/opponent/date.
-      condition: "$.get('event_urn', '') == '' and $.get('provider_event_id', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
+      description: Load archived events for exact-id or natural-language fixture resolution.
       config:
         action: search
         search-limit: 500
@@ -41,42 +41,31 @@ workflow:
       filters:
         name: "'worldcup:event'"
       outputs:
-        resolve_events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+        resolve_events: "$.get('documents', []) or []"
 
     - type: connector
       name: resolve-fixture
-      description: Filter cached events by event/team/opponent/date, then pin the matching event_urn.
-      condition: "$.get('event_urn', '') == '' and $.get('provider_event_id', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
+      description: Resolve exactly one archived fixture; ambiguous and unknown inputs fail closed with candidates/warnings.
       connector:
         name: worldcup-market-intelligence
-        command: normalize_schedule
+        command: resolve_archived_fixture
       inputs:
         events: "$.get('resolve_events', [])"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
         event: "$.get('event', '')"
         team: "$.get('team', '')"
         opponent: "$.get('opponent', '')"
-        date_from: "$.get('date', '')"
-        date_to: "$.get('date', '')"
-        limit: 10
+        date: "$.get('date', '')"
       outputs:
-        resolved_fixture: "($.get('events', [{}]) or [{}])[0]"
-        event_urn: "($.get('events', [{}]) or [{}])[0].get('event_urn', '')"
-
-    - type: document
-      name: lookup-event
-      description: Lookup event context from the same pod document store. Requires an identifying input so an arbitrary event is never returned.
-      condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
-      config:
-        action: search
-        search-limit: 1
-        search-vector: false
-      filters:
-        name: "'worldcup:event'"
-        value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
-        value.provider_ids.api_football: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
-      outputs:
-        event_document: "($.get('documents', []) or [{}])[0].get('value', {})"
-        event_snapshot_as_of: "((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('updated_at') or (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('fetched_at') or ($.get('documents', []) or [{}])[0].get('updated') or ($.get('documents', []) or [{}])[0].get('created'))"
+        event_document: "$.get('event', {})"
+        resolved_fixture: "$.get('resolved_fixture', {})"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
+        fixture_candidates: "$.get('candidates', [])"
+        resolution_warnings: "$.get('warnings', [])"
+        event_sources: "$.get('sources', [])"
+        event_snapshot_as_of: "$.get('snapshot_as_of')"
 
     - type: connector
       name: fetch-event-summary

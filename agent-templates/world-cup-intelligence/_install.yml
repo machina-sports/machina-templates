@@ -30,7 +30,7 @@ setup:
     - pod-document-store
   status: available
   value: agent-templates/world-cup-intelligence
-  version: 0.10.0
+  version: 0.10.1
 
 datasets:
   - type: connector
@@ -115,6 +115,18 @@ datasets:
     path: workflows/worldcup-get-match-forecast.yml
   - type: workflow
     path: workflows/worldcup-backtest-forecasts.yml
+  - type: workflow
+    path: workflows/worldcup-backfill-crosswalks.yml
+  - type: workflow
+    path: workflows/worldcup-backfill-model-forecasts.yml
+  - type: workflow
+    path: workflows/worldcup-backfill-market-sources.yml
+  - type: workflow
+    path: workflows/worldcup-backfill-historical-data.yml
+  - type: workflow
+    path: workflows/worldcup-backfill-editorial-content.yml
+  - type: workflow
+    path: workflows/worldcup-backfill-master.yml
   - type: workflow
     path: workflows/worldcup-get-signal.yml
   - type: workflow

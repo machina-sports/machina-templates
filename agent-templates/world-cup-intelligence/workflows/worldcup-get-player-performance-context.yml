@@ -1,7 +1,7 @@
 workflow:
   name: worldcup-get-player-performance-context
   title: World Cup Intelligence - Player Performance Context
-  description: Returns a player-level performance context package for a World Cup fixture, keeping persisted official final FIFA Power Ranking fields separate from Machina provisional 0-10 signals. An explicit official ranking input remains the highest-priority override.
+  description: Returns player-level performance context from provider fixture statistics and persisted verified final FIFA rankings, kept separate from Machina provisional signals. Caller-supplied official ranking overrides are not accepted.
 
   context-variables:
     debugger:
@@ -11,13 +11,22 @@ workflow:
   inputs:
     event_urn: "$.get('event_urn', '')"
     fixture_id: "$.get('fixture_id', '')"
+    provider_event_id: "$.get('provider_event_id', '')"
+    event: "$.get('event', '')"
+    opponent: "$.get('opponent', '')"
+    date: "$.get('date', '')"
+    player_urn: "$.get('player_urn', '')"
+    player: "$.get('player', '')"
+    team: "$.get('team', '')"
     player_id: "$.get('player_id', '')"
     team_id: "$.get('team_id', '')"
-    official_fifa_power_ranking: "$.get('official_fifa_power_ranking', {})"
+    official_fifa_power_ranking: "{}"
   outputs:
     player_performance_context: "$.get('player_performance_context', {}) or {'event': $.get('event_document', {}), 'player': {}, 'official_fifa_power_ranking': ($.get('resolved_official_fifa_power_ranking', {}) or {'status': 'pending', 'source': 'fifa.com', 'scores': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}}), 'machina_provisional_performance_signal': {'status': 'unavailable', 'source_quality': 'unavailable', 'confidence': 0.0, 'scores_0_10': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}, 'drivers': [], 'warnings': ['No normalized player data supplied.']}, 'context_and_evidence': {'fallback_path': [], 'citations': [], 'missing_info_flags': ($.get('normalize_warnings', []) or []), 'freshness': {'provider_stats_fetched': False, 'official_fifa_expected_lag_hours': 4}}}"
     status: "'available' if len($.get('normalized_players', [])) > 0 and ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') in ('available', 'not_ranked', 'not_eligible') else ('partial' if len($.get('normalized_players', [])) > 0 or ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') in ('available', 'not_ranked', 'not_eligible', 'unmatched') else 'unavailable')"
-    warnings: "($.get('normalize_warnings', []) or []) + (((($.get('normalized_players', []) or [{}])[0].get('warnings', [])) or []) if len($.get('normalized_players', [])) > 0 else []) + {'available': [], 'not_ranked': ['Resolved tournament player is absent from the completed FIFA leaderboard.'], 'not_eligible': ['FIFA Power Ranking eligibility was not met based on proven minutes evidence.'], 'unmatched': ['Canonical tournament player identity could not be resolved.'], 'pending': ['Official FIFA Power Ranking final snapshot is unavailable.']}.get(($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status'), ['Official FIFA Power Ranking is unavailable.'])"
+    warnings: "($.get('resolution_warnings', []) or []) + ($.get('player_resolution_warnings', []) or []) + ($.get('normalize_warnings', []) or []) + (((($.get('normalized_players', []) or [{}])[0].get('warnings', [])) or []) if len($.get('normalized_players', [])) > 0 else []) + {'available': [], 'not_ranked': ['Resolved tournament player is absent from the completed FIFA leaderboard.'], 'not_eligible': ['FIFA Power Ranking eligibility was not met based on proven minutes evidence.'], 'unmatched': ['Canonical tournament player identity could not be resolved.'], 'pending': ['Official FIFA Power Ranking final snapshot is unavailable.']}.get(($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status'), ['Official FIFA Power Ranking is unavailable.'])"
+    candidates: "$.get('fixture_candidates', [])"
+    player_candidates: "$.get('player_candidates', [])"
     archive: >-
       {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
@@ -29,33 +38,86 @@ workflow:
     workflow-status: "$.get('player_performance_context', {}) != {} and 'executed' or 'skipped'"
   tasks:
     - type: document
-      name: lookup-event
-      description: Resolve event and API-Football fixture id from same-pod event state.
-      condition: "$.get('event_urn', '') != '' or $.get('fixture_id', '') != ''"
+      name: resolve-load-events
+      description: Load archived events for exact-id or natural-language fixture resolution.
       config:
         action: search
-        search-limit: 1
+        search-limit: 500
         search-vector: false
       filters:
         name: "'worldcup:event'"
-        value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
-        value.provider_ids.api_football: "$.get('fixture_id') if $.get('fixture_id') else {'$exists': True}"
       outputs:
-        event_document: "($.get('documents', []) or [{}])[0].get('value', {})"
-        resolved_fixture_id: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football') or $.get('fixture_id')"
-        event_snapshot_as_of: "((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('updated_at') or (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('fetched_at') or ($.get('documents', []) or [{}])[0].get('updated') or ($.get('documents', []) or [{}])[0].get('created'))"
+        resolve_events: "$.get('documents', []) or []"
+
+    - type: connector
+      name: resolve-fixture
+      description: Resolve exactly one archived fixture; ambiguous and unknown inputs fail closed.
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_archived_fixture
+      inputs:
+        events: "$.get('resolve_events', [])"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id') or $.get('fixture_id', '')"
+        event: "$.get('event', '')"
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date: "$.get('date', '')"
+      outputs:
+        event_document: "$.get('event', {})"
+        event_urn: "$.get('event_urn', '')"
+        resolved_fixture_id: "$.get('provider_event_id', '')"
+        resolved_fixture: "$.get('resolved_fixture', {})"
+        fixture_candidates: "$.get('candidates', [])"
+        resolution_warnings: "$.get('warnings', [])"
+        event_snapshot_as_of: "$.get('snapshot_as_of')"
+
+    - type: document
+      name: resolve-load-players
+      description: Load persisted tournament players for explicit player identity resolution.
+      condition: "$.get('player_urn', '') != '' or $.get('player', '') != ''"
+      config:
+        action: search
+        search-limit: 2000
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        value.machina_competition_slug: "'world-cup-2026'"
+        "value.@type": "'sport:Player'"
+      outputs:
+        resolve_players: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: resolve-player
+      description: Resolve one canonical player; ambiguous names fail closed.
+      condition: "len($.get('resolve_players', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_player
+      inputs:
+        players: "$.get('resolve_players', [])"
+        player_urn: "$.get('player_urn', '')"
+        player: "$.get('player', '')"
+        team: "$.get('team', '')"
+      outputs:
+        resolved_player_identity: "$.get('player', {})"
+        player_urn: "$.get('player', {}).get('player_urn', '')"
+        resolved_player_id: "$.get('player', {}).get('provider_ids', {}).get('api_football')"
+        resolved_team_id: "$.get('player', {}).get('team_urn', '')"
+        player_candidates: "$.get('candidates', [])"
+        player_resolution_warnings: "$.get('warnings', [])"
 
     - type: connector
       name: fetch-player-stats-af
       description: Provider-backed player statistics for the resolved fixture; optional player_id/team_id filters narrow the result.
-      condition: "($.get('resolved_fixture_id') or $.get('fixture_id')) not in (None, '')"
+      condition: "$.get('resolved_fixture_id') not in (None, '') and ($.get('resolved_player_id') or $.get('player_id')) not in (None, '')"
       continue_on_error: true
       connector:
         name: api-football
         command: get-fixtures/players
       inputs:
-        fixture: "$.get('resolved_fixture_id') or $.get('fixture_id')"
-        player: "$.get('player_id') if $.get('player_id') else None"
+        fixture: "$.get('resolved_fixture_id')"
+        player: "$.get('resolved_player_id') or ($.get('player_id') if $.get('player_id') else None)"
         team: "$.get('team_id') if $.get('team_id') else None"
       outputs:
         api_football_player_stats: "$"
@@ -68,14 +130,15 @@ workflow:
         command: normalize_player_match_stats
       inputs:
         event_urn: "$.get('event_urn') or $.get('fixture_id')"
-        fixture_id: "$.get('resolved_fixture_id') or $.get('fixture_id')"
-        player_id: "$.get('player_id')"
+        fixture_id: "$.get('resolved_fixture_id')"
+        player_id: "$.get('resolved_player_id') or $.get('player_id')"
         team_id: "$.get('team_id')"
         player_stats: "$.get('api_football_player_stats', {})"
       outputs:
         normalized_players: "$.get('players', [])"
         normalized_player_count: "$.get('count', 0)"
         normalize_warnings: "$.get('warnings', [])"
+        selected_player: "($.get('players', []) or [{}])[0] if len($.get('players', [])) == 1 else {}"
 
     - type: connector
       name: score-provisional-performance
@@ -85,7 +148,7 @@ workflow:
         name: worldcup-market-intelligence
         command: score_provisional_player_performance
       inputs:
-        player: "($.get('normalized_players', []) or [{}])[0]"
+        player: "$.get('selected_player', {})"
       outputs:
         machina_provisional_performance_signal: "$.get('machina_provisional_performance_signal', {})"
 
@@ -99,7 +162,7 @@ workflow:
         search-vector: false
       filters:
         name: "'worldcup:identity-crosswalk'"
-        value.provider_ids.api_football: "($.get('normalized_players', []) or [{}])[0].get('player_id')"
+        value.provider_ids.api_football: "$.get('selected_player', {}).get('player_id')"
         value.machina_competition_slug: "'world-cup-2026'"
       outputs:
         player_identity: "($.get('documents', []) or [{}])[0].get('value', {})"
@@ -119,12 +182,12 @@ workflow:
 
     - type: connector
       name: select-official-fifa-player-ranking
-      description: Preserve an explicit override; otherwise match a verified final record by canonical player URN or name.
+      description: Match a persisted verified final record; never promote caller-provided rankings to official FIFA evidence.
       connector:
         name: worldcup-market-intelligence
         command: select_official_player_power_ranking
       inputs:
-        override: "$.get('official_fifa_power_ranking', {})"
+        override: "{}"
         records: "$.get('final_fifa_player_rankings', [])"
         snapshot_manifest: "$.get('final_fifa_player_ranking_manifest', {})"
         player_urn: "$.get('player_identity', {}).get('_id', '')"
@@ -144,7 +207,7 @@ workflow:
         command: merge_official_and_provisional_performance
       inputs:
         event: "$.get('event_document', {})"
-        player: "($.get('normalized_players', []) or [{}])[0]"
+        player: "$.get('selected_player', {})"
         provisional_signal: "$.get('machina_provisional_performance_signal', {})"
         official_fifa_power_ranking: "$.get('resolved_official_fifa_power_ranking', {})"
         fallback_path: "['api-football']"

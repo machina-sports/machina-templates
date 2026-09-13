@@ -1,180 +1,114 @@
 workflow:
   name: worldcup-get-squads
   title: World Cup Intelligence - Squads
-  description: Squads for both teams in a World Cup fixture from api-football, with sports-skills get_team_profile as fallback. Resolve from an event_urn or api-football team ids.
+  description: Archived tournament player identities for both teams in a World Cup fixture. This is a persisted identity snapshot, not proof of complete FIFA registration.
 
   context-variables:
     debugger:
       enabled: true
-    api-football:
-      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
   inputs:
     event_urn: "$.get('event_urn', '')"
     provider_event_id: "$.get('provider_event_id', '')"
+    event: "$.get('event', '')"
+    team: "$.get('team', '')"
+    opponent: "$.get('opponent', '')"
+    date: "$.get('date', '')"
     home_team: "$.get('home_team', '')"
     away_team: "$.get('away_team', '')"
   outputs:
     squads: "$.get('squads', {})"
+    candidates: "$.get('fixture_candidates', [])"
+    warnings: "$.get('resolution_warnings', []) + ($.get('squads', {}).get('warnings', []) or [])"
     archive: >-
       {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
-       'competition_status': 'completed', 'live': False, 'snapshot_as_of': None,
-       'capability_status': 'complete' if $.get('squads', {}).get('teams') else 'unavailable',
-       'provenance': ((['api-football'] if [team for team in ($.get('squads', {}).get('teams') or []) if team.get('source') == 'api-football'] else []) + (['sports-skills'] if [team for team in ($.get('squads', {}).get('teams') or []) if team.get('source') == 'sports-skills'] else [])),
-       'missing_capabilities': [] if $.get('squads', {}).get('teams') else ['squads'],
-       'notes': ['Tournament squad records; no stored source timestamp is available.']}
+       'competition_status': 'completed', 'live': False, 'snapshot_as_of': $.get('squad_snapshot_as_of'),
+       'capability_status': 'partial' if $.get('squads', {}).get('teams') else 'unavailable',
+       'provenance': ['worldcup:identity-crosswalk'] if $.get('squads', {}).get('teams') else [],
+       'missing_capabilities': ['verified_complete_official_squad_registration'] if $.get('squads', {}).get('teams') else ['squads'],
+       'notes': ['Archived tournament identity snapshot; not proof of complete FIFA squad registration.']}
     workflow-status: "$.get('squads', {}).get('teams') and 'executed' or 'skipped'"
   tasks:
     - type: document
-      name: lookup-event
-      description: Resolve home/away api-football team ids and names from the cached event, by machina event_urn or api-football provider_event_id (fixture id).
-      condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
+      name: resolve-load-events
+      description: Load archived events for exact-id or natural-language fixture resolution.
       config:
         action: search
-        search-limit: 1
+        search-limit: 500
         search-vector: false
       filters:
         name: "'worldcup:event'"
-        value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
-        value.provider_ids.api_football: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
       outputs:
-        home_team_urn: "([t.get('@id') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
-        away_team_urn: "([t.get('@id') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
-        home_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
-        away_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
+        resolve_events: "$.get('documents', []) or []"
+
+    - type: connector
+      name: resolve-fixture
+      description: Resolve exactly one archived fixture; ambiguous and unknown inputs fail closed.
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_archived_fixture
+      inputs:
+        events: "$.get('resolve_events', [])"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
+        event: "$.get('event', '')"
+        team: "$.get('team') or $.get('home_team', '')"
+        opponent: "$.get('opponent') or $.get('away_team', '')"
+        date: "$.get('date', '')"
+      outputs:
+        event_document: "$.get('event', {})"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
+        resolved_fixture: "$.get('resolved_fixture', {})"
+        fixture_candidates: "$.get('candidates', [])"
+        resolution_warnings: "$.get('warnings', [])"
+        home_team_urn: "([t.get('@id') for t in ($.get('event', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
+        away_team_urn: "([t.get('@id') for t in ($.get('event', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
+        home_team_name: "([t.get('name') for t in ($.get('event', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [$.get('home_team', '')])[0]"
+        away_team_name: "([t.get('name') for t in ($.get('event', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [$.get('away_team', '')])[0]"
 
     - type: document
-      name: lookup-teams
-      description: Resolve api-football team ids from the event's competitor team URNs via the team crosswalk.
-      condition: "($.get('home_team_urn') or '') != '' or ($.get('away_team_urn') or '') != ''"
+      name: load-team-identities
+      description: Load both persisted tournament team identities.
+      condition: "($.get('home_team_urn') or '') != '' or ($.get('away_team_urn') or '') != '' or $.get('home_team', '') != '' or $.get('away_team', '') != ''"
       config:
         action: search
-        search-limit: 2
+        search-limit: 100
         search-vector: false
       filters:
         name: "'worldcup:identity-crosswalk'"
-        value._id: "{'$in': [u for u in [$.get('home_team_urn'), $.get('away_team_urn')] if u]}"
+        value.machina_competition_slug: "'world-cup-2026'"
+        "value.@type": "'sport:Team'"
       outputs:
-        home_team_id: "([d.get('value', {}).get('provider_ids', {}).get('api_football') for d in ($.get('documents', []) or []) if d.get('value', {}).get('_id') == $.get('home_team_urn')] or [None])[0]"
-        away_team_id: "([d.get('value', {}).get('provider_ids', {}).get('api_football') for d in ($.get('documents', []) or []) if d.get('value', {}).get('_id') == $.get('away_team_urn')] or [None])[0]"
+        team_documents: "$.get('documents', []) or []"
 
-    - type: connector
-      name: fetch-home-squad-af
-      description: Home-team squad from api-football.
-      condition: "($.get('home_team_id') or $.get('home_team')) not in (None, '')"
-      continue_on_error: true
-      connector:
-        name: api-football
-        command: get-players/squads
-      inputs:
-        team: "$.get('home_team_id') or $.get('home_team')"
+    - type: document
+      name: load-tournament-players
+      description: Load persisted World Cup 2026 player identities for deterministic team joins.
+      condition: "($.get('home_team_urn') or '') != '' or ($.get('away_team_urn') or '') != '' or $.get('home_team_name', '') != '' or $.get('away_team_name', '') != '' or $.get('home_team', '') != '' or $.get('away_team', '') != ''"
+      config:
+        action: search
+        search-limit: 2000
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        value.machina_competition_slug: "'world-cup-2026'"
+        "value.@type": "'sport:Player'"
       outputs:
-        home_af: "$"
-
-    - type: connector
-      name: fetch-away-squad-af
-      description: Away-team squad from api-football.
-      condition: "($.get('away_team_id') or $.get('away_team')) not in (None, '')"
-      continue_on_error: true
-      connector:
-        name: api-football
-        command: get-players/squads
-      inputs:
-        team: "$.get('away_team_id') or $.get('away_team')"
-      outputs:
-        away_af: "$"
-
-    - type: connector
-      name: inspect-api-football-squads
-      description: Normalize runner output so bare lists and response envelopes produce the same fallback counts.
-      connector:
-        name: worldcup-market-intelligence
-        command: normalize_squads
-      inputs:
-        home_af: "$.get('home_af', {})"
-        away_af: "$.get('away_af', {})"
-        home_team_id: "$.get('home_team_id') or $.get('home_team')"
-        away_team_id: "$.get('away_team_id') or $.get('away_team')"
-        home_team: "$.get('home_team_name', '')"
-        away_team: "$.get('away_team_name', '')"
-      outputs:
-        home_af_count: "([t.get('count', 0) for t in ($.get('teams', []) or []) if t.get('side') == 'home' and t.get('source') == 'api-football'] or [0])[0]"
-        away_af_count: "([t.get('count', 0) for t in ($.get('teams', []) or []) if t.get('side') == 'away' and t.get('source') == 'api-football'] or [0])[0]"
-
-    - type: connector
-      name: resolve-home-ss
-      description: Resolve the home team's sports-skills id by name.
-      condition: "$.get('home_af_count', 0) == 0 and ($.get('home_team_name') or '') != ''"
-      continue_on_error: true
-      connector:
-        name: sports-skills
-        command: invoke_football
-      inputs:
-        command: "'search_team'"
-        query: "$.get('home_team_name')"
-        competition_id: "'world-cup'"
-      outputs:
-        home_ss_id: "(((($.get('data', {}).get('results') or $.get('data', {}).get('teams')) or [{}])[0] or {}).get('team', {}) or {}).get('id') if $.get('status') else None"
-
-    - type: connector
-      name: resolve-away-ss
-      description: Resolve the away team's sports-skills id by name.
-      condition: "$.get('away_af_count', 0) == 0 and ($.get('away_team_name') or '') != ''"
-      continue_on_error: true
-      connector:
-        name: sports-skills
-        command: invoke_football
-      inputs:
-        command: "'search_team'"
-        query: "$.get('away_team_name')"
-        competition_id: "'world-cup'"
-      outputs:
-        away_ss_id: "(((($.get('data', {}).get('results') or $.get('data', {}).get('teams')) or [{}])[0] or {}).get('team', {}) or {}).get('id') if $.get('status') else None"
-
-    - type: connector
-      name: fetch-home-squad-ss
-      description: Sports Skills home-team roster (used when api-football is empty).
-      condition: "$.get('home_af_count', 0) == 0 and ($.get('home_ss_id') or '') != ''"
-      continue_on_error: true
-      connector:
-        name: sports-skills
-        command: invoke_football
-      inputs:
-        command: "'get_team_profile'"
-        team_id: "$.get('home_ss_id')"
-        league_slug: "'world-cup'"
-      outputs:
-        home_ss: "$.get('data', {}) if $.get('status') else {}"
-
-    - type: connector
-      name: fetch-away-squad-ss
-      description: Sports Skills away-team roster (used when api-football is empty).
-      condition: "$.get('away_af_count', 0) == 0 and ($.get('away_ss_id') or '') != ''"
-      continue_on_error: true
-      connector:
-        name: sports-skills
-        command: invoke_football
-      inputs:
-        command: "'get_team_profile'"
-        team_id: "$.get('away_ss_id')"
-        league_slug: "'world-cup'"
-      outputs:
-        away_ss: "$.get('data', {}) if $.get('status') else {}"
+        player_documents: "$.get('documents', []) or []"
 
     - type: connector
       name: normalize-squads
-      description: Normalize api-football and sports-skills squads.
+      description: Join archived tournament player identities to the two persisted team identities.
       connector:
         name: worldcup-market-intelligence
-        command: normalize_squads
+        command: build_archived_tournament_squads
       inputs:
-        home_af: "$.get('home_af', {})"
-        away_af: "$.get('away_af', {})"
-        home_ss: "$.get('home_ss', {})"
-        away_ss: "$.get('away_ss', {})"
-        home_team_id: "$.get('home_team_id') or $.get('home_team')"
-        away_team_id: "$.get('away_team_id') or $.get('away_team')"
-        home_team: "$.get('home_team_name', '')"
-        away_team: "$.get('away_team_name', '')"
+        team_documents: "$.get('team_documents', [])"
+        player_documents: "$.get('player_documents', [])"
+        home_team_urn: "$.get('home_team_urn', '')"
+        away_team_urn: "$.get('away_team_urn', '')"
+        home_team: "$.get('home_team_name', '') or $.get('home_team', '')"
+        away_team: "$.get('away_team_name', '') or $.get('away_team', '')"
       outputs:
-        # runner strips our connector's {status,data} envelope -> $ is the data.
         squads: "$"
+        squad_snapshot_as_of: "max([str(p.get('source_timestamp')) for t in ($.get('teams', []) or []) for p in (t.get('players', []) or []) if p.get('source_timestamp')], default=None)"
