@@ -1,0 +1,413 @@
+workflow:
+  name: worldcup-backfill-crosswalks
+  title: World Cup Intelligence - Backfill Identity Crosswalks (One-Time)
+  description: |
+    One-time backfill for the completed FIFA World Cup 2026 tournament.
+    Populates team, player, and event crosswalks with all provider IDs
+    (api-football, ESPN, Sportradar, Opta, Entain/bwin).
+    The regular sync workflows only run for upcoming fixtures - this runs
+    against the full historical tournament set.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+    bwin:
+      Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
+      Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
+    sports-skills:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTS_SKILLS_API_KEY
+
+  inputs:
+    competition: "$.get('competition', 'world-cup-2026')"
+    league: "$.get('league', '1')"
+    season: "$.get('season', '2026')"
+    sr_season_id: "$.get('sr_season_id', 'sr:season:101177')"
+    opta_wc_tmcl: "$.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')"
+    bwin_country: "$.get('bwin_country', 'gb')"
+    bwin_competition_id: "$.get('bwin_competition_id', '102868')"
+
+  outputs:
+    teams_saved: "$.get('teams_saved', 0)"
+    players_saved: "$.get('players_saved', 0)"
+    events_saved: "$.get('events_saved', 0)"
+    warnings: "$.get('warnings', [])"
+    workflow-status: "($.get('teams_saved', 0) + $.get('players_saved', 0) + $.get('events_saved', 0)) > 0 and 'executed' or 'skipped'"
+
+  tasks:
+    # 1. Team crosswalk (same logic as worldcup-sync-team-crosswalk but no live filter)
+    - type: connector
+      name: fetch-af-teams
+      description: World Cup teams from api-football.
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-teams
+      inputs:
+        league: "$.get('league', '1')"
+        season: "$.get('season', '2026')"
+      outputs:
+        af_teams: "[{'id': str((r.get('team') or {}).get('id') or ''), 'name': (r.get('team') or {}).get('name')} for r in $.get('response', []) if (r.get('team') or {}).get('id')]"
+
+    - type: connector
+      name: fetch-espn-teams
+      description: ESPN team ids for the World Cup season via sports-skills.
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_season_teams'"
+        season_id: "'world-cup-2026'"
+      outputs:
+        espn_teams: "$.get('data', {}).get('teams', []) if $.get('status') else []"
+
+    - type: connector
+      name: fetch-sr-competitors
+      description: Sportradar competitors for the World Cup 2026 season.
+      continue_on_error: true
+      connector:
+        name: sportradar-soccer
+        command: get-seasons/{season_id}/competitors.json
+        command_attribute:
+          season_id: "$.get('sr_season_id', 'sr:season:101177')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        sportradar_teams: "$.get('season_competitors', [])"
+
+    - type: connector
+      name: opta-auth
+      description: Get an Opta OAuth access token.
+      continue_on_error: true
+      connector:
+        name: opta
+        command: authorization
+      outputs:
+        opta_token: "$.get('access_token')"
+
+    - type: connector
+      name: fetch-opta-wc
+      description: Opta contestants for the FIFA World Cup 2026 tournament calendar.
+      condition: "$.get('opta_token') is not None"
+      continue_on_error: true
+      connector:
+        name: opta
+        command: invoke_request
+      inputs:
+        access_token: "$.get('opta_token')"
+        endpoint: "'team'"
+        query_params: "{'tmcl': $.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')}"
+      outputs:
+        opta_wc: "$.get('contestant', [])"
+
+    - type: connector
+      name: fetch-bwin-wc
+      description: Entain/bwin teams for the World Cup competition.
+      continue_on_error: true
+      connector:
+        name: bwin
+        command: get-offer/api/{sportId}/{country}/fixtures
+        command_attribute:
+          sportId: "'4'"
+          country: "$.get('bwin_country', 'gb')"
+      inputs:
+        language: "'en'"
+        competitionIds: "$.get('bwin_competition_id', '102868')"
+        onlyMainMarkets: "'true'"
+      outputs:
+        entain_fixtures: "{'items': $.get('items', [])}"
+
+    - type: connector
+      name: build-team-crosswalk
+      description: Merge all provider team IDs into canonical team URNs.
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_identity_crosswalk
+      inputs:
+        af_teams: "$.get('af_teams', [])"
+        espn_teams: "$.get('espn_teams', [])"
+        sportradar_teams: "$.get('sportradar_teams', [])"
+        opta_teams: "$.get('opta_wc', [])"
+        entain_fixtures: "$.get('entain_fixtures', {})"
+      outputs:
+        normalized_teams: "$.get('normalized_items', [])"
+
+    - type: document
+      name: save-teams
+      description: Persist team crosswalk docs.
+      condition: "len($.get('normalized_teams', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      inputs:
+        documents: "[{'name': 'worldcup:identity-crosswalk', 'value._id': item.get('_id'), 'value': item} for item in $.get('normalized_teams', []) if item.get('_id')]"
+      outputs:
+        teams_saved: "len($.get('normalized_teams', []))"
+
+    # 2. Player crosswalk (same logic as worldcup-sync-player-crosswalk but no live filter)
+    - type: document
+      name: load-teams-for-players
+      description: Load the team crosswalk for team-id maps + canonical team URNs.
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        value._id: {"$regex": "^urn:machina:sport:soccer:team:"}
+      outputs:
+        teams: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: document
+      name: load-existing-players
+      description: Load existing player docs so non-api-football ids carry forward.
+      config:
+        action: search
+        search-limit: 5000
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        value._id: {"$regex": "^urn:machina:sport:soccer:player:"}
+      outputs:
+        existing_players: "[{'provider_ids': d.get('value', {}).get('provider_ids', {})} for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: fetch-af-squads
+      description: api-football squad per team (one call per team via foreach).
+      condition: "len($.get('teams', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-players/squads
+      foreach:
+        concurrent: false
+        name: team_item
+        expr: $
+        value: "$.get('teams', [])"
+      inputs:
+        team: "$.get('team_item', {}).get('provider_ids', {}).get('api_football')"
+      outputs:
+        af_squads: "[{'response': $.get('response', [])}]"
+
+    - type: connector
+      name: fetch-af-players
+      description: api-football /players/profiles by player id for DOB + nationality.
+      condition: "len($.get('af_squads', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-players/profiles
+      foreach:
+        concurrent: false
+        name: af_player_item
+        expr: $
+        value: "[{'id': p.get('id')} for resp in $.get('af_squads', []) if isinstance(resp, dict) for entry in (resp.get('response', []) or []) for p in (entry.get('players', []) or []) if p.get('id')]"
+      inputs:
+        player: "$.get('af_player_item', {}).get('id')"
+      outputs:
+        af_players: "[{'response': [{'player': {'id': (p.get('player') or {}).get('id'), 'name': (p.get('player') or {}).get('name'), 'firstname': (p.get('player') or {}).get('firstname'), 'lastname': (p.get('player') or {}).get('lastname'), 'birth': {'date': ((p.get('player') or {}).get('birth') or {}).get('date')}, 'nationality': (p.get('player') or {}).get('nationality')}} for p in ($.get('response', []) or [])]}]"
+
+    - type: connector
+      name: fetch-espn-rosters
+      description: ESPN team rosters (player ids) per team via sports-skills get_team_profile.
+      condition: "len($.get('teams', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_football
+      foreach:
+        concurrent: false
+        name: team_item
+        expr: $
+        value: "$.get('teams', [])"
+      inputs:
+        command: "'get_team_profile'"
+        team_id: "$.get('team_item', {}).get('provider_ids', {}).get('espn')"
+      outputs:
+        espn_rosters: "[$]"
+
+    - type: connector
+      name: fetch-sr-squads
+      description: Sportradar squad lists per competitor.
+      condition: "len($.get('teams', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: sportradar-soccer
+        command: get-competitors/{competitor_id}/squad.json
+        command_attribute:
+          competitor_id: "$.get('team_item', {}).get('provider_ids', {}).get('sportradar')"
+      foreach:
+        concurrent: false
+        name: team_item
+        expr: $
+        value: "$.get('teams', [])"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        sr_squads: "[$]"
+
+    - type: connector
+      name: opta-auth-players
+      description: Get an Opta OAuth access token for player fetch.
+      continue_on_error: true
+      connector:
+        name: opta
+        command: authorization
+      outputs:
+        opta_token_players: "$.get('access_token')"
+
+    - type: connector
+      name: fetch-opta-squads
+      description: Opta squads via tournament calendar.
+      condition: "$.get('opta_token_players') is not None"
+      continue_on_error: true
+      connector:
+        name: opta
+        command: invoke_request
+      foreach:
+        concurrent: false
+        name: team_item
+        expr: $
+        value: "$.get('teams', [])"
+      inputs:
+        access_token: "$.get('opta_token_players')"
+        endpoint: "'team'"
+        query_params: "{'tmcl': $.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')}"
+      outputs:
+        opta_squads: "[$]"
+
+    - type: connector
+      name: build-player-crosswalk
+      description: Build canonical player URNs with all provider IDs.
+      connector:
+        name: worldcup-market-intelligence
+        command: build_player_crosswalk
+      inputs:
+        teams: "$.get('teams', [])"
+        af_players: "$.get('af_players', [])"
+        espn_rosters: "$.get('espn_rosters', [])"
+        sr_squads: "$.get('sr_squads', [])"
+        opta_squads: "$.get('opta_squads', [])"
+        existing_players: "$.get('existing_players', [])"
+      outputs:
+        normalized_players: "$.get('normalized_items', [])"
+
+    - type: document
+      name: save-players
+      description: Persist player crosswalk docs.
+      condition: "len($.get('normalized_players', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      inputs:
+        documents: "[{'name': 'worldcup:identity-crosswalk', 'value._id': item.get('_id'), 'value': item} for item in $.get('normalized_players', []) if item.get('_id')]"
+      outputs:
+        players_saved: "len($.get('normalized_players', []))"
+
+    # 3. Event crosswalk (same logic as worldcup-sync-event-crosswalk but no live filter)
+    - type: document
+      name: load-events-for-crosswalk
+      description: Load the canonical World Cup event docs to enrich with provider ids.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: fetch-sr-schedule
+      description: Sportradar full season schedule.
+      condition: "len($.get('events', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: sportradar-soccer
+        command: get-seasons/{season_id}/schedules.json
+        command_attribute:
+          season_id: "$.get('sr_season_id', 'sr:season:101177')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        sportradar_schedule: "{'schedules': $.get('schedules', [])}"
+
+    - type: connector
+      name: fetch-bwin-fixtures
+      description: Entain/bwin fixtures for the World Cup competition.
+      condition: "len($.get('events', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: bwin
+        command: get-offer/api/{sportId}/{country}/fixtures
+        command_attribute:
+          sportId: "'4'"
+          country: "$.get('bwin_country', 'gb')"
+      inputs:
+        language: "'en'"
+        competitionIds: "$.get('bwin_competition_id', '102868')"
+        onlyMainMarkets: "'true'"
+      outputs:
+        entain_fixtures: "{'items': $.get('items', [])}"
+
+    - type: connector
+      name: opta-auth-events
+      description: Get an Opta OAuth access token.
+      continue_on_error: true
+      connector:
+        name: opta
+        command: authorization
+      outputs:
+        opta_token_events: "$.get('access_token')"
+
+    - type: connector
+      name: fetch-opta-schedule
+      description: Opta tournament schedule (match ids + contestant ids).
+      condition: "$.get('opta_token_events') is not None"
+      continue_on_error: true
+      connector:
+        name: opta
+        command: invoke_request
+      inputs:
+        access_token: "$.get('opta_token_events')"
+        endpoint: "'tournamentschedule'"
+        query_params: "{'tmcl': $.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')}"
+      outputs:
+        opta_schedule: "{'matchDate': $.get('matchDate', [])}"
+
+    - type: connector
+      name: build-event-crosswalk
+      description: Attach sportradar/entain/opta event ids to events by team pair.
+      connector:
+        name: worldcup-market-intelligence
+        command: build_event_crosswalk
+      inputs:
+        teams: "$.get('teams', [])"
+        events: "$.get('events', [])"
+        sportradar_schedule: "$.get('sportradar_schedule', {})"
+        entain_fixtures: "$.get('entain_fixtures', {})"
+        opta_schedule: "$.get('opta_schedule', {})"
+      outputs:
+        normalized_events: "$.get('normalized_items', [])"
+
+    - type: document
+      name: save-events
+      description: Persist event crosswalk docs.
+      condition: "len($.get('normalized_events', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      inputs:
+        documents: "[{'name': 'worldcup:identity-crosswalk', 'value._id': item.get('_id'), 'value': item} for item in $.get('normalized_events', []) if item.get('_id')]"
+      outputs:
+        events_saved: "len($.get('normalized_events', []))"

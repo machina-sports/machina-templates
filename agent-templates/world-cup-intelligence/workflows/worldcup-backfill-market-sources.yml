@@ -1,0 +1,160 @@
+workflow:
+  name: worldcup-backfill-market-sources
+  title: World Cup Intelligence - Backfill Market Sources (Polymarket)
+  description: |
+    One-time backfill for the completed FIFA World Cup 2026 tournament.
+    Populates Polymarket market cache for all fixtures and tournament markets.
+    The regular sync workflow only fetches for upcoming fixtures - this gets
+    the full historical market record for backtesting and analysis.
+
+  context-variables:
+    debugger:
+      enabled: true
+    sports-skills:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTS_SKILLS_API_KEY
+
+  inputs:
+    competition: "$.get('competition', 'world-cup-2026')"
+    search_query: "$.get('search_query', 'FIFA World Cup')"
+    source: "$.get('source', 'polymarket')"
+    max_markets: "$.get('max_markets', 1000)"
+    horizon_days: "$.get('horizon_days', 50)"  # wider window for historical
+
+  outputs:
+    markets_count: "$.get('markets_count', 0)"
+    sources: "$.get('sources', {})"
+    warnings: "$.get('warnings', [])"
+    workflow-status: "$.get('markets_count', 0) > 0 and 'executed' or 'skipped'"
+
+  tasks:
+    # 1. Resolve competition
+    - type: connector
+      name: resolve-competition
+      description: Competition registry -> league/season/URN code/search terms.
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_competition
+      inputs:
+        competition: "$.get('competition', 'world-cup-2026')"
+      outputs:
+        competition_slug: "$.get('competition_slug', 'world-cup-2026')"
+        kalshi_sport: "$.get('kalshi_sport', 'worldcup')"
+        knockout: "$.get('knockout', False)"
+
+    # 2. Load all events for fixture-to-market linking
+    - type: document
+      name: load-all-events
+      description: Load all World Cup event docs.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    # 3. Broad Polymarket search for World Cup markets
+    - type: connector
+      name: search-polymarket-all
+      description: Broad Polymarket search for World Cup/FIFA markets (all, not just upcoming).
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      inputs:
+        command: "'search_markets'"
+        query: "$.get('search_query', 'FIFA World Cup')"
+        limit: "$.get('max_markets', 1000)"
+      outputs:
+        polymarket_all: "$.get('data', {}) if $.get('status') else {}"
+
+    # 4. Polymarket advance/tournament markets (reach R16, QF, SF, Final)
+    - type: connector
+      name: fetch-polymarket-advance
+      description: Polymarket tournament advance markets (reach Round of 16 / QF / SF / Final).
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      foreach:
+        concurrent: false
+        name: advance_query
+        expr: $
+        value: "['Reach Round of 16', 'Reach Quarterfinals', 'Reach Semifinals', 'Reach Final']"
+      inputs:
+        command: "'search_markets'"
+        query: "$.get('advance_query', '')"
+        limit: "100"
+      outputs:
+        polymarket_advance: "[$.get('data', {})] if $.get('status') else []"
+
+    # 5. Per-fixture Polymarket moneylines for ALL fixtures (not just upcoming)
+    - type: connector
+      name: fetch-polymarket-all-fixtures
+      description: Per-fixture Polymarket moneyline fetch for ALL fixtures via foreach.
+      condition: "len($.get('events', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      foreach:
+        concurrent: false
+        name: event_item
+        expr: $
+        value: "$.get('events', [])"
+      inputs:
+        command: "'search_markets'"
+        query: "($.get('event_item', {}).get('home_team_name', '') + ' vs. ' + $.get('event_item', {}).get('away_team_name', '')) if ($.get('event_item', {}).get('home_team_name') and $.get('event_item', {}).get('away_team_name')) else 'FIFA World Cup'"
+        sports_market_types: "'moneyline'"
+        limit: "50"
+      outputs:
+        polymarket_fixtures: "[$.get('data', {})] if $.get('status') else []"
+
+    # 6. Also fetch Kalshi for completeness (historical markets)
+    - type: connector
+      name: fetch-kalshi-all
+      description: Kalshi World Cup markets across all dedicated series.
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      inputs:
+        command: "'search_markets'"
+        sport: "$.get('kalshi_sport', 'worldcup')"
+        status: "'settled'"  # historical - settled markets
+        limit: "1000"
+      outputs:
+        kalshi_all: "$.get('data', {}) if $.get('status') else {}"
+
+    # 7. Normalize all market sources
+    - type: connector
+      name: normalize-market-sources
+      description: Normalize Sports Skills, Kalshi, and Polymarket market payloads into cacheable WorldCupMarket records.
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_market_sources
+      inputs:
+        competition: "$.get('competition_slug', 'world-cup-2026')"
+        sports_skills_markets: "$.get('polymarket_all', {})"
+        kalshi_markets: "$.get('kalshi_all', {})"
+        polymarket_markets: "$.get('polymarket_all', {})"
+        events: "$.get('events', [])"
+      outputs:
+        normalized_markets: "$.get('normalized_markets', [])"
+        sources: "$.get('sources', {})"
+        warnings: "$.get('warnings', [])"
+
+    # 8. Save normalized markets
+    - type: document
+      name: save-markets
+      description: Persist normalized market cache docs.
+      condition: "len($.get('normalized_markets', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      inputs:
+        documents: "[{'name': 'worldcup:market-cache', 'value._id': item.get('_id'), 'value': item} for item in $.get('normalized_markets', []) if item.get('_id')]"
+      outputs:
+        markets_count: "len($.get('normalized_markets', []))"
