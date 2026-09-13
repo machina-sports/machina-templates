@@ -11,6 +11,7 @@ import json
 import os
 import re
 import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -401,6 +402,15 @@ class McpOperator:
         return rows
 
 
+@lru_cache(maxsize=32)
+def _public_output_fields(workflow: str) -> frozenset[str]:
+    if workflow not in CONNECTOR.FINAL_ARCHIVE_ENDPOINTS:
+        raise ARCHIVE.ArchivePreparationError("unsupported replay workflow")
+    import yaml
+    definition = yaml.safe_load((ROOT / "workflows" / f"{workflow}.yml").read_text(encoding="utf-8"))["workflow"]
+    return frozenset(definition["outputs"])
+
+
 def _validate_replay_execution(item: dict[str, Any], execution: dict[str, Any]) -> None:
     outputs = ((execution.get("workflow_output") or {}).get("outputs"))
     if execution.get("name") != item["workflow"] or str(execution.get("status") or "").lower() != "executed" or not isinstance(outputs, dict):
@@ -436,7 +446,12 @@ def _validate_replay_execution(item: dict[str, Any], execution: dict[str, Any]) 
         else:
             raise ARCHIVE.ArchivePreparationError(f"replay executed forbidden task type {task.get('type')} for {item['key']}")
     expected = item.get("expected_response") if isinstance(item.get("expected_response"), dict) else {}
+    public_fields = _public_output_fields(item["workflow"])
+    if not public_fields <= set(outputs):
+        raise ARCHIVE.ArchivePreparationError(f"replay public output contract is incomplete for {item['key']}")
     for key, value in expected.items():
+        if key not in public_fields:
+            continue
         if key == "archive":
             actual_archive = outputs.get("archive") if isinstance(outputs.get("archive"), dict) else {}
             transport_fields = {"version", "status", "response_sha256", "source_manifest_sha256", "request_identity_sha256"}

@@ -533,6 +533,13 @@ def test_replay_requires_hit_pure_trace_and_explicit_zero_tokens(tmp_path):
         ],
     }
     BULK._validate_replay_execution(item, execution)
+    internal = copy.deepcopy(item)
+    internal["expected_response"]["warnings"] = ["Internal archive wrapper, not a declared schedule output"]
+    BULK._validate_replay_execution(internal, execution)
+    incomplete = copy.deepcopy(execution)
+    del incomplete["workflow_output"]["outputs"]["schedule"]
+    with pytest.raises(BULK.ARCHIVE.ArchivePreparationError, match="public output contract is incomplete"):
+        BULK._validate_replay_execution(item, incomplete)
     transported_item = copy.deepcopy(item)
     transported_item["expected_response"]["archive"] = {
         "version": "world-cup-2026-final-v1", "status": "hit",
