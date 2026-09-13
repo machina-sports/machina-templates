@@ -67,6 +67,7 @@ workflow:
         archive_resolved_event_urn: $.get('event_urn', '')
     - type: document
       name: load-final-archive
+      condition: "$.get('archive_resolved_event_urn', '') != ''"
       description: Load immutable endpoint rows in a stable order before legacy execution.
       config:
         action: search

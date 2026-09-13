@@ -81,6 +81,17 @@ def test_closed_catalog_misses_are_explicit_and_never_run_legacy_tasks(endpoint)
     assert connectors.internal_calls[-1] == "serve_final_archive"
 
 
+@pytest.mark.parametrize("endpoint", sorted(CONNECTOR.FINAL_ARCHIVE_FIXTURE_ENDPOINTS))
+def test_closed_unknown_fixture_skips_empty_document_filter(endpoint):
+    outputs, store, connectors = execute_yaml(endpoint, {"event_urn": "urn:event:verified-absent-fixture"}, [_closure_document()])
+    assert "load-final-archive" not in store.executed
+    assert "resolve-load-events" not in store.executed
+    assert outputs["archive"]["status"] == "unavailable"
+    assert outputs["archive"]["version"] == CONNECTOR.FINAL_ARCHIVE_VERSION
+    assert outputs["workflow-status"] == "skipped"
+    assert store.writes == 0 and connectors.external_calls == []
+
+
 @pytest.mark.parametrize("query", [{"league": "39", "season": "2026"}, {"league": "1", "season": "2022"}])
 def test_worldcup_closure_preserves_other_league_or_season_standings(query):
     _, _, connectors = execute_yaml("worldcup-get-standings", query, [_closure_document()])
