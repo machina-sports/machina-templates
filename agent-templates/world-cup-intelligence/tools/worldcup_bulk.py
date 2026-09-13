@@ -270,7 +270,9 @@ def build_replay_plan(manifest: dict[str, Any], replay_dir: Path, journal: dict[
         requests: list[tuple[dict[str, Any], dict[str, Any]]] = []
         if endpoint == "worldcup-resolve":
             requests = [({"id": subject.get("key")}, response)]
-        elif endpoint in {"worldcup-get-schedule", "worldcup-get-standings", "worldcup-backtest-forecasts"}:
+        elif endpoint == "worldcup-get-schedule":
+            requests = [({"limit": 500}, response)]
+        elif endpoint in {"worldcup-get-standings", "worldcup-backtest-forecasts"}:
             requests = [({}, response)]
         elif endpoint == "worldcup-player-spotlight":
             requests = [({"player_urn": subject.get("key")}, response)]
@@ -298,6 +300,7 @@ def build_replay_plan(manifest: dict[str, Any], replay_dir: Path, journal: dict[
                 "status": "captured" if output.exists() else state.get("status", "pending"),
                 "workflow_run_id": state.get("workflow_run_id"), "attempts": int(state.get("attempts", 0)),
                 "expected_response": expected_response,
+                "expected_response_sha256": CONNECTOR._archive_sha256(response),
             })
     return {"schema_version": 1, "item_count": len(items), "items": items}
 
@@ -396,6 +399,8 @@ def _validate_replay_execution(item: dict[str, Any], execution: dict[str, Any]) 
     archive = outputs.get("archive") if isinstance(outputs.get("archive"), dict) else {}
     if archive.get("status") != "hit" or archive.get("version") != CONNECTOR.FINAL_ARCHIVE_VERSION:
         raise ARCHIVE.ArchivePreparationError(f"replay did not produce a v2 archive hit for {item['key']}")
+    if item.get("expected_response_sha256") and archive.get("response_sha256") != item["expected_response_sha256"]:
+        raise ARCHIVE.ArchivePreparationError(f"replay archive snapshot hash mismatch for {item['key']}")
     if outputs.get("workflow-status") != "executed":
         raise ARCHIVE.ArchivePreparationError(f"replay public workflow did not execute for {item['key']}")
     tokens = (((execution.get("workflow_output") or {}).get("audit") or {}).get("execution_tokens") or {})
@@ -425,7 +430,8 @@ def _validate_replay_execution(item: dict[str, Any], execution: dict[str, Any]) 
     for key, value in expected.items():
         if key == "archive":
             actual_archive = outputs.get("archive") if isinstance(outputs.get("archive"), dict) else {}
-            if any(actual_archive.get(field) != expected["archive"].get(field) for field in expected["archive"]):
+            transport_fields = {"version", "status", "response_sha256", "source_manifest_sha256", "request_identity_sha256"}
+            if any(actual_archive.get(field) != expected["archive"].get(field) for field in expected["archive"] if field not in transport_fields):
                 raise ARCHIVE.ArchivePreparationError(f"replay archive metadata mismatch for {item['key']}")
         elif outputs.get(key) != value:
             raise ARCHIVE.ArchivePreparationError(f"replay public field mismatch for {item['key']}: {key}")

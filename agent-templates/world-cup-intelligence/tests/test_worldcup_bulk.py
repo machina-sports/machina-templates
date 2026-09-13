@@ -493,6 +493,8 @@ def test_replay_plan_uses_manifest_subjects_for_all_eleven_workflows(tmp_path):
     resolve_request = next(item["request"] for item in plan["items"] if item["workflow"] == "worldcup-resolve")
     assert fixture_request == {"event_urn": EVENT_URN}
     assert resolve_request == {"id": "urn:machina:sport:soccer:team:brazil:bra"}
+    assert next(item["request"] for item in plan["items"] if item["workflow"] == "worldcup-get-schedule") == {"limit": 500}
+    assert all(len(item["expected_response_sha256"]) == 64 for item in plan["items"])
 
 
 def test_replay_requires_hit_pure_trace_and_explicit_zero_tokens(tmp_path):
@@ -519,6 +521,21 @@ def test_replay_requires_hit_pure_trace_and_explicit_zero_tokens(tmp_path):
         ],
     }
     BULK._validate_replay_execution(item, execution)
+    transported_item = copy.deepcopy(item)
+    transported_item["expected_response"]["archive"] = {
+        "version": "world-cup-2026-final-v1", "status": "hit",
+        "response_sha256": "original-capture-hash", "capability_status": "complete",
+    }
+    transported_item["expected_response_sha256"] = "a" * 64
+    transported = copy.deepcopy(execution)
+    transported["workflow_output"]["outputs"]["archive"].update({"response_sha256": "a" * 64, "capability_status": "complete"})
+    BULK._validate_replay_execution(transported_item, transported)
+    transported["workflow_output"]["outputs"]["archive"]["response_sha256"] = "b" * 64
+    with pytest.raises(BULK.ARCHIVE.ArchivePreparationError, match="snapshot hash mismatch"):
+        BULK._validate_replay_execution(transported_item, transported)
+    transported["workflow_output"]["outputs"]["archive"].update({"response_sha256": "a" * 64, "capability_status": "partial"})
+    with pytest.raises(BULK.ARCHIVE.ArchivePreparationError, match="archive metadata mismatch"):
+        BULK._validate_replay_execution(transported_item, transported)
     missing_tokens = copy.deepcopy(execution)
     missing_tokens["workflow_output"]["audit"]["execution_tokens"] = {}
     with pytest.raises(BULK.ARCHIVE.ArchivePreparationError, match="zero token"):
