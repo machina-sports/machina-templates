@@ -154,7 +154,7 @@ def test_backtest_uses_scoped_cached_final_events_when_live_provider_is_unavaila
     assert adapted == expected
     assert result["fixture_status"] == "partial"
     assert result["provenance"] == "worldcup-event-cache"
-    assert "using cached World Cup 2026 final events" in result["warnings"][0]
+    assert "using cached world cup 2026 final events" in result["warnings"][0].lower()
     assert select["connector"]["command"] == "select_backtest_finished_fixtures"
 
     audit = MODULE.compute_forecast_audit(

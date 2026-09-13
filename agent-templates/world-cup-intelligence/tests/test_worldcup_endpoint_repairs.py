@@ -72,6 +72,38 @@ def test_public_player_performance_ignores_caller_forged_official_ranking():
     assert (result.get("scores") or {}).get("attacking") is None
 
 
+def test_fixture_text_is_preserved_alongside_a_player_team_filter():
+    fixtures = [
+        event("urn:event:brazil-morocco", "101", "Brazil", "Morocco"),
+        event("urn:event:brazil-japan", "102", "Brazil", "Japan"),
+        event("urn:event:morocco-canada", "103", "Morocco", "Canada"),
+    ]
+    for team in ("Brazil", "Morocco"):
+        result = MODULE.resolve_archived_fixture({"params": {
+            "events": fixtures, "event": "Brazil vs Morocco", "team": team,
+        }})["data"]
+        assert result["event_urn"] == "urn:event:brazil-morocco"
+        assert result["warnings"] == []
+    contradictory = MODULE.resolve_archived_fixture({"params": {
+        "events": fixtures, "event": "Brazil vs Morocco", "team": "Japan",
+    }})["data"]
+    assert contradictory["event"] == {}
+    assert contradictory["warnings"]
+
+
+def test_backtest_uses_the_three_outcome_mean_brier_uniform_baseline():
+    # Synthetic audit: 0.23 loses to uniform 1X2 but would beat the wrong 0.25 threshold.
+    row = {"fixture_id": "synthetic-fixture", "brier_scores": {"combined_1x2": 0.23, "over_2_5": 0.2}}
+    result = MODULE._aggregate_audit([row])
+    scores = result["brier_scores"]
+    assert scores["baseline_random"] == round(2 / 9, 4)
+    assert scores["baseline_random_1x2"] == round(2 / 9, 4)
+    assert scores["baseline_random_over_2_5"] == 0.25
+    assert scores["is_better_than_random"] is False
+    row["brier_scores"]["combined_1x2"] = round(2 / 9, 4)
+    assert MODULE._aggregate_audit([row])["brier_scores"]["is_better_than_random"] is False
+
+
 def test_fixture_resolution_is_exact_unique_and_never_chooses_first_ambiguity():
     events = [
         event("urn:event:brazil-morocco", "101", "Brazil", "Morocco"),

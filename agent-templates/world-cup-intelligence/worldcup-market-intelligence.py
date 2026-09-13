@@ -2181,14 +2181,15 @@ def resolve_archived_fixture(request_data: dict[str, Any]) -> dict[str, Any]:
             "warnings": ["No fixture identifier supplied; pass event_urn, provider_event_id, event, or team/opponent/date."],
         }}
 
-    if event_text and not team and not opponent:
+    event_teams = []
+    if event_text:
         lowered = _lower(event_text)
         for separator in (" vs. ", " vs ", " v ", " x ", " - ", " – ", " — "):
             if separator in lowered:
-                team, opponent = (part.strip() for part in lowered.split(separator, 1))
+                event_teams = [part.strip() for part in lowered.split(separator, 1)]
                 break
         else:
-            team = event_text
+            event_teams = [event_text]
 
     matches: list[dict[str, Any]] = []
     for value in events:
@@ -2201,6 +2202,10 @@ def resolve_archived_fixture(request_data: dict[str, Any]) -> dict[str, Any]:
             continue
         competitors = value.get("sport:competitors") or value.get("teams") or []
         names = {_canonical_team_slug(item.get("name")) for item in competitors if isinstance(item, dict)}
+        # A player team is an additional constraint, not a replacement for the
+        # fixture pair supplied in event text.
+        if event_teams and not all(_canonical_team_slug(name) in names for name in event_teams):
+            continue
         if team and _canonical_team_slug(team) not in names:
             continue
         if opponent and _canonical_team_slug(opponent) not in names:
@@ -7087,14 +7092,20 @@ def _aggregate_audit(audits: list[dict[str, Any]]) -> dict[str, Any]:
                       "predicted_avg": round(pred_avg, 4), "actual_rate": round(actual_rate, 4)})
         cal_error_num += bk["count"] * abs(pred_avg - actual_rate)
     avg_cal_error = round(cal_error_num / n, 4)
-    better = avg_1x2 < 0.25
-    rec = ("Brier %.4f vs 0.25 random (%s); calibration error %.4f (target <0.05)."
-           % (avg_1x2, "better than random" if better else "not better than random", avg_cal_error))
+    # combined_1x2 is the mean Brier over three outcomes, so a uniform
+    # forecast has baseline 2/9. The binary over/under baseline remains 1/4.
+    baseline_1x2 = round(2.0 / 9.0, 4)
+    better = round(avg_1x2, 4) < baseline_1x2
+    rec = ("1X2 mean Brier %.4f vs %.4f uniform baseline (%s); calibration error %.4f (target <0.05)."
+           % (avg_1x2, baseline_1x2, "better than uniform" if better else "not better than uniform", avg_cal_error))
     return {
         "sample_size": n,
         "sample_size_sufficient": n >= 50,
         "brier_scores": {"avg_1x2": round(avg_1x2, 4), "avg_over_2_5": round(avg_over, 4),
-                         "baseline_random": 0.25, "is_better_than_random": better},
+                         "baseline_random": baseline_1x2,
+                         "baseline_random_1x2": baseline_1x2,
+                         "baseline_random_over_2_5": 0.25,
+                         "is_better_than_random": better},
         "accuracy": {"correct": correct, "total": n, "accuracy_percent": round(100 * correct / n, 2)},
         "calibration": {"avg_calibration_error": avg_cal_error, "curve": curve},
         "recommendation": rec,
@@ -7275,8 +7286,8 @@ def select_backtest_finished_fixtures(request_data: dict[str, Any]) -> dict[str,
     warnings = []
     if cached_fixtures:
         warnings.append(
-            "Live API-Football returned no usable final fixtures or was unavailable; "
-            "using cached World Cup 2026 final events."
+            "Using cached World Cup 2026 final events; "
+            "provider freshness and completeness are not inferred."
         )
     else:
         warnings.append("No usable final fixtures were returned live or found in the World Cup 2026 cache.")
