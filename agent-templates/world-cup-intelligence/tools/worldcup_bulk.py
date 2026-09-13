@@ -325,8 +325,17 @@ def _decode_tool_result(result: Any) -> dict[str, Any]:
 
 
 def _payload_data(envelope: dict[str, Any]) -> Any:
-    data = envelope.get("data")
-    return data.get("data") if isinstance(data, dict) and "data" in data else data
+    """Unwrap transport envelopes, never a document's own data field."""
+    value: Any = envelope
+    control_keys = {"data", "status", "success", "message", "error", "meta", "pagination", "page", "page_size", "total", "total_documents", "total_pages"}
+    for _ in range(8):
+        if not isinstance(value, dict) or "data" not in value or not set(value) <= control_keys:
+            return value
+        status = value.get("status")
+        if status is False or value.get("success") is False or str(status).lower() in {"error", "failed", "failure"} or (isinstance(status, int) and not isinstance(status, bool) and status >= 400):
+            raise ARCHIVE.ArchivePreparationError(f"MCP nested envelope failed with status {status}")
+        value = value["data"]
+    raise ARCHIVE.ArchivePreparationError("MCP transport envelope nesting exceeded its bound")
 
 
 class McpOperator:

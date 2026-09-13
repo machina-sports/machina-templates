@@ -469,7 +469,13 @@ def test_mcp_execution_contract_and_failed_envelopes_are_exact():
 
         async def call_tool(self, name, arguments):
             self.calls.append((name, arguments))
-            return Result({"content": [{"type": "text", "text": json.dumps({"status": "success", "data": {"data": execution}})}], "isError": False})
+            if name == "execute_workflow":
+                payload = {"status": "success", "message": "Workflow executed successfully", "data": {
+                    "status": 200, "data": {"status": True, "message": "Workflow execution scheduled", "data": {"workflow_run_id": "run-1"}},
+                }}
+            else:
+                payload = {"status": "success", "data": {"data": execution}}
+            return Result({"content": [{"type": "text", "text": json.dumps(payload)}], "isError": False})
 
     session = Session()
     assert asyncio.run(BULK.McpOperator(session).get_execution("run-1")) == execution
@@ -478,6 +484,12 @@ def test_mcp_execution_contract_and_failed_envelopes_are_exact():
         "compact": False,
         "fields": ["_id", "name", "status", "date", "workflow_output", "request_data", "tasks"],
     })]
+    assert asyncio.run(BULK.McpOperator(session).execute_workflow("workflow", {"id": "known"})) == "run-1"
+    assert session.calls[-1] == ("execute_workflow", {"name": "workflow", "context": {"id": "known"}})
+    document = {"_id": "document", "data": {"business": "payload"}}
+    assert BULK._payload_data({"status": "success", "data": {"status": True, "data": document}}) == document
+    with pytest.raises(BULK.ARCHIVE.ArchivePreparationError, match="nested envelope failed"):
+        BULK._payload_data({"status": "success", "data": {"status": 403, "data": {"message": "forbidden"}}})
     assert BULK._sse_headers("token") == {"X-Api-Token": "token"}
     assert "Authorization" not in BULK._sse_headers("token")
     with pytest.raises(BULK.ARCHIVE.ArchivePreparationError, match="isError"):
