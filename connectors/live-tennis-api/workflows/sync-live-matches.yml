@@ -1,0 +1,108 @@
+workflow:
+  name: "live-tennis-api-sync-live-matches"
+  title: "Live Tennis API - Sync Live Matches"
+  description: "Lists every match currently in play (one FREE request), flattens the player-major score into a document per match, and carries the connector's derived break-point flag (receiver at AD, or receiver at 40 against 0/15/30; never inside a tiebreak; null when the state is unknown)."
+  context-variables:
+    debugger:
+      enabled: true
+    live-tennis-api:
+      api_key: "$TEMP_CONTEXT_VARIABLE_LIVE_TENNIS_API_KEY"
+  inputs:
+    tour: "$.get('tour')"
+    draw: "$.get('draw')"
+    limit: "$.get('limit', 50)"
+  outputs:
+    matches: "$.get('matches', [])"
+    matches_count: "$.get('matches_count', 0)"
+    break_points: "$.get('break_points', [])"
+    error: "$.get('error')"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # task-load-live-matches
+    - type: "connector"
+      name: "task-load-live-matches"
+      description: "GET /matches?status=live — the current in-play picture. One request against the FREE budget (30/min, 100/day)."
+      connector:
+        name: "live-tennis-api"
+        command: "get_live_matches"
+      inputs:
+        api_key: "$.get('api_key')"
+        tour: "$.get('tour')"
+        draw: "$.get('draw')"
+        limit: "$.get('limit', 50)"
+      outputs:
+        # The connector returns {status, data: {matches: [...], meta: {...}}}; the
+        # engine exposes the `data` keys directly. On a failure `matches` is absent
+        # and `message` carries the reason (401 bad key, 429 quota, ...).
+        error: "None if $.get('matches') is not None else ($.get('message') or 'live-tennis-api call failed')"
+        matches: |
+          [
+            {
+              'match_id': m.get('id'),
+              'tournament': m.get('tournament'),
+              'tournament_id': m.get('tournament_id'),
+              'tour': m.get('tour'),
+              'draw': m.get('draw'),
+              'round': m.get('round'),
+              'round_code': m.get('round_code'),
+              'surface': m.get('surface'),
+              'format': m.get('format'),
+              'status': m.get('status'),
+              'event_status': m.get('event_status'),
+              'scheduled_time': m.get('scheduled_time'),
+              'live_at': m.get('live_at'),
+              'player1_id': ((m.get('players') or {}).get('p1') or {}).get('id'),
+              'player1_name': ((m.get('players') or {}).get('p1') or {}).get('name'),
+              'player1_ranking': ((m.get('players') or {}).get('p1') or {}).get('ranking'),
+              'player2_id': ((m.get('players') or {}).get('p2') or {}).get('id'),
+              'player2_name': ((m.get('players') or {}).get('p2') or {}).get('name'),
+              'player2_ranking': ((m.get('players') or {}).get('p2') or {}).get('ranking'),
+              'sets': (m.get('score') or {}).get('sets'),
+              'games': (m.get('score') or {}).get('games'),
+              'points': (m.get('score') or {}).get('points'),
+              'server': (m.get('score') or {}).get('server'),
+              'is_tiebreak': (m.get('score') or {}).get('is_tiebreak'),
+              'score_timestamp': (m.get('score') or {}).get('timestamp'),
+              'break_point': (m.get('derived') or {}).get('break_point'),
+              'receiver': (m.get('derived') or {}).get('receiver')
+            }
+            for m in ($.get('matches') if isinstance($.get('matches'), list) else [])
+            if isinstance(m, dict)
+          ]
+        matches_count: "len($.get('matches')) if isinstance($.get('matches'), list) else 0"
+        break_points: |
+          [
+            m.get('id')
+            for m in ($.get('matches') if isinstance($.get('matches'), list) else [])
+            if isinstance(m, dict) and (m.get('derived') or {}).get('break_point') is True
+          ]
+        workflow-status: "'executed' if isinstance($.get('matches'), list) else 'failed'"
+
+    # task-bulk-save-live-matches
+    - type: "document"
+      name: "task-bulk-save-live-matches"
+      description: "Save one document per live match, keyed by the provider match id."
+      condition: "len($.get('matches', [])) > 0"
+      config:
+        action: "bulk-update"
+        # Structured live state is queried by fields, not semantic similarity.
+        embed-vector: false
+        force-update: true
+      document_name: "'live-tennis-api-match'"
+      documents:
+        items: |
+          [
+            {
+              **m,
+              'metadata': {
+                'match_id': str(m.get('match_id', '')),
+                'tour': m.get('tour'),
+                'break_point': m.get('break_point')
+              },
+              'title': f"{m.get('player1_name') or '?'} vs {m.get('player2_name') or '?'} - {m.get('tournament') or ''}",
+              'execution': datetime.utcnow(),
+              'status': 'active'
+            }
+            for m in $.get('matches', [])
+          ]
