@@ -22,6 +22,19 @@ def call(name, params=None):
     return getattr(module, name)({'params': params or {}})['data']
 
 
+def evaluate_state(expression, state):
+    if expression.strip() == '$':
+        return state
+    return eval(expression.replace('$.get', 'state.get'), {'state': state})
+
+
+def evaluate_output(expression, response, state=None):
+    if expression.strip() == '$':
+        return response
+    prepared = expression.replace('$.context', 'state').replace('$.get', 'response.get')
+    return eval(prepared, {'state': state or {}, 'response': response})
+
+
 @pytest.fixture(autouse=True)
 def clock(monkeypatch):
     monkeypatch.setattr(module, 'now', lambda: NOW)
@@ -213,12 +226,12 @@ def test_native_workflow_owns_collection_model_and_storage_and_cache_inputs_are_
     workflow = yaml.safe_load((ROOT / 'agent-templates/machina-read/workflows/machina-read-produce-daily.yml').read_text())['workflow']
     assert workflow['status'] == 'draft'
     models = [t for t in workflow['tasks'] if t.get('connector', {}).get('name') == 'machina-ai']
-    assert len(models) == 1 and models[0]['connector']['model'] == 'gemini-3.5-flash-lite'
+    assert len(models) == 2 and all(model['connector']['model'] == 'gemini-3.5-flash-lite' for model in models)
     assert any(t.get('config', {}).get('action') == 'save' for t in workflow['tasks'])
     for task in workflow['tasks']:
         for expression in task.get('inputs', {}).values():
             if '.get(\'focus\')' in expression:
-                assert eval(expression.replace('$', 'state'), {'state': {}}) in (None, '')
+                assert evaluate_state(expression, {}) in (None, '')
     reader = yaml.safe_load((ROOT / 'agent-templates/machina-read/workflows/machina-read-get-latest.yml').read_text())['workflow']
     assert not any(t.get('connector', {}).get('name') in {'sports-skills', 'machina-ai'} or t.get('config', {}).get('action') == 'save' for t in reader['tasks'])
 
@@ -228,7 +241,7 @@ def test_native_operator_controls_are_strict_and_default_to_cached_public_runs()
     inputs = workflow['inputs']
 
     def resolve(name, context):
-        return eval(inputs[name].replace('$', 'state'), {'state': context})
+        return evaluate_state(inputs[name], context)
 
     assert set(inputs) == {'force_refresh', 'publish_public'}
     assert resolve('force_refresh', {}) is False
@@ -243,9 +256,11 @@ def test_native_operator_controls_are_strict_and_default_to_cached_public_runs()
     cache_search = next(task for task in workflow['tasks'] if task['name'] == 'find-current-edition')
     cache_documents = cache_search['outputs']['read_existing']
     documents = [{'value': {'publicApproved': True}}]
-    assert eval(cache_documents.replace('$', 'state'), {'state': {'documents': documents}}) == documents
-    assert eval(cache_documents.replace('$', 'state'), {
-        'state': {'documents': documents, 'force_refresh': True}}) == []
+    def output(expression, response, state):
+        return evaluate_output(expression, response, state)
+
+    assert output(cache_documents, {'documents': documents}, {}) == documents
+    assert output(cache_documents, {'documents': documents}, {'force_refresh': True}) == []
     cache = next(task for task in workflow['tasks'] if task['name'] == 'check-native-cache')
     assert cache['inputs']['documents'] == "$.get('read_existing', [])"
 
@@ -260,12 +275,12 @@ def test_private_generation_returns_only_a_draft_preview_and_cannot_bypass_publi
     public = {'schemaVersion': 4, 'story': {'headline': 'Draft'}}
     state = {'read_cache': {'hit': False}, 'read_saved_id': 'draft-id',
              'read_final': {'edition': private, 'public': public}}
-    assert eval(outputs['edition'].replace('$', 'state'), {'state': state}) == {}
-    assert eval(outputs['preview'].replace('$', 'state'), {'state': state}) == private
+    assert evaluate_state(outputs['edition'], state) == {}
+    assert evaluate_state(outputs['preview'], state) == private
 
     state['read_final']['edition']['publicApproved'] = True
-    assert eval(outputs['edition'].replace('$', 'state'), {'state': state}) == public
-    assert eval(outputs['preview'].replace('$', 'state'), {'state': state}) == {}
+    assert evaluate_state(outputs['edition'], state) == public
+    assert evaluate_state(outputs['preview'], state) == {}
 
     public_filters = [task['filters']['value.publicApproved'] for task in workflow['tasks']
                       if task.get('filters', {}).get('name') == "'machina-read-edition'"]
@@ -278,7 +293,12 @@ def test_every_native_expression_compiles_before_import():
         nodes = [workflow, *workflow.get('tasks', [])]
         for node in nodes:
             expressions = [node['condition']] if 'condition' in node else []
-            for key in ('inputs', 'outputs', 'filters', 'documents', 'metadata'):
+            for key in ('inputs', 'filters', 'documents', 'metadata'):
                 expressions += [value for value in node.get(key, {}).values() if isinstance(value, str)]
             for expression in expressions:
-                compile(expression.replace('$', 'state'), str(path), 'eval')
+                prepared = 'state' if expression.strip() == '$' else expression.replace('$.get', 'state.get')
+                compile(prepared, str(path), 'eval')
+            for expression in [value for value in node.get('outputs', {}).values() if isinstance(value, str)]:
+                prepared = ('response' if expression.strip() == '$' else
+                            expression.replace('$.context', 'state').replace('$.get', 'response.get'))
+                compile(prepared, str(path), 'eval')

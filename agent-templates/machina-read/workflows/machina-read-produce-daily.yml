@@ -1,9 +1,9 @@
 workflow:
   name: machina-read-produce-daily
   title: Machina Read - Best story of the day
-  description: Native broad sports collection through sports-skills plus bounded public ESPN reporting, Polymarket and
-    Kalshi, bounded candidate shortlisting, one Gemini editorial selection through machina-ai, publication validation and
-    native v4 document storage. No local runner or shadow collector. Manual/draft until activation approval.
+  description: Native broad sports discovery and full ESPN reporting, Gemini story selection, bounded provider-ID-resolved
+    Sports Skills and prediction-market research, Gemini explanatory writing, publication validation and native v4 document
+    storage. No local runner or shadow collector. Manual/draft until activation approval.
   status: draft
   inputs:
     force_refresh: $.get('force_refresh', False) is True
@@ -41,7 +41,7 @@ workflow:
       value.publicApproved: 'True'
       metadata.edition_date: $.get('read_clock', {}).get('date')
     outputs:
-      read_existing: '[] if $.get(''force_refresh'', False) is True else $.get(''documents'', [])'
+      read_existing: '[] if $.context.get(''force_refresh'', False) is True else $.get(''documents'', [])'
   - type: connector
     name: check-native-cache
     connector:
@@ -167,70 +167,6 @@ workflow:
       tour: '''wta'''
     outputs:
       read_tennis_wta: $
-    condition: $.get('read_cache', {}).get('hit') is not True
-    continue_on_error: true
-  - type: connector
-    name: collect-polymarket-events
-    connector:
-      name: sports-skills
-      command: invoke_polymarket
-    inputs:
-      command: '''get_sports_events'''
-      limit: '20'
-      active: 'True'
-      closed: 'False'
-    outputs:
-      read_raw_polymarket: $
-    condition: $.get('read_cache', {}).get('hit') is not True
-    continue_on_error: true
-  - type: connector
-    name: compact-polymarket-events
-    connector:
-      name: machina-read-multisport
-      command: compact
-    inputs:
-      kind: '''polymarket'''
-      raw: $.get('read_raw_polymarket', {})
-    outputs:
-      read_polymarket: $
-    condition: $.get('read_cache', {}).get('hit') is not True
-    continue_on_error: true
-  - type: connector
-    name: collect-kalshi-baseball
-    connector:
-      name: sports-skills
-      command: invoke_kalshi
-    inputs:
-      command: '''get_markets'''
-      series_ticker: '''KXMLB'''
-      status: '''open'''
-      limit: '30'
-    outputs:
-      read_raw_kalshi: $
-    condition: $.get('read_cache', {}).get('hit') is not True
-    continue_on_error: true
-  - type: connector
-    name: collect-baseball-identities
-    connector:
-      name: sports-skills
-      command: invoke_mlb
-    inputs:
-      command: '''get_teams'''
-    outputs:
-      read_baseball_identities: $
-    condition: $.get('read_cache', {}).get('hit') is not True
-    continue_on_error: true
-  - type: connector
-    name: compact-kalshi-baseball
-    connector:
-      name: machina-read-multisport
-      command: compact
-    inputs:
-      kind: '''kalshi'''
-      raw: $.get('read_raw_kalshi', {})
-      identities: $.get('read_baseball_identities', {})
-    outputs:
-      read_kalshi: $
     condition: $.get('read_cache', {}).get('hit') is not True
     continue_on_error: true
   - type: connector
@@ -713,8 +649,6 @@ workflow:
       football: $.get('read_football', {})
       tennis_atp: $.get('read_tennis_atp', {})
       tennis_wta: $.get('read_tennis_wta', {})
-      polymarket: $.get('read_polymarket', {})
-      kalshi: $.get('read_kalshi', {})
       news_football: $.get('read_news_football', {})
       news_americanfootball: $.get('read_news_americanfootball', {})
       news_baseball: $.get('read_news_baseball', {})
@@ -737,7 +671,7 @@ workflow:
       read_context: $
     condition: $.get('read_cache', {}).get('hit') is not True
   - type: connector
-    name: select-and-write-best-story
+    name: select-researchable-story
     connector:
       name: machina-ai
       command: invoke_chat
@@ -746,11 +680,235 @@ workflow:
       profile: balanced
     inputs:
       prompt: $.get('read_context', {}).get('prompt')
+      max_output_tokens: '2048'
+      temperature: '0.1'
+    outputs:
+      read_selection_model: $
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_context', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: plan-selected-research
+    connector:
+      name: machina-read-multisport
+      command: plan_research
+    inputs:
+      context_pack: $.get('read_context', {})
+      model_reply: $.get('read_selection_model', {})
+    outputs:
+      read_research_plan: $
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_context', {}).get('status') == 'ready'
+  - type: connector
+    name: research-discovery-football
+    connector: {name: sports-skills, command: invoke_football}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_research_plan'', {}).get(''requests'', []) if item.get(''module'') == ''football'']'}
+    inputs: &research-inputs
+      command: $.get('research_item', {}).get('command')
+      date: $.get('research_item', {}).get('date')
+      season: $.get('research_item', {}).get('season')
+      season_year: $.get('research_item', {}).get('season_year')
+      season_type: $.get('research_item', {}).get('season_type')
+      team_id: $.get('research_item', {}).get('team_id')
+      event_id: $.get('research_item', {}).get('event_id')
+      query: $.get('research_item', {}).get('query')
+      tour: $.get('research_item', {}).get('tour')
+      series_id: $.get('research_item', {}).get('series_id')
+      sport: $.get('research_item', {}).get('sport')
+    outputs:
+      read_discovery_football: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_research_plan', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-discovery-nfl
+    connector: {name: sports-skills, command: invoke_nfl}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_research_plan'', {}).get(''requests'', []) if item.get(''module'') == ''nfl'']'}
+    inputs: *research-inputs
+    outputs:
+      read_discovery_nfl: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_research_plan', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-discovery-mlb
+    connector: {name: sports-skills, command: invoke_mlb}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_research_plan'', {}).get(''requests'', []) if item.get(''module'') == ''mlb'']'}
+    inputs: *research-inputs
+    outputs:
+      read_discovery_mlb: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_research_plan', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-discovery-nba
+    connector: {name: sports-skills, command: invoke_nba}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_research_plan'', {}).get(''requests'', []) if item.get(''module'') == ''nba'']'}
+    inputs: *research-inputs
+    outputs:
+      read_discovery_nba: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_research_plan', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-discovery-nhl
+    connector: {name: sports-skills, command: invoke_nhl}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_research_plan'', {}).get(''requests'', []) if item.get(''module'') == ''nhl'']'}
+    inputs: *research-inputs
+    outputs:
+      read_discovery_nhl: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_research_plan', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-discovery-tennis
+    connector: {name: sports-skills, command: invoke_tennis}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_research_plan'', {}).get(''requests'', []) if item.get(''module'') == ''tennis'']'}
+    inputs: *research-inputs
+    outputs:
+      read_discovery_tennis: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_research_plan', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-discovery-golf
+    connector: {name: sports-skills, command: invoke_golf}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_research_plan'', {}).get(''requests'', []) if item.get(''module'') == ''golf'']'}
+    inputs: *research-inputs
+    outputs:
+      read_discovery_golf: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_research_plan', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-discovery-f1
+    connector: {name: sports-skills, command: invoke_f1}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_research_plan'', {}).get(''requests'', []) if item.get(''module'') == ''f1'']'}
+    inputs: *research-inputs
+    outputs:
+      read_discovery_f1: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_research_plan', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-discovery-cricket
+    connector: {name: sports-skills, command: invoke_cricket}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_research_plan'', {}).get(''requests'', []) if item.get(''module'') == ''cricket'']'}
+    inputs: *research-inputs
+    outputs:
+      read_discovery_cricket: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_research_plan', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: resolve-selected-identities
+    connector: {name: machina-read-multisport, command: resolve_research}
+    inputs:
+      plan: $.get('read_research_plan', {})
+      football: $.get('read_discovery_football', [])
+      nfl: $.get('read_discovery_nfl', [])
+      mlb: $.get('read_discovery_mlb', [])
+      nba: $.get('read_discovery_nba', [])
+      nhl: $.get('read_discovery_nhl', [])
+      tennis: $.get('read_discovery_tennis', [])
+      golf: $.get('read_discovery_golf', [])
+      f1: $.get('read_discovery_f1', [])
+      cricket: $.get('read_discovery_cricket', [])
+    outputs:
+      read_resolved_research: $
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_research_plan', {}).get('status') == 'ready'
+  - type: connector
+    name: research-target-football
+    connector: {name: sports-skills, command: invoke_football}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_resolved_research'', {}).get(''requests'', []) if item.get(''module'') == ''football'']'}
+    inputs: *research-inputs
+    outputs:
+      read_target_football: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_resolved_research', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-target-nfl
+    connector: {name: sports-skills, command: invoke_nfl}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_resolved_research'', {}).get(''requests'', []) if item.get(''module'') == ''nfl'']'}
+    inputs: *research-inputs
+    outputs:
+      read_target_nfl: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_resolved_research', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-target-mlb
+    connector: {name: sports-skills, command: invoke_mlb}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_resolved_research'', {}).get(''requests'', []) if item.get(''module'') == ''mlb'']'}
+    inputs: *research-inputs
+    outputs:
+      read_target_mlb: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_resolved_research', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-target-nba
+    connector: {name: sports-skills, command: invoke_nba}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_resolved_research'', {}).get(''requests'', []) if item.get(''module'') == ''nba'']'}
+    inputs: *research-inputs
+    outputs:
+      read_target_nba: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_resolved_research', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-target-nhl
+    connector: {name: sports-skills, command: invoke_nhl}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_resolved_research'', {}).get(''requests'', []) if item.get(''module'') == ''nhl'']'}
+    inputs: *research-inputs
+    outputs:
+      read_target_nhl: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_resolved_research', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-target-cricket
+    connector: {name: sports-skills, command: invoke_cricket}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_resolved_research'', {}).get(''requests'', []) if item.get(''module'') == ''cricket'']'}
+    inputs: *research-inputs
+    outputs:
+      read_target_cricket: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_resolved_research', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: research-target-markets
+    connector: {name: sports-skills, command: invoke_markets}
+    foreach: {concurrent: false, name: research_item, expr: '$', value: '[item for item in $.get(''read_resolved_research'', {}).get(''requests'', []) if item.get(''module'') == ''markets'']'}
+    inputs: *research-inputs
+    outputs:
+      read_target_markets: '[{''request'': $.context.get(''research_item'', {}), ''response'': response}]'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_resolved_research', {}).get('status') == 'ready'
+    continue_on_error: true
+  - type: connector
+    name: compact-researched-story
+    connector: {name: machina-read-multisport, command: build_research_brief}
+    inputs:
+      plan: $.get('read_research_plan', {})
+      resolution: $.get('read_resolved_research', {})
+      discovery_football: $.get('read_discovery_football', [])
+      discovery_nfl: $.get('read_discovery_nfl', [])
+      discovery_mlb: $.get('read_discovery_mlb', [])
+      discovery_nba: $.get('read_discovery_nba', [])
+      discovery_nhl: $.get('read_discovery_nhl', [])
+      discovery_tennis: $.get('read_discovery_tennis', [])
+      discovery_golf: $.get('read_discovery_golf', [])
+      discovery_f1: $.get('read_discovery_f1', [])
+      discovery_cricket: $.get('read_discovery_cricket', [])
+      target_football: $.get('read_target_football', [])
+      target_nfl: $.get('read_target_nfl', [])
+      target_mlb: $.get('read_target_mlb', [])
+      target_nba: $.get('read_target_nba', [])
+      target_nhl: $.get('read_target_nhl', [])
+      target_cricket: $.get('read_target_cricket', [])
+      target_markets: $.get('read_target_markets', [])
+    outputs:
+      read_research_context: $
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_resolved_research', {}).get('status') == 'ready'
+  - type: connector
+    name: write-researched-story
+    connector:
+      name: machina-ai
+      command: invoke_chat
+      provider: vertex_ai
+      model: gemini-3.5-flash-lite
+      profile: balanced
+    inputs:
+      prompt: $.get('read_research_context', {}).get('prompt')
       max_output_tokens: '4096'
       temperature: '0.3'
     outputs:
       read_model: $
-    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_context', {}).get('status') == 'ready'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_research_context', {}).get('status') == 'ready'
     continue_on_error: true
   - type: connector
     name: validate-generated-story
@@ -758,12 +916,12 @@ workflow:
       name: machina-read-multisport
       command: finalize
     inputs:
-      context_pack: $.get('read_context', {})
+      context_pack: $.get('read_research_context', {})
       model_reply: $.get('read_model', {})
       publish_public: $.get('publish_public', True)
     outputs:
       read_final: $
-    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_context', {}).get('status') == 'ready'
+    condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_research_context', {}).get('status') == 'ready'
   - type: document
     name: store-native-edition
     condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_final', {}).get('status') == 'ready'
@@ -787,7 +945,9 @@ workflow:
       cache: $.get('read_cache', {})
       saved: $.get('read_saved_id')
       final: $.get('read_final', {})
-      context: $.get('read_context', {})
+      context: $.get('read_research_context', {})
+      plan: $.get('read_research_plan', {})
+      resolution: $.get('read_resolved_research', {})
     outputs:
       read_health: $
   - type: document

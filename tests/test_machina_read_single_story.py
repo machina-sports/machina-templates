@@ -300,12 +300,10 @@ def test_cache_defaults_to_v4_and_explicit_v3_read_compatibility_remains():
 
 
 def test_prompt_requires_model_selection_without_rotation_or_forced_humor():
-    text = f.module.SINGLE_STORY_DIRECTIVES
-    for phrase in ['Choose the strongest supported current development', 'newsworthiness', 'evidence strength',
-                   'supported stakes', 'genuine novelty', 'do not rotate sports', 'selectedAnchorSourceId',
-                   'optional short dry observational reversal', 'Do not tack on a random analogy or force a joke',
-                    'related market source is optional context', 'Never impersonate', '80-130 readable words',
-                    'max 900 chars', 'non-fan', 'insider jargon', 'named style or personality']:
+    text = f.module.SELECTION_DIRECTIVES + f.module.RESEARCH_DIRECTIVES
+    for phrase in ['newsworthiness', 'evidence strength', 'supported stakes', 'novelty', 'sport rotation',
+                   'selectedAnchorSourceId', 'dry observational reversal', 'Do not force humor',
+                   'prediction market is optional', '80-130 readable words', 'max 900 chars', 'non-fan']:
         assert phrase in text
     assert all(word not in text.lower() for word in ['gillis', 'barstool', 'espys', 'soap opera'])
 

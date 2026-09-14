@@ -4,18 +4,20 @@
 
 The production producer and reader request `edition_format: 4`. Each generated
 edition contains one sport and one concrete story. The producer builds a bounded,
-breadth-preserving shortlist of coherent candidate packets across every eligible
-sport it can fit. The existing single Gemini call chooses the strongest supported
-current development using newsworthiness, evidence, stakes and novelty. There is
-no sport rotation, fixed sport priority or requirement to spread editions across
-sports. The same sport may lead on successive days.
+breadth-preserving shortlist across every eligible sport it can fit. A first Gemini
+call ranks up to three full-article candidates using newsworthiness, evidence,
+stakes and novelty. Pure transforms then resolve names to provider IDs from native
+catalogs and schedules, dispatch bounded Sports Skills research, and select the
+first candidate with quantitative context. A second Gemini call writes only from
+that researched packet. There is no sport rotation or fixed sport priority.
 
 V4 is the transformer default so an omitted format cannot silently invoke the old
 cross-sport mashup. Explicit `edition_format: 3` still reads or assembles legacy v3
-records for compatibility. Each v4 candidate has one `article` or `event` anchor
-and may carry one conservatively matched same-subject market; markets are optional
-and do not have to be cited. Substantive public ESPN reporting is preferred, while
-RSS headlines cannot anchor a v4 edition. Writing uses self-contained facts and
+records for compatibility. Discovery can contain `article` or `event` anchors, but
+the research planner admits only a full `article` anchor for a new edition. The
+final packet contains that article, one provider-scoped `statistic`, and at most
+one exactly matched market. Markets are optional and do not have to be cited. RSS
+headlines cannot anchor a v4 edition. Writing uses self-contained facts and
 optional earned humor, not compulsory jokes or comparisons. Automated reporting
 never sets `editorReviewed`; that remains an independent consumer-owned signal.
 
@@ -37,8 +39,8 @@ is optional. Credentials remain runtime-owned. Do not update unrelated connector
 or routing policy as part of installation.
 
 - `machina-read-produce-daily`: native broad collection, deterministic pure
-  compaction and shortlisting, one Gemini selection/writing task, validation and
-  native v4 document save.
+  compaction and shortlisting, Gemini selection, targeted native research, Gemini
+  writing, validation and native v4 document save.
 - `machina-read-get-latest`: native v4 document retrieval, admission and expiry
   check only. No source calls or generation.
 - `machina-read-source-probe`: read-only installation canary for the older MLB
@@ -60,10 +62,22 @@ afterwards so raw feeds never accumulate into one oversized persisted output:
 | Cross-sport schedule | `sports-skills invoke_markets get_sport_schedule` for today |
 | Football (soccer) | `sports-skills invoke_football get_daily_schedule` for today |
 | Tennis | `sports-skills invoke_tennis get_scoreboard` for `atp` and `wta` |
-| Polymarket | `sports-skills invoke_polymarket get_sports_events` |
-| Kalshi | `sports-skills invoke_kalshi get_markets` on the `KXMLB` baseball series |
 | News | `sports-skills invoke_news fetch_items` once per supported sport (nine calls) |
 | Full reporting | `machina-read-reporting invoke_reporting` once per supported sport (nine fixed ESPN paths) |
+
+After selection, at most three choices enter research. The pure planner emits at
+most 12 discovery slots and 18 target slots. Native `sports-skills` tasks dispatch
+only allowlisted read commands through the sport-appropriate connector command:
+`invoke_football`, `invoke_nfl`, `invoke_mlb`, `invoke_nba`, `invoke_nhl`,
+`invoke_tennis`, `invoke_golf`, `invoke_f1`, `invoke_cricket`, or
+`invoke_markets`. Team IDs come from `get_teams`/`search_team`; event IDs come
+from dated scoreboards or schedules. Model output never supplies an ID.
+
+Team-sport research can include game summaries, team season stats, standings,
+schedule/form and injuries. Tennis, golf, motorsport and cricket use their own
+scoreboard, ranking, leaderboard, race or series commands. A candidate without a
+genuinely quantitative, subject-bound response is skipped in favor of the next
+ranked choice. If none qualifies, no replacement is stored.
 
 Every lane is filtered on its own observed timestamps, not on transport success.
 The live all-sport schedule returns fixtures months ahead, so events outside a
@@ -76,20 +90,12 @@ filtered on its own date and only completed matches with exactly one winner and
 two known competitors are used; the provider result line and set scores are
 preserved and no athlete identifier is invented.
 
-Market sport is classified only from explicit league or competition tokens in the
-provider's own title, slug and question. A requested sport label is never
-trusted, and a market matching two sports or none is skipped rather than guessed.
-Polymarket contracts must remain open for more than 24 hours at collection so a
-daily edition cannot expire between scheduled checks. Near-term game markets
-are deliberately excluded from this daily surface, not presented as live odds.
-Contracts that are closed, expired, stale (quote older than 24 hours), illiquid,
-or priced with a boolean, non-finite or out-of-range value are dropped, which
-also removes resolved contracts masquerading as active. Quotes are rendered from
-the provider value with `Decimal`, never by model arithmetic, and the provider
-quote time is carried separately from our observation time. The Kalshi lane is
-deliberately the proven baseball title series only; no wider Kalshi adapter and
-no identity join to other sports is claimed. No trade, wallet or order command is
-used anywhere.
+Broad discovery does not collect a market buffet. Only after Gemini selects named
+subjects does the workflow call `markets.search_entity` and `markets.match_markets`.
+The pure join distrusts requested sport labels and accepts only an exact season or
+next-fixture match. Boolean, non-finite and out-of-range prices are rejected. Quotes
+are rendered from provider values with `Decimal`, never by model arithmetic. No
+trade, wallet or order command is used anywhere.
 
 RSS news stays headline evidence: RFC publication dates control recency, headlines
 older than 48 hours or dated in the future are rejected, and routine "how to
@@ -104,16 +110,18 @@ reduced to plain text, excluding `script`, `style` and `embed`, and bounded to
 
 ## Shortlisting and coverage
 
-The v4 assembler admits substantive articles, concrete results and fixtures as
-anchors; a bare headline or static market quote cannot form a candidate. Within
+The v4 assembler discovers substantive articles, concrete results and fixtures;
+a bare headline or static market quote cannot form a candidate. The subsequent
+research planner requires a substantive article before any new edition. Within
 each sport articles precede event evidence, without forcing the final editorial
 choice. It takes one candidate per eligible sport before considering a second from
 any sport, up to two per sport and 12 total, while enforcing a 30,000-character
 candidate evidence budget and 40,000-byte prompt budget. This is deterministic
 capacity control, not a local editorial score: feed volume cannot fill the
 shortlist before other represented sports get a candidate, and the model makes
-the editorial choice. A same-subject market can be attached only after anchor
-breadth is secured and only if budgets still permit it. Full scan coverage remains
+the editorial choice. Discovery markets do not become final evidence. Targeted
+market searches run only after a subject has been resolved, and the final packet
+adds no more than two contextual sources to its article. Full scan coverage remains
 recorded separately.
 
 The producer supplies up to seven admitted prior v4 editions. Sources with the
@@ -143,17 +151,41 @@ and fabricated quotes or incidents are prohibited. All provider text is treated
 as untrusted data and never as instructions.
 
 The only model route is `machina-ai`, Vertex AI, `gemini-3.5-flash-lite`, with
-one call per generated edition and none at all on a cache hit. Do not substitute
-another model without approval.
+one bounded selection call and one writing call per generated edition, and no
+model call at all on a cache hit. Do not substitute another model without approval.
 
-Before storage, the pure v4 validator requires: a `stop` finish reason with no
+The research wire contract is:
+
+1. Selection returns `choices[]` with an exact article anchor ID, subject type,
+   subject name, competition, and an exact team name for team sports. It never
+   returns provider IDs.
+2. `plan_research` validates those strings against the article and emits allowlisted
+   discovery requests with stable request IDs.
+3. `resolve_research` matches exact provider catalog names and dated schedules,
+   then emits ID-bound target requests plus `search_entity` and `match_markets`.
+4. `build_research_brief` accepts the first ranked choice with an article and a
+   quantitative source. Its packet has at most three sources and a 24,000-byte prompt.
+5. `finalize` binds every number to the source cited by that fragment and requires
+   both article and statistic citations for researched v4 generation.
+
+Market discovery examines the returned Kalshi and Polymarket lists separately.
+The requested sport is not trusted: a season market must match exact subject,
+competition and season, while a fixture market must match both scheduled teams and
+the exact next-fixture date. Every retained quote includes named outcomes and an
+observation timestamp. One quote never supports movement or a causal explanation.
+Empty or malformed venue results become explicit gaps; no market is preferable to
+an unrelated contract. ProphetX results may be reported by the SDK but are not part
+of this two-venue publication contract.
+
+Before storage, the pure researched-v4 validator requires: a `stop` finish reason with no
 tool calls, the exact JSON field set, a known `selectedAnchorSourceId`, the anchor
 cited by the headline/body, bounded text lengths, and every citation bound to that
 one candidate packet. It rejects cross-candidate mixing even within the same
 sport, unbound sport references, unknown or non-string source IDs, and numbers not
 present in the source cited by that fragment. Identifiers and URLs cannot launder
-a figure. A supplied related market is not mandatory. Selection metadata is
-stripped after validation, leaving the unchanged website v4 story shape. Only
+a figure. Article and quantitative-statistic citations are mandatory; a supplied
+related market is not. Unsupported price movement and causal language is rejected.
+Selection metadata is stripped after validation, leaving the unchanged website v4 story shape. Only
 cited sources and the selected sport are retained. These checks do not prove model
 editorial quality or every semantic claim; consequential claims still need review.
 
@@ -166,8 +198,10 @@ v3.
 
 A same-day, admitted, unexpired v4 edition is reused and every provider and model
 task is skipped unless the native workflow context supplies boolean
-`force_refresh: true`. That exact value passes an empty document list to the cache
-validator; strings and other values do not bypass the cache. This is sequential
+`force_refresh: true`. In the document task output, `$.get(...)` reads the document
+response while `$.context.get(...)` reads workflow state; that exact boolean passes
+an empty document list to the cache validator. Strings and other values do not
+bypass the cache. This is sequential
 cache reuse, not a claim of race-safe global once-per-day execution. Because the
 production cache probe and reader both require `schemaVersion: 4`, older editions
 cannot be served by this pipeline. Explicit v3 cache validation remains available
@@ -203,12 +237,14 @@ execution failures remain separate evidence.
 
 ```
 python -m pytest tests/test_machina_read_multisport.py tests/test_machina_read_single_story.py tests/test_machina_read_native.py -q
-python -m pytest tests/test_machina_read_reporting.py -q
+python -m pytest tests/test_machina_read_reporting.py tests/test_machina_read_context_engineering.py -q
 python scripts/check-machina-ai-policy.py agent-templates/machina-read/workflows/machina-read-produce-daily.yml
+python scripts/check-ai-command-inventory.py
 ```
 
 Tests use synthetic fixtures built to observed provider shapes; no real payload,
-credential or execution artefact is committed. Passing tests are not evidence of
-a successful live run. Verify the imported definitions, one complete execution,
-the exact saved document and a cache-only second execution on the pod before
-claiming runtime success.
+credential or execution artefact is committed. Passing tests and read-only SDK
+sampling are not evidence of a successful native workflow run. The remaining gate
+is to import the definitions, execute one private forced preview, inspect its exact
+saved document and evidence, then execute a public run and a cache-only second run.
+Activation and the disabled job must remain unchanged during that gate.
