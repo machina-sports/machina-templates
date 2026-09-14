@@ -1,0 +1,8 @@
+connector:
+  name: machina-read-reporting
+  description: Bounded public ESPN Story API reporting for fixed Machina Read sport paths; no credentials, arbitrary URLs, redirects, or proxies.
+  filename: machina-read-reporting.py
+  filetype: pyscript
+  commands:
+    - name: Invoke reporting
+      value: invoke_reporting

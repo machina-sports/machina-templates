@@ -31,6 +31,16 @@ def source(ident, sport, kind, label, text, hours=-1, rank=None):
     return {'source': entry, 'rank': rank, 'sortAt': f.module.iso(f.NOW + f.timedelta(hours=hours))}
 
 
+def article(sport, ident, headline, text, hours=-1):
+    if len(text) < 200:
+        text += (' This is additional synthetic reporting context used only to exercise the substantive article '
+                 'contract, including the verified development and its relevance to the named competition.')
+    raw = f.reporting_response(sport, ident=str(ident), text=text)
+    raw['data']['articles'][0]['headline'] = headline
+    raw['data']['articles'][0]['published'] = f.at(hours)
+    return f.call('compact', {'kind': 'reporting', 'raw': raw, 'sport': sport})['items'][0]
+
+
 def block(*items, snapshots=None):
     return {'status': 'ready', 'items': list(items), 'snapshots': snapshots or []}
 
@@ -71,13 +81,24 @@ def finalize(context, story=None, **reply_overrides):
                                'model_reply': f.reply(story or draft(context), **reply_overrides)})
 
 
+@pytest.mark.parametrize('sport', list(f.module.SPORTS))
+def test_every_declared_sport_article_survives_compaction_and_finalization(sport):
+    report = article(sport, 50004001, 'A clearly reported sporting development',
+                     'The named team completed its match in the stated competition. '
+                     'The synthetic report provides the development and supporting context.')
+    context = f.call('assemble', {'reporting_' + sport: block(report), 'edition_format': 4})
+    result = finalize(context)
+    assert result['status'] == 'ready', result
+    assert result['edition']['sources'][0]['sport'] == sport
+
+
 def test_default_v4_shortlist_is_broad_bounded_and_contains_coherent_packets():
     context = f.call('assemble', f.blocks())
     assert context['schemaVersion'] == 4
     assert 4 <= len(context['sports']) <= 9
     assert 1 < len(context['candidates']) <= f.module.MAX_STORY_CANDIDATES
-    assert sum(len(entry['text']) for packet in context['candidates'] for entry in packet['sources']) <= f.module.TEXT_BUDGET
-    assert len(context['prompt'].encode()) <= f.module.PROMPT_BUDGET
+    assert sum(len(entry['text']) for packet in context['candidates'] for entry in packet['sources']) <= f.module.V4_TEXT_BUDGET
+    assert len(context['prompt'].encode()) <= f.module.V4_PROMPT_BUDGET
     counts = {}
     for packet in context['candidates']:
         sport = packet['sport']['id']
@@ -91,12 +112,12 @@ def test_default_v4_shortlist_is_broad_bounded_and_contains_coherent_packets():
 
 
 def test_high_volume_in_one_sport_does_not_erase_shortlist_breadth():
-    items = [source(f'news:football:{index}', 'football', 'news headline', f'Football development {index}',
-                    f'Reported headline only for Football; football development {index} was reported.', hours=-index)
+    items = [source(f'event:football:{index}', 'football', 'event', f'Football development {index}',
+                    f'A completed Football development {index} was reported with substantive event evidence.', hours=-index)
              for index in range(1, 9)]
     for sport in ('baseball', 'basketball', 'hockey', 'tennis'):
-        items.append(source(f'news:{sport}:one', sport, 'news headline', f'{sport} development',
-                            f'Reported headline only for {sport}; one current {sport} development was reported.'))
+        items.append(source(f'event:{sport}:one', sport, 'event', f'{sport} development',
+                            f'One completed current {sport} development was reported with event evidence.'))
     context = f.call('assemble', {'schedule': block(*items), 'edition_format': 4})
     represented = {packet['sport']['id'] for packet in context['candidates']}
     assert represented == {'football', 'baseball', 'basketball', 'hockey', 'tennis'}
@@ -108,10 +129,10 @@ def test_overflow_candidate_slots_do_not_follow_fixed_sport_order():
     for index, sport in enumerate(f.SPORT_IDS):
         base = -20 + index
         items.extend([
-            source(f'news:{sport}:newer', sport, 'news headline', f'{sport} newer development',
-                   f'Reported headline only for {sport}; its newer development was reported.', hours=base + 1),
-            source(f'news:{sport}:older', sport, 'news headline', f'{sport} older development',
-                   f'Reported headline only for {sport}; its older development was reported.', hours=base),
+            source(f'event:{sport}:newer', sport, 'event', f'{sport} newer development',
+                   f'The newer completed {sport} development was reported with event evidence.', hours=base + 1),
+            source(f'event:{sport}:older', sport, 'event', f'{sport} older development',
+                   f'The older completed {sport} development was reported with event evidence.', hours=base),
         ])
     context = f.call('assemble', {'schedule': block(*items), 'edition_format': 4})
     counts = {sport: sum(packet['sport']['id'] == sport for packet in context['candidates']) for sport in f.SPORT_IDS}
@@ -122,35 +143,34 @@ def test_overflow_candidate_slots_do_not_follow_fixed_sport_order():
 def test_mocked_model_selection_protocol_can_choose_high_stakes_news_over_mundane_other_sport_result():
     mundane = source('event:tennis:mundane', 'tennis', 'event', 'Capital Open: routine first round',
                      'A routine Capital Open first-round match finished with the recorded result.', hours=-1)
-    high = source('news:basketball:final', 'basketball', 'news headline',
-                  'Summit Bears clinch first national title',
-                  'Reported headline only for Basketball; Summit Bears clinch their first national title in the National Final.',
-                  hours=-5)
+    high = article('basketball', 50001001, 'Summit Bears clinch first national title',
+                   'The Summit Bears clinched their first national title in the National Final. '
+                   'The full synthetic report explains the competition and why the result matters.', hours=-5)
     context = f.call('assemble', {'schedule': block(mundane, high), 'edition_format': 4})
     assert {packet['anchorSourceId'] for packet in context['candidates']} == {
-        'event:tennis:mundane', 'news:basketball:final'}
-    result = finalize(context, draft(context, 'news:basketball:final'))
+        'event:tennis:mundane', 'article:espn:basketball:50001001'}
+    result = finalize(context, draft(context, 'article:espn:basketball:50001001'))
     assert result['status'] == 'ready'
-    assert result['edition']['sources'][0]['id'] == 'news:basketball:final'
+    assert result['edition']['sources'][0]['id'] == 'article:espn:basketball:50001001'
     # The fixture proves selection plumbing and validation, not real model editorial quality.
 
 
 def test_same_sport_can_win_successive_days_but_exact_source_repeat_is_excluded():
-    old = source('news:tennis:old', 'tennis', 'news headline', 'Old tennis development',
-                 'Reported headline only for Tennis; Callum Wren reached the Capital Open final.', hours=-6)['source']
-    new = source('news:tennis:new', 'tennis', 'news headline', 'New tennis development',
-                 'Reported headline only for Tennis; Mateo Salas won the Capital Open title.', hours=-1)
-    context = f.call('assemble', {'news_tennis': block(source('news:tennis:old', 'tennis', 'news headline',
+    old = source('event:tennis:old', 'tennis', 'event', 'Old tennis development',
+                 'Callum Wren reached the Capital Open final in the completed semifinal.', hours=-6)['source']
+    new = source('event:tennis:new', 'tennis', 'event', 'New tennis development',
+                 'Mateo Salas won the completed Capital Open title match.', hours=-1)
+    context = f.call('assemble', {'tennis_atp': block(source('event:tennis:old', 'tennis', 'event',
                  'Old tennis development', old['text'], hours=-6), new), 'edition_format': 4,
-                 'previous_documents': previous(old)})
-    assert [packet['anchorSourceId'] for packet in context['candidates']] == ['news:tennis:new']
+                  'previous_documents': previous(old)})
+    assert [packet['anchorSourceId'] for packet in context['candidates']] == ['event:tennis:new']
     assert context['sports'] == [{'id': 'tennis', 'label': 'Tennis'}]
 
 
 def test_only_repeat_evidence_fails_instead_of_redating_it():
-    repeated = source('news:hockey:repeat', 'hockey', 'news headline', 'Repeated final',
-                      'Reported headline only for Ice hockey; Glacier Kings won the League Final.', hours=-2)
-    result = f.call('assemble', {'news_hockey': block(repeated), 'edition_format': 4,
+    repeated = source('event:hockey:repeat', 'hockey', 'event', 'Repeated final',
+                      'Glacier Kings won the completed League Final.', hours=-2)
+    result = f.call('assemble', {'schedule': block(repeated), 'edition_format': 4,
                                  'previous_documents': previous(repeated['source'])})
     assert result == {'status': 'unavailable', 'reason': 'no_new_story'}
 
@@ -167,12 +187,12 @@ def test_updated_development_with_same_source_id_and_url_is_not_an_exact_repeat(
 
 
 def test_private_or_other_sport_history_does_not_force_rotation():
-    tennis = source('news:tennis:current', 'tennis', 'news headline', 'Current tennis final',
-                    'Reported headline only for Tennis; Callum Wren won the Capital Open final.', hours=-1)
+    tennis = source('event:tennis:current', 'tennis', 'event', 'Current tennis final',
+                    'Callum Wren won the completed Capital Open final.', hours=-1)
     private = previous(tennis['source'], approved=False)
-    context = f.call('assemble', {'news_tennis': block(tennis), 'edition_format': 4,
+    context = f.call('assemble', {'tennis_atp': block(tennis), 'edition_format': 4,
                                   'previous_documents': private})
-    assert context['candidates'][0]['anchorSourceId'] == 'news:tennis:current'
+    assert context['candidates'][0]['anchorSourceId'] == 'event:tennis:current'
 
 
 def test_market_is_attached_only_to_the_same_named_subject_and_remains_optional_to_cite():
@@ -216,11 +236,11 @@ def test_finalizer_strips_selection_metadata_and_keeps_the_existing_public_story
 
 
 def test_finalizer_rejects_source_mixing_between_same_sport_candidates():
-    first = source('news:basketball:first', 'basketball', 'news headline', 'First basketball story',
-                   'Reported headline only for Basketball; Summit Bears reached the National Final.', hours=-1)
-    second = source('news:basketball:second', 'basketball', 'news headline', 'Second basketball story',
-                    'Reported headline only for Basketball; Delta Foxes appointed a new head coach.', hours=-2)
-    context = f.call('assemble', {'news_basketball': block(first, second), 'edition_format': 4})
+    first = source('event:basketball:first', 'basketball', 'event', 'First basketball story',
+                   'Summit Bears reached the completed National Final.', hours=-1)
+    second = source('event:basketball:second', 'basketball', 'event', 'Second basketball story',
+                    'Delta Foxes won a separate completed league game.', hours=-2)
+    context = f.call('assemble', {'schedule': block(first, second), 'edition_format': 4})
     story = draft(context, first['source']['id'], [second['source']['id']])
     assert finalize(context, story)['reason'] == 'unbound_citation'
 
@@ -283,7 +303,64 @@ def test_prompt_requires_model_selection_without_rotation_or_forced_humor():
     text = f.module.SINGLE_STORY_DIRECTIVES
     for phrase in ['Choose the strongest supported current development', 'newsworthiness', 'evidence strength',
                    'supported stakes', 'genuine novelty', 'do not rotate sports', 'selectedAnchorSourceId',
-                   'optional short dry punchline', 'Do not tack on a random analogy or force a joke',
-                   'related market source is optional context', 'Never impersonate']:
+                   'optional short dry observational reversal', 'Do not tack on a random analogy or force a joke',
+                    'related market source is optional context', 'Never impersonate', '80-130 readable words',
+                    'max 900 chars', 'non-fan', 'insider jargon', 'named style or personality']:
         assert phrase in text
     assert all(word not in text.lower() for word in ['gillis', 'barstool', 'espys', 'soap opera'])
+
+
+def test_article_candidates_come_first_without_fake_corroboration():
+    report = article('hockey', 50002001, 'Glacier Kings change coaches',
+                     'The Glacier Kings changed coaches before the National Hockey League season. '
+                     'The synthetic full report identifies the team, competition, development, and significance.', hours=-4)
+    unrelated = source('event:hockey:unrelated', 'hockey', 'event', 'Prairie Jets win exhibition',
+                       'Prairie Jets won a separate completed exhibition game.', hours=-1)
+    context = f.call('assemble', {'reporting_hockey': block(report), 'schedule': block(unrelated),
+                                  'edition_format': 4})
+    assert [packet['anchorSourceId'] for packet in context['candidates']] == [
+        'article:espn:hockey:50002001', 'event:hockey:unrelated']
+    assert candidate(context, 'article:espn:hockey:50002001')['sources'] == [report['source']]
+
+
+def test_bare_headline_cannot_create_a_new_v4_edition():
+    headline = source('news:hockey:bare', 'hockey', 'news headline', 'Bare headline',
+                      'Reported headline only for Ice hockey; a development was reported.', hours=-1)
+    result = f.call('assemble', {'news_hockey': block(headline), 'edition_format': 4})
+    assert result == {'status': 'unavailable', 'reason': 'insufficient_concrete_development'}
+
+
+def test_v4_body_limit_is_900_while_v3_remains_320():
+    context = pack()
+    story = draft(context)
+    story['body'] = 'x' * 900
+    assert finalize(context, story)['status'] == 'ready'
+    story['body'] += 'x'
+    assert finalize(context, story)['reason'] == 'invalid_text'
+
+    legacy = f.pack()
+    legacy_story = f.draft(legacy)
+    legacy_story['body'] = 'x' * 321
+    assert f.call('finalize', {'context_pack': legacy, 'model_reply': f.reply(legacy_story)})['reason'] == 'invalid_text'
+
+
+def test_article_numbers_are_bound_to_the_cited_reporting_text():
+    report = article('americanfootball', 50003001, 'Harbor Wolves win opener',
+                     'The Harbor Wolves won 24-17 in the National Football League opener. '
+                     'The synthetic report explains why the result matters.', hours=-1)
+    context = f.call('assemble', {'reporting_americanfootball': block(report), 'edition_format': 4})
+    story = draft(context)
+    story['points'][0]['text'] = 'The cited report records a 24-17 result.'
+    assert finalize(context, story)['status'] == 'ready'
+    story['points'][0]['text'] = 'The cited report records a 31-17 result.'
+    assert finalize(context, story)['reason'] == 'unsupported_numeric_claim'
+
+
+def test_existing_admitted_v4_cache_with_old_limits_is_preserved():
+    context = pack()
+    value = finalize(context)['edition']
+    value['publicApproved'] = True
+    value['story']['body'] = 'Existing short v4 body remains readable.'
+    hit = f.call('cached', {'documents': [{'name': 'machina-read-edition', '_id': 'old-v4', 'value': value}]})
+    assert hit['hit'] is True and hit['documentId'] == 'old-v4'
+    assert hit['edition']['story']['body'] == 'Existing short v4 body remains readable.'

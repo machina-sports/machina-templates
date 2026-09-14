@@ -18,15 +18,20 @@ DOCUMENT_NAME = "machina-read-edition"
 SPORTS = {"football": "Football (soccer)", "americanfootball": "American football",
           "baseball": "Baseball", "basketball": "Basketball", "hockey": "Ice hockey",
           "tennis": "Tennis", "motorsport": "Motorsport", "golf": "Golf", "cricket": "Cricket"}
-KINDS = {"event", "market", "news headline"}
+KINDS = {"event", "market", "news headline", "article"}
 # Ranking keeps completed sporting evidence ahead of context lanes inside one sport.
-RANK_RESULT, RANK_MARKET, RANK_FIXTURE, RANK_NEWS = 0, 1, 2, 3
+RANK_ARTICLE, RANK_RESULT, RANK_MARKET, RANK_FIXTURE, RANK_NEWS = 0, 0, 1, 2, 3
 ESPN_PATHS = ("/nfl/", "/nba/", "/wnba/", "/mlb/", "/nhl/", "/college-football/",
-              "/mens-college-basketball/", "/soccer/", "/tennis/", "/golf/", "/f1/")
+              "/mens-college-basketball/", "/soccer/", "/tennis/", "/golf/", "/f1/", "/cricket/")
 LEAGUES = {"nfl": ("americanfootball", "/nfl/", "NFL"), "cfb": ("americanfootball", "/college-football/", "CFB"),
            "nba": ("basketball", "/nba/", "NBA"), "wnba": ("basketball", "/wnba/", "WNBA"),
            "cbb": ("basketball", "/mens-college-basketball/", "CBB"), "mlb": ("baseball", "/mlb/", "MLB"),
            "nhl": ("hockey", "/nhl/", "NHL")}
+REPORTING_PATHS = {
+    "football": "/soccer/", "americanfootball": "/nfl/", "baseball": "/mlb/",
+    "basketball": "/nba/", "hockey": "/nhl/", "tennis": "/tennis/",
+    "motorsport": "/f1/", "golf": "/golf/", "cricket": "/cricket/",
+}
 SCHEDULE_STATUS = {"not_started": "not started", "scheduled": "not started", "pre": "not started",
                    "in_progress": "in progress", "live": "in progress", "in": "in progress",
                    "closed": "completed", "final": "completed", "post": "completed",
@@ -58,9 +63,12 @@ NEWS_NOISE = re.compile(
     r"|best bets|picks and parlays|parlay picks|prediction and odds|predictions and odds", re.I)
 BLOCKS = ("schedule", "football", "tennis_atp", "tennis_wta", "polymarket", "kalshi",
           "news_football", "news_americanfootball", "news_baseball", "news_basketball", "news_hockey",
-          "news_tennis", "news_motorsport", "news_golf", "news_cricket")
+          "news_tennis", "news_motorsport", "news_golf", "news_cricket",
+          "reporting_football", "reporting_americanfootball", "reporting_baseball", "reporting_basketball",
+          "reporting_hockey", "reporting_tennis", "reporting_motorsport", "reporting_golf", "reporting_cricket")
 MAX_SOURCES, MAX_PER_SPORT, TEXT_BUDGET, PROMPT_BUDGET = 24, 4, 14000, 24000
 MAX_STORY_CANDIDATES, MAX_STORY_CANDIDATES_PER_SPORT, MIN_STORY_SPORTS = 12, 2, 4
+ARTICLE_TEXT_LIMIT, V4_TEXT_BUDGET, V4_PROMPT_BUDGET = 6000, 30000, 40000
 
 
 def now():
@@ -144,6 +152,14 @@ def link(url, limit=1500):
     return url
 
 
+def article_link(url, sport, ident):
+    url = link(url)
+    parsed = urlsplit(url)
+    prefix = REPORTING_PATHS[sport] + "story/_/id/" + ident
+    require(not parsed.query and (parsed.path == prefix or parsed.path.startswith(prefix + "/")), "unapproved_url")
+    return url
+
+
 def payload(value):
     require(isinstance(value, dict) and value.get("status") is True and isinstance(value.get("data"), dict),
             "source_unavailable")
@@ -171,7 +187,9 @@ def window(stamp, current, back_hours, forward_hours):
 def candidate(ident, sport, kind, label, text, url, observed, rank, at, published=None):
     require(sport in SPORTS and kind in KINDS, "invalid_source")
     entry = {"id": plain(ident, 100), "sport": sport, "kind": kind, "label": clean(label, 180),
-             "text": clean(text, 1800), "url": link(url), "observedAt": iso(observed)}
+             "text": clean(text, ARTICLE_TEXT_LIMIT if kind == "article" else 1800),
+             "url": link(url), "observedAt": iso(observed)}
+    require(kind != "article" or published is not None, "missing_article_date")
     if published is not None:
         entry["publishedAt"] = iso(published)
     return {"source": entry, "rank": rank, "sortAt": iso(at)}
@@ -505,6 +523,37 @@ def compact_news(data, current, sport):
     return [item for _, item in sorted(accepted, key=lambda row: row[0], reverse=True)[:2]], []
 
 
+def compact_reporting(data, current, sport):
+    """Normalized output from the bounded machina-read-reporting connector."""
+    sport = slug(str(sport or ""), 24)
+    require(sport in SPORTS and data.get("sport") == sport, "unsupported_sport")
+    articles = data.get("articles", [])
+    require(isinstance(articles, list), "invalid_reporting")
+    accepted, seen = [], set()
+    fields = {"id", "sport", "type", "headline", "description", "published", "lastModified",
+              "text", "textTruncated", "url"}
+    for article in articles[:3]:
+        try:
+            require(isinstance(article, dict) and set(article) == fields, "invalid_article")
+            require(article["sport"] == sport and article["type"] in ("Story", "HeadlineNews"), "invalid_article")
+            require(isinstance(article["textTruncated"], bool), "invalid_article")
+            ident = digits(article["id"])
+            published, modified = instant(article["published"]), instant(article["lastModified"])
+            require(current - timedelta(hours=48) <= published <= modified <= current, "stale_or_future_article")
+            text = clean(article["text"], ARTICLE_TEXT_LIMIT)
+            require(len(text) >= 200, "no_substantive_body")
+            url = article_link(article["url"], sport, ident)
+            require(url not in seen, "duplicate_article")
+            seen.add(url)
+            label = clean(article["headline"], 180)
+            accepted.append((published, candidate(
+                "article:espn:" + sport + ":" + ident, sport, "article", label, text, url,
+                current, RANK_ARTICLE, published, published=published)))
+        except (ValueError, KeyError, TypeError, IndexError):
+            continue
+    return [item for _, item in sorted(accepted, key=lambda row: row[0], reverse=True)[:2]], []
+
+
 @operation
 def compact(params):
     kind = plain(str(params.get("kind") or ""), 24)
@@ -522,6 +571,8 @@ def compact(params):
         items, snapshots = compact_kalshi(data, current, params.get("identities"))
     elif kind == "news":
         items, snapshots = compact_news(data, current, params.get("sport"))
+    elif kind == "reporting":
+        items, snapshots = compact_reporting(data, current, params.get("sport"))
     else:
         raise ValueError("unsupported_kind")
     return {"status": "ready", "kind": kind, "items": items[:MAX_SOURCES], "snapshots": snapshots[:MAX_SOURCES]}
@@ -575,23 +626,28 @@ SINGLE_STORY_DIRECTIVES = (
     'A routine recent result does not automatically beat an older but still-current consequential development. '
     'Candidate order, sport variety and market availability carry no editorial bonus: do not rotate sports, satisfy a '
     'novelty quota or follow a fixed sport priority. '
+    'Prefer a substantive full-reporting article over a bare result or fixture when it supports the development. '
+    'A headline-only source cannot anchor a v4 story and must never masquerade as an article. One genuinely rich article '
+    'can be sufficient; do not invent corroboration or imply that multiple outlets confirmed it. '
     'The headline must identify the central athlete or team and what happened. '
-    'The visible body must establish who, the competition, and the actual result or reported development, then why it matters. '
-    'Use plain language, not a riddle, poetic metaphor, vague hook or unexplained nickname. '
+    'Write a body of 80-130 readable words within 900 characters. It must explain the central person or team, the sport '
+    'or competition, the actual result or reported development, and why it matters to a non-fan. Briefly unpack insider jargon. '
+    'Use plain language, not a riddle, cryptic mashup, forced simile, poetic metaphor, vague hook or unexplained nickname. '
     'One sport, one selected candidate packet and one story only. Never mix sources from different candidate packets, '
     'even when two candidates are from the same sport, and never compare unrelated sports, events or contracts. '
-    'Use a blunt, conversational, skeptical tone. An optional short dry punchline must comment on the specific facts just established; '
-    'tease sporting hype or an obvious mismatch between claims and results, not people\'s identity or appearance. '
-    'Do not tack on a random analogy or force a joke. If it needs explaining, remove it. '
+    'Use a clear, conversational, skeptical tone. One optional short dry observational reversal may follow, but it must attach '
+    'to a verified detail; tease sporting hype or an obvious mismatch between claims and results, not identity or appearance. '
+    'Do not tack on a random analogy or force a joke. If it needs explaining, remove it. Do not imitate any named style or personality. '
     'Return JSON only: {"selectedAnchorSourceId":"exact anchorSourceId","headline":"max 80 chars",'
-    '"body":"max 320 chars","sourceIds":["ids"],'
+    '"body":"max 900 chars","sourceIds":["ids"],'
     '"points":[{"text":"max 350 chars","sourceIds":["ids"]},{"text":"max 350 chars","sourceIds":["ids"]}]}. '
     'The selected anchor must support the headline and body and must appear in their sourceIds. Cite only sources in that '
     'candidate packet. A related market source is optional context, never a required citation. '
-    'Aim for a body of 200-280 characters and two concise analysis points. '
+    'Supply two or three concise analysis points, each no longer than 350 characters. '
     'Analysis should explain supported significance or a useful limitation, not merely define a market quote. '
-    'Use exact supplied names, competition and number strings. Do not invent tactics, psychology, event stakes, quotes, '
-    'injuries, standings or consequences. A close score is not automatically a rout or proof of domination. '
+    'Use exact supplied names, competition and number strings. Do not invent motivations, tactics, psychology, causality, '
+    'event stakes, quotes, injuries, standings or consequences. Avoid generic momentum and statement-win filler. '
+    'A close score is not automatically a rout or proof of domination. '
     'A reported headline is not a verified full article. A fixture without a final score has no confirmed outcome. '
     'Only discuss Polymarket or Kalshi when the brief includes a source about this same named subject. '
     'An exchange price is a quoted price, not our forecast; no invented movement, fair value or trading advice. '
@@ -643,18 +699,20 @@ def story_prompt(candidates):
 
 
 def single_story_context(params, by_sport, snapshots, current):
-    eligible = [sport for sport in SPORTS if by_sport.get(sport)]
-    require(eligible, "insufficient_evidence")
+    eligible = [sport for sport in SPORTS
+                if any(row[2]["kind"] in ("article", "event") for row in by_sport.get(sport, []))]
     prior_stories = previous_story_evidence(params.get("previous_documents", []), current)
 
     concrete, fresh = {}, {}
     for sport in SPORTS:
-        rows = [row for row in by_sport.get(sport, []) if row[2]["kind"] != "market"]
+        rows = [row for row in by_sport.get(sport, []) if row[2]["kind"] in ("article", "event")]
         if not rows:
             continue
         # This is shortlist hygiene, not editorial scoring: current reported developments precede fixtures,
         # then recency and stable IDs make the bounded result deterministic. The model chooses the winner.
-        rows.sort(key=lambda row: (1 if row[0] == RANK_FIXTURE else 0, -row[1].timestamp(), row[2]["id"]))
+        rows.sort(key=lambda row: (0 if row[2]["kind"] == "article" else
+                                  2 if row[0] == RANK_FIXTURE else 1,
+                                  -row[1].timestamp(), row[2]["id"]))
         concrete[sport] = rows
         fresh[sport] = [row for row in rows if story_fingerprint(row[2]) not in prior_stories]
     require(concrete, "insufficient_concrete_development")
@@ -674,7 +732,7 @@ def single_story_context(params, by_sport, snapshots, current):
         packet = {"anchorSourceId": anchor["id"], "sport": {"id": sport, "label": SPORTS[sport]},
                   "sources": [anchor]}
         tentative = candidates + [packet]
-        if text_used + len(anchor["text"]) > TEXT_BUDGET or len(story_prompt(tentative).encode()) > PROMPT_BUDGET:
+        if text_used + len(anchor["text"]) > V4_TEXT_BUDGET or len(story_prompt(tentative).encode()) > V4_PROMPT_BUDGET:
             continue
         candidates, text_used = tentative, text_used + len(anchor["text"])
 
@@ -689,13 +747,13 @@ def single_story_context(params, by_sport, snapshots, current):
             continue
         expanded = dict(packet, sources=packet["sources"] + [market])
         tentative = candidates[:index] + [expanded] + candidates[index + 1:]
-        if text_used + len(market["text"]) <= TEXT_BUDGET and len(story_prompt(tentative).encode()) <= PROMPT_BUDGET:
+        if text_used + len(market["text"]) <= V4_TEXT_BUDGET and len(story_prompt(tentative).encode()) <= V4_PROMPT_BUDGET:
             candidates[index], text_used = expanded, text_used + len(market["text"])
 
     prompt = story_prompt(candidates)
-    require(candidates and len(candidates) <= MAX_STORY_CANDIDATES and text_used <= TEXT_BUDGET,
-            "context_budget_exceeded")
-    require(len(prompt.encode()) <= PROMPT_BUDGET, "context_budget_exceeded")
+    require(candidates and len(candidates) <= MAX_STORY_CANDIDATES and text_used <= V4_TEXT_BUDGET,
+             "context_budget_exceeded")
+    require(len(prompt.encode()) <= V4_PROMPT_BUDGET, "context_budget_exceeded")
     source_map = {entry["id"]: entry for packet in candidates for entry in packet["sources"]}
     sports = [{"id": sport, "label": SPORTS[sport]} for sport in SPORTS if sport in represented]
     coverage = [{"sport": sport, "status": "available" if sport in eligible else "unavailable",
@@ -711,6 +769,8 @@ def single_story_context(params, by_sport, snapshots, current):
 def assemble(params):
     current = now()
     by_sport, snapshots, seen = {}, [], set()
+    edition_format = params.get("edition_format", SCHEMA_VERSION)
+    require(edition_format in (LEGACY_SCHEMA_VERSION, SCHEMA_VERSION), "wrong_schema")
     for name in BLOCKS:
         block = params.get(name) or {}
         if not isinstance(block, dict) or block.get("status") != "ready":
@@ -721,11 +781,19 @@ def assemble(params):
                 require(set(entry) <= {"id", "sport", "kind", "label", "text", "url", "observedAt", "publishedAt"},
                         "invalid_source")
                 require(entry["sport"] in SPORTS and entry["kind"] in KINDS, "invalid_source")
+                if edition_format == LEGACY_SCHEMA_VERSION and entry["kind"] == "article":
+                    continue
                 plain(entry["id"], 100)
                 clean(entry["label"], 180)
-                clean(entry["text"], 1800)
+                clean(entry["text"], ARTICLE_TEXT_LIMIT if entry["kind"] == "article" else 1800)
                 link(entry["url"])
                 instant(entry["observedAt"])
+                if entry["kind"] == "article":
+                    ident = entry["id"].rsplit(":", 1)[-1]
+                    require(entry["id"] == "article:espn:" + entry["sport"] + ":" + digits(ident), "invalid_source")
+                    article_link(entry["url"], entry["sport"], ident)
+                    published = instant(entry["publishedAt"])
+                    require(current - timedelta(hours=48) <= published <= current, "invalid_source")
                 require(entry["id"] not in seen, "duplicate_source")
                 seen.add(entry["id"])
                 by_sport.setdefault(entry["sport"], []).append(
@@ -738,8 +806,6 @@ def assemble(params):
 
     for entries in by_sport.values():
         entries.sort(key=lambda row: (row[0], -row[1].timestamp(), row[2]["id"]))
-    edition_format = params.get("edition_format", SCHEMA_VERSION)
-    require(edition_format in (LEGACY_SCHEMA_VERSION, SCHEMA_VERSION), "wrong_schema")
     if edition_format == SCHEMA_VERSION:
         return single_story_context(params, by_sport, snapshots, current)
     # Round-robin so no single sport, alphabetical order or raw feed volume dominates the edition.
@@ -796,6 +862,7 @@ def finalize(params):
     require(isinstance(pack, dict) and pack.get("status") == "ready", "unresolved_context")
     schema = pack.get("schemaVersion", SCHEMA_VERSION)
     require(schema in (LEGACY_SCHEMA_VERSION, SCHEMA_VERSION), "wrong_schema")
+    current = now()
     require(isinstance(reply, dict) and reply.get("role") == "assistant", "invalid_model_reply")
     require(reply.get("finish_reason") in ("stop", None) and not reply.get("tool_calls"), "incomplete_model_reply")
     content = reply["content"]
@@ -818,13 +885,27 @@ def finalize(params):
                     and candidate_sport["id"] in SPORTS, "invalid_candidate_packet")
             require(isinstance(packet_sources, list) and 1 <= len(packet_sources) <= 2, "invalid_candidate_packet")
             packet_catalog = {entry["id"]: entry for entry in packet_sources}
+            require(len(packet_catalog) == len(packet_sources), "invalid_candidate_packet")
             anchor_id = packet.get("anchorSourceId")
-            require(anchor_id in packet_catalog and packet_catalog[anchor_id]["kind"] != "market",
+            require(anchor_id in packet_catalog and packet_catalog[anchor_id]["kind"] in ("article", "event"),
                     "invalid_candidate_packet")
             require(all(entry["sport"] == candidate_sport["id"] for entry in packet_sources),
                     "invalid_candidate_packet")
             require(all(entry["id"] == anchor_id or entry["kind"] == "market" for entry in packet_sources),
                     "invalid_candidate_packet")
+            for entry in packet_sources:
+                require(isinstance(entry, dict) and set(entry) <= {
+                    "id", "sport", "kind", "label", "text", "url", "observedAt", "publishedAt"},
+                    "invalid_candidate_packet")
+                clean(entry["text"], ARTICLE_TEXT_LIMIT if entry["kind"] == "article" else 1800)
+                link(entry["url"])
+                if entry["kind"] == "article":
+                    ident = entry["id"].rsplit(":", 1)[-1]
+                    require(entry["id"] == "article:espn:" + entry["sport"] + ":" + digits(ident),
+                            "invalid_candidate_packet")
+                    article_link(entry["url"], entry["sport"], ident)
+                    published = instant(entry["publishedAt"])
+                    require(current - timedelta(hours=48) <= published <= current, "invalid_candidate_packet")
             if anchor_id == selected_anchor:
                 require(selected is None, "duplicate_anchor")
                 selected = packet_catalog
@@ -835,7 +916,8 @@ def finalize(params):
         require(set(generated) == {"headline", "body", "sourceIds", "points"}, "invalid_story_fields")
         catalog = {entry["id"]: entry for entry in pack["sources"]}
     story = generated
-    story["headline"], story["body"] = plain(story["headline"], 80), plain(story["body"], 320)
+    story["headline"] = plain(story["headline"], 80)
+    story["body"] = plain(story["body"], 900 if schema == SCHEMA_VERSION else 320)
     require(isinstance(story["points"], list) and 2 <= len(story["points"]) <= 3, "invalid_points")
 
     cited = []
@@ -870,7 +952,7 @@ def finalize(params):
     for pattern, sport in SPORT_HINTS:
         require(sport in sports or not re.search(pattern, prose, re.I), "unbound_sport_reference")
 
-    current, observed = now(), instant(pack["observedAt"])
+    observed = instant(pack["observedAt"])
     require(observed <= current and observed.date() == current.date(), "stale_generation")
     closes = [instant(row["closesAt"]) for row in pack.get("marketSnapshots", [])
               if row.get("sourceId") in cited and row.get("closesAt")]

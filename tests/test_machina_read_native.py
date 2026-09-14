@@ -223,6 +223,55 @@ def test_native_workflow_owns_collection_model_and_storage_and_cache_inputs_are_
     assert not any(t.get('connector', {}).get('name') in {'sports-skills', 'machina-ai'} or t.get('config', {}).get('action') == 'save' for t in reader['tasks'])
 
 
+def test_native_operator_controls_are_strict_and_default_to_cached_public_runs():
+    workflow = yaml.safe_load((ROOT / 'agent-templates/machina-read/workflows/machina-read-produce-daily.yml').read_text())['workflow']
+    inputs = workflow['inputs']
+
+    def resolve(name, context):
+        return eval(inputs[name].replace('$', 'state'), {'state': context})
+
+    assert set(inputs) == {'force_refresh', 'publish_public'}
+    assert resolve('force_refresh', {}) is False
+    assert resolve('publish_public', {}) is True
+    for value in (False, 'True', 1, None):
+        assert resolve('force_refresh', {'force_refresh': value}) is False
+    assert resolve('force_refresh', {'force_refresh': True}) is True
+    for value in (False, 'True', 'False', 1, None):
+        assert resolve('publish_public', {'publish_public': value}) is False
+    assert resolve('publish_public', {'publish_public': True}) is True
+
+    cache_search = next(task for task in workflow['tasks'] if task['name'] == 'find-current-edition')
+    cache_documents = cache_search['outputs']['read_existing']
+    documents = [{'value': {'publicApproved': True}}]
+    assert eval(cache_documents.replace('$', 'state'), {'state': {'documents': documents}}) == documents
+    assert eval(cache_documents.replace('$', 'state'), {
+        'state': {'documents': documents, 'force_refresh': True}}) == []
+    cache = next(task for task in workflow['tasks'] if task['name'] == 'check-native-cache')
+    assert cache['inputs']['documents'] == "$.get('read_existing', [])"
+
+    finalize = next(task for task in workflow['tasks'] if task['name'] == 'validate-generated-story')
+    assert finalize['inputs']['publish_public'] == "$.get('publish_public', True)"
+
+
+def test_private_generation_returns_only_a_draft_preview_and_cannot_bypass_public_admission():
+    workflow = yaml.safe_load((ROOT / 'agent-templates/machina-read/workflows/machina-read-produce-daily.yml').read_text())['workflow']
+    outputs = workflow['outputs']
+    private = {'schemaVersion': 4, 'publicApproved': False, 'story': {'headline': 'Draft'}}
+    public = {'schemaVersion': 4, 'story': {'headline': 'Draft'}}
+    state = {'read_cache': {'hit': False}, 'read_saved_id': 'draft-id',
+             'read_final': {'edition': private, 'public': public}}
+    assert eval(outputs['edition'].replace('$', 'state'), {'state': state}) == {}
+    assert eval(outputs['preview'].replace('$', 'state'), {'state': state}) == private
+
+    state['read_final']['edition']['publicApproved'] = True
+    assert eval(outputs['edition'].replace('$', 'state'), {'state': state}) == public
+    assert eval(outputs['preview'].replace('$', 'state'), {'state': state}) == {}
+
+    public_filters = [task['filters']['value.publicApproved'] for task in workflow['tasks']
+                      if task.get('filters', {}).get('name') == "'machina-read-edition'"]
+    assert public_filters == ['True', 'True']
+
+
 def test_every_native_expression_compiles_before_import():
     for path in (ROOT / 'agent-templates/machina-read/workflows').glob('*.yml'):
         workflow = yaml.safe_load(path.read_text())['workflow']
