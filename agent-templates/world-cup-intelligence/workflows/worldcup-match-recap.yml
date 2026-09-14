@@ -22,11 +22,11 @@ workflow:
     force_regen: "$.get('force_regen', False)"
   outputs:
     coverage: "$.get('archive_response', {}).get('coverage', {'schema_version': 'worldcup-storefront-coverage-v1', 'status': 'partial', 'reason': 'Legacy v2 compatibility response; exact coverage was not recorded.', 'scope': 'completed_tournament_archive', 'mode': 'historical', 'source_provenance': $.get('archive_metadata', {}).get('provenance', []), 'population_count': None, 'eligible_count': None, 'included_count': None, 'excluded_count': None, 'exclusion_reasons': {}, 'unsupported_fields': $.get('archive_metadata', {}).get('missing_capabilities', [])})"
-    skill_card: "$.get('archive_response', {}).get('skill_card') if $.get('archive_hit', False) else (dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('recap', {})), event_urn=$.get('event_urn', ''), historical_perspective=('original_cached_matchday_copy' if $.get('cached') else 'retrospective_completed_tournament'), sources=($.get('event_sources', []) + (($.get('cached', {}).get('research_sources', []) or []) if $.get('cached') else ($.get('research_sources', []) or [])))))"
-    event_urn: "$.get('archive_response', {}).get('event_urn') if $.get('archive_hit', False) else ($.get('event_urn', ''))"
-    resolved_fixture: "$.get('archive_response', {}).get('resolved_fixture') if $.get('archive_hit', False) else ($.get('resolved_fixture', {}))"
-    candidates: "$.get('archive_response', {}).get('candidates') if $.get('archive_hit', False) else ($.get('fixture_candidates', []))"
-    served_from: "$.get('archive_response', {}).get('served_from') if $.get('archive_hit', False) else ('cache' if $.get('cached') else 'generated')"
+    skill_card: "$.get('archive_response', {}).get('skill_card') if $.get('archive_hit', False) else ({} if $.get('archive_status', 'miss') != 'miss' else dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('recap', {})), event_urn=$.get('event_urn', ''), historical_perspective=('original_cached_matchday_copy' if $.get('cached') else 'retrospective_completed_tournament'), sources=($.get('event_sources', []) + (($.get('cached', {}).get('research_sources', []) or []) if $.get('cached') else ($.get('research_sources', []) or [])))))"
+    event_urn: "$.get('archive_response', {}).get('event_urn') if $.get('archive_hit', False) else ('' if $.get('archive_status', 'miss') != 'miss' else $.get('event_urn', ''))"
+    resolved_fixture: "$.get('archive_response', {}).get('resolved_fixture') if $.get('archive_hit', False) else ({} if $.get('archive_status', 'miss') != 'miss' else $.get('resolved_fixture', {}))"
+    candidates: "$.get('archive_response', {}).get('candidates', []) if $.get('archive_status', 'miss') != 'miss' else ($.get('fixture_candidates', []))"
+    served_from: "$.get('archive_response', {}).get('served_from') if $.get('archive_hit', False) else ('unavailable' if $.get('archive_status', 'miss') != 'miss' else ('cache' if $.get('cached') else 'generated'))"
     warnings: "$.get('archive_response', {}).get('warnings', []) if $.get('archive_status', 'miss') != 'miss' else ($.get('resolution_warnings', []))"
     archive: >-
       $.get('archive_metadata', {}) if $.get('archive_status', 'miss') != 'miss' else ({'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',

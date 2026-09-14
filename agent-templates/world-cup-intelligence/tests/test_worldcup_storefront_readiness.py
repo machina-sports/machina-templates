@@ -12,7 +12,7 @@ import pytest
 import yaml
 from jsonschema import Draft202012Validator
 
-from test_worldcup_archive_serving import execute_yaml
+from test_worldcup_archive_serving import LEGACY_TASKS, execute_yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -402,6 +402,37 @@ def test_player_request_lookup_is_constant_size_and_aliases_still_resolve(corpus
     }})["data"]
     assert output["archive_status"] == "hit"
     assert output["response"]["player_urn"] == aliased_player["_id"]
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "request_data", "expected_status"),
+    [
+        ("worldcup-player-spotlight", {"player": " ".join(f"word{index}" for index in range(40))}, "error"),
+        ("worldcup-player-spotlight", {}, "unavailable"),
+        ("worldcup-match-recap", {}, "unavailable"),
+        ("worldcup-match-recap", {"event_urn": "urn:machina:sport:soccer:event:not-in-archive"}, "unavailable"),
+    ],
+)
+def test_editorial_graph_refusals_never_fabricate_or_claim_generation(corpus, endpoint, request_data, expected_status):
+    outputs, store, connectors = _execute_v3_graph(corpus, endpoint, request_data)
+    assert outputs["archive"]["status"] == expected_status
+    assert outputs["coverage"]["status"] == expected_status
+    assert outputs["skill_card"] == {}
+    assert outputs["served_from"] == "unavailable"
+    assert outputs["workflow-status"] == "skipped"
+    assert not set(LEGACY_TASKS[endpoint]) & set(store.executed)
+    assert store.writes == 0 and connectors.external_calls == []
+    if endpoint == "worldcup-player-spotlight":
+        assert outputs["content_type"] == "unavailable"
+        assert outputs["structured_retrospective"] == {}
+        assert outputs["original_editorial"] is None
+        assert outputs["resolved_player"] == {}
+        assert outputs["player_overview"] == {}
+        assert outputs["player_urn"] is None
+    else:
+        assert outputs["resolved_fixture"] == {}
+        assert outputs["event_urn"] == ""
+    assert outputs["candidates"] == []
 
 
 def test_released_v3_graph_schedule_pagination_backtest_and_marco(corpus):
