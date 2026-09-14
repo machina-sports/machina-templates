@@ -312,9 +312,9 @@ def extract_mcp_document_rows(payload: Any) -> tuple[list[dict[str, Any]], int |
     return rows, total
 
 
-def _identity(endpoint: str, subject_key: str, parameters: dict[str, Any]) -> str:
+def _identity(endpoint: str, subject_key: str, parameters: dict[str, Any], archive_version: str) -> str:
     return CONNECTOR._archive_sha256({
-        "archive_version": CONNECTOR.FINAL_ARCHIVE_VERSION,
+        "archive_version": archive_version,
         "endpoint": endpoint,
         "subject_key": subject_key,
         "parameters": parameters,
@@ -337,7 +337,11 @@ def _target_set(manifest: dict[str, Any]) -> set[tuple[str, str, str]]:
             parameters = row.get("parameters", {})
             if not isinstance(parameters, dict):
                 raise ArchivePreparationError(f"targets.{endpoint} parameters must be an object")
-            key = (endpoint, str(row["subject_key"]), _identity(endpoint, str(row["subject_key"]), parameters))
+            key = (
+                endpoint,
+                str(row["subject_key"]),
+                _identity(endpoint, str(row["subject_key"]), parameters, str(manifest.get("archive_version") or "")),
+            )
             if key in result:
                 raise ArchivePreparationError(f"duplicate target identity: {endpoint}/{row['subject_key']}")
             result.add(key)
@@ -387,10 +391,15 @@ def _validate_enumerations(manifest: dict[str, Any], targets: set[tuple[str, str
 
 
 def prepare_manifest(manifest: dict[str, Any], *, invalidated: bool = False) -> list[dict[str, Any]]:
-    if manifest.get("schema_version") != 1:
-        raise ArchivePreparationError("schema_version must be 1")
-    if manifest.get("archive_version") != CONNECTOR.FINAL_ARCHIVE_VERSION:
-        raise ArchivePreparationError(f"archive_version must be {CONNECTOR.FINAL_ARCHIVE_VERSION}")
+    archive_version = str(manifest.get("archive_version") or "")
+    if manifest.get("schema_version") not in {1, 2}:
+        raise ArchivePreparationError("schema_version must be 1 or 2")
+    if archive_version not in CONNECTOR.SUPPORTED_FINAL_ARCHIVE_VERSIONS:
+        raise ArchivePreparationError(
+            "archive_version must be one of " + ", ".join(sorted(CONNECTOR.SUPPORTED_FINAL_ARCHIVE_VERSIONS))
+        )
+    if archive_version == CONNECTOR.NEXT_FINAL_ARCHIVE_VERSION and manifest.get("schema_version") != 2:
+        raise ArchivePreparationError("the next archive version requires schema_version 2")
     targets = _target_set(manifest)
     _validate_enumerations(manifest, targets)
     entries = manifest.get("entries")
@@ -408,7 +417,7 @@ def prepare_manifest(manifest: dict[str, Any], *, invalidated: bool = False) -> 
         parameters = entry.get("parameters", {})
         if not isinstance(parameters, dict):
             raise ArchivePreparationError(f"parameters must be an object for {endpoint}/{subject_key}")
-        key = (endpoint, subject_key, _identity(endpoint, subject_key, parameters))
+        key = (endpoint, subject_key, _identity(endpoint, subject_key, parameters, archive_version))
         if key in seen:
             raise ArchivePreparationError(f"duplicate entry identity: {endpoint}/{subject_key}")
         seen.add(key)
@@ -427,7 +436,8 @@ def prepare_manifest(manifest: dict[str, Any], *, invalidated: bool = False) -> 
             if endpoint in {"worldcup-get-squads", "worldcup-get-injuries"}:
                 scope = str(source.get("temporal_scope") or "")
                 if scope not in {
-                    "world-cup-2026", "historical-fixture", "tournament-archive"
+                    "world-cup-2026", "historical-fixture", "tournament-archive",
+                    "final-published-tournament-roster-snapshot",
                 }:
                     raise ArchivePreparationError(f"unverified squad/injury temporal scope: {endpoint}/{subject_key}")
             stored_sources.append({key: value for key, value in source.items() if key != "source_payload"})
@@ -467,7 +477,11 @@ def prepare_manifest(manifest: dict[str, Any], *, invalidated: bool = False) -> 
                 ]
                 source_name = next((name for name in recap_sources if name in source_payloads), "")
             else:
-                source_name = "worldcup:skill-player-spotlight"
+                spotlight_sources = [
+                    "worldcup:skill-player-spotlight",
+                    "worldcup:storefront-derived-player-card",
+                ]
+                source_name = next((name for name in spotlight_sources if name in source_payloads), "")
             editorial_source = source_payloads.get(source_name)
             if not isinstance(editorial_source, dict) or not isinstance(editorial_source.get("body"), dict):
                 raise ArchivePreparationError(f"{endpoint} requires its original editorial source payload")
@@ -481,6 +495,7 @@ def prepare_manifest(manifest: dict[str, Any], *, invalidated: bool = False) -> 
             response,
             stored_sources,
             invalidated=invalidated,
+            archive_version=archive_version,
         )
         documents.append({"name": CONNECTOR.FINAL_ARCHIVE_DOCUMENT, "value": value})
 
@@ -524,6 +539,7 @@ def verify_bundle(
             value.get("response"),
             value.get("source_manifest"),
             invalidated=value.get("invalidated") is True,
+            archive_version=str(value.get("archive_version") or ""),
         )
         if value != rebuilt:
             raise ArchivePreparationError(f"readback hash/schema mismatch for {value.get('_id')}")
@@ -594,7 +610,7 @@ def _prepare(args: argparse.Namespace) -> int:
 
     selected = documents[offset:offset + batch_size]
     bundle = {
-        "archive_version": CONNECTOR.FINAL_ARCHIVE_VERSION,
+        "archive_version": str(manifest.get("archive_version") or ""),
         "manifest_sha256": manifest_hash,
         "offset": offset,
         "next_offset": offset + len(selected),
@@ -617,7 +633,7 @@ def _prepare(args: argparse.Namespace) -> int:
         raise ArchivePreparationError("pending batch differs from the idempotent retry")
     _write_json(args.output, bundle)
     _write_json(args.resume_state, {
-        "archive_version": CONNECTOR.FINAL_ARCHIVE_VERSION,
+        "archive_version": str(manifest.get("archive_version") or ""),
         "manifest_sha256": manifest_hash,
         "next_offset": int(state.get("next_offset", 0)),
         "emitted_response_sha256": list(state.get("emitted_response_sha256", [])),
@@ -637,7 +653,7 @@ def _capture(args: argparse.Namespace) -> int:
     manifest = capture_canary_manifest(args.executions, args.exports)
     documents = prepare_manifest(manifest)
     bundle = {
-        "archive_version": CONNECTOR.FINAL_ARCHIVE_VERSION,
+        "archive_version": str(manifest.get("archive_version") or CONNECTOR.FINAL_ARCHIVE_VERSION),
         "coverage_scope": manifest["coverage_scope"],
         "publication_ready": False,
         "manifest_sha256": CONNECTOR._archive_sha256(manifest),

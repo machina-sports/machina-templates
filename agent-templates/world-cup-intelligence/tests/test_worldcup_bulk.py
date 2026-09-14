@@ -438,6 +438,77 @@ def test_closure_rejects_errors_missing_recaps_and_forecast_drift():
     assert BULK.verify_import_bundle(closure_bundle) == {"verified": True, "count": 1, "kind": "closure"}
 
 
+def test_v3_closure_close_verify_and_fake_import_are_version_aware(tmp_path, monkeypatch):
+    artifacts = REPO / ".local" / "worldcup-storefront-readiness"
+    manifest = _read(artifacts / "candidate-manifest-v3.json")
+    readback = _read(artifacts / "candidate-bundle-v3.json")
+    expected = _read(artifacts / "closure-candidate-v3.json")
+    closure = BULK.prepare_closure(
+        manifest,
+        readback,
+        REPO / ".local/worldcup-bulk/baseline/worldcup-model-forecast.json",
+        closed_at=manifest["candidate_created_at"],
+    )
+    assert closure == expected
+    assert BULK.verify_import_bundle(closure) == {"verified": True, "count": 1, "kind": "closure"}
+    assert closure["documents"][0]["value"]["archive_document_commitment_count"] == 3296
+
+    row = closure["documents"][0]
+
+    class FakeOperator:
+        def __init__(self):
+            self.searches = 0
+            self.created = []
+
+        async def search_documents_exact(self, filters, page_size=100):
+            self.searches += 1
+            return [] if self.searches == 1 else [row]
+
+        async def create_document(self, document):
+            self.created.append(document)
+
+    class Context:
+        async def __aexit__(self, *args):
+            return None
+
+    operator = FakeOperator()
+
+    async def open_operator(url, token):
+        return operator, Context(), Context()
+
+    monkeypatch.setenv("TEST_WC_URL", "https://example.invalid/mcp")
+    monkeypatch.setenv("TEST_WC_TOKEN", "fake")
+    monkeypatch.setattr(BULK, "_open_operator", open_operator)
+    args = argparse.Namespace(url_env="TEST_WC_URL", token_env="TEST_WC_TOKEN", journal=tmp_path / "v3-import.json")
+    assert asyncio.run(BULK._import_apply(args, closure)) == {"imported": 1, "already_imported": 0}
+    assert operator.created == [row]
+
+
+def test_v3_closure_import_rejects_malformed_mixed_and_unknown_versions():
+    artifacts = REPO / ".local" / "worldcup-storefront-readiness"
+    v3 = _read(artifacts / "closure-candidate-v3.json")
+    malformed = copy.deepcopy(v3)
+    value = malformed["documents"][0]["value"]
+    value["archive_document_commitments"].pop(next(iter(value["archive_document_commitments"])))
+    value["archive_document_commitment_count"] -= 1
+    value["archive_document_commitments_sha256"] = CONNECTOR._archive_sha256(value["archive_document_commitments"])
+    value["manifest_sha256"] = CONNECTOR._archive_sha256(CONNECTOR._closure_manifest_payload(value))
+    with pytest.raises(BULK.ARCHIVE.ArchivePreparationError, match="invalid closure import"):
+        BULK.verify_import_bundle(malformed)
+
+    mixed = {"documents": [_closure_document(), v3["documents"][0]]}
+    with pytest.raises(BULK.ARCHIVE.ArchivePreparationError, match="mixed or inconsistent"):
+        BULK.verify_import_bundle(mixed)
+
+    unknown = copy.deepcopy(v3)
+    unknown["archive_version"] = "world-cup-2026-final-v999"
+    unknown_value = unknown["documents"][0]["value"]
+    unknown_value["_id"] = unknown_value["archive_version"] = unknown["archive_version"]
+    unknown_value["manifest_sha256"] = CONNECTOR._archive_sha256(CONNECTOR._closure_manifest_payload(unknown_value))
+    with pytest.raises(BULK.ARCHIVE.ArchivePreparationError, match="unsupported"):
+        BULK.verify_import_bundle(unknown)
+
+
 def test_capture_journal_polls_existing_run_before_dispatch_and_never_redispatches(tmp_path):
     class FakeOperator:
         def __init__(self):
@@ -534,6 +605,8 @@ def test_replay_requires_hit_pure_trace_and_explicit_zero_tokens(tmp_path):
             "outputs": {
                 "schedule": {"events": [], "count": 0},
                 "archive": {"status": "hit", "version": CONNECTOR.FINAL_ARCHIVE_VERSION},
+                "coverage": {},
+                "warnings": [],
                 "workflow-status": "executed",
             },
         },
@@ -545,7 +618,7 @@ def test_replay_requires_hit_pure_trace_and_explicit_zero_tokens(tmp_path):
     }
     BULK._validate_replay_execution(item, execution)
     internal = copy.deepcopy(item)
-    internal["expected_response"]["warnings"] = ["Internal archive wrapper, not a declared schedule output"]
+    internal["expected_response"]["internal_wrapper"] = {"not": "a declared schedule output"}
     BULK._validate_replay_execution(internal, execution)
     incomplete = copy.deepcopy(execution)
     del incomplete["workflow_output"]["outputs"]["schedule"]

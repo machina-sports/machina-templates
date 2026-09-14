@@ -14,7 +14,9 @@ workflow:
     league: "$.get('league', '')"
     season: "$.get('season', '')"
   outputs:
+    coverage: "$.get('archive_response', {}).get('coverage', {'schema_version': 'worldcup-storefront-coverage-v1', 'status': 'partial', 'reason': 'Legacy v2 compatibility response; exact coverage was not recorded.', 'scope': 'completed_tournament_archive', 'mode': 'historical', 'source_provenance': $.get('archive_metadata', {}).get('provenance', []), 'population_count': None, 'eligible_count': None, 'included_count': None, 'excluded_count': None, 'exclusion_reasons': {}, 'unsupported_fields': $.get('archive_metadata', {}).get('missing_capabilities', [])})"
     standings: "$.get('archive_response', {}).get('standings') if $.get('archive_hit', False) else ($.get('standings', {}))"
+    warnings: "$.get('archive_response', {}).get('warnings', []) if $.get('archive_status', 'miss') != 'miss' else ($.get('standings', {}).get('warnings', []))"
     archive: >-
       $.get('archive_metadata', {}) if $.get('archive_status', 'miss') != 'miss' else ({'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False, 'snapshot_as_of': None,
@@ -32,7 +34,7 @@ workflow:
         search-vector: false
       filters:
         name: "'worldcup:final-archive-manifest'"
-        value.archive_version: "'world-cup-2026-final-v2'"
+        value.archive_version: "'world-cup-2026-final-v3'"
       outputs:
         archive_manifest_documents: $.get('documents', []) or []
     - type: document
@@ -47,7 +49,7 @@ workflow:
           - 1
       filters:
         name: "'worldcup:final-archive'"
-        value.archive_version: "'world-cup-2026-final-v2'"
+        value.archive_version: "'world-cup-2026-final-v3'"
         value.endpoint: "'worldcup-get-standings'"
       outputs:
         archive_documents: $.get('documents', []) or []
@@ -60,7 +62,7 @@ workflow:
         command: serve_final_archive
       inputs:
         endpoint: "'worldcup-get-standings'"
-        archive_version: "'world-cup-2026-final-v2'"
+        archive_version: "'world-cup-2026-final-v3'"
         request: "{'event_urn': $.get('event_urn', ''), 'provider_event_id': $.get('provider_event_id', ''), 'league': $.get('league', ''), 'season': $.get('season', '')}"
         documents: $.get('archive_documents', [])
         archive_search_limit_reached: $.get('archive_search_limit_reached', False)

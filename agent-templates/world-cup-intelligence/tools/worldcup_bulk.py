@@ -1053,6 +1053,29 @@ def _forecast_export_records(export: Any) -> list[dict[str, Any]]:
     return records
 
 
+def _bundle_archive_version(bundle: dict[str, Any]) -> str:
+    if not isinstance(bundle, dict):
+        raise ARCHIVE.ArchivePreparationError("archive bundle must be an object")
+    if "content" in bundle:
+        documents, _ = ARCHIVE.extract_mcp_document_rows(bundle)
+    else:
+        documents = bundle.get("documents")
+    if not isinstance(documents, list) or not documents:
+        raise ARCHIVE.ArchivePreparationError("archive bundle must contain documents")
+    versions = {
+        str(row.get("value", {}).get("archive_version") or "")
+        for row in documents
+        if isinstance(row, dict) and isinstance(row.get("value"), dict)
+    }
+    declared = str(bundle.get("archive_version") or "")
+    if len(versions) != 1 or "" in versions or (declared and declared not in versions):
+        raise ARCHIVE.ArchivePreparationError("archive bundle contains mixed or inconsistent versions")
+    version = next(iter(versions))
+    if version not in CONNECTOR.SUPPORTED_FINAL_ARCHIVE_VERSIONS:
+        raise ARCHIVE.ArchivePreparationError("archive bundle version is unsupported")
+    return version
+
+
 def prepare_closure(
     manifest: dict[str, Any],
     readback: dict[str, Any],
@@ -1060,6 +1083,11 @@ def prepare_closure(
     *,
     closed_at: str,
 ) -> dict[str, Any]:
+    archive_version = str(manifest.get("archive_version") or "")
+    if archive_version not in CONNECTOR.SUPPORTED_FINAL_ARCHIVE_VERSIONS:
+        raise ARCHIVE.ArchivePreparationError("closure manifest archive version is unsupported")
+    if _bundle_archive_version(readback) != archive_version:
+        raise ARCHIVE.ArchivePreparationError("closure readback archive version differs from its manifest")
     documents = ARCHIVE.prepare_manifest(manifest)
     expected_ids = {row["value"]["_id"] for row in documents}
     ARCHIVE.verify_bundle(readback, manifest, expected_ids)
@@ -1086,15 +1114,17 @@ def prepare_closure(
     baseline_hash = CONNECTOR._archive_sha256(baseline_records)
     if manifest.get("forecast_baseline_sha256") != baseline_hash:
         raise ARCHIVE.ArchivePreparationError("manifest forecast baseline commitment is invalid")
+    commitments = CONNECTOR._archive_document_commitments(rows) if archive_version == CONNECTOR.NEXT_FINAL_ARCHIVE_VERSION else None
     closure = CONNECTOR.build_final_archive_manifest({"params": {
         "fixture_urns": manifest["fixture_urns"], "fixture_coverage": manifest["fixture_coverage"],
         "grounded_recap_fixture_urns": manifest["grounded_recap_fixture_urns"],
         "fixture_player_urns": manifest["fixture_player_urns"], "spotlight_targets": manifest["spotlight_targets"],
         "archive_document_ids": sorted(expected_ids), "expected_archive_count": len(documents),
+        "archive_document_commitments": commitments,
         "forecast_baseline_sha256": baseline_hash, "forecast_readback_sha256": forecast_hash,
         "closed_at": closed_at,
-    }})
-    return {"archive_version": CONNECTOR.FINAL_ARCHIVE_VERSION, "count": 1, "documents": [closure]}
+    }}, archive_version=archive_version)
+    return {"archive_version": archive_version, "count": 1, "documents": [closure]}
 
 
 def verify_import_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
@@ -1103,11 +1133,12 @@ def verify_import_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
         raise ARCHIVE.ArchivePreparationError("import bundle must contain documents")
     if len(documents) > 100:
         raise ARCHIVE.ArchivePreparationError("import accepts at most 100 rows; prepare a bounded batch first")
+    archive_version = _bundle_archive_version(bundle)
     names = {row.get("name") for row in documents if isinstance(row, dict)}
     if names == {CONNECTOR.FINAL_ARCHIVE_MANIFEST_DOCUMENT}:
         if len(documents) != 1:
             raise ARCHIVE.ArchivePreparationError("closure import must contain exactly one manifest")
-        state, _, warnings = CONNECTOR.validate_final_archive_manifest(documents)
+        state, _, warnings = CONNECTOR.validate_final_archive_manifest(documents, archive_version=archive_version)
         if state != "closed":
             raise ARCHIVE.ArchivePreparationError("invalid closure import: " + "; ".join(warnings))
         return {"verified": True, "count": 1, "kind": "closure"}
@@ -1150,6 +1181,7 @@ async def _import_apply(args: argparse.Namespace, bundle: dict[str, Any]) -> dic
     url, token = os.environ.get(args.url_env, ""), os.environ.get(args.token_env, "")
     if not url or not token:
         raise ARCHIVE.ArchivePreparationError(f"--apply requires {args.url_env} and {args.token_env}")
+    archive_version = _bundle_archive_version(bundle)
     operator, transport, session_context = await _open_operator(url, token)
     try:
         journal = _read(args.journal) if args.journal.exists() else {"schema_version": 1, "imported_document_ids": []}
@@ -1169,7 +1201,7 @@ async def _import_apply(args: argparse.Namespace, bundle: dict[str, Any]) -> dic
             if len(readback) != 1 or readback[0].get("name") != row["name"] or readback[0].get("value") != row["value"]:
                 raise ARCHIVE.ArchivePreparationError(f"exact import readback mismatch for {document_id}")
             if row["name"] == CONNECTOR.FINAL_ARCHIVE_MANIFEST_DOCUMENT:
-                state, _, warnings = CONNECTOR.validate_final_archive_manifest(readback)
+                state, _, warnings = CONNECTOR.validate_final_archive_manifest(readback, archive_version=archive_version)
                 if state != "closed":
                     raise ARCHIVE.ArchivePreparationError("closure readback failed manifest validation: " + "; ".join(warnings))
             else:

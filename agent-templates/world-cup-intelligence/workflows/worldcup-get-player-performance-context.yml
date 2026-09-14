@@ -22,6 +22,9 @@ workflow:
     team_id: "$.get('team_id', '')"
     official_fifa_power_ranking: "{}"
   outputs:
+    coverage: "$.get('archive_response', {}).get('coverage', {'schema_version': 'worldcup-storefront-coverage-v1', 'status': 'partial', 'reason': 'Legacy v2 compatibility response; exact coverage was not recorded.', 'scope': 'completed_tournament_archive', 'mode': 'historical', 'source_provenance': $.get('archive_metadata', {}).get('provenance', []), 'population_count': None, 'eligible_count': None, 'included_count': None, 'excluded_count': None, 'exclusion_reasons': {}, 'unsupported_fields': $.get('archive_metadata', {}).get('missing_capabilities', [])})"
+    identity_coverage: "$.get('archive_response', {}).get('identity_coverage', {}) if $.get('archive_hit', False) else ({})"
+    fixture_player_pack: "$.get('archive_response', {}).get('fixture_player_pack', {}) if $.get('archive_hit', False) else ({})"
     player_performance_context: "$.get('archive_response', {}).get('player_performance_context') if $.get('archive_hit', False) else ($.get('player_performance_context', {}) or {'event': $.get('event_document', {}), 'player': {}, 'official_fifa_power_ranking': ($.get('resolved_official_fifa_power_ranking', {}) or {'status': 'pending', 'source': 'fifa.com', 'scores': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}}), 'machina_provisional_performance_signal': {'status': 'unavailable', 'source_quality': 'unavailable', 'confidence': 0.0, 'scores_0_10': {'attacking': None, 'creativity': None, 'defending': None, 'in_possession': None, 'defending_goal': None}, 'drivers': [], 'warnings': ['No normalized player data supplied.']}, 'context_and_evidence': {'fallback_path': [], 'citations': [], 'missing_info_flags': ($.get('normalize_warnings', []) or []), 'freshness': {'provider_stats_fetched': False, 'official_fifa_expected_lag_hours': 4}}})"
     status: "$.get('archive_response', {}).get('status') if $.get('archive_hit', False) else ('available' if len($.get('normalized_players', [])) > 0 and ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') in ('available', 'not_ranked', 'not_eligible') else ('partial' if len($.get('normalized_players', [])) > 0 or ($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status') in ('available', 'not_ranked', 'not_eligible', 'unmatched') else 'unavailable'))"
     warnings: "$.get('archive_response', {}).get('warnings', []) if $.get('archive_status', 'miss') != 'miss' else (($.get('resolution_warnings', []) or []) + ($.get('player_resolution_warnings', []) or []) + ($.get('normalize_warnings', []) or []) + (((($.get('normalized_players', []) or [{}])[0].get('warnings', [])) or []) if len($.get('normalized_players', [])) > 0 else []) + {'available': [], 'not_ranked': ['Resolved tournament player is absent from the completed FIFA leaderboard.'], 'not_eligible': ['FIFA Power Ranking eligibility was not met based on proven minutes evidence.'], 'unmatched': ['Canonical tournament player identity could not be resolved.'], 'pending': ['Official FIFA Power Ranking final snapshot is unavailable.']}.get(($.get('resolved_official_fifa_power_ranking', {}) or {}).get('status'), ['Official FIFA Power Ranking is unavailable.']))"
@@ -45,7 +48,7 @@ workflow:
         search-vector: false
       filters:
         name: "'worldcup:final-archive-manifest'"
-        value.archive_version: "'world-cup-2026-final-v2'"
+        value.archive_version: "'world-cup-2026-final-v3'"
       outputs:
         archive_manifest_documents: $.get('documents', []) or []
     - type: document
@@ -87,7 +90,7 @@ workflow:
           - 1
       filters:
         name: "'worldcup:final-archive'"
-        value.archive_version: "'world-cup-2026-final-v2'"
+        value.archive_version: "'world-cup-2026-final-v3'"
         value.endpoint: "'worldcup-get-player-performance-context'"
         value.subject.event_urn: $.get('archive_resolved_event_urn', '')
       outputs:
@@ -135,7 +138,7 @@ workflow:
         command: serve_final_archive
       inputs:
         endpoint: "'worldcup-get-player-performance-context'"
-        archive_version: "'world-cup-2026-final-v2'"
+        archive_version: "'world-cup-2026-final-v3'"
         request: "{'event_urn': $.get('event_urn', ''), 'fixture_id': $.get('fixture_id', ''), 'provider_event_id': $.get('provider_event_id', ''), 'event': $.get('event', ''), 'opponent': $.get('opponent', ''), 'date': $.get('date', ''), 'player_urn': $.get('player_urn', ''), 'player': $.get('player', ''), 'team': $.get('team', ''), 'player_id': $.get('player_id', ''), 'team_id': $.get('team_id', '')}"
         documents: $.get('archive_documents', [])
         archive_search_limit_reached: $.get('archive_search_limit_reached', False)

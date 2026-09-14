@@ -24,6 +24,7 @@ workflow:
     season: "$.get('season', '')"
     calibration_window_days: "$.get('calibration_window_days', 90)"
   outputs:
+    coverage: "$.get('archive_response', {}).get('coverage', {'schema_version': 'worldcup-storefront-coverage-v1', 'status': 'partial', 'reason': 'Legacy v2 compatibility response; exact coverage was not recorded.', 'scope': 'completed_tournament_archive', 'mode': 'historical', 'source_provenance': $.get('archive_metadata', {}).get('provenance', []), 'population_count': None, 'eligible_count': None, 'included_count': None, 'excluded_count': None, 'exclusion_reasons': {}, 'unsupported_fields': $.get('archive_metadata', {}).get('missing_capabilities', [])})"
     finished_fixtures: "$.get('archive_response', {}).get('finished_fixtures') if $.get('archive_hit', False) else ($.get('finished_fixtures', []))"
     status: "$.get('archive_response', {}).get('status') if $.get('archive_hit', False) else ($.get('fixture_status', 'unavailable'))"
     provenance: "$.get('archive_response', {}).get('provenance') if $.get('archive_hit', False) else ($.get('fixture_provenance', 'none'))"
@@ -59,7 +60,7 @@ workflow:
         search-vector: false
       filters:
         name: "'worldcup:final-archive-manifest'"
-        value.archive_version: "'world-cup-2026-final-v2'"
+        value.archive_version: "'world-cup-2026-final-v3'"
       outputs:
         archive_manifest_documents: $.get('documents', []) or []
     - type: document
@@ -74,7 +75,7 @@ workflow:
           - 1
       filters:
         name: "'worldcup:final-archive'"
-        value.archive_version: "'world-cup-2026-final-v2'"
+        value.archive_version: "'world-cup-2026-final-v3'"
         value.endpoint: "'worldcup-backtest-forecasts'"
       outputs:
         archive_documents: $.get('documents', []) or []
@@ -87,7 +88,7 @@ workflow:
         command: serve_final_archive
       inputs:
         endpoint: "'worldcup-backtest-forecasts'"
-        archive_version: "'world-cup-2026-final-v2'"
+        archive_version: "'world-cup-2026-final-v3'"
         request: "{'competition': $.get('competition', ''), 'league': $.get('league', ''), 'season': $.get('season', ''), 'calibration_window_days': $.get('calibration_window_days', 90)}"
         documents: $.get('archive_documents', [])
         archive_search_limit_reached: $.get('archive_search_limit_reached', False)

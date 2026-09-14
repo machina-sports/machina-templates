@@ -15,9 +15,16 @@ workflow:
   inputs:
     player_urn: "$.get('player_urn', '')"
     player: "$.get('player', '')"
+    player_id: "$.get('player_id', '')"
     team: "$.get('team', '')"
+    team_id: "$.get('team_id', '')"
     force_regen: "$.get('force_regen', False)"
   outputs:
+    coverage: "$.get('archive_response', {}).get('coverage', {'schema_version': 'worldcup-storefront-coverage-v1', 'status': 'partial', 'reason': 'Legacy v2 compatibility response; exact coverage was not recorded.', 'scope': 'completed_tournament_archive', 'mode': 'historical', 'source_provenance': $.get('archive_metadata', {}).get('provenance', []), 'population_count': None, 'eligible_count': None, 'included_count': None, 'excluded_count': None, 'exclusion_reasons': {}, 'unsupported_fields': $.get('archive_metadata', {}).get('missing_capabilities', [])})"
+    player_key: "$.get('archive_response', {}).get('player_key', $.get('player_urn', '')) if $.get('archive_hit', False) else ($.get('player_urn', ''))"
+    structured_retrospective: "$.get('archive_response', {}).get('structured_retrospective', {}) if $.get('archive_hit', False) else ({})"
+    original_editorial: "$.get('archive_response', {}).get('original_editorial') if $.get('archive_hit', False) else (None)"
+    content_type: "$.get('archive_response', {}).get('content_type', 'legacy_v2_editorial') if $.get('archive_hit', False) else ('generated')"
     skill_card: "$.get('archive_response', {}).get('skill_card') if $.get('archive_hit', False) else (dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('spotlight', {})), player_urn=$.get('player_urn', ''), performance_context=$.get('player_overview', {}).get('performance_context', {'status': 'not_published', 'source': 'fifa.com'}), sources=$.get('player_overview', {}).get('sources', [])))"
     player_urn: "$.get('archive_response', {}).get('player_urn') if $.get('archive_hit', False) else ($.get('player_urn', ''))"
     resolved_player: "$.get('archive_response', {}).get('resolved_player') if $.get('archive_hit', False) else ($.get('resolved_player', {}))"
@@ -43,42 +50,39 @@ workflow:
         search-vector: false
       filters:
         name: "'worldcup:final-archive-manifest'"
-        value.archive_version: "'world-cup-2026-final-v2'"
+        value.archive_version: "'world-cup-2026-final-v3'"
       outputs:
         archive_manifest_documents: $.get('documents', []) or []
+    - type: connector
+      name: prepare-final-archive-lookup
+      connector:
+        name: worldcup-market-intelligence
+        command: build_final_archive_lookup
+      inputs:
+        endpoint: "'worldcup-player-spotlight'"
+        request: "{'player_urn': $.get('player_urn', ''), 'player_id': $.get('player_id', ''), 'player': $.get('player', ''), 'team': $.get('team', ''), 'team_id': $.get('team_id', '')}"
+      outputs:
+        archive_lookup_keys: $.get('lookup_keys', [])
+        archive_lookup_error: $.get('lookup_error', '')
     - type: document
       name: load-final-archive
-      description: Load immutable endpoint rows in a stable order before legacy execution.
+      condition: "len($.get('archive_lookup_keys', [])) > 0"
+      description: Load only immutable player rows matching a normalized singular selector.
       config:
         action: search
-        search-limit: 5000
+        search-limit: 100
         search-vector: false
         search-sorters:
           - _id
           - 1
       filters:
         name: "'worldcup:final-archive'"
-        value.archive_version: "'world-cup-2026-final-v2'"
+        value.archive_version: "'world-cup-2026-final-v3'"
         value.endpoint: "'worldcup-player-spotlight'"
+        value.subject.lookup_keys: "{'$in': $.get('archive_lookup_keys', [])}"
       outputs:
         archive_documents: $.get('documents', []) or []
-        archive_search_limit_reached: len($.get('documents', []) or []) >= 5000
-    - type: document
-      name: load-final-archive-identities
-      description: Load the complete canonical tournament index used to resolve archive selectors.
-      config:
-        action: search
-        search-limit: 5000
-        search-vector: false
-        search-sorters:
-          - _id
-          - 1
-      filters:
-        name: "'worldcup:identity-crosswalk'"
-        value.machina_competition_slug: "'world-cup-2026'"
-      outputs:
-        archive_canonical_identities: $.get('documents', []) or []
-        archive_canonical_identities_search_limit_reached: len($.get('documents', []) or []) >= 5000
+        archive_search_limit_reached: len($.get('documents', []) or []) >= 100
     - type: connector
       name: serve-final-archive
       description: Validate and serve an exact archive hit; clean misses alone may continue to legacy tasks.
@@ -87,14 +91,14 @@ workflow:
         command: serve_final_archive
       inputs:
         endpoint: "'worldcup-player-spotlight'"
-        archive_version: "'world-cup-2026-final-v2'"
-        request: "{'player_urn': $.get('player_urn', ''), 'player': $.get('player', ''), 'team': $.get('team', ''), 'force_regen': $.get('force_regen', False)}"
+        archive_version: "'world-cup-2026-final-v3'"
+        request: "{'player_urn': $.get('player_urn', ''), 'player_id': $.get('player_id', ''), 'player': $.get('player', ''), 'team': $.get('team', ''), 'team_id': $.get('team_id', ''), 'force_regen': $.get('force_regen', False)}"
         documents: $.get('archive_documents', [])
+        lookup_error: $.get('archive_lookup_error', '')
         archive_search_limit_reached: $.get('archive_search_limit_reached', False)
         canonical_events: $.get('archive_canonical_events', [])
         event_search_limit_reached: $.get('archive_canonical_events_search_limit_reached', False)
-        canonical_identities: $.get('archive_canonical_identities', [])
-        identity_search_limit_reached: $.get('archive_canonical_identities_search_limit_reached', False)
+        canonical_identities: []
         archive_manifest: $.get('archive_manifest_documents', [])
       outputs:
         archive_hit: $.get('archive_hit', False)

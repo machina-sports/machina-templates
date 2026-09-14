@@ -6,6 +6,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -273,6 +274,7 @@ def _eval(expression, context):
         "__builtins__": {},
         "bool": bool,
         "dict": dict,
+        "datetime": datetime,
         "isinstance": isinstance,
         "len": len,
         "list": list,
@@ -291,6 +293,37 @@ class DocumentStoreAdapter:
         self.searches = 0
         self.writes = 0
         self.executed = []
+        self.queries = []
+
+    @staticmethod
+    def _path(document, path):
+        value = document
+        for part in path.split("."):
+            value = value.get(part) if isinstance(value, dict) else None
+        return value
+
+    @classmethod
+    def _matches(cls, document, filters):
+        for path, expected in filters.items():
+            if path == "$or":
+                if not isinstance(expected, list) or not any(cls._matches(document, clause) for clause in expected):
+                    return False
+                continue
+            value = cls._path(document, path)
+            if isinstance(expected, dict) and "$ne" in expected:
+                keep = value != expected["$ne"]
+            elif isinstance(expected, dict) and "$in" in expected:
+                choices = expected["$in"]
+                keep = any(item in choices for item in value) if isinstance(value, list) else value in choices
+            elif isinstance(expected, dict) and "$exists" in expected:
+                keep = (value is not None) is bool(expected["$exists"])
+            elif isinstance(value, list):
+                keep = expected in value
+            else:
+                keep = value == expected
+            if not keep:
+                return False
+        return True
 
     def execute(self, task, context):
         action = task["config"]["action"]
@@ -299,24 +332,19 @@ class DocumentStoreAdapter:
             self.writes += 1
             return {}
         self.searches += 1
+        evaluated_filters = {path: _eval(expression, context) for path, expression in task.get("filters", {}).items()}
         matched = []
         for document in self.documents:
-            keep = True
-            for path, expression in task.get("filters", {}).items():
-                expected = _eval(expression, context)
-                value = document
-                for part in path.split("."):
-                    value = value.get(part) if isinstance(value, dict) else None
-                if isinstance(expected, dict) and "$ne" in expected:
-                    keep = value != expected["$ne"]
-                else:
-                    keep = value == expected
-                if not keep:
-                    break
-            if keep:
+            if self._matches(document, evaluated_filters):
                 matched.append(document)
         matched.sort(key=lambda row: row.get("_id") or row.get("value", {}).get("_id", ""))
-        return {"documents": matched[: task["config"]["search-limit"]]}
+        limit = task["config"]["search-limit"]
+        returned = matched[:limit]
+        self.queries.append({
+            "name": task["name"], "filters": evaluated_filters, "matched": len(matched),
+            "returned": len(returned), "limit": limit, "documents": returned,
+        })
+        return {"documents": returned}
 
 
 class ConnectorAdapter:
@@ -351,8 +379,29 @@ def _store_documents(endpoint, archive_documents):
     return documents
 
 
-def execute_yaml(endpoint, request, documents, *, include_canonical=True):
+def execute_yaml(
+    endpoint,
+    request,
+    documents,
+    *,
+    include_canonical=True,
+    archive_version=CONNECTOR.FINAL_ARCHIVE_VERSION,
+):
     workflow = yaml.safe_load((ROOT / "workflows" / f"{endpoint}.yml").read_text(encoding="utf-8"))["workflow"]
+    for task in workflow["tasks"]:
+        if task["name"] == "load-final-archive-manifest":
+            task["filters"]["value.archive_version"] = repr(archive_version)
+        elif task["name"] == "load-final-archive":
+            task["filters"]["value.archive_version"] = repr(archive_version)
+        elif task["name"] == "serve-final-archive":
+            task["inputs"]["archive_version"] = repr(archive_version)
+    if archive_version == CONNECTOR.FINAL_ARCHIVE_VERSION and endpoint in {"worldcup-resolve", "worldcup-player-spotlight"}:
+        workflow["tasks"] = [task for task in workflow["tasks"] if task["name"] != "prepare-final-archive-lookup"]
+        archive_load = next(task for task in workflow["tasks"] if task["name"] == "load-final-archive")
+        archive_load.pop("condition", None)
+        archive_load["config"]["search-limit"] = 5000
+        archive_load["filters"].pop("value.subject.lookup_keys", None)
+        archive_load["outputs"]["archive_search_limit_reached"] = "len($.get('documents', []) or []) >= 5000"
     context = dict(request)
     for key, expression in workflow.get("inputs", {}).items():
         context[key] = _eval(expression, context)
@@ -365,6 +414,9 @@ def execute_yaml(endpoint, request, documents, *, include_canonical=True):
             result = store.execute(task, context)
         elif task["type"] == "connector":
             inputs = {key: _eval(value, context) for key, value in task.get("inputs", {}).items()}
+            if task["name"] == "serve-final-archive" and archive_version == CONNECTOR.FINAL_ARCHIVE_VERSION:
+                inputs["canonical_events"] = [row for row in store.documents if row.get("name") == "worldcup:event"]
+                inputs["canonical_identities"] = [row for row in store.documents if row.get("name") == "worldcup:identity-crosswalk"]
             result = connectors.execute(task, inputs)
         elif task["type"] == "prompt":
             connectors.external_calls.append((task.get("connector") or {}).get("name", "prompt"))
@@ -428,12 +480,12 @@ def _closure_document_for_handoff():
     return {"name": CONNECTOR.FINAL_ARCHIVE_MANIFEST_DOCUMENT, "value": {"archive_version": CONNECTOR.FINAL_ARCHIVE_VERSION}}
 
 
-def test_public_workflows_pin_v2_without_exposing_a_version_input():
+def test_public_workflows_pin_v3_without_exposing_a_version_input():
     for endpoint in ENDPOINTS:
         workflow = yaml.safe_load((ROOT / "workflows" / f"{endpoint}.yml").read_text(encoding="utf-8"))["workflow"]
         assert "archive_version" not in workflow.get("inputs", {})
         serve = next(task for task in workflow["tasks"] if task["name"] == "serve-final-archive")
-        assert serve["inputs"]["archive_version"] == f"'{CONNECTOR.FINAL_ARCHIVE_VERSION}'"
+        assert serve["inputs"]["archive_version"] == f"'{CONNECTOR.NEXT_FINAL_ARCHIVE_VERSION}'"
 
 
 @pytest.mark.parametrize("endpoint", ENDPOINTS)

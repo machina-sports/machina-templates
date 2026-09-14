@@ -23,6 +23,7 @@ workflow:
     include_reasoning: "$.get('include_reasoning', False)"
     min_gap_bps: "$.get('min_gap_bps', 100)"
   outputs:
+    coverage: "$.get('archive_response', {}).get('coverage', {'schema_version': 'worldcup-storefront-coverage-v1', 'status': 'partial', 'reason': 'Legacy v2 compatibility response; exact coverage was not recorded.', 'scope': 'completed_tournament_archive', 'mode': 'historical', 'source_provenance': $.get('archive_metadata', {}).get('provenance', []), 'population_count': None, 'eligible_count': None, 'included_count': None, 'excluded_count': None, 'exclusion_reasons': {}, 'unsupported_fields': $.get('archive_metadata', {}).get('missing_capabilities', [])})"
     forecast: "$.get('archive_response', {}).get('forecast') if $.get('archive_hit', False) else ($.get('forecast', {}))"
     model_vs_market: "$.get('archive_response', {}).get('model_vs_market') if $.get('archive_hit', False) else ($.get('model_vs_market', {}))"
     analysis: "$.get('archive_response', {}).get('analysis') if $.get('archive_hit', False) else ($.get('analysis', {}))"
@@ -48,7 +49,7 @@ workflow:
         search-vector: false
       filters:
         name: "'worldcup:final-archive-manifest'"
-        value.archive_version: "'world-cup-2026-final-v2'"
+        value.archive_version: "'world-cup-2026-final-v3'"
       outputs:
         archive_manifest_documents: $.get('documents', []) or []
     - type: document
@@ -90,7 +91,7 @@ workflow:
           - 1
       filters:
         name: "'worldcup:final-archive'"
-        value.archive_version: "'world-cup-2026-final-v2'"
+        value.archive_version: "'world-cup-2026-final-v3'"
         value.endpoint: "'worldcup-get-match-forecast'"
         value.subject.event_urn: $.get('archive_resolved_event_urn', '')
       outputs:
@@ -120,7 +121,7 @@ workflow:
         command: serve_final_archive
       inputs:
         endpoint: "'worldcup-get-match-forecast'"
-        archive_version: "'world-cup-2026-final-v2'"
+        archive_version: "'world-cup-2026-final-v3'"
         request: "{'event_urn': $.get('event_urn', ''), 'provider_event_id': $.get('provider_event_id', ''), 'event': $.get('event', ''), 'team': $.get('team', ''), 'opponent': $.get('opponent', ''), 'date': $.get('date', ''), 'include_reasoning': $.get('include_reasoning', False), 'min_gap_bps': $.get('min_gap_bps', 100)}"
         documents: $.get('archive_documents', [])
         archive_search_limit_reached: $.get('archive_search_limit_reached', False)

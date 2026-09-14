@@ -106,6 +106,8 @@ connector:
       value: "select_prematch_fixtures"
     - name: "Plan archive repair"
       value: "plan_archive_repair"
+    - name: "Build final archive lookup"
+      value: "build_final_archive_lookup"
     - name: "Serve final archive"
       value: "serve_final_archive"
     - name: "Build final archive manifest"

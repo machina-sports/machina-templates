@@ -1,5 +1,75 @@
 # World Cup Final Archive Serving
 
+## Storefront Readiness Candidate Acceptance
+
+The next-version storefront candidate is an offline-only, additive derivation
+from the verified v2 manifest. It is acceptable only when one deterministic run
+produces a complete versioned manifest, import bundle, closure candidate, and
+readiness report while preserving the byte hashes of every v2 source file.
+The candidate must prove all 104 fixtures, all 11 route contracts, 98 eligible
+pre-kickoff forecasts with the six late forecasts excluded, all 5,323 raw
+player-fixture observations represented by fixture packs, the two original editorial
+spotlights retained, schedule pagination over all 104 fixtures, and exact
+response/source/identity hashes. Every response carries a machine-readable
+`coverage` object with evidence status, reason, completed-tournament scope,
+provenance, population and eligibility counts, and unsupported fields.
+
+The final v3 candidate also validates the exact 48-page FIFA squad PDF and its
+SHA-256, binds 1,248 structured registrations to raw PDF cells and geometrically
+extracted jersey numbers, and records the 15 unresolved font artifacts plus
+Jayden Adams's source-empty club without guessing. Its reconciliation ledger
+accepts 1,249 provider IDs for 1,248 people, preserves 14 canonical-URN DOB
+conflicts as source-scoped flags, restores Marco Pašalić's four omitted rows,
+coalesces both Qatar provider IDs without changing scalar `provider_ids`, and
+quarantines the corrupt Mario/Marco identity mapping.
+
+The candidate is not live publication. Release 0.11.2 workflow definitions
+select v3; existing v2 rows and their closure remain unchanged rollback targets.
+Import and verify the complete v3 archive before activating those definitions.
+Candidate preparation may read only the
+verified local v2 manifest, raw local captures, and hash-checked FIFA evidence;
+it must fail closed on malformed, duplicate, missing, or unsupported rows and
+may not invoke providers, models, document writes, or a generation fallback.
+Activation requires a separate reviewed import, exact readback verification,
+and an explicit server-owned workflow version switch.
+Rollback is the inverse server-owned switch back to the still-valid v2 closure;
+requests can never choose an archive version.
+
+Prepare the candidate from the verified local manifest without network or store
+access:
+
+```bash
+uv run --no-project --python 3.11 --with pymupdf --with pyyaml --with jsonschema \
+  python agent-templates/world-cup-intelligence/tools/worldcup_storefront_readiness.py \
+  --source .local/worldcup-bulk/final-manifest.json \
+  --output-dir .local/worldcup-storefront-readiness \
+  --candidate-created-at <reviewed-UTC-timestamp> \
+  --fifa-pdf .local/worldcup-storefront-readiness/evidence/SquadLists-English.pdf \
+  --fifa-snapshot .local/worldcup-storefront-readiness/evidence/fifa-official-registration-snapshot.json \
+  --fifa-raw-cells .local/worldcup-storefront-readiness/evidence/fifa-roster-raw-cells.json \
+  --provider-player-evidence .local/worldcup-storefront-readiness/evidence/provider-player-evidence.json \
+  --fifa-preliminary-audit .local/worldcup-storefront-readiness/evidence/fifa-provider-preliminary-audit.json \
+  --raw-captures-dir .local/worldcup-bulk/captures \
+  --rankings .local/worldcup-bulk/baseline/worldcup-final-fifa-player-power-ranking.json \
+  --openapi-source agent-templates/world-cup-intelligence/docs/openapi.json \
+  --import-openapi-output agent-templates/world-cup-intelligence/docs/openapi-import-source.json
+```
+
+The command writes `candidate-manifest-v3.json`, `candidate-bundle-v3.json`,
+`closure-candidate-v3.json`, `identity-reconciliation-v3.json`,
+`readiness-report.json`, and the import-source OpenAPI document. It validates v2 before
+derivation, validates and deduplicates v3 afterward, records hashes for every
+referenced source file, and confirms those hashes are unchanged after writing.
+
+The buyer-facing OpenAPI remains pinned to
+`https://agents.machina.gg/zcj/ajgpivnid8bn`. The generated import-source variant
+uses `https://api.machina.gg` as its upstream to avoid a gateway self-reference.
+Its catalog `openApiUrl` must use the reviewed, pushed immutable commit SHA:
+`https://raw.githubusercontent.com/machina-sports/machina-templates/<RELEASE_COMMIT_SHA>/agent-templates/world-cup-intelligence/docs/openapi-import-source.json`.
+It is only a local publication input: an authorized dashboard re-import and
+post-import inspection are still mandatory, and changing `openApiUrl` alone is
+not assumed to publish or overwrite the catalog.
+
 ## Approved Bulk Finalization
 
 The v1 bulk closeout extends the deployed canary without changing its archive
@@ -28,9 +98,10 @@ but spotlight generation is disabled at closure and is not a match-completion ga
 ## Decision
 
 The completed FIFA World Cup 2026 catalog is served from immutable,
-versioned `worldcup:final-archive` documents. The active version is
-`world-cup-2026-final-v2`. Existing v1 canary rows remain immutable and are never
-overwritten by bulk publication.
+versioned `worldcup:final-archive` documents. Release definitions target
+`world-cup-2026-final-v3`; actual activation requires the readback gates above.
+Existing v1 canary and v2 archive rows remain immutable and are never
+overwritten by publication.
 
 The eleven standard storefront workflows are archive readers only. They may
 perform deterministic local selection and filtering through the
@@ -88,7 +159,7 @@ Every result-changing non-selector field is retained:
 | Workflow | Canonical subject | Parameters |
 | --- | --- | --- |
 | `worldcup-resolve` | resolved entity URN | none |
-| `worldcup-get-schedule` | `tournament` | `date_from`, `date_to`, `team`, `opponent`, `status`, `limit` |
+| `worldcup-get-schedule` | `tournament` | `date_from`, `date_to`, `team`, `opponent`, `status`, `limit`, `offset` |
 | `worldcup-get-event-context` | event URN | `include_prematch_research`, `include_social_pulse` |
 | `worldcup-get-standings` | competition/league-season | `league`, `season` |
 | `worldcup-get-squads` | event URN | none |
@@ -97,7 +168,7 @@ Every result-changing non-selector field is retained:
 | `worldcup-get-match-forecast` | event URN | `include_reasoning`, `min_gap_bps` |
 | `worldcup-backtest-forecasts` | competition | `league`, `season`, `calibration_window_days` |
 | `worldcup-match-recap` | event URN | none |
-| `worldcup-player-spotlight` | player URN | none |
+| `worldcup-player-spotlight` | canonical player URN or explicit provider-player key | none |
 
 Schedule filters are applied locally to one versioned tournament snapshot.
 Resolve is an exact local lookup over versioned entity rows. This avoids an
@@ -115,8 +186,10 @@ enters the identity; operator warming is a separate offline operation.
 - Recaps and spotlights preserve the stored `generated_at`, body, sources, and
   provenance. Retrospective content is never relabeled as original matchday
   copy.
-- Squad identities are an incomplete tournament identity snapshot unless the
-  source explicitly proves complete official registration.
+- Squad responses retain the observed tournament player pools and separately
+  expose the complete final published FIFA registration snapshot. That snapshot
+  does not prove fixture-date lineup/eligibility, replacement history, or injury
+  status; its international caps/goals are not World Cup match statistics.
 - Empty injury data remains partial unless the archived response explicitly
   records `coverage_complete: true`.
 - Current squad/injury/provider output is not accepted as historical evidence
