@@ -1,0 +1,25 @@
+name: Sportradar Soccer authentication contract
+
+on:
+  pull_request:
+    paths:
+      - 'connectors/sportradar-soccer/**'
+      - '.github/workflows/test-sportradar-soccer.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'connectors/sportradar-soccer/**'
+      - '.github/workflows/test-sportradar-soccer.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  auth-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s connectors/sportradar-soccer/tests -v
