@@ -14,18 +14,10 @@
     "/competitions.json": {
       "get": {
         "summary": "Get information about competitions",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -94,18 +86,11 @@
               "type": "string"
             },
             "description": "The ID of the competition (e.g. sr:competition:325)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -174,18 +159,11 @@
               "type": "string"
             },
             "description": "The ID of the competition (e.g. sr:competition:325)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -254,20 +232,11 @@
               "type": "string"
             },
             "description": "The ID of the competitor (e.g. sr:competitor:44)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Your API key for authentication"
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -336,18 +305,11 @@
               "type": "string"
             },
             "description": "The ID of the competitor (e.g. sr:competitor:1646)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -416,18 +378,11 @@
               "type": "string"
             },
             "description": "The ID of the competitor (e.g. sr:competitor:1646)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -504,18 +459,11 @@
               "type": "string"
             },
             "description": "The type of data to retrieve (e.g. standings, fixtures, etc.)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -565,7 +513,7 @@
               "application/json": {
                 "schema": {
                   "type": "object"
-                } 
+                }
               }
             }
           }
@@ -593,18 +541,11 @@
               "type": "string"
             },
             "description": "The ID of the second competitor (e.g. sr:competitor:45)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -689,18 +630,11 @@
               "type": "string"
             },
             "description": "The type of data to retrieve (e.g. standings, fixtures, etc.)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -750,7 +684,7 @@
               "application/json": {
                 "schema": {
                   "type": "object"
-                } 
+                }
               }
             }
           }
@@ -781,13 +715,6 @@
           },
           {
             "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
             "name": "start",
             "schema": {
               "type": "string"
@@ -796,7 +723,7 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -858,13 +785,6 @@
         "summary": "Get information about lineups from an event",
         "parameters": [
           {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "in": "path",
             "name": "event_code",
             "required": true,
@@ -890,7 +810,7 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -959,18 +879,11 @@
               "type": "string"
             },
             "description": "The ID of the season (e.g. sr:season:123456)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -1039,18 +952,11 @@
               "type": "string"
             },
             "description": "The ID of the season (e.g. sr:season:123456)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -1122,15 +1028,6 @@
           },
           {
             "in": "query",
-            "name": "api_key",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Your API key for authentication"
-          },
-          {
-            "in": "query",
             "name": "start",
             "schema": {
               "type": "string"
@@ -1139,7 +1036,7 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -1208,18 +1105,11 @@
               "type": "string"
             },
             "description": "The ID of the season (e.g. sr:season:137706)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -1288,18 +1178,11 @@
               "type": "string"
             },
             "description": "The ID of the season (e.g. sr:season:137706)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -1367,18 +1250,11 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -1417,18 +1293,11 @@
               "type": "string"
             },
             "description": "The ID of the player (e.g. sr:player:123456)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -1497,18 +1366,11 @@
               "type": "string"
             },
             "description": "The date in YYYY-MM-DD format (e.g. 2026-01-22)"
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "security": [
           {
-            "apiKey": []
+            "api_key": []
           }
         ],
         "responses": {
@@ -1568,10 +1430,10 @@
   },
   "components": {
     "securitySchemes": {
-      "apiKey": {
-        "type": "params",
-        "in": "query",
-        "name": "api_key"
+      "api_key": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key"
       }
     }
   }
