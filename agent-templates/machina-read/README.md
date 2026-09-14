@@ -12,11 +12,12 @@ sports. The same sport may lead on successive days.
 
 V4 is the transformer default so an omitted format cannot silently invoke the old
 cross-sport mashup. Explicit `edition_format: 3` still reads or assembles legacy v3
-records for compatibility. Each v4 candidate has one non-market anchor and may
-carry one conservatively matched same-subject market; markets are optional and do
-not have to be cited. Writing uses self-contained facts and optional earned humor,
-not compulsory jokes or comparisons. Full-article enrichment is not automated for
-every source; editor-reviewed posts must be labelled as such by consumers.
+records for compatibility. Each v4 candidate has one `article` or `event` anchor
+and may carry one conservatively matched same-subject market; markets are optional
+and do not have to be cited. Substantive public ESPN reporting is preferred, while
+RSS headlines cannot anchor a v4 edition. Writing uses self-contained facts and
+optional earned humor, not compulsory jokes or comparisons. Automated reporting
+never sets `editorReviewed`; that remains an independent consumer-owned signal.
 
 The sections below describe the discovery lanes and the legacy v3 behavior where
 they explicitly refer to cross-sport editions. The v4 selection rules above govern
@@ -28,7 +29,8 @@ is no shadow collector, local runner or background service anywhere in it.
 ## Install and ownership
 
 The target pod needs the existing `sports-skills` and `machina-ai` connectors.
-Import `connectors/machina-read-multisport`, then this package's workflows.
+Import `connectors/machina-read-reporting` and `connectors/machina-read-multisport`,
+then this package's workflows.
 `connectors/machina-read-transform` remains in the repository, with its own
 tests, for the previous v2 MLB pipeline; no v3 workflow calls it, so importing it
 is optional. Credentials remain runtime-owned. Do not update unrelated connectors
@@ -61,6 +63,7 @@ afterwards so raw feeds never accumulate into one oversized persisted output:
 | Polymarket | `sports-skills invoke_polymarket get_sports_events` |
 | Kalshi | `sports-skills invoke_kalshi get_markets` on the `KXMLB` baseball series |
 | News | `sports-skills invoke_news fetch_items` once per supported sport (nine calls) |
+| Full reporting | `machina-read-reporting invoke_reporting` once per supported sport (nine fixed ESPN paths) |
 
 Every lane is filtered on its own observed timestamps, not on transport success.
 The live all-sport schedule returns fixtures months ahead, so events outside a
@@ -88,22 +91,30 @@ deliberately the proven baseball title series only; no wider Kalshi adapter and
 no identity join to other sports is claimed. No trade, wallet or order command is
 used anywhere.
 
-News stays headline evidence: RFC publication dates control recency, headlines
+RSS news stays headline evidence: RFC publication dates control recency, headlines
 older than 48 hours or dated in the future are rejected, and routine "how to
 watch", TV-listing, betting-promo, bonus and casino headlines are filtered out.
-Full articles are not retrieved and nothing inside them is verified.
+It cannot anchor a v4 edition. The dedicated reporting connector retrieves public
+ESPN Story API records with fixed paths, no credentials, disabled proxies, no
+redirects, a six-second timeout and a 262,144-byte response ceiling. Premium,
+malformed, stale, future, unbound URL and bodyless records are dropped. HTML is
+reduced to plain text, excluding `script`, `style` and `embed`, and bounded to
+6,000 characters with explicit truncation awareness. See
+`docs/machina-read-reporting-design.md`.
 
 ## Shortlisting and coverage
 
-The v4 assembler admits concrete results, fixtures and reported headlines as
-anchors; a static market quote cannot form a candidate by itself. It takes one
-candidate per eligible sport before considering a second from any sport, up to two
-per sport and 12 total, while enforcing the 14,000-character evidence budget and
-24,000-byte prompt budget. This is deterministic capacity control, not a local
-editorial score: feed volume cannot fill the shortlist before other represented
-sports get a candidate, and the model makes the editorial choice. A same-subject
-market can be attached only after anchor breadth is secured and only if budgets
-still permit it. Full scan coverage remains recorded separately.
+The v4 assembler admits substantive articles, concrete results and fixtures as
+anchors; a bare headline or static market quote cannot form a candidate. Within
+each sport articles precede event evidence, without forcing the final editorial
+choice. It takes one candidate per eligible sport before considering a second from
+any sport, up to two per sport and 12 total, while enforcing a 30,000-character
+candidate evidence budget and 40,000-byte prompt budget. This is deterministic
+capacity control, not a local editorial score: feed volume cannot fill the
+shortlist before other represented sports get a candidate, and the model makes
+the editorial choice. A same-subject market can be attached only after anchor
+breadth is secured and only if budgets still permit it. Full scan coverage remains
+recorded separately.
 
 The producer supplies up to seven admitted prior v4 editions. Sources with the
 same normalized label and evidence text are omitted from the new shortlist, but a
@@ -123,9 +134,10 @@ production path.
 
 ## Reasoning and output
 
-Editorial voice: a short, engaging factual account that names the central athlete
-or team, what happened, the competition and why it matters for a non-fan. A brief
-dry observational line is optional when the facts earn it. Humour is commentary
+Editorial voice: an 80-130-word factual account, within 900 characters, that names
+the central athlete or team, what happened, the sport or competition and why it
+matters for a non-fan, briefly unpacking insider jargon. A brief dry observational
+reversal is optional when a verified detail earns it. Humour is commentary
 and never supplies a fact; forced analogies, impersonation, injury jokes, cruelty
 and fabricated quotes or incidents are prohibited. All provider text is treated
 as untrusted data and never as instructions.
@@ -153,16 +165,22 @@ v3.
 ## Cache and publication
 
 A same-day, admitted, unexpired v4 edition is reused and every provider and model
-task is skipped. This is sequential cache reuse, not a claim of race-safe global
-once-per-day execution. Because the production cache probe and reader both require
-`schemaVersion: 4`, older editions cannot be served by this pipeline. Explicit v3
-cache validation remains available only to legacy callers.
+task is skipped unless the native workflow context supplies boolean
+`force_refresh: true`. That exact value passes an empty document list to the cache
+validator; strings and other values do not bypass the cache. This is sequential
+cache reuse, not a claim of race-safe global once-per-day execution. Because the
+production cache probe and reader both require `schemaVersion: 4`, older editions
+cannot be served by this pipeline. Explicit v3 cache validation remains available
+only to legacy callers.
 Failed validation stores no replacement and does not extend an old expiry; reads
 never renew a TTL or rewrite a provider timestamp.
 
-The transformer defaults to private results; the producer explicitly supplies
-boolean `publish_public: True` after validation, and anything else, including the
-string `"True"`, stays private. Reads select admitted editions only.
+The transformer defaults to private results. The producer's native
+`publish_public` input defaults to boolean `True` for ordinary scheduled runs, but
+only an exact boolean `True` reaches finalization as public. Boolean `False`,
+strings and other values store a private edition, return it only as the `preview`
+output and leave the public `edition` output empty. Reads and cache searches still
+select only editions with boolean `publicApproved: True`.
 
 Workflows retain draft definitions and the `machina-read-daily` agent ships
 **inactive** with a disabled native `type: agent` job targeting itself, with
@@ -185,6 +203,7 @@ execution failures remain separate evidence.
 
 ```
 python -m pytest tests/test_machina_read_multisport.py tests/test_machina_read_single_story.py tests/test_machina_read_native.py -q
+python -m pytest tests/test_machina_read_reporting.py -q
 python scripts/check-machina-ai-policy.py agent-templates/machina-read/workflows/machina-read-produce-daily.yml
 ```
 

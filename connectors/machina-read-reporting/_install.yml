@@ -1,0 +1,18 @@
+setup:
+  title: Machina Read Reporting
+  description: Narrow public ESPN Story API reporting collection for Machina Read.
+  category:
+    - data-acquisition
+    - sports
+  estimatedTime: 1 minute
+  features:
+    - Fixed allowlisted ESPN sport feeds with bounded HTML-to-text normalization
+  integrations:
+    - machina-read-reporting
+  status: available
+  value: connectors/machina-read-reporting
+  version: 0.1.0
+
+datasets:
+  - type: connector
+    path: machina-read-reporting.yml

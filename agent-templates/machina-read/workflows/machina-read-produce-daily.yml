@@ -1,14 +1,18 @@
 workflow:
   name: machina-read-produce-daily
   title: Machina Read - Best story of the day
-  description: Native broad sports collection through sports-skills, Polymarket and Kalshi, bounded candidate shortlisting,
-    one Gemini editorial selection through machina-ai, publication validation and native v4 document storage. No local runner
-    or shadow collector. Manual/draft until activation approval.
+  description: Native broad sports collection through sports-skills plus bounded public ESPN reporting, Polymarket and
+    Kalshi, bounded candidate shortlisting, one Gemini editorial selection through machina-ai, publication validation and
+    native v4 document storage. No local runner or shadow collector. Manual/draft until activation approval.
   status: draft
-  inputs: {}
+  inputs:
+    force_refresh: $.get('force_refresh', False) is True
+    publish_public: $.get('publish_public', True) is True
   outputs:
     edition: $.get('read_cache', {}).get('edition', {}) if $.get('read_cache', {}).get('hit') else ($.get('read_final', {}).get('public',
-      {}) if $.get('read_saved_id') else {})
+      {}) if $.get('read_saved_id') and $.get('read_final', {}).get('edition', {}).get('publicApproved') is True else {})
+    preview: $.get('read_final', {}).get('edition', {}) if $.get('read_saved_id') and $.get('read_final', {}).get('edition',
+      {}).get('publicApproved') is False else {}
     document_id: $.get('read_cache', {}).get('documentId') or $.get('read_saved_id')
     served_from: '''cache'' if $.get(''read_cache'', {}).get(''hit'') else ''generated'''
     workflow-status: '''executed'' if $.get(''read_cache'', {}).get(''hit'') or $.get(''read_saved_id'') else ''failed'''
@@ -37,7 +41,7 @@ workflow:
       value.publicApproved: 'True'
       metadata.edition_date: $.get('read_clock', {}).get('date')
     outputs:
-      read_existing: $.get('documents', [])
+      read_existing: '[] if $.get(''force_refresh'', False) is True else $.get(''documents'', [])'
   - type: connector
     name: check-native-cache
     connector:
@@ -482,6 +486,222 @@ workflow:
     condition: $.get('read_cache', {}).get('hit') is not True
     continue_on_error: true
   - type: connector
+    name: collect-reporting-football
+    connector:
+      name: machina-read-reporting
+      command: invoke_reporting
+    inputs:
+      sport: '''football'''
+    outputs:
+      read_raw_reporting_football: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-reporting-football
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''reporting'''
+      raw: $.get('read_raw_reporting_football', {})
+      sport: '''football'''
+    outputs:
+      read_reporting_football: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-reporting-americanfootball
+    connector:
+      name: machina-read-reporting
+      command: invoke_reporting
+    inputs:
+      sport: '''americanfootball'''
+    outputs:
+      read_raw_reporting_americanfootball: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-reporting-americanfootball
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''reporting'''
+      raw: $.get('read_raw_reporting_americanfootball', {})
+      sport: '''americanfootball'''
+    outputs:
+      read_reporting_americanfootball: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-reporting-baseball
+    connector:
+      name: machina-read-reporting
+      command: invoke_reporting
+    inputs:
+      sport: '''baseball'''
+    outputs:
+      read_raw_reporting_baseball: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-reporting-baseball
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''reporting'''
+      raw: $.get('read_raw_reporting_baseball', {})
+      sport: '''baseball'''
+    outputs:
+      read_reporting_baseball: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-reporting-basketball
+    connector:
+      name: machina-read-reporting
+      command: invoke_reporting
+    inputs:
+      sport: '''basketball'''
+    outputs:
+      read_raw_reporting_basketball: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-reporting-basketball
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''reporting'''
+      raw: $.get('read_raw_reporting_basketball', {})
+      sport: '''basketball'''
+    outputs:
+      read_reporting_basketball: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-reporting-hockey
+    connector:
+      name: machina-read-reporting
+      command: invoke_reporting
+    inputs:
+      sport: '''hockey'''
+    outputs:
+      read_raw_reporting_hockey: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-reporting-hockey
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''reporting'''
+      raw: $.get('read_raw_reporting_hockey', {})
+      sport: '''hockey'''
+    outputs:
+      read_reporting_hockey: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-reporting-tennis
+    connector:
+      name: machina-read-reporting
+      command: invoke_reporting
+    inputs:
+      sport: '''tennis'''
+    outputs:
+      read_raw_reporting_tennis: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-reporting-tennis
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''reporting'''
+      raw: $.get('read_raw_reporting_tennis', {})
+      sport: '''tennis'''
+    outputs:
+      read_reporting_tennis: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-reporting-motorsport
+    connector:
+      name: machina-read-reporting
+      command: invoke_reporting
+    inputs:
+      sport: '''motorsport'''
+    outputs:
+      read_raw_reporting_motorsport: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-reporting-motorsport
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''reporting'''
+      raw: $.get('read_raw_reporting_motorsport', {})
+      sport: '''motorsport'''
+    outputs:
+      read_reporting_motorsport: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-reporting-golf
+    connector:
+      name: machina-read-reporting
+      command: invoke_reporting
+    inputs:
+      sport: '''golf'''
+    outputs:
+      read_raw_reporting_golf: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-reporting-golf
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''reporting'''
+      raw: $.get('read_raw_reporting_golf', {})
+      sport: '''golf'''
+    outputs:
+      read_reporting_golf: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: collect-reporting-cricket
+    connector:
+      name: machina-read-reporting
+      command: invoke_reporting
+    inputs:
+      sport: '''cricket'''
+    outputs:
+      read_raw_reporting_cricket: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
+    name: compact-reporting-cricket
+    connector:
+      name: machina-read-multisport
+      command: compact
+    inputs:
+      kind: '''reporting'''
+      raw: $.get('read_raw_reporting_cricket', {})
+      sport: '''cricket'''
+    outputs:
+      read_reporting_cricket: $
+    condition: $.get('read_cache', {}).get('hit') is not True
+    continue_on_error: true
+  - type: connector
     name: assemble-best-story-shortlist
     connector:
       name: machina-read-multisport
@@ -504,6 +724,15 @@ workflow:
       news_motorsport: $.get('read_news_motorsport', {})
       news_golf: $.get('read_news_golf', {})
       news_cricket: $.get('read_news_cricket', {})
+      reporting_football: $.get('read_reporting_football', {})
+      reporting_americanfootball: $.get('read_reporting_americanfootball', {})
+      reporting_baseball: $.get('read_reporting_baseball', {})
+      reporting_basketball: $.get('read_reporting_basketball', {})
+      reporting_hockey: $.get('read_reporting_hockey', {})
+      reporting_tennis: $.get('read_reporting_tennis', {})
+      reporting_motorsport: $.get('read_reporting_motorsport', {})
+      reporting_golf: $.get('read_reporting_golf', {})
+      reporting_cricket: $.get('read_reporting_cricket', {})
     outputs:
       read_context: $
     condition: $.get('read_cache', {}).get('hit') is not True
@@ -531,7 +760,7 @@ workflow:
     inputs:
       context_pack: $.get('read_context', {})
       model_reply: $.get('read_model', {})
-      publish_public: 'True'
+      publish_public: $.get('publish_public', True)
     outputs:
       read_final: $
     condition: $.get('read_cache', {}).get('hit') is not True and $.get('read_context', {}).get('status') == 'ready'

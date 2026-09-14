@@ -28,6 +28,17 @@ NEWS_QUERIES = {'football': 'soccer football', 'americanfootball': 'nfl football
                 'baseball': 'MLB baseball', 'basketball': 'NBA WNBA basketball',
                 'hockey': 'NHL ice hockey', 'tennis': 'ATP WTA tennis',
                 'motorsport': 'Formula 1 racing', 'golf': 'PGA LPGA golf', 'cricket': 'cricket'}
+REPORTING_PATHS = {
+    'football': ('soccer', 'eng.1', '/soccer/'),
+    'americanfootball': ('football', 'nfl', '/nfl/'),
+    'baseball': ('baseball', 'mlb', '/mlb/'),
+    'basketball': ('basketball', 'nba', '/nba/'),
+    'hockey': ('hockey', 'nhl', '/nhl/'),
+    'tennis': ('tennis', 'atp', '/tennis/'),
+    'motorsport': ('racing', 'f1', '/f1/'),
+    'golf': ('golf', 'pga', '/golf/'),
+    'cricket': ('cricket', '8048', '/cricket/'),
+}
 
 
 def call(name, params=None):
@@ -157,6 +168,22 @@ def news_response(sport):
     ]}}
 
 
+def reporting_response(sport, ident=None, text=None):
+    """Synthetic normalized output from machina-read-reporting, never provider copy."""
+    ident = ident or str(50000000 + SPORT_IDS.index(sport))
+    path = REPORTING_PATHS[sport][2]
+    return {'status': True, 'data': {'sport': sport, 'articles': [{
+        'id': ident, 'sport': sport, 'type': 'Story',
+        'headline': f'Synthetic {sport} reporting development',
+        'description': f'Synthetic {sport} description for contract testing.',
+        'published': at(-2), 'lastModified': at(-1),
+        'text': text or (f'Synthetic full reporting about the central {sport} team, its competition, '
+                         'the verified development, and why the result matters to a general reader. ' * 3),
+        'textTruncated': False,
+        'url': f'https://www.espn.com{path}story/_/id/{ident}/synthetic-report',
+    }]}}
+
+
 def blocks(**overrides):
     values = {
         'schedule': call('compact', {'kind': 'schedule', 'raw': schedule_response()}),
@@ -167,6 +194,8 @@ def blocks(**overrides):
     }
     for sport in SPORT_IDS:
         values['news_' + sport] = call('compact', {'kind': 'news', 'raw': news_response(sport), 'sport': sport})
+        values['reporting_' + sport] = call('compact', {
+            'kind': 'reporting', 'raw': reporting_response(sport), 'sport': sport})
     values.update(overrides)
     return values
 
@@ -338,6 +367,42 @@ def test_news_rejects_an_unapproved_link_host():
     for item in raw['data']['items']:
         item['link'] = 'https://example.com/story'
     assert call('compact', {'kind': 'news', 'raw': raw, 'sport': 'golf'})['items'] == []
+
+
+def test_reporting_compacts_substantive_articles_with_v4_evidence_bounds():
+    block = call('compact', {'kind': 'reporting', 'raw': reporting_response('americanfootball'),
+                             'sport': 'americanfootball'})
+    source = block['items'][0]['source']
+    assert source['kind'] == 'article' and source['publishedAt'] == '2026-09-08T15:00:00.000Z'
+    assert source['id'] == 'article:espn:americanfootball:50000001'
+    assert source['url'].startswith('https://www.espn.com/nfl/story/_/id/50000001/')
+    assert 200 <= len(source['text']) <= 6000
+
+
+@pytest.mark.parametrize('mutation', ['premium_shape', 'stale', 'future', 'no_body', 'long_body',
+                                      'bad_url', 'wrong_sport', 'wrong_id', 'bad_type'])
+def test_reporting_rejects_malformed_or_unbound_articles(mutation):
+    raw = reporting_response('hockey')
+    article = raw['data']['articles'][0]
+    if mutation == 'premium_shape':
+        article['premium'] = True
+    elif mutation == 'stale':
+        article['published'] = at(-49)
+    elif mutation == 'future':
+        article['published'] = at(minutes=1)
+    elif mutation == 'no_body':
+        article['text'] = ''
+    elif mutation == 'long_body':
+        article['text'] = 'x' * 6001
+    elif mutation == 'bad_url':
+        article['url'] = 'https://example.com/nhl/story/_/id/50000004/x'
+    elif mutation == 'wrong_sport':
+        article['sport'] = 'basketball'
+    elif mutation == 'wrong_id':
+        article['url'] = 'https://www.espn.com/nhl/story/_/id/999/x'
+    elif mutation == 'bad_type':
+        article['type'] = 'Video'
+    assert call('compact', {'kind': 'reporting', 'raw': raw, 'sport': 'hockey'})['items'] == []
 
 
 @pytest.mark.parametrize('bad', [
@@ -702,8 +767,13 @@ def test_producer_wires_the_declared_sources_and_exactly_one_model_route():
     assert news == {repr(query + ' when:2d') for query in NEWS_QUERIES.values()}
     sports = {t['inputs']['sport'] for t in workflow['tasks'] if t.get('inputs', {}).get('kind') == "'news'"}
     assert sports == {repr(sport) for sport in SPORT_IDS}
+    reporting = [task for task in workflow['tasks']
+                 if task.get('connector', {}).get('name') == 'machina-read-reporting']
+    assert len(reporting) == 9
+    assert {task['inputs']['sport'] for task in reporting} == {repr(sport) for sport in SPORT_IDS}
+    assert all(task['connector']['command'] == 'invoke_reporting' for task in reporting)
     assert {t['connector']['name'] for t in workflow['tasks'] if t['type'] == 'connector'} == {
-        'machina-read-multisport', 'sports-skills', 'machina-ai'}
+        'machina-read-multisport', 'machina-read-reporting', 'sports-skills', 'machina-ai'}
 
 
 def test_every_source_task_is_isolated_compacted_and_skipped_on_a_cache_hit():
@@ -713,13 +783,13 @@ def test_every_source_task_is_isolated_compacted_and_skipped_on_a_cache_hit():
                  for key, value in t['inputs'].items() if key in ('raw', 'identities')}
     for task in workflow['tasks']:
         connector = task.get('connector', {}).get('name')
-        if connector in ('sports-skills', 'machina-ai'):
+        if connector in ('sports-skills', 'machina-read-reporting', 'machina-ai'):
             assert task['condition'].startswith(gate), task['name']
             assert task.get('continue_on_error') is True, task['name']
-        if connector == 'sports-skills':
+        if connector in ('sports-skills', 'machina-read-reporting'):
             key = next(iter(task['outputs']))
             assert f"$.get('{key}', {{}})" in compacted, task['name']
-    assert len(compacted) == 16  # Includes the canonical team catalog consumed by Kalshi compaction.
+    assert len(compacted) == 25  # Includes nine reporting lanes and the team catalog used by Kalshi.
 
 
 def test_task_inputs_stay_simple_single_state_expressions():
@@ -769,6 +839,7 @@ def test_producer_stores_a_v4_edition_without_forcing_an_overwrite():
     assert previous['filters']['value.schemaVersion'] == '4' and previous['config']['search-limit'] == 7
     assert any(t.get('config', {}).get('action') == 'save' and 'machina-read-health' in t.get('documents', {})
                for t in workflow['tasks'])
+    assert save['condition'] == "$.get('read_cache', {}).get('hit') is not True and $.get('read_final', {}).get('status') == 'ready'"
 
 
 def test_the_agent_source_stays_inactive_with_a_disabled_native_job():
