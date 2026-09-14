@@ -382,6 +382,18 @@ def test_news_rejects_an_unapproved_link_host():
     assert call('compact', {'kind': 'news', 'raw': raw, 'sport': 'golf'})['items'] == []
 
 
+def test_reporting_accepts_the_observed_native_unwrapped_payload_only():
+    wrapped = reporting_response('americanfootball')
+    expected = call('compact', {'kind': 'reporting', 'raw': wrapped, 'sport': 'americanfootball'})
+    actual = call('compact', {'kind': 'reporting', 'raw': wrapped['data'], 'sport': 'americanfootball'})
+    assert actual == expected
+    assert len(actual['items']) == 1
+    for invalid in [dict(wrapped['data'], status=False), {'data': wrapped['data']},
+                    {'status': False, 'data': wrapped['data']}]:
+        result = call('compact', {'kind': 'reporting', 'raw': invalid, 'sport': 'americanfootball'})
+        assert result['status'] == 'unavailable'
+
+
 def test_reporting_compacts_substantive_articles_with_v4_evidence_bounds():
     block = call('compact', {'kind': 'reporting', 'raw': reporting_response('americanfootball'),
                              'sport': 'americanfootball'})

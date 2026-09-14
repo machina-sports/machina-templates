@@ -610,7 +610,14 @@ def compact_reporting(data, current, sport):
 @operation
 def compact(params):
     kind = plain(str(params.get("kind") or ""), 24)
-    data = payload(params.get("raw"))
+    raw = params.get("raw")
+    # The native connector runner removes the transport envelope once.
+    # Admit only this observed reporting shape; all record gates still apply.
+    unwrapped_reporting = (kind == "reporting" and isinstance(raw, dict)
+                           and set(raw) == {"articles", "sport"}
+                           and isinstance(raw.get("articles"), list)
+                           and raw.get("sport") == params.get("sport"))
+    data = raw if unwrapped_reporting else payload(raw)
     current = now()
     if kind == "schedule":
         items, snapshots = compact_schedule(data, current)
