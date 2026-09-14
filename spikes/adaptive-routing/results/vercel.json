@@ -1,0 +1,6 @@
+{
+  "option": "B-vercel-ai-gateway",
+  "status": "SKIPPED",
+  "reason": "AI_GATEWAY_API_KEY not set \u2014 live gateway calls cost credits and must be an explicit operator action.",
+  "how_to_run": "Create a gateway API key in the Vercel dashboard (paid tier for full catalog/BYOK) and export AI_GATEWAY_API_KEY."
+}
