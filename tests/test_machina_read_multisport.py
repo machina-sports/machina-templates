@@ -45,6 +45,19 @@ def call(name, params=None):
     return getattr(module, name)({'params': params or {}})['data']
 
 
+def compile_state_expression(expression, path):
+    if expression.strip() == '$':
+        return compile('state', str(path), 'eval')
+    return compile(expression.replace('$.get', 'state.get'), str(path), 'eval')
+
+
+def compile_output_expression(expression, path):
+    if expression.strip() == '$':
+        return compile('response', str(path), 'eval')
+    prepared = expression.replace('$.context', 'state').replace('$.get', 'response.get')
+    return compile(prepared, str(path), 'eval')
+
+
 def at(hours=0, minutes=0):
     return (NOW + timedelta(hours=hours, minutes=minutes)).strftime('%Y-%m-%dT%H:%M') + 'Z'
 
@@ -743,7 +756,7 @@ def load(name):
     return yaml.safe_load((WORKFLOWS / name).read_text())['workflow']
 
 
-def test_producer_wires_the_declared_sources_and_exactly_one_model_route():
+def test_producer_wires_the_declared_sources_and_two_bounded_model_routes():
     workflow = load('machina-read-produce-daily.yml')
     news_tasks = [task for task in workflow['tasks'] if task['name'].startswith('collect-news-')]
     assert len(news_tasks) == 9
@@ -753,15 +766,14 @@ def test_producer_wires_the_declared_sources_and_exactly_one_model_route():
     assert workflow['title'] and workflow['description'] and workflow['status'] == 'draft'
     assert 'workflow-status' in workflow['outputs']
     models = [t for t in workflow['tasks'] if t.get('connector', {}).get('name') == 'machina-ai']
-    assert len(models) == 1
-    assert models[0]['connector'] == {'name': 'machina-ai', 'command': 'invoke_chat', 'provider': 'vertex_ai',
-                                      'model': 'gemini-3.5-flash-lite', 'profile': 'balanced'}
+    assert [task['name'] for task in models] == ['select-researchable-story', 'write-researched-story']
+    assert all(task['connector'] == {'name': 'machina-ai', 'command': 'invoke_chat', 'provider': 'vertex_ai',
+                                     'model': 'gemini-3.5-flash-lite', 'profile': 'balanced'} for task in models)
     calls = {(t['connector']['command'], t['inputs']['command'])
-             for t in workflow['tasks'] if t.get('connector', {}).get('name') == 'sports-skills'}
+             for t in workflow['tasks'] if t['name'].startswith('collect-')
+             and t.get('connector', {}).get('name') == 'sports-skills'}
     assert calls == {('invoke_markets', "'get_sport_schedule'"), ('invoke_football', "'get_daily_schedule'"),
-                     ('invoke_tennis', "'get_scoreboard'"), ('invoke_polymarket', "'get_sports_events'"),
-                     ('invoke_kalshi', "'get_markets'"), ('invoke_news', "'fetch_items'"),
-                     ('invoke_mlb', "'get_teams'")}
+                     ('invoke_tennis', "'get_scoreboard'"), ('invoke_news', "'fetch_items'")}
     news = {t['inputs']['query'] for t in workflow['tasks']
             if t.get('connector', {}).get('name') == 'sports-skills' and t['inputs']['command'] == "'fetch_items'"}
     assert news == {repr(query + ' when:2d') for query in NEWS_QUERIES.values()}
@@ -786,10 +798,10 @@ def test_every_source_task_is_isolated_compacted_and_skipped_on_a_cache_hit():
         if connector in ('sports-skills', 'machina-read-reporting', 'machina-ai'):
             assert task['condition'].startswith(gate), task['name']
             assert task.get('continue_on_error') is True, task['name']
-        if connector in ('sports-skills', 'machina-read-reporting'):
+        if connector in ('sports-skills', 'machina-read-reporting') and task['name'].startswith('collect-'):
             key = next(iter(task['outputs']))
             assert f"$.get('{key}', {{}})" in compacted, task['name']
-    assert len(compacted) == 25  # Includes nine reporting lanes and the team catalog used by Kalshi.
+    assert len(compacted) == 22  # Schedule/football/tennis plus nine news and nine reporting lanes.
 
 
 def test_task_inputs_stay_simple_single_state_expressions():
@@ -800,7 +812,7 @@ def test_task_inputs_stay_simple_single_state_expressions():
                 assert isinstance(expression, str)
                 assert expression.count('$.') <= 1, (task['name'], key)
                 assert ' for ' not in expression, (task['name'], key)
-                compile(expression.replace('$', 'state'), str(path), 'eval')
+                compile_state_expression(expression, path)
 
 
 def test_every_native_expression_compiles_and_survives_empty_state():
@@ -808,11 +820,16 @@ def test_every_native_expression_compiles_and_survives_empty_state():
         workflow = yaml.safe_load(path.read_text())['workflow']
         for node in [workflow, *workflow.get('tasks', [])]:
             expressions = [node['condition']] if 'condition' in node else []
-            for key in ('inputs', 'outputs', 'filters', 'documents', 'metadata'):
-                expressions += [v for v in node.get(key, {}).values() if isinstance(v, str)]
+            expressions += [v for key in ('inputs', 'filters', 'documents', 'metadata')
+                            for v in node.get(key, {}).values() if isinstance(v, str)]
+            if isinstance(node.get('foreach'), dict) and isinstance(node['foreach'].get('value'), str):
+                expressions.append(node['foreach']['value'])
             for expression in expressions:
-                code = compile(expression.replace('$', 'state'), str(path), 'eval')
+                code = compile_state_expression(expression, path)
                 eval(code, {'state': {}})
+            for expression in [v for v in node.get('outputs', {}).values() if isinstance(v, str)]:
+                code = compile_output_expression(expression, path)
+                eval(code, {'state': {}, 'response': {}})
 
 
 def test_reader_is_v4_only_and_touches_no_provider_or_storage():
@@ -855,7 +872,8 @@ def test_the_transform_connector_declares_only_pure_commands_and_no_runtime_io()
     manifest = yaml.safe_load((SOURCE.parent / 'machina-read-multisport.yml').read_text())['connector']
     assert manifest['filetype'] == 'pyscript' and manifest['filename'] == SOURCE.name
     assert [command['value'] for command in manifest['commands']] == [
-        'initialize', 'cached', 'compact', 'assemble', 'finalize', 'health']
+        'initialize', 'cached', 'compact', 'assemble', 'plan_research', 'resolve_research',
+        'build_research_brief', 'finalize', 'health']
     tree = ast.parse(SOURCE.read_text())
     banned = {'os', 'sys', 'pathlib', 'socket', 'requests', 'httpx', 'urllib.request', 'subprocess',
               'importlib', 'mcp', 'sports_skills', 'pymongo', 'sqlite3', 'threading', 'asyncio'}
