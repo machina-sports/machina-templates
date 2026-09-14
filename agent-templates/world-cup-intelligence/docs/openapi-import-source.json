@@ -1322,6 +1322,31 @@
             "$ref": "#/components/schemas/ResponseBase"
           },
           {
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "content_type": {
+                      "const": "original_editorial_with_structured_retrospective"
+                    }
+                  },
+                  "required": [
+                    "content_type"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "original_editorial": {
+                      "minProperties": 1,
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "original_editorial"
+                  ]
+                }
+              }
+            ],
             "properties": {
               "candidates": {
                 "maxItems": 1,
@@ -1387,7 +1412,6 @@
             "required": [
               "skill_card",
               "structured_retrospective",
-              "original_editorial",
               "content_type",
               "player_key",
               "player_urn",

@@ -275,7 +275,7 @@
           {"$ref": "#/components/schemas/ResponseBase"},
           {
             "type": "object",
-            "required": ["skill_card", "structured_retrospective", "original_editorial", "content_type", "player_key", "player_urn", "resolved_player", "player_overview", "candidates", "served_from"],
+            "required": ["skill_card", "structured_retrospective", "content_type", "player_key", "player_urn", "resolved_player", "player_overview", "candidates", "served_from"],
             "properties": {
               "skill_card": {"type": "object"},
               "structured_retrospective": {"type": "object", "required": ["content_type", "historical_perspective", "player_key", "name", "identity_mapping_status", "provider_ids", "observed_appearance_count", "observed_opponents", "observations", "unsupported_fields", "grounding"]},
@@ -287,7 +287,8 @@
               "player_overview": {"type": "object", "required": ["player_key", "name", "provider_ids", "identity_mapping_status"]},
               "candidates": {"type": "array", "minItems": 1, "maxItems": 1},
               "served_from": {"const": "final_archive"}
-            }
+            },
+            "allOf": [{"if": {"required": ["content_type"], "properties": {"content_type": {"const": "original_editorial_with_structured_retrospective"}}}, "then": {"required": ["original_editorial"], "properties": {"original_editorial": {"type": "object", "minProperties": 1}}}}]
           }
         ]
       }
