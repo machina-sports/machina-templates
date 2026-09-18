@@ -20,7 +20,7 @@ workflow:
     event_context: "$.get('archive_response', {}).get('event_context') if $.get('archive_hit', False) else ($.get('event_context', {}))"
     event_urn: "$.get('archive_response', {}).get('event_urn') if $.get('archive_hit', False) else ($.get('event_urn', ''))"
     resolved_fixture: "$.get('archive_response', {}).get('resolved_fixture') if $.get('archive_hit', False) else ($.get('resolved_fixture', {}))"
-    candidates: "$.get('archive_response', {}).get('candidates') if $.get('archive_hit', False) else ($.get('fixture_candidates', []))"
+    candidates: "$.get('archive_response', {}).get('candidates', []) if $.get('archive_status', 'miss') != 'miss' else ($.get('fixture_candidates', []))"
     archive: >-
       $.get('archive_metadata', {}) if $.get('archive_status', 'miss') != 'miss' else ({'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,

@@ -42,6 +42,23 @@
             },
             "type": "array"
           },
+          "reason_code": {
+            "enum": [
+              "fixture_selector_required",
+              "fixture_ambiguous",
+              "fixture_not_found",
+              "player_selector_required",
+              "player_ambiguous",
+              "player_not_found",
+              "entity_selector_required",
+              "entity_ambiguous",
+              "entity_not_found",
+              "unsupported_parameter",
+              "archive_row_missing",
+              "archive_error"
+            ],
+            "type": "string"
+          },
           "request_identity_sha256": {
             "pattern": "^[0-9a-f]{64}$",
             "type": "string"
@@ -67,6 +84,7 @@
             ]
           },
           "status": {
+            "description": "hit = an immutable archived row was served. unavailable/error = nothing was served; see coverage.reason_code. A `miss` never reaches the public surface.",
             "enum": [
               "hit",
               "miss",
@@ -175,6 +193,13 @@
       },
       "Coverage": {
         "properties": {
+          "accepted_fields": {
+            "description": "The request fields this endpoint accepts, echoed on unserved responses so an agent can self-correct.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "eligible_count": {
             "minimum": 0,
             "type": [
@@ -216,6 +241,24 @@
           },
           "reason": {
             "minLength": 1,
+            "type": "string"
+          },
+          "reason_code": {
+            "description": "Machine-readable cause, present whenever status is unavailable or error. Request-side codes (fixture_*/player_*/entity_*/unsupported_parameter) mean the caller can fix the request; the gateway answers them with HTTP 400 (missing/ambiguous/unsupported) or 404 (not_found). archive_row_missing (HTTP 503) and archive_error (HTTP 502) are on our side. None of these calls is billed.",
+            "enum": [
+              "fixture_selector_required",
+              "fixture_ambiguous",
+              "fixture_not_found",
+              "player_selector_required",
+              "player_ambiguous",
+              "player_not_found",
+              "entity_selector_required",
+              "entity_ambiguous",
+              "entity_not_found",
+              "unsupported_parameter",
+              "archive_row_missing",
+              "archive_error"
+            ],
             "type": "string"
           },
           "schema_version": {
@@ -515,7 +558,35 @@
                 "type": "array"
               },
               "forecast": {
+                "description": "The model's ORIGINAL pre-kickoff Dixon-Coles forecast, preserved exactly as it was computed before the match. Nothing is recomputed at request time and no post-match information leaks in; forecast_integrity states whether the stored timestamp is genuinely pre-kickoff.",
                 "properties": {
+                  "away_expected_goals": {
+                    "type": "number"
+                  },
+                  "caveats": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "confidence": {
+                    "description": "Model self-assessed confidence in [0,1]; 0.15 for seed-only forecasts.",
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "data_source": {
+                    "description": "How the pre-kickoff model was fed. seed = no FIFA World Cup 2026 result existed yet for at least one side, so the model used the FIFA-ranking seed prior (typical for every team's first match; confidence 0.15). blend = tournament results blended with the seed prior (confidence rises with games played). results = fitted on tournament results only. A seed forecast is the intended archived answer, not a placeholder; archive.notes carries the same explanation on every forecast hit.",
+                    "enum": [
+                      "seed",
+                      "blend",
+                      "results"
+                    ],
+                    "type": "string"
+                  },
+                  "home_expected_goals": {
+                    "type": "number"
+                  },
                   "model": {
                     "required": [
                       "computed_at"
@@ -1591,7 +1662,7 @@
   "info": {
     "description": "The canonical eleven-route World Cup 2026 storefront contract. The active runtime remains v2; the tested v3 contract is an inactive local publication candidate with the final published FIFA registration snapshot and raw-player reconciliation. Valid archive hits skip legacy work and archive errors fail closed.",
     "title": "Machina Sports World Cup Intelligence",
-    "version": "1.3.0"
+    "version": "1.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1602,6 +1673,10 @@
           "content": {
             "application/json": {
               "examples": {
+                "captured": {
+                  "summary": "Request used for the captured 200 example",
+                  "value": {}
+                },
                 "completedTournament": {
                   "value": {
                     "competition": "world-cup-2026"
@@ -1649,6 +1724,170 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "archived": {
+                    "summary": "Real 200 body captured from the production archive on 2026-09-18 (arrays trimmed to 3 items)",
+                    "value": {
+                      "archive": {
+                        "capability_status": "historical_aggregate",
+                        "competition": "FIFA World Cup 2026",
+                        "competition_status": "completed",
+                        "content_created_at": null,
+                        "cutoff": null,
+                        "live": false,
+                        "missing_capabilities": [
+                          "closing_line_value",
+                          "market_calibration"
+                        ],
+                        "mode": "final_archive",
+                        "notes": [
+                          "Recomputed offline from original forecast bytes and verified regulation-time result evidence; six at/after-kickoff forecasts are excluded."
+                        ],
+                        "provenance": [
+                          "worldcup:event",
+                          "worldcup:model-forecast",
+                          "api-football"
+                        ],
+                        "request_identity_sha256": "c72bea8be682ebc91c8e7b83eb1e903267bfdd8261b1918a2fa5179fd87f13f0",
+                        "response_sha256": "bedbf248b374fb8722c05d49727596f28b6460b5fc656b52dc007b70842edc62",
+                        "sample_size": 98,
+                        "snapshot_as_of": null,
+                        "source_manifest_sha256": "ab3a356583f2ea8a843f2e08136a01570f68b92a2c2d9864069b99b459bf897a",
+                        "source_observed_at": null,
+                        "status": "hit",
+                        "timestamp_semantics": "unavailable",
+                        "version": "world-cup-2026-final-v3"
+                      },
+                      "audited_count": 98,
+                      "calibration_report": {},
+                      "calibration_settled_count": 0,
+                      "clv_report": {},
+                      "clv_settled_count": 0,
+                      "coverage": {
+                        "eligible_count": 98,
+                        "excluded_count": 6,
+                        "exclusion_reasons": {
+                          "forecast_at_or_after_kickoff": 6
+                        },
+                        "included_count": 98,
+                        "mode": "historical",
+                        "population_count": 104,
+                        "reason": "All forecasts with a pre-kickoff timestamp and verified regulation result were scored.",
+                        "schema_version": "worldcup-storefront-coverage-v1",
+                        "scope": "completed_tournament_archive",
+                        "source_provenance": [
+                          "worldcup:event",
+                          "worldcup:model-forecast",
+                          "api-football"
+                        ],
+                        "status": "complete",
+                        "unsupported_fields": [
+                          "closing_line_value",
+                          "market_calibration"
+                        ]
+                      },
+                      "excluded_count": 6,
+                      "exclusion_reasons": {
+                        "forecast_at_or_after_kickoff": 6
+                      },
+                      "finished_fixtures": [
+                        {
+                          "fixture": {
+                            "id": "1489369",
+                            "status": {
+                              "short": "FT"
+                            }
+                          },
+                          "goals": {
+                            "away": 0,
+                            "home": 2
+                          }
+                        },
+                        {
+                          "fixture": {
+                            "id": "1538999",
+                            "status": {
+                              "short": "FT"
+                            }
+                          },
+                          "goals": {
+                            "away": 1,
+                            "home": 2
+                          }
+                        },
+                        {
+                          "fixture": {
+                            "id": "1539000",
+                            "status": {
+                              "short": "FT"
+                            }
+                          },
+                          "goals": {
+                            "away": 1,
+                            "home": 1
+                          }
+                        }
+                      ],
+                      "included_count": 98,
+                      "provenance": "verified-v2-result-details",
+                      "sources": [
+                        "worldcup:event",
+                        "worldcup:model-forecast",
+                        "api-football"
+                      ],
+                      "status": "available",
+                      "total_count": 104,
+                      "track_record": {
+                        "accuracy": {
+                          "accuracy_percent": 53.06,
+                          "correct": 52,
+                          "total": 98
+                        },
+                        "brier_scores": {
+                          "avg_1x2": 0.1913,
+                          "avg_over_2_5": 0.3057,
+                          "baseline_random": 0.2222,
+                          "baseline_random_1x2": 0.2222,
+                          "baseline_random_over_2_5": 0.25,
+                          "is_better_than_random": true
+                        },
+                        "calibration": {
+                          "avg_calibration_error": 0.0676,
+                          "curve": [
+                            {
+                              "actual_rate": 0.2727,
+                              "bin": 3,
+                              "count": 11,
+                              "label": "30-40%",
+                              "predicted_avg": 0.3798
+                            },
+                            {
+                              "actual_rate": 0.4571,
+                              "bin": 4,
+                              "count": 35,
+                              "label": "40-50%",
+                              "predicted_avg": 0.4446
+                            },
+                            {
+                              "actual_rate": 0.5417,
+                              "bin": 5,
+                              "count": 24,
+                              "label": "50-60%",
+                              "predicted_avg": 0.5481
+                            }
+                          ]
+                        },
+                        "disclaimer": "Informational sports market intelligence only. Not betting, trading, financial, or investment advice.",
+                        "recommendation": "1X2 mean Brier 0.1913 vs 0.2222 uniform baseline (better than uniform); calibration error 0.0676 (target <0.05).",
+                        "sample_size": 98,
+                        "sample_size_sufficient": true
+                      },
+                      "warnings": [
+                        "Using cached World Cup 2026 final events; provider freshness and completeness are not inferred."
+                      ]
+                    }
+                  }
+                },
                 "schema": {
                   "anyOf": [
                     {
@@ -1664,10 +1903,19 @@
             "description": "Archive backtest with total, included, excluded, sources, reasons, and track record."
           },
           "400": {
-            "description": "Invalid competition or request value."
+            "description": "The request did not identify what to answer about (coverage.reason_code = fixture_selector_required / fixture_ambiguous / player_selector_required / player_ambiguous / entity_selector_required / entity_ambiguous) or used a parameter variant outside the archive catalog (unsupported_parameter). `candidates` lists the fixtures/players that matched when the selector was ambiguous. Never billed."
           },
           "402": {
             "description": "Payment required."
+          },
+          "404": {
+            "description": "The selector resolved to no archived fixture / player / entity (coverage.reason_code = *_not_found). Never billed."
+          },
+          "502": {
+            "description": "Archive integrity error (coverage.reason_code = archive_error); nothing was served. Never billed."
+          },
+          "503": {
+            "description": "A valid selector for which the archive holds no row (coverage.reason_code = archive_row_missing). Retry later. Never billed."
           }
         },
         "summary": "Historical forecast backtests",
@@ -1730,6 +1978,12 @@
                     "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor"
                   }
                 },
+                "captured": {
+                  "summary": "Request used for the captured 200 example",
+                  "value": {
+                    "event": "Brazil vs Morocco"
+                  }
+                },
                 "plainEnglish": {
                   "value": {
                     "date": "2026-06-13",
@@ -1749,6 +2003,241 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "archived": {
+                    "summary": "Real 200 body captured from the production archive on 2026-09-18 (arrays trimmed to 3 items)",
+                    "value": {
+                      "archive": {
+                        "capability_status": "partial",
+                        "competition": "FIFA World Cup 2026",
+                        "competition_status": "completed",
+                        "content_created_at": "2026-06-05 03:16:00+00:00",
+                        "live": false,
+                        "missing_capabilities": [
+                          "prematch_research",
+                          "social_pulse"
+                        ],
+                        "mode": "final_archive",
+                        "notes": [
+                          "Archived event truth is complete independently of optional enrichment."
+                        ],
+                        "provenance": [
+                          "worldcup:event",
+                          "api-football"
+                        ],
+                        "request_identity_sha256": "0de0e334b0061f5e50791a2e91d079da6b88b9f5c2bbe5530f20a31083486326",
+                        "response_sha256": "40017b0473975e10c9cbe60820b6e679febfdf273597d21787491640835d7736",
+                        "snapshot_as_of": "2026-09-13T17:08:22.003454Z",
+                        "source_manifest_sha256": "f195a64430bb7961b528d19f29015055765b49d38b2600929b82f0cb92445a5b",
+                        "source_observed_at": "2026-09-13T17:08:22.003454Z",
+                        "status": "hit",
+                        "timestamp_semantics": "source_capture_observation",
+                        "version": "world-cup-2026-final-v3"
+                      },
+                      "candidates": [
+                        {
+                          "competition": "FIFA World Cup 2026",
+                          "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "fixture_id": "1489371",
+                          "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                          "round": "Group Stage - 1",
+                          "score": {
+                            "away": 1,
+                            "elapsed": 90,
+                            "home": 1
+                          },
+                          "stage": "Group Stage - 1",
+                          "start_date": "2026-06-13T22:00:00+00:00",
+                          "status": "ft",
+                          "teams": [
+                            {
+                              "crest": "https://media.api-sports.io/football/teams/6.png",
+                              "name": "Brazil",
+                              "qualifier": "home",
+                              "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                            },
+                            {
+                              "crest": "https://media.api-sports.io/football/teams/31.png",
+                              "name": "Morocco",
+                              "qualifier": "away",
+                              "team_urn": "urn:machina:sport:soccer:team:morocco:mar"
+                            }
+                          ],
+                          "venue": "MetLife Stadium"
+                        }
+                      ],
+                      "coverage": {
+                        "eligible_count": 1,
+                        "excluded_count": 0,
+                        "exclusion_reasons": {},
+                        "included_count": 1,
+                        "mode": "historical",
+                        "population_count": 1,
+                        "reason": "Retrospective sports context is derived from archived result and final standings evidence; it is not prematch research.",
+                        "schema_version": "worldcup-storefront-coverage-v1",
+                        "scope": "completed_tournament_archive",
+                        "source_provenance": [
+                          "worldcup:event",
+                          "api-football"
+                        ],
+                        "status": "partial",
+                        "unsupported_fields": [
+                          "prematch_research",
+                          "social_pulse"
+                        ]
+                      },
+                      "event_context": {
+                        "context_coverage": {
+                          "prematch_research": "unavailable",
+                          "reason": "Retrospective sports context is derived from archived result and final standings evidence; it is not prematch research.",
+                          "social_pulse": "unavailable",
+                          "sports_context": "available"
+                        },
+                        "event": {
+                          "@context": {
+                            "machina": "https://schema.machina.gg/sports#",
+                            "schema": "https://schema.org/",
+                            "sport": "https://www.sportschema.org/ontologies/sport#"
+                          },
+                          "@id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "@type": [
+                            "sport:Event",
+                            "schema:SportsEvent"
+                          ],
+                          "_id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "live_score": {
+                            "away": 1,
+                            "elapsed": 90,
+                            "home": 1
+                          },
+                          "machina_competition_slug": "world-cup-2026",
+                          "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                          "provider_ids": {
+                            "api_football": "1489371",
+                            "entain": "7722038",
+                            "opta": "ar8b186wqraa80u0vpi2e4nis",
+                            "sportradar": "sr:sport_event:66456928"
+                          },
+                          "round": "Group Stage - 1",
+                          "schema:startDate": "2026-06-13T22:00:00+00:00",
+                          "sport:competition": {
+                            "@id": "urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor",
+                            "@type": "sport:Competition",
+                            "name": "FIFA World Cup 2026"
+                          },
+                          "sport:competitors": [
+                            {
+                              "@id": "urn:machina:sport:soccer:team:brazil:bra",
+                              "@type": "sport:Team",
+                              "name": "Brazil",
+                              "schema:logo": "https://media.api-sports.io/football/teams/6.png",
+                              "sport:qualifier": "home"
+                            },
+                            {
+                              "@id": "urn:machina:sport:soccer:team:morocco:mar",
+                              "@type": "sport:Team",
+                              "name": "Morocco",
+                              "schema:logo": "https://media.api-sports.io/football/teams/31.png",
+                              "sport:qualifier": "away"
+                            }
+                          ],
+                          "sport:status": "FT",
+                          "sport:venue": {
+                            "@id": "urn:machina:sport:soccer:venue:metlife-stadium:eas",
+                            "@type": "sport:Venue",
+                            "name": "MetLife Stadium",
+                            "schema:addressLocality": "East Rutherford"
+                          },
+                          "stage": "Group Stage - 1"
+                        },
+                        "prematch_research": {},
+                        "result_details": {
+                          "extra_time_score_contribution": null,
+                          "fixture_id": "1489371",
+                          "provenance": {
+                            "capture_id": "6aa6d8852677921cf5d5f48e",
+                            "capture_name": "worldcup-archive-capture-results",
+                            "capture_sha256": "10522211a9442626d08c603aa9a01c4c3afe3ae2dfc7217e0e7e2290c5e85406",
+                            "fixture_id": "1489371",
+                            "observed_at": "2026-09-13T17:08:22.003454Z",
+                            "provider": "api-football",
+                            "provider_result_sha256": "9fb8564dae34abe16550eee706bd060efd31c24899c005231b4ae5f7ac7d9a55",
+                            "source_url": "https://www.api-football.com/"
+                          },
+                          "regulation_time_score": {
+                            "away": 1,
+                            "home": 1
+                          },
+                          "schema_version": "worldcup-result-details-v1",
+                          "shootout_score": null,
+                          "status": "FT",
+                          "winner": null
+                        },
+                        "social_pulse": {},
+                        "sports_context": {
+                          "final_group_standings": [],
+                          "mode": "retrospective_completed_tournament",
+                          "result_details": {
+                            "extra_time_score_contribution": null,
+                            "fixture_id": "1489371",
+                            "provenance": {
+                              "capture_id": "6aa6d8852677921cf5d5f48e",
+                              "capture_name": "worldcup-archive-capture-results",
+                              "capture_sha256": "10522211a9442626d08c603aa9a01c4c3afe3ae2dfc7217e0e7e2290c5e85406",
+                              "fixture_id": "1489371",
+                              "observed_at": "2026-09-13T17:08:22.003454Z",
+                              "provider": "api-football",
+                              "provider_result_sha256": "9fb8564dae34abe16550eee706bd060efd31c24899c005231b4ae5f7ac7d9a55",
+                              "source_url": "https://www.api-football.com/"
+                            },
+                            "regulation_time_score": {
+                              "away": 1,
+                              "home": 1
+                            },
+                            "schema_version": "worldcup-result-details-v1",
+                            "shootout_score": null,
+                            "status": "FT",
+                            "winner": null
+                          },
+                          "status": "available"
+                        }
+                      },
+                      "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                      "resolved_fixture": {
+                        "competition": "FIFA World Cup 2026",
+                        "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                        "fixture_id": "1489371",
+                        "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                        "round": "Group Stage - 1",
+                        "score": {
+                          "away": 1,
+                          "elapsed": 90,
+                          "home": 1
+                        },
+                        "stage": "Group Stage - 1",
+                        "start_date": "2026-06-13T22:00:00+00:00",
+                        "status": "ft",
+                        "teams": [
+                          {
+                            "crest": "https://media.api-sports.io/football/teams/6.png",
+                            "name": "Brazil",
+                            "qualifier": "home",
+                            "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                          },
+                          {
+                            "crest": "https://media.api-sports.io/football/teams/31.png",
+                            "name": "Morocco",
+                            "qualifier": "away",
+                            "team_urn": "urn:machina:sport:soccer:team:morocco:mar"
+                          }
+                        ],
+                        "venue": "MetLife Stadium"
+                      },
+                      "warnings": []
+                    }
+                  }
+                },
                 "schema": {
                   "anyOf": [
                     {
@@ -1764,10 +2253,19 @@
             "description": "Resolved archived event context, or warnings and candidates."
           },
           "400": {
-            "description": "Missing, invalid, or ambiguous fixture selector."
+            "description": "The request did not identify what to answer about (coverage.reason_code = fixture_selector_required / fixture_ambiguous / player_selector_required / player_ambiguous / entity_selector_required / entity_ambiguous) or used a parameter variant outside the archive catalog (unsupported_parameter). `candidates` lists the fixtures/players that matched when the selector was ambiguous. Never billed."
           },
           "402": {
             "description": "Payment required."
+          },
+          "404": {
+            "description": "The selector resolved to no archived fixture / player / entity (coverage.reason_code = *_not_found). Never billed."
+          },
+          "502": {
+            "description": "Archive integrity error (coverage.reason_code = archive_error); nothing was served. Never billed."
+          },
+          "503": {
+            "description": "A valid selector for which the archive holds no row (coverage.reason_code = archive_row_missing). Retry later. Never billed."
           }
         },
         "summary": "Enriched context for one match",
@@ -1825,6 +2323,12 @@
           "content": {
             "application/json": {
               "examples": {
+                "captured": {
+                  "summary": "Request used for the captured 200 example",
+                  "value": {
+                    "event": "Brazil vs Morocco"
+                  }
+                },
                 "fixture": {
                   "value": {
                     "event": "Brazil vs Morocco"
@@ -1867,6 +2371,175 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "archived": {
+                    "summary": "Real 200 body captured from the production archive on 2026-09-18 (arrays trimmed to 3 items)",
+                    "value": {
+                      "archive": {
+                        "capability_status": "partial",
+                        "competition": "FIFA World Cup 2026",
+                        "competition_status": "completed",
+                        "content_created_at": null,
+                        "live": false,
+                        "missing_capabilities": [
+                          "verified_complete_injury_coverage"
+                        ],
+                        "mode": "final_archive",
+                        "notes": [
+                          "Absence feeds do not prove a complete historical injury record unless coverage_complete is explicitly true."
+                        ],
+                        "provenance": [
+                          "api-football"
+                        ],
+                        "request_identity_sha256": "794325c477123f1975699ce307785513d599fa221af20dd33b1681aec18ba14d",
+                        "response_sha256": "a5cc75f58da6856b32e032c74adc8f672ce6198cd6d53a96020aac50fc50b5af",
+                        "snapshot_as_of": "2026-09-13T16:13:52Z",
+                        "source_manifest_sha256": "9ef8ab561fc756abe1320bbfaf87123e50172d654673357031aa77cfc82e4a56",
+                        "source_observed_at": "2026-09-13T16:13:52Z",
+                        "status": "hit",
+                        "timestamp_semantics": "source_capture_observation",
+                        "version": "world-cup-2026-final-v3"
+                      },
+                      "candidates": [
+                        {
+                          "competition": "FIFA World Cup 2026",
+                          "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "fixture_id": "1489371",
+                          "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                          "round": "Group Stage - 1",
+                          "score": {
+                            "away": 1,
+                            "elapsed": 90,
+                            "home": 1
+                          },
+                          "stage": "Group Stage - 1",
+                          "start_date": "2026-06-13T22:00:00+00:00",
+                          "status": "ft",
+                          "teams": [
+                            {
+                              "crest": "https://media.api-sports.io/football/teams/6.png",
+                              "name": "Brazil",
+                              "qualifier": "home",
+                              "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                            },
+                            {
+                              "crest": "https://media.api-sports.io/football/teams/31.png",
+                              "name": "Morocco",
+                              "qualifier": "away",
+                              "team_urn": "urn:machina:sport:soccer:team:morocco:mar"
+                            }
+                          ],
+                          "venue": "MetLife Stadium"
+                        }
+                      ],
+                      "coverage": {
+                        "eligible_count": 1,
+                        "excluded_count": 0,
+                        "exclusion_reasons": {},
+                        "included_count": 1,
+                        "mode": "historical",
+                        "population_count": 1,
+                        "reason": "Archived provider absence records exist for this fixture.",
+                        "schema_version": "worldcup-storefront-coverage-v1",
+                        "scope": "completed_tournament_archive",
+                        "source_provenance": [
+                          "api-football"
+                        ],
+                        "status": "partial",
+                        "unsupported_fields": [
+                          "complete_historical_injury_coverage"
+                        ]
+                      },
+                      "injuries": {
+                        "evidence_status": "recorded_absences",
+                        "historical_completeness_verified": false,
+                        "observed_record_count": 1,
+                        "source": "api-football",
+                        "teams": [
+                          {
+                            "count": 1,
+                            "missing": [
+                              {
+                                "fixture_date": "2026-06-13T22:00:00+00:00",
+                                "fixture_id": 1489371,
+                                "name": "Neymar",
+                                "photo": "https://media.api-sports.io/football/players/276.png",
+                                "player_id": 276,
+                                "reason": "Calf Injury",
+                                "type": "Missing Fixture"
+                              }
+                            ],
+                            "side": "home",
+                            "source": "api-football",
+                            "team": "Brazil",
+                            "team_id": null
+                          },
+                          {
+                            "count": 0,
+                            "missing": [],
+                            "side": "away",
+                            "source": "api-football",
+                            "team": "Morocco",
+                            "team_id": null
+                          }
+                        ],
+                        "warnings": []
+                      },
+                      "warnings": []
+                    }
+                  },
+                  "unavailable-before-1.4.0": {
+                    "summary": "How an empty body was answered before 1.4.0 (HTTP 200, billed) — now HTTP 400, unbilled, with this coverage block",
+                    "value": {
+                      "archive": {
+                        "capability_status": "unavailable",
+                        "competition": "FIFA World Cup 2026",
+                        "competition_status": "completed",
+                        "live": false,
+                        "missing_capabilities": [],
+                        "mode": "final_archive",
+                        "notes": [
+                          "A fixture selector is required: pass event_urn, provider_event_id, event (e.g. \"Brazil vs Morocco\"), or team with opponent/date."
+                        ],
+                        "provenance": [],
+                        "reason_code": "fixture_selector_required",
+                        "snapshot_as_of": null,
+                        "status": "unavailable",
+                        "version": "world-cup-2026-final-v3"
+                      },
+                      "candidates": [],
+                      "coverage": {
+                        "accepted_fields": [
+                          "event_urn",
+                          "provider_event_id",
+                          "event",
+                          "team",
+                          "opponent",
+                          "date",
+                          "league",
+                          "season"
+                        ],
+                        "eligible_count": null,
+                        "excluded_count": null,
+                        "exclusion_reasons": {},
+                        "included_count": null,
+                        "mode": "historical",
+                        "population_count": null,
+                        "reason": "A fixture selector is required: pass event_urn, provider_event_id, event (e.g. \"Brazil vs Morocco\"), or team with opponent/date.",
+                        "reason_code": "fixture_selector_required",
+                        "schema_version": "worldcup-storefront-coverage-v1",
+                        "scope": "completed_tournament_archive",
+                        "source_provenance": [],
+                        "status": "unavailable",
+                        "unsupported_fields": []
+                      },
+                      "injuries": {},
+                      "warnings": [
+                        "A fixture selector is required: pass event_urn, provider_event_id, event (e.g. \"Brazil vs Morocco\"), or team with opponent/date."
+                      ]
+                    }
+                  }
+                },
                 "schema": {
                   "anyOf": [
                     {
@@ -1882,10 +2555,19 @@
             "description": "Fixture-scoped injury evidence with coverage caveats."
           },
           "400": {
-            "description": "Missing, invalid, or ambiguous fixture selector."
+            "description": "The request did not identify what to answer about (coverage.reason_code = fixture_selector_required / fixture_ambiguous / player_selector_required / player_ambiguous / entity_selector_required / entity_ambiguous) or used a parameter variant outside the archive catalog (unsupported_parameter). `candidates` lists the fixtures/players that matched when the selector was ambiguous. Never billed."
           },
           "402": {
             "description": "Payment required."
+          },
+          "404": {
+            "description": "The selector resolved to no archived fixture / player / entity (coverage.reason_code = *_not_found). Never billed."
+          },
+          "502": {
+            "description": "Archive integrity error (coverage.reason_code = archive_error); nothing was served. Never billed."
+          },
+          "503": {
+            "description": "A valid selector for which the archive holds no row (coverage.reason_code = archive_row_missing). Retry later. Never billed."
           }
         },
         "summary": "Archived fixture injury reports",
@@ -1943,6 +2625,12 @@
           "content": {
             "application/json": {
               "examples": {
+                "captured": {
+                  "summary": "Request used for the captured 200 example",
+                  "value": {
+                    "event": "Brazil vs Morocco"
+                  }
+                },
                 "forecast": {
                   "value": {
                     "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
@@ -1979,6 +2667,192 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "archived": {
+                    "summary": "Real 200 body captured from the production archive on 2026-09-18 (arrays trimmed to 3 items)",
+                    "value": {
+                      "analysis": {},
+                      "archive": {
+                        "capability_status": "historical_model",
+                        "competition": "FIFA World Cup 2026",
+                        "competition_status": "completed",
+                        "content_created_at": null,
+                        "live": false,
+                        "missing_capabilities": [],
+                        "mode": "final_archive",
+                        "notes": [
+                          "Historical model output; forecast_integrity states whether its stored timestamp is genuinely pre-kickoff. No real-time refresh is performed.",
+                          "data_source=seed: the model's original pre-kickoff forecast, preserved as computed. No FIFA World Cup 2026 result existed yet for at least one side, so the Dixon-Coles model used the FIFA-ranking seed prior and `confidence` (0.15) reflects that. It is not a placeholder and nothing is recomputed at request time."
+                        ],
+                        "provenance": [
+                          "worldcup:model-forecast",
+                          "fifa-ranking-seed",
+                          "worldcup:market-cache"
+                        ],
+                        "request_identity_sha256": "b4512cbddc62031e2f427358325049f091adc6f26b153772a02037f3b2c6d6aa",
+                        "response_sha256": "5d4841a71813af43a98c86a056dfd5fb13652e596c00a84b8557f19082eace4e",
+                        "snapshot_as_of": "2026-06-13T07:00:02.352497Z",
+                        "source_manifest_sha256": "1475d3e0bed784c99e9818a93ca08ea7b34fff96ad98a7e77504f12b6ec22877",
+                        "source_observed_at": null,
+                        "status": "hit",
+                        "timestamp_semantics": "original_model_computation",
+                        "version": "world-cup-2026-final-v3"
+                      },
+                      "candidates": [
+                        {
+                          "competition": "FIFA World Cup 2026",
+                          "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "fixture_id": "1489371",
+                          "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                          "round": "Group Stage - 1",
+                          "score": {
+                            "away": 1,
+                            "elapsed": 90,
+                            "home": 1
+                          },
+                          "stage": "Group Stage - 1",
+                          "start_date": "2026-06-13T22:00:00+00:00",
+                          "status": "ft",
+                          "teams": [
+                            {
+                              "crest": "https://media.api-sports.io/football/teams/6.png",
+                              "name": "Brazil",
+                              "qualifier": "home",
+                              "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                            },
+                            {
+                              "crest": "https://media.api-sports.io/football/teams/31.png",
+                              "name": "Morocco",
+                              "qualifier": "away",
+                              "team_urn": "urn:machina:sport:soccer:team:morocco:mar"
+                            }
+                          ],
+                          "venue": "MetLife Stadium"
+                        }
+                      ],
+                      "coverage": {
+                        "eligible_count": 1,
+                        "excluded_count": 0,
+                        "exclusion_reasons": {},
+                        "included_count": 1,
+                        "mode": "historical",
+                        "population_count": 1,
+                        "reason": "Original model output predates kickoff.",
+                        "schema_version": "worldcup-storefront-coverage-v1",
+                        "scope": "completed_tournament_archive",
+                        "source_provenance": [
+                          "worldcup:model-forecast",
+                          "fifa-ranking-seed",
+                          "worldcup:market-cache"
+                        ],
+                        "status": "complete",
+                        "unsupported_fields": [
+                          "verified_prematch_market_comparison"
+                        ]
+                      },
+                      "forecast": {
+                        "@id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                        "_id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                        "away_expected_goals": 0.976,
+                        "away_team": {
+                          "name": "Morocco",
+                          "urn": "urn:machina:sport:soccer:team:morocco:mar"
+                        },
+                        "caveats": [
+                          "Model probability is a form-based statistical estimate, not a market-calibrated forecast.",
+                          "Pre-tournament confidence is low: seeded from FIFA/qualifier form until group results land."
+                        ],
+                        "confidence": 0.15,
+                        "data_source": "seed",
+                        "disclaimer": "Informational sports market intelligence only. Not betting, trading, financial, or investment advice.",
+                        "exact_scorelines": {
+                          "0-0": 0.1327,
+                          "0-1": 0.0979,
+                          "0-2": 0.0556,
+                          "1-0": 0.1207,
+                          "1-1": 0.1495,
+                          "1-2": 0.0652,
+                          "2-0": 0.0801,
+                          "2-1": 0.0783
+                        },
+                        "flags": [
+                          "bootstrap_seeded",
+                          "low_sample_size"
+                        ],
+                        "home_expected_goals": 1.172,
+                        "home_team": {
+                          "name": "Brazil",
+                          "urn": "urn:machina:sport:soccer:team:brazil:bra"
+                        },
+                        "id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                        "model": {
+                          "computed_at": "2026-06-13T07:00:02.352497Z",
+                          "method": "dixon_coles_analytic_stdlib",
+                          "rho": -0.12
+                        },
+                        "most_likely_score": "1-1",
+                        "probabilities": {
+                          "away_win": 0.2875,
+                          "draw": 0.3256,
+                          "home_win": 0.3869,
+                          "over_2_5": 0.3635,
+                          "under_2_5": 0.6365
+                        },
+                        "provider_ids": {
+                          "api_football": "1489371"
+                        },
+                        "schema:startDate": "2026-06-13T22:00:00+00:00"
+                      },
+                      "forecast_integrity": {
+                        "classification": "verified_pre_kickoff",
+                        "computed_at": "2026-06-13T07:00:02.352497Z",
+                        "kickoff": "2026-06-13T22:00:00+00:00",
+                        "verified_pre_kickoff": true
+                      },
+                      "market_integrity": {
+                        "classification": "settled_or_late_cache",
+                        "snapshot_times": [
+                          "2026-06-10T21:31:52.390338+00:00",
+                          "2026-06-14T00:06:07.024791+00:00",
+                          "2026-06-14T00:06:07.024791+00:00"
+                        ],
+                        "valid_for_edge_comparison": false
+                      },
+                      "model_vs_market": {
+                        "caveats": [
+                          "Model probability is a form-based statistical estimate, not a market-calibrated forecast.",
+                          "Pre-tournament confidence is low: seeded from FIFA/qualifier form until group results land.",
+                          "Gap is informational only, not a value or bet signal."
+                        ],
+                        "comparison_status": "suppressed_invalid_snapshot_timing",
+                        "count": 0,
+                        "disclaimer": "Informational sports market intelligence only. Not betting, trading, financial, or investment advice.",
+                        "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                        "forecast_integrity": {
+                          "classification": "verified_pre_kickoff",
+                          "computed_at": "2026-06-13T07:00:02.352497Z",
+                          "kickoff": "2026-06-13T22:00:00+00:00",
+                          "verified_pre_kickoff": true
+                        },
+                        "gaps": [],
+                        "market_integrity": {
+                          "classification": "settled_or_late_cache",
+                          "snapshot_times": [
+                            "2026-06-10T21:31:52.390338+00:00",
+                            "2026-06-14T00:06:07.024791+00:00",
+                            "2026-06-14T00:06:07.024791+00:00"
+                          ],
+                          "valid_for_edge_comparison": false
+                        },
+                        "max_gap_bps": 0,
+                        "min_gap_bps": 100
+                      },
+                      "warnings": [
+                        "Market cache contains a snapshot at or after kickoff; edge claims are suppressed."
+                      ]
+                    }
+                  }
+                },
                 "schema": {
                   "anyOf": [
                     {
@@ -1994,10 +2868,19 @@
             "description": "Stored forecast with forecast and market integrity classifications."
           },
           "400": {
-            "description": "Missing, invalid, or ambiguous fixture selector."
+            "description": "The request did not identify what to answer about (coverage.reason_code = fixture_selector_required / fixture_ambiguous / player_selector_required / player_ambiguous / entity_selector_required / entity_ambiguous) or used a parameter variant outside the archive catalog (unsupported_parameter). `candidates` lists the fixtures/players that matched when the selector was ambiguous. Never billed."
           },
           "402": {
             "description": "Payment required."
+          },
+          "404": {
+            "description": "The selector resolved to no archived fixture / player / entity (coverage.reason_code = *_not_found). Never billed."
+          },
+          "502": {
+            "description": "Archive integrity error (coverage.reason_code = archive_error); nothing was served. Never billed."
+          },
+          "503": {
+            "description": "A valid selector for which the archive holds no row (coverage.reason_code = archive_row_missing). Retry later. Never billed."
           }
         },
         "summary": "Archived match forecast probabilities",
@@ -2055,6 +2938,14 @@
           "content": {
             "application/json": {
               "examples": {
+                "captured": {
+                  "summary": "Request used for the captured 200 example",
+                  "value": {
+                    "event": "Brazil vs Morocco",
+                    "player": "Vinicius Junior",
+                    "team": "Brazil"
+                  }
+                },
                 "namedPlayer": {
                   "value": {
                     "event": "Brazil vs Morocco",
@@ -2112,6 +3003,284 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "archived": {
+                    "summary": "Real 200 body captured from the production archive on 2026-09-18 (arrays trimmed to 3 items)",
+                    "value": {
+                      "archive": {
+                        "capability_status": "complete",
+                        "competition": "FIFA World Cup 2026",
+                        "competition_status": "completed",
+                        "content_created_at": null,
+                        "live": false,
+                        "missing_capabilities": [],
+                        "mode": "final_archive",
+                        "notes": [
+                          "One fixture-scoped pack; player selection occurs locally at read time."
+                        ],
+                        "provenance": [
+                          "worldcup:event",
+                          "worldcup:identity-crosswalk",
+                          "fifa.com"
+                        ],
+                        "request_identity_sha256": "129d1151e0a3c396f2c2552958fe0320bb45b2a0452b18134b30104457fd21d2",
+                        "response_sha256": "941107894b963538cc2fbdaa4bec0a9bf470e11824cc258b39c926638c75ab39",
+                        "snapshot_as_of": "2026-09-13T16:13:55Z",
+                        "source_manifest_sha256": "ed7945514dabfe000756d9fa13348c66a57c834baaa0528f59860bf9e53819a8",
+                        "source_observed_at": "2026-09-13T16:13:55Z",
+                        "status": "hit",
+                        "timestamp_semantics": "source_capture_observation",
+                        "version": "world-cup-2026-final-v3"
+                      },
+                      "candidates": [
+                        {
+                          "competition": "FIFA World Cup 2026",
+                          "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "fixture_id": "1489371",
+                          "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                          "round": "Group Stage - 1",
+                          "score": {
+                            "away": 1,
+                            "elapsed": 90,
+                            "home": 1
+                          },
+                          "stage": "Group Stage - 1",
+                          "start_date": "2026-06-13T22:00:00+00:00",
+                          "status": "ft",
+                          "teams": [
+                            {
+                              "crest": "https://media.api-sports.io/football/teams/6.png",
+                              "name": "Brazil",
+                              "qualifier": "home",
+                              "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                            },
+                            {
+                              "crest": "https://media.api-sports.io/football/teams/31.png",
+                              "name": "Morocco",
+                              "qualifier": "away",
+                              "team_urn": "urn:machina:sport:soccer:team:morocco:mar"
+                            }
+                          ],
+                          "venue": "MetLife Stadium"
+                        }
+                      ],
+                      "coverage": {
+                        "eligible_count": 51,
+                        "excluded_count": 0,
+                        "exclusion_reasons": {},
+                        "included_count": 51,
+                        "mode": "historical",
+                        "population_count": 51,
+                        "reason": "Fixture participants preserve canonical URNs when evidenced and exact provider ids otherwise.",
+                        "schema_version": "worldcup-storefront-coverage-v1",
+                        "scope": "completed_tournament_archive",
+                        "source_provenance": [
+                          "worldcup:event",
+                          "worldcup:identity-crosswalk",
+                          "fifa.com"
+                        ],
+                        "status": "complete",
+                        "unsupported_fields": []
+                      },
+                      "fixture_player_pack": {
+                        "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                        "fixture_id": "1489371",
+                        "player_count": 51
+                      },
+                      "identity_coverage": {
+                        "ambiguous_omitted_count": 0,
+                        "canonical_count": 51,
+                        "provider_only_count": 0
+                      },
+                      "player_candidates": [
+                        {
+                          "name": "Vinícius Júnior",
+                          "player_urn": "urn:machina:sport:soccer:player:vinicius:20000712:bra",
+                          "provider_ids": {
+                            "api_football": "762",
+                            "espn": "252107"
+                          },
+                          "team": "Brazil"
+                        }
+                      ],
+                      "player_performance_context": {
+                        "context_and_evidence": {
+                          "citations": [],
+                          "fallback_path": [
+                            "api-football"
+                          ],
+                          "freshness": {
+                            "official_fifa_expected_lag_hours": 4,
+                            "provider_stats_fetched": true
+                          },
+                          "missing_info_flags": []
+                        },
+                        "event": {
+                          "@context": {
+                            "machina": "https://schema.machina.gg/sports#",
+                            "schema": "https://schema.org/",
+                            "sport": "https://www.sportschema.org/ontologies/sport#"
+                          },
+                          "@id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "@type": [
+                            "sport:Event",
+                            "schema:SportsEvent"
+                          ],
+                          "_id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "live_score": {
+                            "away": 1,
+                            "elapsed": 90,
+                            "home": 1
+                          },
+                          "machina_competition_slug": "world-cup-2026",
+                          "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                          "provider_ids": {
+                            "api_football": "1489371",
+                            "entain": "7722038",
+                            "opta": "ar8b186wqraa80u0vpi2e4nis",
+                            "sportradar": "sr:sport_event:66456928"
+                          },
+                          "round": "Group Stage - 1",
+                          "schema:startDate": "2026-06-13T22:00:00+00:00",
+                          "sport:competition": {
+                            "@id": "urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor",
+                            "@type": "sport:Competition",
+                            "name": "FIFA World Cup 2026"
+                          },
+                          "sport:competitors": [
+                            {
+                              "@id": "urn:machina:sport:soccer:team:brazil:bra",
+                              "@type": "sport:Team",
+                              "name": "Brazil",
+                              "schema:logo": "https://media.api-sports.io/football/teams/6.png",
+                              "sport:qualifier": "home"
+                            },
+                            {
+                              "@id": "urn:machina:sport:soccer:team:morocco:mar",
+                              "@type": "sport:Team",
+                              "name": "Morocco",
+                              "schema:logo": "https://media.api-sports.io/football/teams/31.png",
+                              "sport:qualifier": "away"
+                            }
+                          ],
+                          "sport:status": "FT",
+                          "sport:venue": {
+                            "@id": "urn:machina:sport:soccer:venue:metlife-stadium:eas",
+                            "@type": "sport:Venue",
+                            "name": "MetLife Stadium",
+                            "schema:addressLocality": "East Rutherford"
+                          },
+                          "stage": "Group Stage - 1"
+                        },
+                        "machina_provisional_performance_signal": {
+                          "confidence": 0.9,
+                          "disclaimer": "Machina provisional signal only; not an official FIFA Power Ranking.",
+                          "drivers": [
+                            {
+                              "category": "attacking",
+                              "direction": "positive",
+                              "signal": "goals/assists/shots/rating",
+                              "source": "provider",
+                              "weight": 6.75
+                            },
+                            {
+                              "category": "creativity",
+                              "direction": "positive",
+                              "signal": "assists/key passes/pass accuracy",
+                              "source": "provider",
+                              "weight": 4.72
+                            },
+                            {
+                              "category": "defending",
+                              "direction": "positive",
+                              "signal": "tackles/interceptions/duels/cards",
+                              "source": "provider",
+                              "weight": 3.85
+                            }
+                          ],
+                          "scores_0_10": {
+                            "attacking": 6.75,
+                            "creativity": 5.24,
+                            "defending": 4.28,
+                            "defending_goal": null,
+                            "in_possession": null
+                          },
+                          "source_quality": "provider",
+                          "status": "available",
+                          "warnings": []
+                        },
+                        "official_fifa_power_ranking": {
+                          "classification": {
+                            "category_rankings": [
+                              {
+                                "category": "attacking",
+                                "rank": 7,
+                                "rank_change": 0,
+                                "rank_within_team": 1,
+                                "score": 6.992136478424072
+                              },
+                              {
+                                "category": "creativity",
+                                "rank": 16,
+                                "rank_change": -1,
+                                "rank_within_team": 1,
+                                "score": 6.836964130401611
+                              },
+                              {
+                                "category": "defending",
+                                "rank": 262,
+                                "rank_change": 11,
+                                "rank_within_team": 10,
+                                "score": 4.667199611663818
+                              }
+                            ],
+                            "match_rank": null,
+                            "tournament_rank": null
+                          },
+                          "expected_available_at": null,
+                          "player_type": "outfield",
+                          "scores": {
+                            "attacking": 6.992136478424072,
+                            "creativity": 6.836964130401611,
+                            "defending": 4.667199611663818,
+                            "defending_goal": null,
+                            "in_possession": null
+                          },
+                          "source": "fifa.com",
+                          "source_snapshot": {
+                            "competitionId": 285023,
+                            "competitionStage": "Final",
+                            "counts": {
+                              "goalkeepers": 28,
+                              "outfield_players": 202,
+                              "published_players": 230
+                            },
+                            "fetched_at": "2026-09-01T04:33:26.737126Z",
+                            "messageTimeUtc": "2026-07-20T00:28:49.92294Z",
+                            "nMatches": 104,
+                            "sha256": "5192eeb55a3b9a957f1f3951a0c757b00da608a3bcb10a13641627fb14dc0735",
+                            "url": "https://fdh-api.fifa.com/v1/powerranking/season/285023.json"
+                          },
+                          "status": "available"
+                        },
+                        "player": {
+                          "eligible_for_power_ranking": true,
+                          "is_goalkeeper": false,
+                          "minutes_evidence": true,
+                          "minutes_played": 90,
+                          "name": "Vinícius Júnior",
+                          "player_id": "762",
+                          "position": "M",
+                          "team_id": "6",
+                          "team_name": "Brazil"
+                        }
+                      },
+                      "status": "available",
+                      "warnings": []
+                    }
+                  }
+                },
                 "schema": {
                   "anyOf": [
                     {
@@ -2127,10 +3296,19 @@
             "description": "Explicit player context or unavailable/ambiguous evidence status."
           },
           "400": {
-            "description": "Fixture or player selector is missing, invalid, or ambiguous."
+            "description": "The request did not identify what to answer about (coverage.reason_code = fixture_selector_required / fixture_ambiguous / player_selector_required / player_ambiguous / entity_selector_required / entity_ambiguous) or used a parameter variant outside the archive catalog (unsupported_parameter). `candidates` lists the fixtures/players that matched when the selector was ambiguous. Never billed."
           },
           "402": {
             "description": "Payment required."
+          },
+          "404": {
+            "description": "The selector resolved to no archived fixture / player / entity (coverage.reason_code = *_not_found). Never billed."
+          },
+          "502": {
+            "description": "Archive integrity error (coverage.reason_code = archive_error); nothing was served. Never billed."
+          },
+          "503": {
+            "description": "A valid selector for which the archive holds no row (coverage.reason_code = archive_row_missing). Retry later. Never billed."
           }
         },
         "summary": "Player performance context",
@@ -2191,6 +3369,12 @@
                 "allFixtures": {
                   "value": {}
                 },
+                "captured": {
+                  "summary": "Request used for the captured 200 example",
+                  "value": {
+                    "team": "Brazil"
+                  }
+                },
                 "teamSchedule": {
                   "value": {
                     "limit": 25,
@@ -2248,6 +3432,230 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "archived": {
+                    "summary": "Real 200 body captured from the production archive on 2026-09-18 (arrays trimmed to 3 items)",
+                    "value": {
+                      "archive": {
+                        "capability_status": "complete",
+                        "competition": "FIFA World Cup 2026",
+                        "competition_status": "completed",
+                        "content_created_at": null,
+                        "live": false,
+                        "missing_capabilities": [],
+                        "mode": "final_archive",
+                        "notes": [
+                          "Immutable 104-fixture final schedule."
+                        ],
+                        "provenance": [
+                          "worldcup:event",
+                          "api-football"
+                        ],
+                        "request_identity_sha256": "0d0d7407b450bf6a65fd0dfac99f6c6c1a6e17bab23f6b4ab500774853af64f5",
+                        "response_sha256": "fa3d782d490b141aa4291c1034028e636bd0fdb7b0e377efc24cb4fcc8aab61d",
+                        "snapshot_as_of": "2026-09-13T17:08:22.003454Z",
+                        "source_manifest_sha256": "22b08ee7825cf62ad54fad0efadc89532c9cbb3b74f0e635821c244fbec4cb87",
+                        "source_observed_at": "2026-09-13T17:08:22.003454Z",
+                        "status": "hit",
+                        "timestamp_semantics": "source_capture_observation",
+                        "version": "world-cup-2026-final-v3"
+                      },
+                      "coverage": {
+                        "eligible_count": 104,
+                        "excluded_count": 0,
+                        "exclusion_reasons": {},
+                        "included_count": 104,
+                        "mode": "historical",
+                        "population_count": 104,
+                        "reason": "All canonical tournament fixtures and verified result details are included.",
+                        "schema_version": "worldcup-storefront-coverage-v1",
+                        "scope": "completed_tournament_archive",
+                        "source_provenance": [
+                          "worldcup:event",
+                          "api-football"
+                        ],
+                        "status": "complete",
+                        "unsupported_fields": []
+                      },
+                      "schedule": {
+                        "count": 5,
+                        "events": [
+                          {
+                            "competition": "FIFA World Cup 2026",
+                            "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                            "fixture_id": "1489371",
+                            "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                            "result_details": {
+                              "extra_time_score_contribution": null,
+                              "fixture_id": "1489371",
+                              "provenance": {
+                                "capture_id": "6aa6d8852677921cf5d5f48e",
+                                "capture_name": "worldcup-archive-capture-results",
+                                "capture_sha256": "10522211a9442626d08c603aa9a01c4c3afe3ae2dfc7217e0e7e2290c5e85406",
+                                "fixture_id": "1489371",
+                                "observed_at": "2026-09-13T17:08:22.003454Z",
+                                "provider": "api-football",
+                                "provider_result_sha256": "9fb8564dae34abe16550eee706bd060efd31c24899c005231b4ae5f7ac7d9a55",
+                                "source_url": "https://www.api-football.com/"
+                              },
+                              "regulation_time_score": {
+                                "away": 1,
+                                "home": 1
+                              },
+                              "schema_version": "worldcup-result-details-v1",
+                              "shootout_score": null,
+                              "status": "FT",
+                              "winner": null
+                            },
+                            "round": "Group Stage - 1",
+                            "score": {
+                              "away": 1,
+                              "elapsed": 90,
+                              "home": 1
+                            },
+                            "stage": "Group Stage - 1",
+                            "start_date": "2026-06-13T22:00:00+00:00",
+                            "status": "ft",
+                            "teams": [
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/6.png",
+                                "name": "Brazil",
+                                "qualifier": "home",
+                                "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                              },
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/31.png",
+                                "name": "Morocco",
+                                "qualifier": "away",
+                                "team_urn": "urn:machina:sport:soccer:team:morocco:mar"
+                              }
+                            ],
+                            "venue": "MetLife Stadium"
+                          },
+                          {
+                            "competition": "FIFA World Cup 2026",
+                            "event_urn": "urn:machina:sport:soccer:event:brazil-vs-haiti:20260620:wor",
+                            "fixture_id": "1489389",
+                            "name": "Brazil vs Haiti - FIFA World Cup 2026",
+                            "result_details": {
+                              "extra_time_score_contribution": null,
+                              "fixture_id": "1489389",
+                              "provenance": {
+                                "capture_id": "6aa6d8852677921cf5d5f48e",
+                                "capture_name": "worldcup-archive-capture-results",
+                                "capture_sha256": "10522211a9442626d08c603aa9a01c4c3afe3ae2dfc7217e0e7e2290c5e85406",
+                                "fixture_id": "1489389",
+                                "observed_at": "2026-09-13T17:08:22.003454Z",
+                                "provider": "api-football",
+                                "provider_result_sha256": "79ee04ca0772c4ff778c754ce7d34930936aea20e5f49378380df1d96afdac64",
+                                "source_url": "https://www.api-football.com/"
+                              },
+                              "regulation_time_score": {
+                                "away": 0,
+                                "home": 3
+                              },
+                              "schema_version": "worldcup-result-details-v1",
+                              "shootout_score": null,
+                              "status": "FT",
+                              "winner": {
+                                "name": "Brazil",
+                                "qualifier": "home",
+                                "team_id": "6"
+                              }
+                            },
+                            "round": "Group Stage - 2",
+                            "score": {
+                              "away": 0,
+                              "elapsed": 90,
+                              "home": 3
+                            },
+                            "stage": "Group Stage - 2",
+                            "start_date": "2026-06-20T00:30:00+00:00",
+                            "status": "ft",
+                            "teams": [
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/6.png",
+                                "name": "Brazil",
+                                "qualifier": "home",
+                                "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                              },
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/2386.png",
+                                "name": "Haiti",
+                                "qualifier": "away",
+                                "team_urn": "urn:machina:sport:soccer:team:haiti:hti"
+                              }
+                            ],
+                            "venue": "Lincoln Financial Field"
+                          },
+                          {
+                            "competition": "FIFA World Cup 2026",
+                            "event_urn": "urn:machina:sport:soccer:event:scotland-vs-brazil:20260624:wor",
+                            "fixture_id": "1489406",
+                            "name": "Scotland vs Brazil - FIFA World Cup 2026",
+                            "result_details": {
+                              "extra_time_score_contribution": null,
+                              "fixture_id": "1489406",
+                              "provenance": {
+                                "capture_id": "6aa6d8852677921cf5d5f48e",
+                                "capture_name": "worldcup-archive-capture-results",
+                                "capture_sha256": "10522211a9442626d08c603aa9a01c4c3afe3ae2dfc7217e0e7e2290c5e85406",
+                                "fixture_id": "1489406",
+                                "observed_at": "2026-09-13T17:08:22.003454Z",
+                                "provider": "api-football",
+                                "provider_result_sha256": "de9bf94014a143b8d32558cba8083a43302255b9fafb0f898c0d6adca23e46b1",
+                                "source_url": "https://www.api-football.com/"
+                              },
+                              "regulation_time_score": {
+                                "away": 3,
+                                "home": 0
+                              },
+                              "schema_version": "worldcup-result-details-v1",
+                              "shootout_score": null,
+                              "status": "FT",
+                              "winner": {
+                                "name": "Brazil",
+                                "qualifier": "away",
+                                "team_id": "6"
+                              }
+                            },
+                            "round": "Group Stage - 3",
+                            "score": {
+                              "away": 3,
+                              "elapsed": 90,
+                              "home": 0
+                            },
+                            "stage": "Group Stage - 3",
+                            "start_date": "2026-06-24T22:00:00+00:00",
+                            "status": "ft",
+                            "teams": [
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/1108.png",
+                                "name": "Scotland",
+                                "qualifier": "home",
+                                "team_urn": "urn:machina:sport:soccer:team:scotland:sco"
+                              },
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/6.png",
+                                "name": "Brazil",
+                                "qualifier": "away",
+                                "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                              }
+                            ],
+                            "venue": "Hard Rock Stadium"
+                          }
+                        ],
+                        "has_more": false,
+                        "limit": 104,
+                        "offset": 0,
+                        "total_count": 5,
+                        "truncated": false,
+                        "warnings": []
+                      },
+                      "warnings": []
+                    }
+                  }
+                },
                 "schema": {
                   "anyOf": [
                     {
@@ -2263,10 +3671,19 @@
             "description": "Archived fixture list with canonical and provider ids."
           },
           "400": {
-            "description": "Invalid date, status, limit, offset, or date range."
+            "description": "The request did not identify what to answer about (coverage.reason_code = fixture_selector_required / fixture_ambiguous / player_selector_required / player_ambiguous / entity_selector_required / entity_ambiguous) or used a parameter variant outside the archive catalog (unsupported_parameter). `candidates` lists the fixtures/players that matched when the selector was ambiguous. Never billed."
           },
           "402": {
             "description": "Payment required."
+          },
+          "404": {
+            "description": "The selector resolved to no archived fixture / player / entity (coverage.reason_code = *_not_found). Never billed."
+          },
+          "502": {
+            "description": "Archive integrity error (coverage.reason_code = archive_error); nothing was served. Never billed."
+          },
+          "503": {
+            "description": "A valid selector for which the archive holds no row (coverage.reason_code = archive_row_missing). Retry later. Never billed."
           }
         },
         "summary": "Tournament fixtures",
@@ -2324,6 +3741,12 @@
           "content": {
             "application/json": {
               "examples": {
+                "captured": {
+                  "summary": "Request used for the captured 200 example",
+                  "value": {
+                    "event": "Brazil vs Morocco"
+                  }
+                },
                 "fixture": {
                   "value": {
                     "event": "Brazil vs Morocco"
@@ -2366,6 +3789,429 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "archived": {
+                    "summary": "Real 200 body captured from the production archive on 2026-09-18 (arrays trimmed to 3 items)",
+                    "value": {
+                      "archive": {
+                        "capability_status": "partial",
+                        "competition": "FIFA World Cup 2026",
+                        "competition_status": "completed",
+                        "content_created_at": "2026-06-16 06:08:31+00:00",
+                        "live": false,
+                        "missing_capabilities": [],
+                        "mode": "final_archive",
+                        "notes": [
+                          "Archived tournament identity snapshot; not proof of complete FIFA squad registration.",
+                          "Official FIFA registration is complete for the published snapshot and distinct from fixture-date availability."
+                        ],
+                        "provenance": [
+                          "worldcup:identity-crosswalk",
+                          "fifa.com:official-registration"
+                        ],
+                        "request_identity_sha256": "cdc34bdf147c6c7cd19787cdab81644856556ccbd932ba7f3167c99eb79da8ec",
+                        "response_sha256": "38782744e385ec4761fcaed1ef2f2ef6471cf49386a106113731f674d525e0ba",
+                        "snapshot_as_of": "2026-09-13T16:13:50Z",
+                        "source_manifest_sha256": "b514fcfb3c8c0a9d39f0441d163022116873e27ee85b61c947f9b86a4a2f343b",
+                        "source_observed_at": "2026-09-13T16:13:50Z",
+                        "status": "hit",
+                        "timestamp_semantics": "source_capture_observation",
+                        "version": "world-cup-2026-final-v3"
+                      },
+                      "candidates": [
+                        {
+                          "competition": "FIFA World Cup 2026",
+                          "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "fixture_id": "1489371",
+                          "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                          "round": "Group Stage - 1",
+                          "score": {
+                            "away": 1,
+                            "elapsed": 90,
+                            "home": 1
+                          },
+                          "stage": "Group Stage - 1",
+                          "start_date": "2026-06-13T22:00:00+00:00",
+                          "status": "ft",
+                          "teams": [
+                            {
+                              "crest": "https://media.api-sports.io/football/teams/6.png",
+                              "name": "Brazil",
+                              "qualifier": "home",
+                              "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                            },
+                            {
+                              "crest": "https://media.api-sports.io/football/teams/31.png",
+                              "name": "Morocco",
+                              "qualifier": "away",
+                              "team_urn": "urn:machina:sport:soccer:team:morocco:mar"
+                            }
+                          ],
+                          "venue": "MetLife Stadium"
+                        }
+                      ],
+                      "coverage": {
+                        "eligible_count": 52,
+                        "excluded_count": 0,
+                        "exclusion_reasons": {},
+                        "included_count": 52,
+                        "mode": "historical",
+                        "population_count": 52,
+                        "reason": "Both fixture teams have complete 26-player rosters in the final published FIFA snapshot; observed pools remain separate.",
+                        "schema_version": "worldcup-storefront-coverage-v1",
+                        "scope": "completed_tournament_archive",
+                        "source_provenance": [
+                          "worldcup:identity-crosswalk",
+                          "fifa.com:official-registration"
+                        ],
+                        "status": "complete",
+                        "unsupported_fields": [
+                          "complete_replacement_history",
+                          "fixture_date_lineup_or_eligibility",
+                          "injury_certification"
+                        ]
+                      },
+                      "squads": {
+                        "competition": "FIFA World Cup 2026",
+                        "evidence_status": "observed_tournament_player_pool",
+                        "observed_player_count": 53,
+                        "official_registration_snapshot": {
+                          "completeness": {
+                            "included_teams": 2,
+                            "requested_teams": 2,
+                            "status": "complete_for_published_snapshot"
+                          },
+                          "limitations": [
+                            "This final published snapshot is not a fixture-date lineup, eligibility, or replacement history.",
+                            "The FIFA registration snapshot does not certify injury status.",
+                            "International caps and goals are FIFA-reported totals, not World Cup match statistics."
+                          ],
+                          "players_per_team": 26,
+                          "published_at": "2026-07-19T22:34:35+00:00",
+                          "scope": "final_published_tournament_roster_snapshot",
+                          "snapshot_team_count": 48,
+                          "source_sha256": "02a0a9beb5d219e7cc0aedde19273e9a3bfe4818ecd600d37804b8801dd96d94",
+                          "source_url": "https://fdp.fifa.org/assetspublic/ce281/pdf/SquadLists-English.pdf",
+                          "teams": [
+                            {
+                              "completeness": {
+                                "expected_players": 26,
+                                "included_players": 26,
+                                "status": "complete_for_published_snapshot"
+                              },
+                              "fifa_team_code": "BRA",
+                              "player_count": 26,
+                              "players": [
+                                {
+                                  "birth_date": "1992-10-02",
+                                  "canonical_birth_date": "1992-10-02",
+                                  "canonical_birth_date_conflict": false,
+                                  "canonical_urn": "urn:machina:sport:soccer:player:alisson-becker:19921002:bra",
+                                  "club_raw": "Liverpool FC (ENG)",
+                                  "fifa_team_code": "BRA",
+                                  "first_names_raw": "Álisson Ramsés",
+                                  "height_cm": 193,
+                                  "identity_mapping_status": "official_reconciled",
+                                  "international_caps_as_reported": 83,
+                                  "international_goals_as_reported": 0,
+                                  "jersey_number": 1,
+                                  "last_names_raw": "BECKER",
+                                  "player_name_raw": "ALISSON",
+                                  "position_code": "GK",
+                                  "provider_id_aliases": {},
+                                  "provider_ids": {
+                                    "api_football": "280",
+                                    "espn": "196876"
+                                  },
+                                  "shirt_name_raw": "A. BECKER",
+                                  "source_page": 7,
+                                  "team_name": "Brazil",
+                                  "warnings": []
+                                },
+                                {
+                                  "birth_date": "1999-07-07",
+                                  "canonical_birth_date": "1999-07-07",
+                                  "canonical_birth_date_conflict": false,
+                                  "canonical_urn": "urn:machina:sport:soccer:player:ederson-silva:19990707:bra",
+                                  "club_raw": "Atalanta Bergamo (ITA)",
+                                  "fifa_team_code": "BRA",
+                                  "first_names_raw": "Éderson José",
+                                  "height_cm": 184,
+                                  "identity_mapping_status": "official_reconciled",
+                                  "international_caps_as_reported": 5,
+                                  "international_goals_as_reported": 0,
+                                  "jersey_number": 2,
+                                  "last_names_raw": "DOS SANTOS LOURENÇO DA SILVA",
+                                  "player_name_raw": "EDERSON SILVA",
+                                  "position_code": "MF",
+                                  "provider_id_aliases": {},
+                                  "provider_ids": {
+                                    "api_football": "10097"
+                                  },
+                                  "shirt_name_raw": "ÉDERSON S.",
+                                  "source_page": 7,
+                                  "team_name": "Brazil",
+                                  "warnings": []
+                                },
+                                {
+                                  "birth_date": "1997-12-19",
+                                  "canonical_birth_date": "1997-12-19",
+                                  "canonical_birth_date_conflict": false,
+                                  "canonical_urn": "urn:machina:sport:soccer:player:gabriel-magalhaes:19971219:bra",
+                                  "club_raw": "Arsenal FC (ENG)",
+                                  "fifa_team_code": "BRA",
+                                  "first_names_raw": "Gabriel",
+                                  "height_cm": 190,
+                                  "identity_mapping_status": "official_reconciled",
+                                  "international_caps_as_reported": 22,
+                                  "international_goals_as_reported": 1,
+                                  "jersey_number": 3,
+                                  "last_names_raw": "DOS SANTOS MAGALHÃES",
+                                  "player_name_raw": "GABRIEL MAGALHAES",
+                                  "position_code": "DF",
+                                  "provider_id_aliases": {},
+                                  "provider_ids": {
+                                    "api_football": "22224",
+                                    "espn": "236322"
+                                  },
+                                  "shirt_name_raw": "GABRIEL",
+                                  "source_page": 7,
+                                  "team_name": "Brazil",
+                                  "warnings": []
+                                }
+                              ],
+                              "source": {
+                                "page": 7,
+                                "published_at": "2026-07-19T22:34:35+00:00",
+                                "publisher": "FIFA",
+                                "sha256": "02a0a9beb5d219e7cc0aedde19273e9a3bfe4818ecd600d37804b8801dd96d94",
+                                "url": "https://fdp.fifa.org/assetspublic/ce281/pdf/SquadLists-English.pdf"
+                              },
+                              "source_page": 7,
+                              "team_name": "Brazil"
+                            },
+                            {
+                              "completeness": {
+                                "expected_players": 26,
+                                "included_players": 26,
+                                "status": "complete_for_published_snapshot"
+                              },
+                              "fifa_team_code": "MAR",
+                              "player_count": 26,
+                              "players": [
+                                {
+                                  "birth_date": "1991-04-05",
+                                  "canonical_birth_date": "1991-04-05",
+                                  "canonical_birth_date_conflict": false,
+                                  "canonical_urn": "urn:machina:sport:soccer:player:yassine-bounou:19910405:mar",
+                                  "club_raw": "Al Hilal SC (KSA)",
+                                  "fifa_team_code": "MAR",
+                                  "first_names_raw": "Yassine",
+                                  "height_cm": 192,
+                                  "identity_mapping_status": "official_reconciled",
+                                  "international_caps_as_reported": 96,
+                                  "international_goals_as_reported": 0,
+                                  "jersey_number": 1,
+                                  "last_names_raw": "BOUNOU",
+                                  "player_name_raw": "BOUNOU Yassine",
+                                  "position_code": "GK",
+                                  "provider_id_aliases": {},
+                                  "provider_ids": {
+                                    "api_football": "2701",
+                                    "espn": "175149"
+                                  },
+                                  "shirt_name_raw": "BONO",
+                                  "source_page": 29,
+                                  "team_name": "Morocco",
+                                  "warnings": []
+                                },
+                                {
+                                  "birth_date": "1998-11-04",
+                                  "canonical_birth_date": "1998-11-04",
+                                  "canonical_birth_date_conflict": false,
+                                  "canonical_urn": "urn:machina:sport:soccer:player:achraf-hakimi-mouh:19981104:mar",
+                                  "club_raw": "Paris Saint-Germain (FRA)",
+                                  "fifa_team_code": "MAR",
+                                  "first_names_raw": "Achraf",
+                                  "height_cm": 180,
+                                  "identity_mapping_status": "official_reconciled",
+                                  "international_caps_as_reported": 102,
+                                  "international_goals_as_reported": 12,
+                                  "jersey_number": 2,
+                                  "last_names_raw": "HAKIMI",
+                                  "player_name_raw": "HAKIMI Achraf",
+                                  "position_code": "DF",
+                                  "provider_id_aliases": {},
+                                  "provider_ids": {
+                                    "api_football": "9",
+                                    "espn": "240233"
+                                  },
+                                  "shirt_name_raw": "HAKIMI",
+                                  "source_page": 29,
+                                  "team_name": "Morocco",
+                                  "warnings": []
+                                },
+                                {
+                                  "birth_date": "1997-11-14",
+                                  "canonical_birth_date": "1997-11-14",
+                                  "canonical_birth_date_conflict": false,
+                                  "canonical_urn": "urn:machina:sport:soccer:player:noussair-mazraoui:19971114:mar",
+                                  "club_raw": "Manchester United FC (ENG)",
+                                  "fifa_team_code": "MAR",
+                                  "first_names_raw": "Noussair",
+                                  "height_cm": 183,
+                                  "identity_mapping_status": "official_reconciled",
+                                  "international_caps_as_reported": 51,
+                                  "international_goals_as_reported": 2,
+                                  "jersey_number": 3,
+                                  "last_names_raw": "MAZRAOUI",
+                                  "player_name_raw": "MAZRAOUI Noussair",
+                                  "position_code": "DF",
+                                  "provider_id_aliases": {},
+                                  "provider_ids": {
+                                    "api_football": "545",
+                                    "espn": "239350"
+                                  },
+                                  "shirt_name_raw": "MAZRAOUI",
+                                  "source_page": 29,
+                                  "team_name": "Morocco",
+                                  "warnings": []
+                                }
+                              ],
+                              "source": {
+                                "page": 29,
+                                "published_at": "2026-07-19T22:34:35+00:00",
+                                "publisher": "FIFA",
+                                "sha256": "02a0a9beb5d219e7cc0aedde19273e9a3bfe4818ecd600d37804b8801dd96d94",
+                                "url": "https://fdp.fifa.org/assetspublic/ce281/pdf/SquadLists-English.pdf"
+                              },
+                              "source_page": 29,
+                              "team_name": "Morocco"
+                            }
+                          ]
+                        },
+                        "official_registration_status": "verified_final_published_snapshot",
+                        "snapshot_type": "archived_tournament_identity_snapshot",
+                        "teams": [
+                          {
+                            "count": 26,
+                            "players": [
+                              {
+                                "birth_date": "1991-01-26",
+                                "name": "Alex Sandro",
+                                "nationality": "Brazil",
+                                "player_urn": "urn:machina:sport:soccer:player:alex-sandro:19910126:bra",
+                                "position": "Defender",
+                                "provider_ids": {
+                                  "api_football": "860",
+                                  "espn": "125514"
+                                },
+                                "source_timestamp": "2026-06-05 17:34:28+00:00"
+                              },
+                              {
+                                "birth_date": "1992-10-02",
+                                "name": "Alisson Becker",
+                                "nationality": "Brazil",
+                                "player_urn": "urn:machina:sport:soccer:player:alisson-becker:19921002:bra",
+                                "position": "Goalkeeper",
+                                "provider_ids": {
+                                  "api_football": "280",
+                                  "espn": "196876"
+                                },
+                                "source_timestamp": "2026-06-05 17:34:28+00:00"
+                              },
+                              {
+                                "birth_date": "1997-11-16",
+                                "name": "Bruno Guimarães",
+                                "nationality": "Brazil",
+                                "player_urn": "urn:machina:sport:soccer:player:bruno-guimaraes:19971116:bra",
+                                "position": "Midfielder",
+                                "provider_ids": {
+                                  "api_football": "10135",
+                                  "espn": "218522"
+                                },
+                                "source_timestamp": "2026-06-05 17:34:28+00:00"
+                              }
+                            ],
+                            "side": "home",
+                            "source": "worldcup:identity-crosswalk",
+                            "team": "Brazil",
+                            "team_identity": {
+                              "name": "Brazil",
+                              "provider_ids": {
+                                "api_football": "6",
+                                "espn": "205"
+                              },
+                              "source_timestamp": "2026-06-05 04:22:08+00:00",
+                              "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                            },
+                            "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                          },
+                          {
+                            "count": 27,
+                            "players": [
+                              {
+                                "birth_date": "2001-12-17",
+                                "name": "Abdessamad Ezzalzouli",
+                                "nationality": "Morocco",
+                                "player_urn": "urn:machina:sport:soccer:player:abdessamad-ezzalzouli:20011217:mar",
+                                "position": "Midfielder",
+                                "provider_ids": {
+                                  "api_football": "181421",
+                                  "espn": "300912"
+                                },
+                                "source_timestamp": "2026-06-05 17:34:28+00:00"
+                              },
+                              {
+                                "birth_date": "1998-11-04",
+                                "name": "Achraf Hakimi Mouh",
+                                "nationality": "Morocco",
+                                "player_urn": "urn:machina:sport:soccer:player:achraf-hakimi-mouh:19981104:mar",
+                                "position": "Defender",
+                                "provider_ids": {
+                                  "api_football": "9",
+                                  "espn": "240233"
+                                },
+                                "source_timestamp": "2026-06-05 17:34:28+00:00"
+                              },
+                              {
+                                "birth_date": "1996-04-05",
+                                "name": "Ahmed Reda Tagnaouti",
+                                "nationality": "Morocco",
+                                "player_urn": "urn:machina:sport:soccer:player:ahmed-reda-tagnaouti:19960405:mar",
+                                "position": "Goalkeeper",
+                                "provider_ids": {
+                                  "api_football": "2703",
+                                  "espn": "195240"
+                                },
+                                "source_timestamp": "2026-06-05 17:34:28+00:00"
+                              }
+                            ],
+                            "side": "away",
+                            "source": "worldcup:identity-crosswalk",
+                            "team": "Morocco",
+                            "team_identity": {
+                              "name": "Morocco",
+                              "provider_ids": {
+                                "api_football": "31",
+                                "espn": "2869"
+                              },
+                              "source_timestamp": "2026-06-05 04:22:08+00:00",
+                              "team_urn": "urn:machina:sport:soccer:team:morocco:mar"
+                            },
+                            "team_urn": "urn:machina:sport:soccer:team:morocco:mar"
+                          }
+                        ],
+                        "warnings": [
+                          "Persisted tournament identities are evidence of the archived player pool, not proof of a complete official FIFA squad registration."
+                        ]
+                      },
+                      "warnings": [
+                        "Persisted tournament identities are evidence of the archived player pool, not proof of a complete official FIFA squad registration."
+                      ]
+                    }
+                  }
+                },
                 "schema": {
                   "anyOf": [
                     {
@@ -2381,10 +4227,19 @@
             "description": "Both team identities and linked persisted tournament players with original timestamps."
           },
           "400": {
-            "description": "Missing, invalid, or ambiguous fixture selector."
+            "description": "The request did not identify what to answer about (coverage.reason_code = fixture_selector_required / fixture_ambiguous / player_selector_required / player_ambiguous / entity_selector_required / entity_ambiguous) or used a parameter variant outside the archive catalog (unsupported_parameter). `candidates` lists the fixtures/players that matched when the selector was ambiguous. Never billed."
           },
           "402": {
             "description": "Payment required."
+          },
+          "404": {
+            "description": "The selector resolved to no archived fixture / player / entity (coverage.reason_code = *_not_found). Never billed."
+          },
+          "502": {
+            "description": "Archive integrity error (coverage.reason_code = archive_error); nothing was served. Never billed."
+          },
+          "503": {
+            "description": "A valid selector for which the archive holds no row (coverage.reason_code = archive_row_missing). Retry later. Never billed."
           }
         },
         "summary": "Archived tournament squad identities",
@@ -2442,6 +4297,10 @@
           "content": {
             "application/json": {
               "examples": {
+                "captured": {
+                  "summary": "Request used for the captured 200 example",
+                  "value": {}
+                },
                 "defaultTournament": {
                   "value": {}
                 },
@@ -2479,6 +4338,252 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "archived": {
+                    "summary": "Real 200 body captured from the production archive on 2026-09-18 (arrays trimmed to 3 items)",
+                    "value": {
+                      "archive": {
+                        "capability_status": "complete",
+                        "competition": "FIFA World Cup 2026",
+                        "competition_status": "completed",
+                        "content_created_at": null,
+                        "live": false,
+                        "missing_capabilities": [],
+                        "mode": "final_archive",
+                        "notes": [
+                          "Final group tables; no stored source timestamp is available."
+                        ],
+                        "provenance": [
+                          "api-football"
+                        ],
+                        "request_identity_sha256": "55c97e348e84695e761804824ea22de65964a87079d09f13823b803024a60e81",
+                        "response_sha256": "0b4f12550c52895d600605736678cc666d3b51c46e02fc99479f989236b73cb8",
+                        "snapshot_as_of": "2026-09-13T12:43:17.191390Z",
+                        "source_manifest_sha256": "8f3eefa03f995001e1d653212c8a6df8dfa2c731052296161bbeaa6c07f3729c",
+                        "source_observed_at": "2026-09-13T12:43:17.191390Z",
+                        "status": "hit",
+                        "timestamp_semantics": "source_capture_observation",
+                        "version": "world-cup-2026-final-v3"
+                      },
+                      "coverage": {
+                        "eligible_count": 48,
+                        "excluded_count": 0,
+                        "exclusion_reasons": {},
+                        "included_count": 48,
+                        "mode": "historical",
+                        "population_count": 48,
+                        "reason": "Twelve final group tables are separate from the 12-team third-place ranking; no 1-to-48 ranking is inferred.",
+                        "schema_version": "worldcup-storefront-coverage-v1",
+                        "scope": "completed_tournament_archive",
+                        "source_provenance": [
+                          "api-football"
+                        ],
+                        "status": "complete",
+                        "unsupported_fields": [
+                          "final_1_to_48_tournament_ranking"
+                        ]
+                      },
+                      "standings": {
+                        "group_count": 12,
+                        "groups": [
+                          {
+                            "group": "Group A",
+                            "table": [
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/16.png",
+                                "draw": 0,
+                                "goal_diff": 6,
+                                "goals_against": 0,
+                                "goals_for": 6,
+                                "lose": 0,
+                                "played": 3,
+                                "points": 9,
+                                "rank": 1,
+                                "team": "Mexico",
+                                "team_id": 16,
+                                "win": 3
+                              },
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/1531.png",
+                                "draw": 1,
+                                "goal_diff": -1,
+                                "goals_against": 3,
+                                "goals_for": 2,
+                                "lose": 1,
+                                "played": 3,
+                                "points": 4,
+                                "rank": 2,
+                                "team": "South Africa",
+                                "team_id": 1531,
+                                "win": 1
+                              },
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/17.png",
+                                "draw": 0,
+                                "goal_diff": -1,
+                                "goals_against": 3,
+                                "goals_for": 2,
+                                "lose": 2,
+                                "played": 3,
+                                "points": 3,
+                                "rank": 3,
+                                "team": "South Korea",
+                                "team_id": 17,
+                                "win": 1
+                              }
+                            ]
+                          },
+                          {
+                            "group": "Group B",
+                            "table": [
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/15.png",
+                                "draw": 1,
+                                "goal_diff": 4,
+                                "goals_against": 3,
+                                "goals_for": 7,
+                                "lose": 0,
+                                "played": 3,
+                                "points": 7,
+                                "rank": 1,
+                                "team": "Switzerland",
+                                "team_id": 15,
+                                "win": 2
+                              },
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/5529.png",
+                                "draw": 1,
+                                "goal_diff": 5,
+                                "goals_against": 3,
+                                "goals_for": 8,
+                                "lose": 1,
+                                "played": 3,
+                                "points": 4,
+                                "rank": 2,
+                                "team": "Canada",
+                                "team_id": 5529,
+                                "win": 1
+                              },
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/1113.png",
+                                "draw": 1,
+                                "goal_diff": -1,
+                                "goals_against": 6,
+                                "goals_for": 5,
+                                "lose": 1,
+                                "played": 3,
+                                "points": 4,
+                                "rank": 3,
+                                "team": "Bosnia & Herzegovina",
+                                "team_id": 1113,
+                                "win": 1
+                              }
+                            ]
+                          },
+                          {
+                            "group": "Group C",
+                            "table": [
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/6.png",
+                                "draw": 1,
+                                "goal_diff": 6,
+                                "goals_against": 1,
+                                "goals_for": 7,
+                                "lose": 0,
+                                "played": 3,
+                                "points": 7,
+                                "rank": 1,
+                                "team": "Brazil",
+                                "team_id": 6,
+                                "win": 2
+                              },
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/31.png",
+                                "draw": 1,
+                                "goal_diff": 3,
+                                "goals_against": 3,
+                                "goals_for": 6,
+                                "lose": 0,
+                                "played": 3,
+                                "points": 7,
+                                "rank": 2,
+                                "team": "Morocco",
+                                "team_id": 31,
+                                "win": 2
+                              },
+                              {
+                                "crest": "https://media.api-sports.io/football/teams/1108.png",
+                                "draw": 0,
+                                "goal_diff": -3,
+                                "goals_against": 4,
+                                "goals_for": 1,
+                                "lose": 2,
+                                "played": 3,
+                                "points": 3,
+                                "rank": 3,
+                                "team": "Scotland",
+                                "team_id": 1108,
+                                "win": 1
+                              }
+                            ]
+                          }
+                        ],
+                        "is_final_1_to_48_ranking": false,
+                        "league_id": "1",
+                        "season": "2026",
+                        "source": "api-football",
+                        "standings_scope": "final_group_standings",
+                        "team_count": 48,
+                        "third_place_ranking": [
+                          {
+                            "crest": "https://media.api-sports.io/football/teams/1508.png",
+                            "draw": 1,
+                            "goal_diff": 1,
+                            "goals_against": 3,
+                            "goals_for": 4,
+                            "lose": 1,
+                            "played": 3,
+                            "points": 4,
+                            "rank": 1,
+                            "team": "Congo DR",
+                            "team_id": 1508,
+                            "win": 1
+                          },
+                          {
+                            "crest": "https://media.api-sports.io/football/teams/5.png",
+                            "draw": 1,
+                            "goal_diff": 0,
+                            "goals_against": 7,
+                            "goals_for": 7,
+                            "lose": 1,
+                            "played": 3,
+                            "points": 4,
+                            "rank": 2,
+                            "team": "Sweden",
+                            "team_id": 5,
+                            "win": 1
+                          },
+                          {
+                            "crest": "https://media.api-sports.io/football/teams/1504.png",
+                            "draw": 1,
+                            "goal_diff": 0,
+                            "goals_against": 2,
+                            "goals_for": 2,
+                            "lose": 1,
+                            "played": 3,
+                            "points": 4,
+                            "rank": 3,
+                            "team": "Ghana",
+                            "team_id": 1504,
+                            "win": 1
+                          }
+                        ],
+                        "warnings": []
+                      },
+                      "warnings": []
+                    }
+                  }
+                },
                 "schema": {
                   "anyOf": [
                     {
@@ -2494,10 +4599,19 @@
             "description": "Final group tables and third-place ranking when available."
           },
           "400": {
-            "description": "Invalid league or season."
+            "description": "The request did not identify what to answer about (coverage.reason_code = fixture_selector_required / fixture_ambiguous / player_selector_required / player_ambiguous / entity_selector_required / entity_ambiguous) or used a parameter variant outside the archive catalog (unsupported_parameter). `candidates` lists the fixtures/players that matched when the selector was ambiguous. Never billed."
           },
           "402": {
             "description": "Payment required."
+          },
+          "404": {
+            "description": "The selector resolved to no archived fixture / player / entity (coverage.reason_code = *_not_found). Never billed."
+          },
+          "502": {
+            "description": "Archive integrity error (coverage.reason_code = archive_error); nothing was served. Never billed."
+          },
+          "503": {
+            "description": "A valid selector for which the archive holds no row (coverage.reason_code = archive_row_missing). Retry later. Never billed."
           }
         },
         "summary": "Final tournament standings",
@@ -2560,6 +4674,12 @@
                     "id": "urn:machina:sport:soccer:team:brazil:bra"
                   }
                 },
+                "captured": {
+                  "summary": "Request used for the captured 200 example",
+                  "value": {
+                    "id": "1489371"
+                  }
+                },
                 "providerFixture": {
                   "value": {
                     "id": "1489417"
@@ -2587,6 +4707,173 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "archived": {
+                    "summary": "Real 200 body captured from the production archive on 2026-09-18 (arrays trimmed to 3 items)",
+                    "value": {
+                      "archive": {
+                        "capability_status": "complete",
+                        "competition": "FIFA World Cup 2026",
+                        "competition_status": "completed",
+                        "content_created_at": null,
+                        "live": false,
+                        "missing_capabilities": [],
+                        "mode": "final_archive",
+                        "notes": [
+                          "Exact archived entity resolution."
+                        ],
+                        "provenance": [
+                          "worldcup:event"
+                        ],
+                        "request_identity_sha256": "b3b3d4dc3f2f1f065cd9fe8229ff13fc5bd8c79f981856501c9bc93d3ea717f0",
+                        "response_sha256": "040487001cfd55c3ce11cf2da97f3b551a2b63c13594285a182c58742117a49c",
+                        "snapshot_as_of": null,
+                        "source_manifest_sha256": "856f7786586c41a5cc152b1b37158355bf21863c63a6bc1553046dec02662e68",
+                        "source_observed_at": null,
+                        "status": "hit",
+                        "timestamp_semantics": "unavailable",
+                        "version": "world-cup-2026-final-v3"
+                      },
+                      "count": 1,
+                      "coverage": {
+                        "eligible_count": 1,
+                        "excluded_count": 0,
+                        "exclusion_reasons": {},
+                        "included_count": 1,
+                        "mode": "historical",
+                        "population_count": 1,
+                        "reason": "Exact archived canonical or provider identity resolution.",
+                        "schema_version": "worldcup-storefront-coverage-v1",
+                        "scope": "completed_tournament_archive",
+                        "source_provenance": [
+                          "worldcup:event"
+                        ],
+                        "status": "complete",
+                        "unsupported_fields": []
+                      },
+                      "entities": [
+                        {
+                          "@context": {
+                            "machina": "https://schema.machina.gg/sports#",
+                            "schema": "https://schema.org/",
+                            "sport": "https://www.sportschema.org/ontologies/sport#"
+                          },
+                          "@id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "@type": [
+                            "sport:Event",
+                            "schema:SportsEvent"
+                          ],
+                          "_id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "live_score": {
+                            "away": 1,
+                            "elapsed": 90,
+                            "home": 1
+                          },
+                          "machina_competition_slug": "world-cup-2026",
+                          "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                          "provider_ids": {
+                            "api_football": "1489371",
+                            "entain": "7722038",
+                            "opta": "ar8b186wqraa80u0vpi2e4nis",
+                            "sportradar": "sr:sport_event:66456928"
+                          },
+                          "round": "Group Stage - 1",
+                          "schema:startDate": "2026-06-13T22:00:00+00:00",
+                          "sport:competition": {
+                            "@id": "urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor",
+                            "@type": "sport:Competition",
+                            "name": "FIFA World Cup 2026"
+                          },
+                          "sport:competitors": [
+                            {
+                              "@id": "urn:machina:sport:soccer:team:brazil:bra",
+                              "@type": "sport:Team",
+                              "name": "Brazil",
+                              "schema:logo": "https://media.api-sports.io/football/teams/6.png",
+                              "sport:qualifier": "home"
+                            },
+                            {
+                              "@id": "urn:machina:sport:soccer:team:morocco:mar",
+                              "@type": "sport:Team",
+                              "name": "Morocco",
+                              "schema:logo": "https://media.api-sports.io/football/teams/31.png",
+                              "sport:qualifier": "away"
+                            }
+                          ],
+                          "sport:status": "FT",
+                          "sport:venue": {
+                            "@id": "urn:machina:sport:soccer:venue:metlife-stadium:eas",
+                            "@type": "sport:Venue",
+                            "name": "MetLife Stadium",
+                            "schema:addressLocality": "East Rutherford"
+                          },
+                          "stage": "Group Stage - 1"
+                        }
+                      ],
+                      "entity": {
+                        "@context": {
+                          "machina": "https://schema.machina.gg/sports#",
+                          "schema": "https://schema.org/",
+                          "sport": "https://www.sportschema.org/ontologies/sport#"
+                        },
+                        "@id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                        "@type": [
+                          "sport:Event",
+                          "schema:SportsEvent"
+                        ],
+                        "_id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                        "id": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                        "identity_mapping_status": "canonical",
+                        "live_score": {
+                          "away": 1,
+                          "elapsed": 90,
+                          "home": 1
+                        },
+                        "machina_competition_slug": "world-cup-2026",
+                        "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                        "provider_ids": {
+                          "api_football": "1489371",
+                          "entain": "7722038",
+                          "opta": "ar8b186wqraa80u0vpi2e4nis",
+                          "sportradar": "sr:sport_event:66456928"
+                        },
+                        "round": "Group Stage - 1",
+                        "schema:startDate": "2026-06-13T22:00:00+00:00",
+                        "sport:competition": {
+                          "@id": "urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor",
+                          "@type": "sport:Competition",
+                          "name": "FIFA World Cup 2026"
+                        },
+                        "sport:competitors": [
+                          {
+                            "@id": "urn:machina:sport:soccer:team:brazil:bra",
+                            "@type": "sport:Team",
+                            "name": "Brazil",
+                            "schema:logo": "https://media.api-sports.io/football/teams/6.png",
+                            "sport:qualifier": "home"
+                          },
+                          {
+                            "@id": "urn:machina:sport:soccer:team:morocco:mar",
+                            "@type": "sport:Team",
+                            "name": "Morocco",
+                            "schema:logo": "https://media.api-sports.io/football/teams/31.png",
+                            "sport:qualifier": "away"
+                          }
+                        ],
+                        "sport:status": "FT",
+                        "sport:venue": {
+                          "@id": "urn:machina:sport:soccer:venue:metlife-stadium:eas",
+                          "@type": "sport:Venue",
+                          "name": "MetLife Stadium",
+                          "schema:addressLocality": "East Rutherford"
+                        },
+                        "stage": "Group Stage - 1"
+                      },
+                      "warnings": []
+                    }
+                  }
+                },
                 "schema": {
                   "anyOf": [
                     {
@@ -2602,10 +4889,19 @@
             "description": "Resolved entity and cross-provider identifiers, or an explicit not-found warning."
           },
           "400": {
-            "description": "The id is missing or empty."
+            "description": "The request did not identify what to answer about (coverage.reason_code = fixture_selector_required / fixture_ambiguous / player_selector_required / player_ambiguous / entity_selector_required / entity_ambiguous) or used a parameter variant outside the archive catalog (unsupported_parameter). `candidates` lists the fixtures/players that matched when the selector was ambiguous. Never billed."
           },
           "402": {
             "description": "Payment required."
+          },
+          "404": {
+            "description": "The selector resolved to no archived fixture / player / entity (coverage.reason_code = *_not_found). Never billed."
+          },
+          "502": {
+            "description": "Archive integrity error (coverage.reason_code = archive_error); nothing was served. Never billed."
+          },
+          "503": {
+            "description": "A valid selector for which the archive holds no row (coverage.reason_code = archive_row_missing). Retry later. Never billed."
           }
         },
         "summary": "Resolve a provider id to a canonical entity",
@@ -2667,6 +4963,12 @@
                   "value": {
                     "event": "Brazil vs Morocco"
                   }
+                },
+                "captured": {
+                  "summary": "Request used for the captured 200 example",
+                  "value": {
+                    "event": "Brazil vs Morocco"
+                  }
                 }
               },
               "schema": {
@@ -2695,6 +4997,316 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "archived": {
+                    "summary": "Real 200 body captured from the production archive on 2026-09-18 (arrays trimmed to 3 items)",
+                    "value": {
+                      "archive": {
+                        "capability_status": "evergreen_editorial",
+                        "competition": "FIFA World Cup 2026",
+                        "competition_status": "completed",
+                        "content_created_at": "2026-08-31T23:37:57.540271Z",
+                        "live": false,
+                        "missing_capabilities": [],
+                        "mode": "final_archive",
+                        "notes": [
+                          "Original cached matchday copy with final score verified; narrative details retain an explicit non-revalidation caveat."
+                        ],
+                        "provenance": [
+                          "worldcup:skill-match-recap-original-copy",
+                          "worldcup:event",
+                          "worldcup:model-forecast"
+                        ],
+                        "request_identity_sha256": "9878f2c71e178b2918df5bacd1565fc4cf8689898c38346683437a80c8f0d961",
+                        "response_sha256": "2e8c61cdd0816f34c69dab1065271ac234652e798616255e86e6adc3ca6cabb9",
+                        "snapshot_as_of": "2026-08-31T23:37:57.540271Z",
+                        "source_manifest_sha256": "7d6e0e267f6b3dce6077676fdadc0c7ba5a9e7b21e876795b4e889f49dfe9bd1",
+                        "source_observed_at": null,
+                        "status": "hit",
+                        "timestamp_semantics": "original_editorial_generation",
+                        "version": "world-cup-2026-final-v3"
+                      },
+                      "candidates": [
+                        {
+                          "competition": "FIFA World Cup 2026",
+                          "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                          "fixture_id": "1489371",
+                          "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                          "result_details": {
+                            "extra_time_score_contribution": null,
+                            "fixture_id": "1489371",
+                            "provenance": {
+                              "capture_id": "6aa6d8852677921cf5d5f48e",
+                              "capture_name": "worldcup-archive-capture-results",
+                              "capture_sha256": "10522211a9442626d08c603aa9a01c4c3afe3ae2dfc7217e0e7e2290c5e85406",
+                              "fixture_id": "1489371",
+                              "observed_at": "2026-09-13T17:08:22.003454Z",
+                              "provider": "api-football",
+                              "provider_result_sha256": "9fb8564dae34abe16550eee706bd060efd31c24899c005231b4ae5f7ac7d9a55",
+                              "source_url": "https://www.api-football.com/"
+                            },
+                            "regulation_time_score": {
+                              "away": 1,
+                              "home": 1
+                            },
+                            "schema_version": "worldcup-result-details-v1",
+                            "shootout_score": null,
+                            "status": "FT",
+                            "winner": null
+                          },
+                          "round": "Group Stage - 1",
+                          "score": {
+                            "away": 1,
+                            "elapsed": 90,
+                            "home": 1
+                          },
+                          "stage": "Group Stage - 1",
+                          "start_date": "2026-06-13T22:00:00+00:00",
+                          "status": "ft",
+                          "teams": [
+                            {
+                              "crest": "https://media.api-sports.io/football/teams/6.png",
+                              "name": "Brazil",
+                              "qualifier": "home",
+                              "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                            },
+                            {
+                              "crest": "https://media.api-sports.io/football/teams/31.png",
+                              "name": "Morocco",
+                              "qualifier": "away",
+                              "team_urn": "urn:machina:sport:soccer:team:morocco:mar"
+                            }
+                          ],
+                          "venue": "MetLife Stadium"
+                        }
+                      ],
+                      "coverage": {
+                        "eligible_count": 51,
+                        "excluded_count": 0,
+                        "exclusion_reasons": {},
+                        "included_count": 51,
+                        "mode": "historical",
+                        "population_count": 51,
+                        "reason": "Final result facts and archived player observations are exposed separately from unsupported narrative.",
+                        "schema_version": "worldcup-storefront-coverage-v1",
+                        "scope": "completed_tournament_archive",
+                        "source_provenance": [
+                          "worldcup:skill-match-recap-original-copy",
+                          "worldcup:event",
+                          "worldcup:model-forecast"
+                        ],
+                        "status": "complete",
+                        "unsupported_fields": [
+                          "match_awards",
+                          "quotes",
+                          "scorers"
+                        ]
+                      },
+                      "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                      "resolved_fixture": {
+                        "competition": "FIFA World Cup 2026",
+                        "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                        "fixture_id": "1489371",
+                        "name": "Brazil vs Morocco - FIFA World Cup 2026",
+                        "result_details": {
+                          "extra_time_score_contribution": null,
+                          "fixture_id": "1489371",
+                          "provenance": {
+                            "capture_id": "6aa6d8852677921cf5d5f48e",
+                            "capture_name": "worldcup-archive-capture-results",
+                            "capture_sha256": "10522211a9442626d08c603aa9a01c4c3afe3ae2dfc7217e0e7e2290c5e85406",
+                            "fixture_id": "1489371",
+                            "observed_at": "2026-09-13T17:08:22.003454Z",
+                            "provider": "api-football",
+                            "provider_result_sha256": "9fb8564dae34abe16550eee706bd060efd31c24899c005231b4ae5f7ac7d9a55",
+                            "source_url": "https://www.api-football.com/"
+                          },
+                          "regulation_time_score": {
+                            "away": 1,
+                            "home": 1
+                          },
+                          "schema_version": "worldcup-result-details-v1",
+                          "shootout_score": null,
+                          "status": "FT",
+                          "winner": null
+                        },
+                        "round": "Group Stage - 1",
+                        "score": {
+                          "away": 1,
+                          "elapsed": 90,
+                          "home": 1
+                        },
+                        "stage": "Group Stage - 1",
+                        "start_date": "2026-06-13T22:00:00+00:00",
+                        "status": "ft",
+                        "teams": [
+                          {
+                            "crest": "https://media.api-sports.io/football/teams/6.png",
+                            "name": "Brazil",
+                            "qualifier": "home",
+                            "team_urn": "urn:machina:sport:soccer:team:brazil:bra"
+                          },
+                          {
+                            "crest": "https://media.api-sports.io/football/teams/31.png",
+                            "name": "Morocco",
+                            "qualifier": "away",
+                            "team_urn": "urn:machina:sport:soccer:team:morocco:mar"
+                          }
+                        ],
+                        "venue": "MetLife Stadium"
+                      },
+                      "served_from": "final_archive",
+                      "skill_card": {
+                        "archive_caveats": [
+                          "Original cached matchday copy is preserved. Claims beyond fixture identity and final score were not independently revalidated for this archive release."
+                        ],
+                        "content_depth": {
+                          "narrative_verification": "unverified_original",
+                          "observed_player_records": [
+                            {
+                              "name": "Achraf Hakimi Mouh",
+                              "player_id": "9",
+                              "player_key": "urn:machina:sport:soccer:player:achraf-hakimi-mouh:19981104:mar",
+                              "player_urn": "urn:machina:sport:soccer:player:achraf-hakimi-mouh:19981104:mar",
+                              "statistics": {
+                                "eligible_for_power_ranking": true,
+                                "is_goalkeeper": false,
+                                "minutes_evidence": true,
+                                "minutes_played": 90,
+                                "name": "Achraf Hakimi",
+                                "player_id": "9",
+                                "position": "D",
+                                "team_id": "31",
+                                "team_name": "Morocco"
+                              },
+                              "team": "Morocco"
+                            },
+                            {
+                              "name": "Ahmed Reda Tagnaouti",
+                              "player_id": "2703",
+                              "player_key": "urn:machina:sport:soccer:player:ahmed-reda-tagnaouti:19960405:mar",
+                              "player_urn": "urn:machina:sport:soccer:player:ahmed-reda-tagnaouti:19960405:mar",
+                              "statistics": {
+                                "eligible_for_power_ranking": null,
+                                "is_goalkeeper": true,
+                                "minutes_evidence": false,
+                                "minutes_played": null,
+                                "name": "Ahmed Reda Tagnaouti",
+                                "player_id": "2703",
+                                "position": "G",
+                                "team_id": "31",
+                                "team_name": "Morocco"
+                              },
+                              "team": "Morocco"
+                            },
+                            {
+                              "name": "Alex Sandro",
+                              "player_id": "860",
+                              "player_key": "urn:machina:sport:soccer:player:alex-sandro:19910126:bra",
+                              "player_urn": "urn:machina:sport:soccer:player:alex-sandro:19910126:bra",
+                              "statistics": {
+                                "eligible_for_power_ranking": null,
+                                "is_goalkeeper": false,
+                                "minutes_evidence": false,
+                                "minutes_played": null,
+                                "name": "Alex Sandro",
+                                "player_id": "860",
+                                "position": "D",
+                                "team_id": "6",
+                                "team_name": "Brazil"
+                              },
+                              "team": "Brazil"
+                            }
+                          ],
+                          "tier": "result_and_observed_player_evidence",
+                          "unsupported_narrative": [
+                            "scorers",
+                            "turning_points",
+                            "quotes"
+                          ]
+                        },
+                        "disclaimer": "Informational sports market intelligence only. Not betting, trading, financial, or investment advice.",
+                        "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                        "final_score": "1-1",
+                        "forecast_scorecard": {
+                          "actual_outcome": "Draw",
+                          "hit": false,
+                          "note": "Although the model favored a Brazil victory overall (38.69% probability), it successfully identified 1-1 as the single most likely exact scoreline with a 14.95% probability.",
+                          "predicted_outcome": "Brazil Win",
+                          "predicted_score": "1-1"
+                        },
+                        "grounding": {
+                          "claims_scope": "original_cached_copy_with_unverified_narrative",
+                          "event_sha256": "72d3746a9927e8b4ed606a64d6b69341cf7168b6ac67c2efdd22fff2397fe1ab",
+                          "final_score_verified": true,
+                          "forecast_sha256": "635d5ad6d3a36990629f0e8e9ad86b7d09b98aeeac893817a5d7092bb4798067",
+                          "narrative_details_revalidated": false
+                        },
+                        "headline": "Brazil and Morocco Share the Points in Hard-Fought 1-1 World Cup Draw",
+                        "historical_perspective": "original_cached_matchday_copy",
+                        "result_details": {
+                          "extra_time_score_contribution": null,
+                          "fixture_id": "1489371",
+                          "provenance": {
+                            "capture_id": "6aa6d8852677921cf5d5f48e",
+                            "capture_name": "worldcup-archive-capture-results",
+                            "capture_sha256": "10522211a9442626d08c603aa9a01c4c3afe3ae2dfc7217e0e7e2290c5e85406",
+                            "fixture_id": "1489371",
+                            "observed_at": "2026-09-13T17:08:22.003454Z",
+                            "provider": "api-football",
+                            "provider_result_sha256": "9fb8564dae34abe16550eee706bd060efd31c24899c005231b4ae5f7ac7d9a55",
+                            "source_url": "https://www.api-football.com/"
+                          },
+                          "regulation_time_score": {
+                            "away": 1,
+                            "home": 1
+                          },
+                          "schema_version": "worldcup-result-details-v1",
+                          "shootout_score": null,
+                          "status": "FT",
+                          "winner": null
+                        },
+                        "sources": [
+                          {
+                            "generated_at": "2026-08-31T23:37:57.540271Z",
+                            "source": "worldcup:skill-match-recap",
+                            "subject_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor"
+                          },
+                          {
+                            "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                            "provider_ids": {
+                              "api_football": "1489371",
+                              "entain": "7722038",
+                              "opta": "ar8b186wqraa80u0vpi2e4nis",
+                              "sportradar": "sr:sport_event:66456928"
+                            },
+                            "source": "worldcup:event"
+                          },
+                          {
+                            "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                            "model_computed_at": "2026-06-13T07:00:02.352497Z",
+                            "source": "worldcup:model-forecast"
+                          }
+                        ],
+                        "standout_players": [
+                          "Ismael Saibari (Morocco) - Scored the opening goal with a clever lob and remained a constant threat.",
+                          "Vinícius Júnior (Brazil) - Provided the moment of magic needed to equalize for his side.",
+                          "Alisson Becker (Brazil) - Secured the draw with vital late-game heroics in stoppage time."
+                        ],
+                        "summary": "Brazil and Morocco played out an intense 1-1 draw in their opening match of the 2026 FIFA World Cup at MetLife Stadium. Morocco opened the scoring in the 21st minute when Ismael Saibari intercepted a loose ball and lobbed Alisson Becker. Brazil responded just 11 minutes later through a spectacular individual effort from Vinícius Júnior. Despite late pressure and a dramatic double save by Alisson in the 98th minute, neither side could find a winner, leaving both teams with a point in Group C.",
+                        "turning_points": [
+                          "21st minute: Ismael Saibari capitalizes on a midfield error, lobbing Alisson Becker to put Morocco ahead.",
+                          "32nd minute: Vinícius Júnior cuts inside and curls a brilliant shot into the top corner to level the score for Brazil.",
+                          "90+8th minute: Alisson Becker produces a crucial double save to deny Morocco a dramatic late winner."
+                        ],
+                        "what_it_means": "The draw leaves both teams with one point in Group C, demonstrating Morocco's ability to compete with elite opposition and serving as an early wake-up call for Brazil."
+                      },
+                      "warnings": [
+                        "Original cached matchday copy is preserved. Claims beyond fixture identity and final score were not independently revalidated for this archive release."
+                      ]
+                    }
+                  }
+                },
                 "schema": {
                   "anyOf": [
                     {
@@ -2710,10 +5322,19 @@
             "description": "Source-annotated archived recap or explicit archive miss."
           },
           "400": {
-            "description": "Fixture is missing, ambiguous, unknown, or unfinished."
+            "description": "The request did not identify what to answer about (coverage.reason_code = fixture_selector_required / fixture_ambiguous / player_selector_required / player_ambiguous / entity_selector_required / entity_ambiguous) or used a parameter variant outside the archive catalog (unsupported_parameter). `candidates` lists the fixtures/players that matched when the selector was ambiguous. Never billed."
           },
           "402": {
             "description": "Payment required."
+          },
+          "404": {
+            "description": "The selector resolved to no archived fixture / player / entity (coverage.reason_code = *_not_found). Never billed."
+          },
+          "502": {
+            "description": "Archive integrity error (coverage.reason_code = archive_error); nothing was served. Never billed."
+          },
+          "503": {
+            "description": "A valid selector for which the archive holds no row (coverage.reason_code = archive_row_missing). Retry later. Never billed."
           }
         },
         "summary": "Match recap",
@@ -2771,6 +5392,13 @@
           "content": {
             "application/json": {
               "examples": {
+                "captured": {
+                  "summary": "Request used for the captured 200 example",
+                  "value": {
+                    "player": "Vinicius Junior",
+                    "team": "Brazil"
+                  }
+                },
                 "namedPlayer": {
                   "value": {
                     "player": "Vinicius Junior",
@@ -2836,6 +5464,451 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "archived": {
+                    "summary": "Real 200 body captured from the production archive on 2026-09-18 (arrays trimmed to 3 items)",
+                    "value": {
+                      "archive": {
+                        "capability_status": "archived_editorial",
+                        "competition": "FIFA World Cup 2026",
+                        "competition_status": "completed",
+                        "content_created_at": "2026-09-01T02:08:38.840067Z",
+                        "live": false,
+                        "missing_capabilities": [],
+                        "mode": "final_archive",
+                        "notes": [
+                          "Structured retrospective is derived only from verified archived fixture player observations."
+                        ],
+                        "provenance": [
+                          "worldcup:skill-player-spotlight",
+                          "worldcup:storefront-derived-player-card",
+                          "worldcup:identity-reconciliation"
+                        ],
+                        "request_identity_sha256": "1cff56d461fe890546cd2921a29a2c638eee5e57c507d0a5bef0cdd8d838ff46",
+                        "response_sha256": "d07910c9b576120690393998f9cd8302b6faa6fa19e45b5b5db77456fa61298c",
+                        "snapshot_as_of": "2026-09-01T02:08:38.840067Z",
+                        "source_manifest_sha256": "799ecb6fc8dd00c1e2975b9d2dcc3c16f214113764c14e78a84db8eab2f5c529",
+                        "source_observed_at": null,
+                        "status": "hit",
+                        "timestamp_semantics": "original_editorial_generation",
+                        "version": "world-cup-2026-final-v3"
+                      },
+                      "candidates": [
+                        {
+                          "name": "Vinícius Júnior",
+                          "player_key": "urn:machina:sport:soccer:player:vinicius:20000712:bra",
+                          "player_urn": "urn:machina:sport:soccer:player:vinicius:20000712:bra",
+                          "provider_ids": {
+                            "api_football": "762",
+                            "espn": "252107"
+                          },
+                          "team": "Brazil"
+                        }
+                      ],
+                      "content_type": "original_editorial_with_structured_retrospective",
+                      "coverage": {
+                        "eligible_count": 5,
+                        "excluded_count": 0,
+                        "exclusion_reasons": {},
+                        "included_count": 5,
+                        "mode": "historical",
+                        "population_count": 5,
+                        "reason": "Observed tournament appearances are available; unsupported biography and narrative fields are explicit.",
+                        "schema_version": "worldcup-storefront-coverage-v1",
+                        "scope": "completed_tournament_archive",
+                        "source_provenance": [
+                          "worldcup:skill-player-spotlight",
+                          "worldcup:storefront-derived-player-card",
+                          "worldcup:identity-reconciliation"
+                        ],
+                        "status": "complete",
+                        "unsupported_fields": [
+                          "biography",
+                          "impact_narrative",
+                          "match_awards"
+                        ]
+                      },
+                      "original_editorial": {
+                        "body": {
+                          "disclaimer": "This spotlight is based solely on the official FIFA World Cup 2026 tournament squad records. No external club statistics, transfer rumors, or post-tournament events are included.",
+                          "headline": "FIFA World Cup 2026 Tournament Spotlight: Vinícius Júnior",
+                          "narrative": "Vinícius Júnior is officially registered in the Brazil squad as a Forward for the FIFA World Cup 2026. Born on July 12, 2000, his squad identity is confirmed for the tournament.",
+                          "player_name": "Vinícius Júnior",
+                          "position": "Forward",
+                          "team": "Brazil"
+                        },
+                        "generated_at": "2026-09-01T02:08:38.840067Z"
+                      },
+                      "player_key": "urn:machina:sport:soccer:player:vinicius:20000712:bra",
+                      "player_overview": {
+                        "identity_mapping_status": "official_reconciled",
+                        "name": "Vinícius Júnior",
+                        "official_registration": {
+                          "birth_date": "2000-07-12",
+                          "canonical_birth_date": "2000-07-12",
+                          "canonical_birth_date_conflict": false,
+                          "club_raw": "Real Madrid C. F. (ESP)",
+                          "fifa_team_code": "BRA",
+                          "first_names_raw": "Vinicius José",
+                          "height_cm": 176,
+                          "international_caps_as_reported": 54,
+                          "international_goals_as_reported": 13,
+                          "jersey_number": 7,
+                          "last_names_raw": "PAIXÃO DE OLIVEIRA JÚNIOR",
+                          "player_name_raw": "VINICIUS JUNIOR",
+                          "position_code": "FW",
+                          "published_at": "2026-07-19T22:34:35+00:00",
+                          "scope_note": "Caps/goals are FIFA-reported international totals, not World Cup match statistics.",
+                          "shirt_name_raw": "VINI JR.",
+                          "source": "FIFA",
+                          "source_page": 7,
+                          "source_sha256": "02a0a9beb5d219e7cc0aedde19273e9a3bfe4818ecd600d37804b8801dd96d94",
+                          "source_url": "https://fdp.fifa.org/assetspublic/ce281/pdf/SquadLists-English.pdf",
+                          "status": "verified_final_published_snapshot",
+                          "team_name": "Brazil",
+                          "warnings": []
+                        },
+                        "player_key": "urn:machina:sport:soccer:player:vinicius:20000712:bra",
+                        "player_urn": "urn:machina:sport:soccer:player:vinicius:20000712:bra",
+                        "provider_id_aliases": {},
+                        "provider_ids": {
+                          "api_football": "762",
+                          "espn": "252107"
+                        },
+                        "team": "Brazil"
+                      },
+                      "player_urn": "urn:machina:sport:soccer:player:vinicius:20000712:bra",
+                      "resolved_player": {
+                        "_id": "urn:machina:sport:soccer:player:vinicius:20000712:bra",
+                        "aliases": [],
+                        "identity_mapping_status": "official_reconciled",
+                        "name": "Vinícius Júnior",
+                        "nationality": "Brazil",
+                        "observed_provider_ids": [
+                          "762"
+                        ],
+                        "official_registration": {
+                          "birth_date": "2000-07-12",
+                          "canonical_birth_date": "2000-07-12",
+                          "canonical_birth_date_conflict": false,
+                          "club_raw": "Real Madrid C. F. (ESP)",
+                          "fifa_team_code": "BRA",
+                          "first_names_raw": "Vinicius José",
+                          "height_cm": 176,
+                          "international_caps_as_reported": 54,
+                          "international_goals_as_reported": 13,
+                          "jersey_number": 7,
+                          "last_names_raw": "PAIXÃO DE OLIVEIRA JÚNIOR",
+                          "player_name_raw": "VINICIUS JUNIOR",
+                          "position_code": "FW",
+                          "published_at": "2026-07-19T22:34:35+00:00",
+                          "scope_note": "Caps/goals are FIFA-reported international totals, not World Cup match statistics.",
+                          "shirt_name_raw": "VINI JR.",
+                          "source": "FIFA",
+                          "source_page": 7,
+                          "source_sha256": "02a0a9beb5d219e7cc0aedde19273e9a3bfe4818ecd600d37804b8801dd96d94",
+                          "source_url": "https://fdp.fifa.org/assetspublic/ce281/pdf/SquadLists-English.pdf",
+                          "status": "verified_final_published_snapshot",
+                          "team_name": "Brazil",
+                          "warnings": []
+                        },
+                        "provider_id_aliases": {},
+                        "provider_ids": {
+                          "api_football": "762",
+                          "espn": "252107"
+                        },
+                        "team": {
+                          "@id": "urn:machina:sport:soccer:team:brazil:bra",
+                          "name": "Brazil"
+                        },
+                        "team_id": "6",
+                        "team_name": "Brazil"
+                      },
+                      "served_from": "final_archive",
+                      "skill_card": {
+                        "disclaimer": "This spotlight is based solely on the official FIFA World Cup 2026 tournament squad records. No external club statistics, transfer rumors, or post-tournament events are included.",
+                        "headline": "FIFA World Cup 2026 Tournament Spotlight: Vinícius Júnior",
+                        "narrative": "Vinícius Júnior is officially registered in the Brazil squad as a Forward for the FIFA World Cup 2026. Born on July 12, 2000, his squad identity is confirmed for the tournament.",
+                        "player_name": "Vinícius Júnior",
+                        "position": "Forward",
+                        "team": "Brazil"
+                      },
+                      "structured_retrospective": {
+                        "content_type": "structured_retrospective",
+                        "grounding": {
+                          "source": "reconciled_raw_fixture_player_captures_and_official_fifa_registration",
+                          "unsupported_claims_included": false
+                        },
+                        "historical_perspective": "retrospective_completed_tournament",
+                        "identity_mapping_status": "official_reconciled",
+                        "name": "Vinícius Júnior",
+                        "observations": [
+                          {
+                            "event_urn": "urn:machina:sport:soccer:event:brazil-vs-haiti:20260620:wor",
+                            "fixture_id": "1489389",
+                            "official_fifa_power_ranking": {
+                              "classification": {
+                                "category_rankings": [
+                                  {
+                                    "category": "attacking",
+                                    "rank": 7,
+                                    "rank_change": 0,
+                                    "rank_within_team": 1,
+                                    "score": 6.992136478424072
+                                  },
+                                  {
+                                    "category": "creativity",
+                                    "rank": 16,
+                                    "rank_change": -1,
+                                    "rank_within_team": 1,
+                                    "score": 6.836964130401611
+                                  },
+                                  {
+                                    "category": "defending",
+                                    "rank": 262,
+                                    "rank_change": 11,
+                                    "rank_within_team": 10,
+                                    "score": 4.667199611663818
+                                  }
+                                ],
+                                "match_rank": null,
+                                "tournament_rank": null
+                              },
+                              "expected_available_at": null,
+                              "player_type": "outfield",
+                              "scores": {
+                                "attacking": 6.992136478424072,
+                                "creativity": 6.836964130401611,
+                                "defending": 4.667199611663818,
+                                "defending_goal": null,
+                                "in_possession": null
+                              },
+                              "source": "fifa.com",
+                              "source_snapshot": {
+                                "competitionId": 285023,
+                                "competitionStage": "Final",
+                                "counts": {
+                                  "goalkeepers": 28,
+                                  "outfield_players": 202,
+                                  "published_players": 230
+                                },
+                                "fetched_at": "2026-09-01T04:33:26.737126Z",
+                                "messageTimeUtc": "2026-07-20T00:28:49.92294Z",
+                                "nMatches": 104,
+                                "sha256": "5192eeb55a3b9a957f1f3951a0c757b00da608a3bcb10a13641627fb14dc0735",
+                                "url": "https://fdh-api.fifa.com/v1/powerranking/season/285023.json"
+                              },
+                              "status": "available"
+                            },
+                            "opponent": "Haiti",
+                            "provider_player_id": "762",
+                            "statistics": {
+                              "eligible_for_power_ranking": true,
+                              "is_goalkeeper": false,
+                              "minutes_evidence": true,
+                              "minutes_played": 81,
+                              "name": "Vinícius Júnior",
+                              "player_id": "762",
+                              "position": "F",
+                              "team_id": "6",
+                              "team_name": "Brazil"
+                            },
+                            "team": "Brazil"
+                          },
+                          {
+                            "event_urn": "urn:machina:sport:soccer:event:brazil-vs-japan:20260629:wor",
+                            "fixture_id": "1562344",
+                            "official_fifa_power_ranking": {
+                              "classification": {
+                                "category_rankings": [
+                                  {
+                                    "category": "attacking",
+                                    "rank": 7,
+                                    "rank_change": 0,
+                                    "rank_within_team": 1,
+                                    "score": 6.992136478424072
+                                  },
+                                  {
+                                    "category": "creativity",
+                                    "rank": 16,
+                                    "rank_change": -1,
+                                    "rank_within_team": 1,
+                                    "score": 6.836964130401611
+                                  },
+                                  {
+                                    "category": "defending",
+                                    "rank": 262,
+                                    "rank_change": 11,
+                                    "rank_within_team": 10,
+                                    "score": 4.667199611663818
+                                  }
+                                ],
+                                "match_rank": null,
+                                "tournament_rank": null
+                              },
+                              "expected_available_at": null,
+                              "player_type": "outfield",
+                              "scores": {
+                                "attacking": 6.992136478424072,
+                                "creativity": 6.836964130401611,
+                                "defending": 4.667199611663818,
+                                "defending_goal": null,
+                                "in_possession": null
+                              },
+                              "source": "fifa.com",
+                              "source_snapshot": {
+                                "competitionId": 285023,
+                                "competitionStage": "Final",
+                                "counts": {
+                                  "goalkeepers": 28,
+                                  "outfield_players": 202,
+                                  "published_players": 230
+                                },
+                                "fetched_at": "2026-09-01T04:33:26.737126Z",
+                                "messageTimeUtc": "2026-07-20T00:28:49.92294Z",
+                                "nMatches": 104,
+                                "sha256": "5192eeb55a3b9a957f1f3951a0c757b00da608a3bcb10a13641627fb14dc0735",
+                                "url": "https://fdh-api.fifa.com/v1/powerranking/season/285023.json"
+                              },
+                              "status": "available"
+                            },
+                            "opponent": "Japan",
+                            "provider_player_id": "762",
+                            "statistics": {
+                              "eligible_for_power_ranking": true,
+                              "is_goalkeeper": false,
+                              "minutes_evidence": true,
+                              "minutes_played": 90,
+                              "name": "Vinícius Júnior",
+                              "player_id": "762",
+                              "position": "F",
+                              "team_id": "6",
+                              "team_name": "Brazil"
+                            },
+                            "team": "Brazil"
+                          },
+                          {
+                            "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                            "fixture_id": "1489371",
+                            "official_fifa_power_ranking": {
+                              "classification": {
+                                "category_rankings": [
+                                  {
+                                    "category": "attacking",
+                                    "rank": 7,
+                                    "rank_change": 0,
+                                    "rank_within_team": 1,
+                                    "score": 6.992136478424072
+                                  },
+                                  {
+                                    "category": "creativity",
+                                    "rank": 16,
+                                    "rank_change": -1,
+                                    "rank_within_team": 1,
+                                    "score": 6.836964130401611
+                                  },
+                                  {
+                                    "category": "defending",
+                                    "rank": 262,
+                                    "rank_change": 11,
+                                    "rank_within_team": 10,
+                                    "score": 4.667199611663818
+                                  }
+                                ],
+                                "match_rank": null,
+                                "tournament_rank": null
+                              },
+                              "expected_available_at": null,
+                              "player_type": "outfield",
+                              "scores": {
+                                "attacking": 6.992136478424072,
+                                "creativity": 6.836964130401611,
+                                "defending": 4.667199611663818,
+                                "defending_goal": null,
+                                "in_possession": null
+                              },
+                              "source": "fifa.com",
+                              "source_snapshot": {
+                                "competitionId": 285023,
+                                "competitionStage": "Final",
+                                "counts": {
+                                  "goalkeepers": 28,
+                                  "outfield_players": 202,
+                                  "published_players": 230
+                                },
+                                "fetched_at": "2026-09-01T04:33:26.737126Z",
+                                "messageTimeUtc": "2026-07-20T00:28:49.92294Z",
+                                "nMatches": 104,
+                                "sha256": "5192eeb55a3b9a957f1f3951a0c757b00da608a3bcb10a13641627fb14dc0735",
+                                "url": "https://fdh-api.fifa.com/v1/powerranking/season/285023.json"
+                              },
+                              "status": "available"
+                            },
+                            "opponent": "Morocco",
+                            "provider_player_id": "762",
+                            "statistics": {
+                              "eligible_for_power_ranking": true,
+                              "is_goalkeeper": false,
+                              "minutes_evidence": true,
+                              "minutes_played": 90,
+                              "name": "Vinícius Júnior",
+                              "player_id": "762",
+                              "position": "M",
+                              "team_id": "6",
+                              "team_name": "Brazil"
+                            },
+                            "team": "Brazil"
+                          }
+                        ],
+                        "observed_appearance_count": 5,
+                        "observed_opponents": [
+                          "Haiti",
+                          "Japan",
+                          "Morocco"
+                        ],
+                        "official_registration": {
+                          "birth_date": "2000-07-12",
+                          "canonical_birth_date": "2000-07-12",
+                          "canonical_birth_date_conflict": false,
+                          "club_raw": "Real Madrid C. F. (ESP)",
+                          "fifa_team_code": "BRA",
+                          "first_names_raw": "Vinicius José",
+                          "height_cm": 176,
+                          "international_caps_as_reported": 54,
+                          "international_goals_as_reported": 13,
+                          "jersey_number": 7,
+                          "last_names_raw": "PAIXÃO DE OLIVEIRA JÚNIOR",
+                          "player_name_raw": "VINICIUS JUNIOR",
+                          "position_code": "FW",
+                          "published_at": "2026-07-19T22:34:35+00:00",
+                          "scope_note": "Caps/goals are FIFA-reported international totals, not World Cup match statistics.",
+                          "shirt_name_raw": "VINI JR.",
+                          "source": "FIFA",
+                          "source_page": 7,
+                          "source_sha256": "02a0a9beb5d219e7cc0aedde19273e9a3bfe4818ecd600d37804b8801dd96d94",
+                          "source_url": "https://fdp.fifa.org/assetspublic/ce281/pdf/SquadLists-English.pdf",
+                          "status": "verified_final_published_snapshot",
+                          "team_name": "Brazil",
+                          "warnings": []
+                        },
+                        "player_key": "urn:machina:sport:soccer:player:vinicius:20000712:bra",
+                        "player_urn": "urn:machina:sport:soccer:player:vinicius:20000712:bra",
+                        "provider_id_aliases": {},
+                        "provider_ids": {
+                          "api_football": "762",
+                          "espn": "252107"
+                        },
+                        "team": "Brazil",
+                        "unsupported_fields": [
+                          "biography",
+                          "transfers",
+                          "match_awards"
+                        ]
+                      },
+                      "warnings": []
+                    }
+                  }
+                },
                 "schema": {
                   "anyOf": [
                     {
@@ -2851,10 +5924,19 @@
             "description": "Archived original editorial where available plus a source-grounded structured retrospective for every observed provider player."
           },
           "400": {
-            "description": "Player selector is missing, ambiguous, or unknown."
+            "description": "The request did not identify what to answer about (coverage.reason_code = fixture_selector_required / fixture_ambiguous / player_selector_required / player_ambiguous / entity_selector_required / entity_ambiguous) or used a parameter variant outside the archive catalog (unsupported_parameter). `candidates` lists the fixtures/players that matched when the selector was ambiguous. Never billed."
           },
           "402": {
             "description": "Payment required."
+          },
+          "404": {
+            "description": "The selector resolved to no archived fixture / player / entity (coverage.reason_code = *_not_found). Never billed."
+          },
+          "502": {
+            "description": "Archive integrity error (coverage.reason_code = archive_error); nothing was served. Never billed."
+          },
+          "503": {
+            "description": "A valid selector for which the archive holds no row (coverage.reason_code = archive_row_missing). Retry later. Never billed."
           }
         },
         "summary": "Player spotlight",
@@ -2923,5 +6005,5 @@
     "openApiUrl": "https://raw.githubusercontent.com/machina-sports/machina-templates/main/agent-templates/world-cup-intelligence/docs/openapi-import-source.json",
     "status": "local_import_source_not_published"
   },
-  "x-transport-contract": "The 200 schemas describe the workflow's public source response. The external HTTP gateway may wrap it in a transport envelope; that envelope is platform-owned and is not implemented or asserted by this repository."
+  "x-transport-contract": "The 200 schemas describe the workflow's public source response. The external HTTP gateway wraps it in a transport envelope {meta:{code}, status:'success'|'error', data, error}; the envelope and the error body ({code, type, reason_code, message, billed:false, accepted_fields, candidates, archive, coverage}) are platform-owned. Unserved answers (archive.status unavailable/error) are mapped by the gateway to HTTP 400/404/503/502 and are never billed — neither on Machina credits nor as ZeroClick usage."
 }

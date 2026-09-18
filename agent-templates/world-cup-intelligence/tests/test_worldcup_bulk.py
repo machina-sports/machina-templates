@@ -39,6 +39,12 @@ def _load_bulk():
 
 
 BULK = _load_bulk()
+# Captures, baselines and closure bundles live on the operator's machine under
+# .local/ (never committed); the tests that replay them skip elsewhere.
+requires_local_corpus = pytest.mark.skipif(
+    not (REPO / ".local" / "worldcup-bulk").exists(),
+    reason="requires the operator-local .local/worldcup-bulk corpus",
+)
 
 
 def _closure_document(*, valid=True):
@@ -215,6 +221,7 @@ def test_raw_fixture_stats_become_one_pack_and_select_one_public_player():
     assert "players" not in result["response"]["fixture_player_pack"]
 
 
+@requires_local_corpus
 def test_real_operator_player_shape_builds_pack_offline():
     execution = _read(REPO / ".local" / "worldcup-bulk" / "captures" / "1539000" / "worldcup-archive-capture-players.json")
     stats = execution["workflow_output"]["outputs"]["player_stats"]
@@ -247,6 +254,7 @@ def _load_real_result_evidence():
     return evidence, sources
 
 
+@requires_local_corpus
 def test_real_result_details_cover_all_four_shootouts_and_aet_regulation_scoring():
     evidence, sources = _load_real_result_evidence()
     events = {str((event.get("provider_ids") or {}).get("api_football")): event for event in sources["events"]}
@@ -301,6 +309,7 @@ def test_real_result_details_cover_all_four_shootouts_and_aet_regulation_scoring
         (lambda capture: capture["workflow_output"]["outputs"]["fixture_results"]["response"][0]["teams"]["home"].__setitem__("id", 999999), "team identity"),
     ],
 )
+@requires_local_corpus
 def test_result_details_reject_disagreement_and_truncation(tmp_path, mutation, message):
     evidence_path = REPO / ".local" / "worldcup-bulk" / "provider-results-compact.json"
     capture = copy.deepcopy(_read(evidence_path))
@@ -312,6 +321,7 @@ def test_result_details_reject_disagreement_and_truncation(tmp_path, mutation, m
         BULK.load_result_details(mutated, sources["events"])
 
 
+@requires_local_corpus
 def test_capture_plan_is_exactly_five_existing_workflows_for_all_104():
     sources = BULK.load_bulk_sources(
         REPO / ".local" / "worldcup-bulk" / "match-checklist.json",
@@ -327,6 +337,7 @@ def test_capture_plan_is_exactly_five_existing_workflows_for_all_104():
     assert all("capture_all_players" not in item["request"] for item in plan["items"])
 
 
+@requires_local_corpus
 def test_operator_player_capture_definition_is_installed_verbatim():
     expected = _read(REPO / ".local" / "worldcup-bulk" / "capture-players.workflow.json")
     actual = yaml.safe_load((ROOT / "workflows" / "worldcup-archive-capture-players.yml").read_text(encoding="utf-8"))["workflow"]
@@ -335,6 +346,7 @@ def test_operator_player_capture_definition_is_installed_verbatim():
     assert {item.get("path") for item in installer["datasets"]} >= {"workflows/worldcup-archive-capture-players.yml"}
 
 
+@requires_local_corpus
 def test_real_baseline_assembles_all_104_with_exact_forecasts_and_grounded_recaps():
     baseline = REPO / ".local" / "worldcup-bulk" / "baseline"
     checklist = REPO / ".local" / "worldcup-bulk" / "match-checklist.json"
@@ -438,6 +450,7 @@ def test_closure_rejects_errors_missing_recaps_and_forecast_drift():
     assert BULK.verify_import_bundle(closure_bundle) == {"verified": True, "count": 1, "kind": "closure"}
 
 
+@requires_local_corpus
 def test_v3_closure_close_verify_and_fake_import_are_version_aware(tmp_path, monkeypatch):
     artifacts = REPO / ".local" / "worldcup-storefront-readiness"
     manifest = _read(artifacts / "candidate-manifest-v3.json")
@@ -484,6 +497,7 @@ def test_v3_closure_close_verify_and_fake_import_are_version_aware(tmp_path, mon
     assert operator.created == [row]
 
 
+@requires_local_corpus
 def test_v3_closure_import_rejects_malformed_mixed_and_unknown_versions():
     artifacts = REPO / ".local" / "worldcup-storefront-readiness"
     v3 = _read(artifacts / "closure-candidate-v3.json")

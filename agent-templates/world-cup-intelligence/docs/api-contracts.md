@@ -311,6 +311,9 @@ Response: `{ forecast {...original stored fields}, forecast_integrity {classific
 - Market gaps are emitted only for cache records whose source timestamps all precede kickoff. Settled, late, missing, or unparseable market timing suppresses gap claims.
 - **Informational only.** A gap is not a value/bet signal — fields are `gap`/`model_prob`/`market_price` (never stake/EV/Kelly). Missing forecast → empty `forecast` + a warning to run `worldcup-sync-model-forecasts`.
 
+
+**`data_source` on an archived forecast (0.11.4).** The archived forecast is the model's *original pre-kickoff output*, preserved as computed — nothing is recomputed at request time. `seed` means no World Cup 2026 result existed yet for at least one side (every team's first match), so the Dixon-Coles model used the FIFA-ranking seed prior and `confidence` is 0.15; `blend` mixes tournament results with the seed prior (confidence rises with games played); `results` is fitted on tournament results only. A `seed` forecast is therefore the intended archived answer for a first-round fixture, not a placeholder — `archive.notes` repeats this explanation on every forecast hit, and the OpenAPI `ForecastResponse.forecast.data_source` enum documents it.
+
 ## `worldcup-backtest-forecasts` (accuracy track record)
 
 For the completed World Cup, the endpoint serves the already computed, versioned aggregate without provider calls, document writes, or request-time audit recomputation. The v3 candidate recomputes the artifact offline from immutable evidence: 98 forecasts predate kickoff and have verified 90-minute results; six at/after-kickoff forecasts are excluded. AET/PEN fixtures use `event_context.result_details.regulation_time_score`; extra-time and shootout winners never determine the 1X2 result.
@@ -441,3 +444,21 @@ Player-level context from an archived fixture-statistics response plus the persi
 - Never include betting/trading/order placement endpoints in the public allowlist.
 - Do not use “guaranteed edge,” “guaranteed profit,” or “bet this” language.
 - Return source, freshness, and resolution/liquidity caveats with market-intelligence outputs.
+
+## Unserved responses and `reason_code` (0.11.4)
+
+The eleven archived storefront workflows never fail loudly: when they cannot answer they return `workflow-status: skipped` and describe the gap in `archive.status` / `coverage.status` (`unavailable` or `error`). Since 0.11.4 every such response also carries a machine-readable `coverage.reason_code` (mirrored in `archive.reason_code`) and, for request-side causes, `coverage.accepted_fields` and `candidates`:
+
+| `reason_code` | Meaning | Gateway HTTP |
+|---|---|---|
+| `fixture_selector_required` | No fixture identifier in the request (empty body). Pass `event_urn`, `provider_event_id`, `event` ("Brazil vs Morocco") or `team` (+`opponent`/`date`). | 400 |
+| `fixture_ambiguous` | The selector matched several fixtures; `candidates` lists them — add `opponent`/`date` or pass one `event_urn`. | 400 |
+| `fixture_not_found` | The selector matched no World Cup 2026 fixture. | 404 |
+| `player_selector_required` / `player_ambiguous` / `player_not_found` | Same, for `player_urn` / `player_id` / `player` (+`team`). | 400 / 400 / 404 |
+| `entity_selector_required` / `entity_ambiguous` / `entity_not_found` | Same, for `worldcup-resolve` `id`. | 400 / 400 / 404 |
+| `unsupported_parameter` | A parameter variant outside the archive catalog (another `league`/`competition`, `include_reasoning=true`, …). | 400 |
+| `archive_row_missing` | A valid selector for which the archive holds no row — our gap, retry later. | 503 |
+| `archive_error` | Malformed / uncommitted / duplicated archive rows; nothing was served. | 502 |
+
+Request-side codes set `archive.missing_capabilities` to `[]` — a request the caller can fix is not a missing capability of the archive. Only `archive_row_missing` / `archive_error` keep `["archived_response"]`. The gateway (`machina-client-api core/worldcup/gateway.py`) maps these to the HTTP codes above **before** any credit debit, and a non-2xx carries no ZeroClick `zc-usage`, so an unserved answer is never billed on either rail. Before 0.11.4 an empty body answered HTTP 200 with "No world-cup-2026-final-v3 archive row is available for …" and was charged (ZeroClick report, 2026-09-16).
+

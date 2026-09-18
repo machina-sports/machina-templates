@@ -18,6 +18,12 @@ from test_worldcup_archive_serving import LEGACY_TASKS, execute_yaml
 ROOT = Path(__file__).resolve().parents[1]
 REPO = ROOT.parents[1]
 ARTIFACTS = REPO / ".local" / "worldcup-storefront-readiness"
+# The readiness corpus is an operator-local artifact (never committed); skip
+# instead of erroring on machines that do not have it.
+pytestmark = pytest.mark.skipif(
+    not ARTIFACTS.exists(),
+    reason="requires the operator-local .local/worldcup-storefront-readiness corpus",
+)
 
 
 def _module(name: str, path: Path):

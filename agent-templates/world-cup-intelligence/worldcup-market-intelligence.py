@@ -8260,6 +8260,61 @@ FINAL_ARCHIVE_ENDPOINTS = {
 }
 
 
+# Machine-readable causes for an unserved archive response (surfaced as
+# `coverage.reason_code` / `archive.reason_code`). Request-side causes mean the
+# caller can fix the request (the gateway answers 400/404 and never bills);
+# archive-side causes mean nothing the caller does will help (503/502, never
+# billed either). Before these codes existed every miss read as "No <version>
+# archive row is available" — including a plain empty body — and was billed.
+UNSERVED_REQUEST_REASONS = frozenset({
+    "fixture_selector_required", "fixture_ambiguous", "fixture_not_found",
+    "player_selector_required", "player_ambiguous", "player_not_found",
+    "entity_selector_required", "entity_ambiguous", "entity_not_found",
+    "unsupported_parameter",
+})
+UNSERVED_ARCHIVE_REASONS = frozenset({"archive_row_missing", "archive_error"})
+FIXTURE_SELECTOR_FIELDS = ("event_urn", "provider_event_id", "event", "team", "opponent", "date")
+PLAYER_SELECTOR_FIELDS = ("player_urn", "player_id", "player", "team", "team_id")
+# Public request fields per archived endpoint, echoed as `coverage.accepted_fields`
+# so an agent can self-correct without reading the OpenAPI document.
+ARCHIVE_ACCEPTED_FIELDS = {
+    "worldcup-resolve": ("id",),
+    "worldcup-get-schedule": ("team", "opponent", "date_from", "date_to", "status", "limit", "offset"),
+    "worldcup-get-event-context": FIXTURE_SELECTOR_FIELDS,
+    "worldcup-get-standings": ("league", "season", "event_urn", "provider_event_id"),
+    "worldcup-get-squads": FIXTURE_SELECTOR_FIELDS + ("home_team", "away_team"),
+    "worldcup-get-injuries": FIXTURE_SELECTOR_FIELDS + ("league", "season"),
+    "worldcup-get-player-performance-context": FIXTURE_SELECTOR_FIELDS + ("player_urn", "player_id", "player", "team_id"),
+    "worldcup-get-match-forecast": FIXTURE_SELECTOR_FIELDS + ("include_reasoning", "min_gap_bps"),
+    "worldcup-backtest-forecasts": ("competition", "league", "season", "calibration_window_days"),
+    "worldcup-match-recap": FIXTURE_SELECTOR_FIELDS + ("force_regen",),
+    "worldcup-player-spotlight": PLAYER_SELECTOR_FIELDS + ("force_regen",),
+}
+FIXTURE_SELECTOR_REQUIRED_MESSAGE = (
+    "A fixture selector is required: pass event_urn, provider_event_id, event "
+    "(e.g. \"Brazil vs Morocco\"), or team with opponent/date."
+)
+PLAYER_SELECTOR_REQUIRED_MESSAGE = "A player selector is required: pass player_urn, player_id, or player (optionally with team)."
+ENTITY_SELECTOR_REQUIRED_MESSAGE = "An entity selector is required: pass `id` (a provider id or a canonical Machina URN)."
+FIXTURE_NOT_FOUND_MESSAGE = "No archived FIFA World Cup 2026 fixture matched the supplied selector."
+# What `forecast.data_source` means on an archived (pre-kickoff) model forecast.
+# Attached to `archive.notes` on every forecast hit so a buyer never has to guess
+# whether a `seed` forecast is a placeholder (it is not: it is the original output).
+FORECAST_DATA_SOURCE_NOTES = {
+    "seed": (
+        "data_source=seed: the model's original pre-kickoff forecast, preserved as computed. "
+        "No FIFA World Cup 2026 result existed yet for at least one side, so the Dixon-Coles "
+        "model used the FIFA-ranking seed prior and `confidence` (0.15) reflects that. It is "
+        "not a placeholder and nothing is recomputed at request time."
+    ),
+    "blend": (
+        "data_source=blend: the model's original pre-kickoff forecast, blending FIFA World Cup "
+        "2026 results with the FIFA-ranking seed prior; `confidence` rises with games played."
+    ),
+    "results": "data_source=results: the model's original pre-kickoff forecast, fitted on FIFA World Cup 2026 results only.",
+}
+
+
 def _closure_manifest_payload(value: dict[str, Any]) -> dict[str, Any]:
     return {key: item for key, item in value.items() if key != "manifest_sha256"}
 
@@ -9023,7 +9078,13 @@ def _archive_subject_player(value: dict[str, Any]) -> dict[str, Any]:
     return player
 
 
-def _archive_base(status: str, *, warnings: list[str], version: str = FINAL_ARCHIVE_VERSION) -> dict[str, Any]:
+def _archive_base(
+    status: str,
+    *,
+    warnings: list[str],
+    version: str = FINAL_ARCHIVE_VERSION,
+    missing: list[str] | None = None,
+) -> dict[str, Any]:
     return {
         "mode": "final_archive",
         "version": version,
@@ -9034,7 +9095,8 @@ def _archive_base(status: str, *, warnings: list[str], version: str = FINAL_ARCH
         "snapshot_as_of": None,
         "capability_status": "unavailable",
         "provenance": [],
-        "missing_capabilities": ["archived_response"],
+        # A request the caller can fix is not a missing capability of the archive.
+        "missing_capabilities": ["archived_response"] if missing is None else list(missing),
         "notes": warnings,
     }
 
@@ -9047,13 +9109,22 @@ def _final_archive_result(
     request_identity: dict[str, Any] | None = None,
     warnings: list[str] | None = None,
     version: str = FINAL_ARCHIVE_VERSION,
+    reason_code: str | None = None,
+    accepted_fields: tuple[str, ...] | list[str] | None = None,
+    candidates: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     response = dict(response or {})
     row = row or {}
     warnings = list(warnings or [])
     archive = dict(response.get("archive") or {})
     if status != "hit":
-        archive = _archive_base(status, warnings=warnings, version=version)
+        if reason_code is None:
+            reason_code = "archive_error" if status == "error" else "archive_row_missing"
+        request_side = reason_code in UNSERVED_REQUEST_REASONS
+        archive = _archive_base(status, warnings=warnings, version=version, missing=[] if request_side else None)
+        archive["reason_code"] = reason_code
+        if candidates is not None:
+            response["candidates"] = list(candidates)
     else:
         archive.update({
             "mode": "final_archive",
@@ -9071,6 +9142,10 @@ def _final_archive_result(
         archive.setdefault("provenance", [])
         archive.setdefault("missing_capabilities", [])
         archive.setdefault("notes", [])
+        forecast = response.get("forecast") if isinstance(response.get("forecast"), dict) else {}
+        note = FORECAST_DATA_SOURCE_NOTES.get(_text(forecast.get("data_source")))
+        if note and note not in archive["notes"]:
+            archive["notes"] = list(archive["notes"]) + [note]
     response["archive"] = archive
     if status != "hit":
         response.setdefault("coverage", {
@@ -9087,15 +9162,82 @@ def _final_archive_result(
             "exclusion_reasons": {},
             "unsupported_fields": [],
         })
+        if isinstance(response.get("coverage"), dict):
+            response["coverage"]["reason_code"] = reason_code
+            if accepted_fields:
+                response["coverage"]["accepted_fields"] = list(accepted_fields)
     response_warnings = response.get("warnings") if isinstance(response.get("warnings"), list) else []
     response["warnings"] = response_warnings + [warning for warning in warnings if warning not in response_warnings]
     return {"status": True, "data": {
         "archive_hit": status == "hit",
         "archive_status": status,
+        "reason_code": None if status == "hit" else reason_code,
         "response": response,
         "archive": archive,
         "warnings": response["warnings"],
     }}
+
+
+def _fixture_selector_supplied(request_params: dict[str, Any]) -> bool:
+    return any(
+        _text(request_params.get(key))
+        for key in FIXTURE_SELECTOR_FIELDS + ("fixture_id", "home_team", "away_team")
+    )
+
+
+def _player_selector_supplied(request_params: dict[str, Any]) -> bool:
+    return any(_text(request_params.get(key)) for key in ("player_urn", "player_id", "player"))
+
+
+def _classify_fixture_request(request_params: dict[str, Any], canonical_events: Any) -> tuple[str, dict[str, Any]]:
+    """Explain WHY a fixture request did not resolve: (kind, resolver_result).
+
+    kind is "resolved" (event_urn found), or one of the request-side reason
+    codes fixture_selector_required / fixture_ambiguous / fixture_not_found."""
+    resolved = resolve_archived_fixture({"params": {
+        "events": _as_list(canonical_events),
+        "event_urn": request_params.get("event_urn"),
+        "provider_event_id": request_params.get("provider_event_id") or request_params.get("fixture_id"),
+        "event": request_params.get("event"),
+        "team": request_params.get("team") or request_params.get("home_team"),
+        "opponent": request_params.get("opponent") or request_params.get("away_team"),
+        "date": request_params.get("date"),
+    }})["data"]
+    if _text(resolved.get("event_urn")):
+        return "resolved", resolved
+    if not _fixture_selector_supplied(request_params):
+        return "fixture_selector_required", resolved
+    if len(_as_list(resolved.get("candidates"))) > 1:
+        return "fixture_ambiguous", resolved
+    return "fixture_not_found", resolved
+
+
+def _unserved_fixture_request(
+    endpoint: str, status: str, version: str, kind: str, resolved: dict[str, Any],
+) -> dict[str, Any]:
+    if kind == "fixture_selector_required":
+        warnings = [FIXTURE_SELECTOR_REQUIRED_MESSAGE]
+    elif kind == "fixture_ambiguous":
+        warnings = _as_list(resolved.get("warnings")) or ["Fixture input is ambiguous; add opponent/date or use one candidate event_urn."]
+    else:
+        warnings = [FIXTURE_NOT_FOUND_MESSAGE]
+    return _final_archive_result(
+        status, version=version, reason_code=kind,
+        accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint),
+        candidates=_as_list(resolved.get("candidates")),
+        warnings=warnings,
+    )
+
+
+def _player_pack_reason(status: str, warnings: list[str]) -> str:
+    text = " ".join(warnings)
+    if status == "error":
+        return "archive_error"
+    if "player selector is required" in text:
+        return "player_selector_required"
+    if "ambiguous" in text:
+        return "player_ambiguous"
+    return "player_not_found"
 
 
 def _archive_has_warmed_player_selector(rows: list[dict[str, Any]], request: dict[str, Any], identities: Any) -> bool:
@@ -9179,7 +9321,8 @@ def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
     if endpoint == "worldcup-backtest-forecasts" and _text(request_params.get("competition")) not in {"", "world-cup-2026"}:
         if version == NEXT_FINAL_ARCHIVE_VERSION:
             return _final_archive_result(
-                "unavailable", version=version,
+                "unavailable", version=version, reason_code="unsupported_parameter",
+                accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint),
                 warnings=["Competition is outside the World Cup 2026 v3 archive catalog; no fallback execution is allowed."],
             )
         closed = False
@@ -9189,7 +9332,8 @@ def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
     ):
         if version == NEXT_FINAL_ARCHIVE_VERSION:
             return _final_archive_result(
-                "unavailable", version=version,
+                "unavailable", version=version, reason_code="unsupported_parameter",
+                accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint),
                 warnings=["League or season is outside the World Cup 2026 v3 archive catalog; no fallback execution is allowed."],
             )
         # The active v2 migration keeps generic non-World-Cup compatibility.
@@ -9274,7 +9418,28 @@ def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
                 warnings=["Final archive row is not committed by the active v3 closure; no fallback execution was allowed."] + uncommitted[:5],
             )
     if not rows:
-        return _final_archive_result(miss_status, version=version, warnings=[f"No {version} archive row is available for {endpoint}."])
+        # Distinguish "the archive has no row" from "the request did not identify
+        # anything" — the latter was the ZeroClick report of 2026-09-16 (an empty
+        # body read as a missing archive row and was billed).
+        if endpoint in fixture_endpoints:
+            kind, resolved = _classify_fixture_request(request_params, params.get("canonical_events"))
+            if kind != "resolved":
+                return _unserved_fixture_request(endpoint, miss_status, version, kind, resolved)
+        elif endpoint == "worldcup-resolve" and not _text(request_params.get("id")):
+            return _final_archive_result(
+                miss_status, version=version, reason_code="entity_selector_required",
+                accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint), warnings=[ENTITY_SELECTOR_REQUIRED_MESSAGE],
+            )
+        elif endpoint == "worldcup-player-spotlight" and not _player_selector_supplied(request_params):
+            return _final_archive_result(
+                miss_status, version=version, reason_code="player_selector_required",
+                accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint), warnings=[PLAYER_SELECTOR_REQUIRED_MESSAGE],
+            )
+        return _final_archive_result(
+            miss_status, version=version, reason_code="archive_row_missing",
+            accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint),
+            warnings=[f"No {version} archive row is available for {endpoint}."],
+        )
     if endpoint in fixture_endpoints and not _as_list(params.get("canonical_events")):
         return _final_archive_result("error", version=version, warnings=["Canonical event index is unavailable; no legacy fallback was allowed."])
     has_fixture_player_pack = endpoint == "worldcup-get-player-performance-context" and any(
@@ -9287,6 +9452,11 @@ def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
     candidates = rows
     if endpoint == "worldcup-resolve":
         requested = _text(request_params.get("id"))
+        if not requested:
+            return _final_archive_result(
+                miss_status, version=version, reason_code="entity_selector_required",
+                accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint), warnings=[ENTITY_SELECTOR_REQUIRED_MESSAGE],
+            )
         canonical_matches = []
         if version == NEXT_FINAL_ARCHIVE_VERSION:
             canonical_keys = {
@@ -9317,8 +9487,14 @@ def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
                 if requested in aliases:
                     canonical_keys.add(_text((row.get("subject") or {}).get("key")))
         if len(canonical_keys) > 1:
-            return _final_archive_result(miss_status, version=version, warnings=["Canonical entity selector is ambiguous."])
+            return _final_archive_result(miss_status, version=version, reason_code="entity_ambiguous", warnings=["Canonical entity selector is ambiguous."])
         subject_key = next(iter(canonical_keys), "")
+        if not subject_key:
+            return _final_archive_result(
+                miss_status, version=version, reason_code="entity_not_found",
+                accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint),
+                warnings=[f"No archived FIFA World Cup 2026 entity matched id {requested!r}."],
+            )
         candidates = [row for row in rows if _text(row["subject"].get("key")) == subject_key]
     elif endpoint == "worldcup-get-schedule":
         candidates = [row for row in rows if _text(row["subject"].get("key")) == "tournament"]
@@ -9335,17 +9511,29 @@ def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
         }})["data"]
         subject_key = _text(resolved.get("event_urn"))
         if not subject_key:
-            miss = _final_archive_result(miss_status, version=version, warnings=resolved.get("warnings") or ["Archived fixture was not resolved."])
-            miss["data"]["response"]["candidates"] = resolved.get("candidates", [])
-            return miss
+            if not _fixture_selector_supplied(request_params):
+                kind = "fixture_selector_required"
+            elif len(_as_list(resolved.get("candidates"))) > 1:
+                kind = "fixture_ambiguous"
+            else:
+                kind = "fixture_not_found"
+            return _unserved_fixture_request(endpoint, miss_status, version, kind, resolved)
         if closed and subject_key not in set(_as_list(closure_manifest.get("fixture_urns"))):
-            return _final_archive_result("unavailable", version=version, warnings=["Fixture is outside the closed 104-match archive manifest."])
+            return _final_archive_result(
+                "unavailable", version=version, reason_code="fixture_not_found",
+                accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint),
+                warnings=["Fixture is outside the closed 104-match archive manifest."],
+            )
         candidates = [row for row in rows if _text(row["subject"].get("event_urn") or row["subject"].get("key")) == subject_key]
         if endpoint == "worldcup-get-player-performance-context":
             pack_status, packed, pack_warnings = _select_fixture_player_pack(candidates, request_params)
             if pack_status != "none":
                 if pack_status != "hit":
-                    return _final_archive_result("unavailable" if closed and pack_status == "miss" else pack_status, version=version, warnings=pack_warnings)
+                    return _final_archive_result(
+                        "unavailable" if closed and pack_status == "miss" else pack_status,
+                        version=version, reason_code=_player_pack_reason(pack_status, pack_warnings),
+                        accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint), warnings=pack_warnings,
+                    )
                 row = packed["row"]
                 response = packed["response"]
                 stored_response = row.get("response") if isinstance(row.get("response"), dict) else {}
@@ -9362,7 +9550,16 @@ def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
                 )
                 return _final_archive_result("hit", response=response, row=row, request_identity=request_identity, version=version)
             if not _archive_has_warmed_player_selector(candidates, request_params, params.get("canonical_identities")):
-                return _final_archive_result(miss_status, version=version, warnings=["Player request is outside the warmed fixture/player set."])
+                if not _player_selector_supplied(request_params):
+                    return _final_archive_result(
+                        miss_status, version=version, reason_code="player_selector_required",
+                        accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint), warnings=[PLAYER_SELECTOR_REQUIRED_MESSAGE],
+                    )
+                return _final_archive_result(
+                    miss_status, version=version, reason_code="player_not_found",
+                    accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint),
+                    warnings=["Player request is outside the warmed fixture/player set."],
+                )
             selectors = [key for key in ("player_urn", "player_id", "player", "team") if _text(request_params.get(key))]
             canonical_players = []
             for document in _as_list(params.get("canonical_identities")):
@@ -9375,7 +9572,7 @@ def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
                 canonical_players = exact_players
             player_urns = {_text(_first(player, "_id", "@id", "player_urn")) for player in canonical_players}
             if len(player_urns) > 1:
-                return _final_archive_result(miss_status, version=version, warnings=["Canonical player selector is ambiguous."])
+                return _final_archive_result(miss_status, version=version, reason_code="player_ambiguous", warnings=["Canonical player selector is ambiguous."])
             if not player_urns and len(selectors) > 1:
                 return _final_archive_result("error", version=version, warnings=["Conflicting canonical player identifiers; no legacy fallback was allowed."])
             selected_player_urn = next(iter(player_urns), "")
@@ -9388,7 +9585,16 @@ def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
     elif endpoint == "worldcup-player-spotlight":
         canonical_identities = [] if version == NEXT_FINAL_ARCHIVE_VERSION else params.get("canonical_identities")
         if not _archive_has_warmed_player_selector(rows, request_params, canonical_identities):
-            return _final_archive_result(miss_status, version=version, warnings=["Player request is outside the archived spotlight set."])
+            if not _player_selector_supplied(request_params):
+                return _final_archive_result(
+                    miss_status, version=version, reason_code="player_selector_required",
+                    accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint), warnings=[PLAYER_SELECTOR_REQUIRED_MESSAGE],
+                )
+            return _final_archive_result(
+                miss_status, version=version, reason_code="player_not_found",
+                accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint),
+                warnings=["Player request is outside the archived spotlight set."],
+            )
         selectors = [key for key in ("player_urn", "player_id", "player", "team", "team_id") if _text(request_params.get(key))]
         canonical_by_urn = {}
         for document in _as_list(canonical_identities):
@@ -9410,12 +9616,16 @@ def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
             if exact_rows:
                 matched_rows = exact_rows
         if len(matched_rows) > 1:
-            return _final_archive_result(miss_status, version=version, warnings=["Canonical player selector is ambiguous."])
+            return _final_archive_result(miss_status, version=version, reason_code="player_ambiguous", warnings=["Canonical player selector is ambiguous."])
         if not matched_rows and len(selectors) > 1 and _archive_has_warmed_player_selector(rows, request_params, canonical_identities):
             return _final_archive_result("error", version=version, warnings=["Conflicting canonical player identifiers; no legacy fallback was allowed."])
         selected_key = _text((matched_rows[0].get("subject") or {}).get("key")) if len(matched_rows) == 1 else ""
         if closed and selected_key not in set(_as_list(closure_manifest.get("spotlight_targets"))):
-            return _final_archive_result("unavailable", version=version, warnings=["Player spotlight is outside the finite closed archive catalog."])
+            return _final_archive_result(
+                "unavailable", version=version, reason_code="player_not_found",
+                accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint),
+                warnings=["Player spotlight is outside the finite closed archive catalog."],
+            )
         candidates = matched_rows
         subject_key = _text(candidates[0]["subject"].get("key")) if len(candidates) == 1 else ""
     else:
@@ -9430,6 +9640,10 @@ def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
         return _final_archive_result(
             "error" if len(candidates) > 1 else miss_status,
             version=version,
+            # A parameter variant the archive never warmed (e.g. include_reasoning=true)
+            # is something the caller can change; duplicate identities are ours.
+            reason_code="archive_error" if len(candidates) > 1 else "unsupported_parameter",
+            accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint),
             warnings=[f"Final archive request identity is {reason} for {endpoint}; no fallback execution is allowed."],
         )
 

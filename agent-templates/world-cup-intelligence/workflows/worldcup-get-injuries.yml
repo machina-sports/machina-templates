@@ -20,7 +20,7 @@ workflow:
   outputs:
     coverage: "$.get('archive_response', {}).get('coverage', {'schema_version': 'worldcup-storefront-coverage-v1', 'status': 'partial', 'reason': 'Legacy v2 compatibility response; exact coverage was not recorded.', 'scope': 'completed_tournament_archive', 'mode': 'historical', 'source_provenance': $.get('archive_metadata', {}).get('provenance', []), 'population_count': None, 'eligible_count': None, 'included_count': None, 'excluded_count': None, 'exclusion_reasons': {}, 'unsupported_fields': $.get('archive_metadata', {}).get('missing_capabilities', [])})"
     injuries: "$.get('archive_response', {}).get('injuries') if $.get('archive_hit', False) else ($.get('injuries', {}))"
-    candidates: "$.get('archive_response', {}).get('candidates') if $.get('archive_hit', False) else ($.get('fixture_candidates', []))"
+    candidates: "$.get('archive_response', {}).get('candidates', []) if $.get('archive_status', 'miss') != 'miss' else ($.get('fixture_candidates', []))"
     warnings: "$.get('archive_response', {}).get('warnings', []) if $.get('archive_status', 'miss') != 'miss' else (($.get('resolution_warnings', []) or []) + ($.get('injuries', {}).get('warnings', []) or []))"
     archive: >-
       $.get('archive_metadata', {}) if $.get('archive_status', 'miss') != 'miss' else ({'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
