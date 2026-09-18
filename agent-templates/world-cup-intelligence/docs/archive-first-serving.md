@@ -366,3 +366,26 @@ python3 tools/worldcup_archive.py capture \
   --output .local/worldcup-archive/canary-import.json \
   --write
 ```
+
+## Unserved Responses
+
+An archive reader that cannot serve a request must say why, in a form both an
+agent and the gateway can act on. `serve_final_archive` labels every non-hit
+with `reason_code` (see `docs/api-contracts.md`, "Unserved responses"). The
+label is decided in this order: unsupported parameter variants first
+(`unsupported_parameter`); then, when no row is found for a fixture endpoint,
+the fixture selector is re-resolved against the canonical event index to tell
+an empty body (`fixture_selector_required`), an ambiguous one
+(`fixture_ambiguous`, with `candidates`) and an unknown one
+(`fixture_not_found`) apart from a genuine gap (`archive_row_missing`); player
+and entity selectors follow the same pattern. Integrity failures stay
+`archive_error`.
+
+Request-side labels do not change the closure semantics: in migration mode the
+clean miss still falls through to the legacy task graph, and in closed mode the
+response is still `unavailable` with no provider, model or write fallback. They
+only stop a caller mistake from being reported — and billed — as a missing
+archive row. Archived hits for `worldcup-get-match-forecast` additionally carry
+a `data_source` explanation in `archive.notes` (`seed` = original pre-kickoff
+forecast from the FIFA-ranking prior, not a placeholder).
+

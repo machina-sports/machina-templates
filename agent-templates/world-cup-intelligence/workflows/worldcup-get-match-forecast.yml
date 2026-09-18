@@ -28,7 +28,7 @@ workflow:
     model_vs_market: "$.get('archive_response', {}).get('model_vs_market') if $.get('archive_hit', False) else ($.get('model_vs_market', {}))"
     analysis: "$.get('archive_response', {}).get('analysis') if $.get('archive_hit', False) else ($.get('analysis', {}))"
     warnings: "$.get('archive_response', {}).get('warnings', []) if $.get('archive_status', 'miss') != 'miss' else (($.get('resolution_warnings', []) or []) + ($.get('forecast_warnings', []) or []) + ($.get('integrity_warnings', []) or []))"
-    candidates: "$.get('archive_response', {}).get('candidates') if $.get('archive_hit', False) else ($.get('fixture_candidates', []))"
+    candidates: "$.get('archive_response', {}).get('candidates', []) if $.get('archive_status', 'miss') != 'miss' else ($.get('fixture_candidates', []))"
     forecast_integrity: "$.get('archive_response', {}).get('forecast_integrity') if $.get('archive_hit', False) else ($.get('forecast_integrity', {}))"
     market_integrity: "$.get('archive_response', {}).get('market_integrity') if $.get('archive_hit', False) else ($.get('market_integrity', {}))"
     archive: >-
