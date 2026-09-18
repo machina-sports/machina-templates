@@ -1,0 +1,71 @@
+{
+  "fixture_note": "Sanitized fixture values retaining observed MCP response shapes; not a live product-data export.",
+  "labels": {
+    "event": {
+      "expected_total": 104,
+      "payload": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"success\",\"data\":{\"data\":[{\"_id\":\"stored-event\",\"date\":\"Fri, 05 Jun 2026 03:16:00 GMT\",\"name\":\"worldcup:event\",\"value\":{\"_id\":\"urn:machina:sport:soccer:event:mexico-vs-south-africa:20260611:wor\",\"provider_ids\":{\"api_football\":\"1489369\"},\"schema:startDate\":\"2026-06-11T19:00:00+00:00\",\"sport:status\":\"FT\"}}],\"total_documents\":104}}"
+          }
+        ]
+      }
+    },
+    "identity": {
+      "expected_total": 1281,
+      "payload": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"success\",\"data\":{\"data\":[{\"_id\":\"stored-identity\",\"date\":\"Fri, 05 Jun 2026 02:23:42 GMT\",\"name\":\"worldcup:identity-crosswalk\",\"value\":{\"@id\":\"urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor\",\"@type\":[\"sport:IdentityCrosswalk\",\"sport:Competition\"],\"provider_ids\":{\"api_football\":\"1\"}}}],\"total_documents\":1281}}"
+          }
+        ]
+      }
+    },
+    "forecast": {
+      "expected_total": 104,
+      "payload": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"success\",\"data\":{\"data\":[{\"_id\":\"stored-forecast\",\"date\":\"Sat, 06 Jun 2026 18:13:23 GMT\",\"name\":\"worldcup:model-forecast\",\"value\":{\"_id\":\"urn:machina:sport:soccer:event:colombia-vs-portugal:20260627:wor\",\"model\":{\"computed_at\":\"2026-06-27T07:00:05.148768Z\"},\"probabilities\":{\"home_win\":0.4,\"draw\":0.3,\"away_win\":0.3}}}],\"total_documents\":104}}"
+          }
+        ]
+      }
+    },
+    "ranking": {
+      "expected_total": 231,
+      "payload": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"success\",\"data\":{\"data\":[{\"_id\":\"stored-ranking\",\"date\":\"Tue, 01 Sep 2026 04:33:28 GMT\",\"name\":\"worldcup:final-fifa-player-power-ranking\",\"value\":{\"record_type\":\"player_power_ranking\",\"player_urn\":\"urn:machina:sport:soccer:player:mikel-oyarzabal:19970421:esp\",\"source\":\"fifa.com\",\"status\":\"available\"}}],\"total_documents\":231}}"
+          }
+        ]
+      }
+    },
+    "recap": {
+      "expected_total": 13,
+      "payload": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"success\",\"data\":{\"data\":[{\"_id\":\"stored-recap\",\"date\":\"Thu, 18 Jun 2026 06:42:00 GMT\",\"name\":\"worldcup:skill-match-recap\",\"value\":{\"subject_urn\":\"urn:machina:sport:soccer:event:england-vs-croatia:20260617:wor\",\"generated_at\":\"2026-06-18T06:42:00Z\",\"body\":{\"headline\":\"Original matchday recap\"},\"version_control\":{\"finished\":true}}}],\"total_documents\":13}}"
+          }
+        ]
+      }
+    },
+    "spotlight": {
+      "expected_total": 2,
+      "payload": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"success\",\"data\":{\"data\":[{\"_id\":\"stored-spotlight\",\"date\":\"Tue, 01 Sep 2026 02:08:38 GMT\",\"name\":\"worldcup:skill-player-spotlight\",\"value\":{\"subject_urn\":\"urn:machina:sport:soccer:player:vinicius:20000712:bra\",\"scope\":\"world-cup-2026-tournament\",\"generated_at\":\"2026-09-01T02:08:38Z\",\"body\":{\"headline\":\"Tournament spotlight\"},\"version_control\":{\"finished\":true}}}],\"total_documents\":2}}"
+          }
+        ]
+      }
+    }
+  }
+}

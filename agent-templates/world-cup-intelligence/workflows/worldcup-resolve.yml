@@ -14,24 +14,85 @@ workflow:
   inputs:
     id: "$.get('id', '')"
   outputs:
-    entity: "($.get('entities', [{}]) or [{}])[0]"
-    entities: "$.get('entities', [])"
-    count: "len($.get('entities', []))"
-    warnings: "([] if $.get('entities', []) else (['No id supplied -- pass any provider id (api_football, sportradar, opta, entain, espn, transfermarkt) or a canonical urn:machina identity.'] if not $.get('id', '') else ['No entity matched ' + repr($.get('id', '')) + ' -- resolve takes EXACT provider ids or canonical URNs, not names. To find a fixture by team name use worldcup-get-schedule (returns event_urn); for players by name, worldcup-player-spotlight accepts player + team.']))"
+    coverage: "$.get('archive_response', {}).get('coverage', {'schema_version': 'worldcup-storefront-coverage-v1', 'status': 'partial', 'reason': 'Legacy v2 compatibility response; exact coverage was not recorded.', 'scope': 'completed_tournament_archive', 'mode': 'historical', 'source_provenance': $.get('archive_metadata', {}).get('provenance', []), 'population_count': None, 'eligible_count': None, 'included_count': None, 'excluded_count': None, 'exclusion_reasons': {}, 'unsupported_fields': $.get('archive_metadata', {}).get('missing_capabilities', [])})"
+    entity: "$.get('archive_response', {}).get('entity') if $.get('archive_hit', False) else (($.get('entities', [{}]) or [{}])[0])"
+    entities: "$.get('archive_response', {}).get('entities') if $.get('archive_hit', False) else ($.get('entities', []))"
+    count: "$.get('archive_response', {}).get('count') if $.get('archive_hit', False) else (len($.get('entities', [])))"
+    warnings: "$.get('archive_response', {}).get('warnings', []) if $.get('archive_status', 'miss') != 'miss' else (([] if $.get('entities', []) else (['No id supplied -- pass any provider id (api_football, sportradar, opta, entain, espn, transfermarkt) or a canonical urn:machina identity.'] if not $.get('id', '') else ['No entity matched ' + repr($.get('id', '')) + ' -- resolve takes EXACT provider ids or canonical URNs, not names. To find a fixture by team name use worldcup-get-schedule (returns event_urn); for players by name, worldcup-player-spotlight accepts player + team.'])))"
     archive: >-
-      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+      $.get('archive_metadata', {}) if $.get('archive_status', 'miss') != 'miss' else ({'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
        'snapshot_as_of': $.get('resolution_snapshot_as_of'),
        'capability_status': 'complete' if len($.get('entities', [])) > 0 else 'unavailable',
        'provenance': $.get('resolution_provenance', []),
        'missing_capabilities': [] if len($.get('entities', [])) > 0 else ['entity_resolution'],
-       'notes': ['Exact-id resolution over archived identity and event records.']}
-    workflow-status: "len($.get('entities', [])) > 0 and 'executed' or 'skipped'"
+       'notes': ['Exact-id resolution over archived identity and event records.']})
+    workflow-status: "'executed' if $.get('archive_hit', False) else ('skipped' if $.get('archive_status') == 'error' else (len($.get('entities', [])) > 0 and 'executed' or 'skipped'))"
   tasks:
+    - type: document
+      name: load-final-archive-manifest
+      config:
+        action: search
+        search-limit: 2
+        search-vector: false
+      filters:
+        name: "'worldcup:final-archive-manifest'"
+        value.archive_version: "'world-cup-2026-final-v3'"
+      outputs:
+        archive_manifest_documents: $.get('documents', []) or []
+    - type: connector
+      name: prepare-final-archive-lookup
+      connector:
+        name: worldcup-market-intelligence
+        command: build_final_archive_lookup
+      inputs:
+        endpoint: "'worldcup-resolve'"
+        request: "{'id': $.get('id', '')}"
+      outputs:
+        archive_lookup_keys: $.get('lookup_keys', [])
+    - type: document
+      name: load-final-archive
+      condition: "len($.get('archive_lookup_keys', [])) > 0"
+      description: Load only immutable rows matching the exact canonical or provider identifier.
+      config:
+        action: search
+        search-limit: 10
+        search-vector: false
+        search-sorters:
+          - _id
+          - 1
+      filters:
+        name: "'worldcup:final-archive'"
+        value.archive_version: "'world-cup-2026-final-v3'"
+        value.endpoint: "'worldcup-resolve'"
+        value.subject.lookup_keys: "{'$in': $.get('archive_lookup_keys', [])}"
+      outputs:
+        archive_documents: $.get('documents', []) or []
+        archive_search_limit_reached: len($.get('documents', []) or []) >= 10
+    - type: connector
+      name: serve-final-archive
+      description: Validate and serve an exact archive hit; clean misses alone may continue to legacy tasks.
+      connector:
+        name: worldcup-market-intelligence
+        command: serve_final_archive
+      inputs:
+        endpoint: "'worldcup-resolve'"
+        archive_version: "'world-cup-2026-final-v3'"
+        request: "{'id': $.get('id', '')}"
+        documents: $.get('archive_documents', [])
+        archive_search_limit_reached: $.get('archive_search_limit_reached', False)
+        canonical_events: []
+        canonical_identities: []
+        archive_manifest: $.get('archive_manifest_documents', [])
+      outputs:
+        archive_hit: $.get('archive_hit', False)
+        archive_status: $.get('archive_status', 'error')
+        archive_response: $.get('response', {})
+        archive_metadata: $.get('archive', {})
     - type: document
       name: resolve-entity
       description: Match the id against the canonical _id or any provider_ids across the identity-crosswalk (teams/players/competition) + event stores.
-      condition: "$.get('id', '') != ''"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('id', '') != '')"
       config:
         action: search
         search-limit: 10

@@ -1,0 +1,46 @@
+workflow:
+  name: worldcup-backfill-model-forecasts
+  title: World Cup Intelligence - Forecast Archive Coverage Assessment
+  description: |
+    Read-only coverage assessment for forecasts stored before kickoff. Missing or
+    post-kickoff forecasts fail closed; this workflow never computes or overwrites forecasts.
+  inputs:
+    offset: "$.get('offset', 0)"
+    batch_size: "$.get('batch_size', 20)"
+    expected_fixture_count: "$.get('expected_fixture_count', 104)"
+    expected_event_urns: "$.get('expected_event_urns', [])"
+  outputs:
+    assessment: "$.get('assessment', {})"
+    workflow-status: "'executed' if $.get('assessment', {}) else 'skipped'"
+  tasks:
+    - type: document
+      name: load-archive-evidence
+      description: Load bounded event and existing forecast evidence in stable document-id order.
+      config:
+        action: search
+        search-limit: 5000
+        search-vector: false
+        search-sorters: ["_id", 1]
+      filters:
+        name:
+          $in: ["worldcup:event", "worldcup:model-forecast"]
+      outputs:
+        archive_evidence: "[{'document_id': str(d.get('_id') or ''), 'name': d.get('name', ''), 'metadata': d.get('metadata', {}), 'value': d.get('value', {}), 'created': d.get('created'), 'updated': d.get('updated')} for d in ($.get('documents', []) or []) if isinstance(d, dict)]"
+        archive_search_limit_reached: "len($.get('documents', []) or []) >= 5000"
+
+    - type: connector
+      name: assess-archive
+      description: Verify stored forecast joins and model time without forecast computation.
+      connector:
+        name: worldcup-market-intelligence
+        command: plan_archive_repair
+      inputs:
+        mode: "'forecasts'"
+        evidence: "$.get('archive_evidence', [])"
+        search_limit_reached: "$.get('archive_search_limit_reached', False)"
+        offset: "$.get('offset', 0)"
+        batch_size: "$.get('batch_size', 20)"
+        expected_fixture_count: "$.get('expected_fixture_count', 104)"
+        expected_event_urns: "$.get('expected_event_urns', [])"
+      outputs:
+        assessment: "$"

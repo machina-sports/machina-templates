@@ -2,10 +2,10 @@ workflow:
   name: worldcup-backtest-forecasts
   title: World Cup Intelligence - Backtest Forecasts
   description: |
-    Post-match accuracy audit. Compares each model forecast to the actual result
-    (Brier score + calibration), saves a per-event worldcup:forecast-audit doc, and
-    rolls them up into the worldcup:forecast-audit:aggregate track-record (Brier vs
-    0.25 random baseline + calibration curve). Read-only. The aggregate gates on
+    Post-match accuracy audit. The completed World Cup path compares archived original
+    forecasts with archived event truth without provider calls or document writes, and
+    rolls the eligible sample into a response-only track record (Brier vs
+    0.25 random baseline + calibration curve). The aggregate gates on
     sample_size_sufficient (>=50) so early numbers are not over-read.
 
     Also settles Closing Line Value (CLV): for each logged signal-ledger entry whose
@@ -24,18 +24,24 @@ workflow:
     season: "$.get('season', '')"
     calibration_window_days: "$.get('calibration_window_days', 90)"
   outputs:
-    finished_fixtures: "$.get('finished_fixtures', [])"
-    status: "$.get('fixture_status', 'unavailable')"
-    provenance: "$.get('fixture_provenance', 'none')"
-    warnings: "$.get('fixture_warnings', [])"
-    audited_count: "len($.get('audits', []))"
-    track_record: "$.get('backtesting_report', {})"
-    clv_settled_count: "len($.get('clv_settled', []))"
-    clv_report: "$.get('clv_report', {})"
-    calibration_settled_count: "len($.get('calibration_settled', []))"
-    calibration_report: "$.get('calibration_report', {})"
+    coverage: "$.get('archive_response', {}).get('coverage', {'schema_version': 'worldcup-storefront-coverage-v1', 'status': 'partial', 'reason': 'Legacy v2 compatibility response; exact coverage was not recorded.', 'scope': 'completed_tournament_archive', 'mode': 'historical', 'source_provenance': $.get('archive_metadata', {}).get('provenance', []), 'population_count': None, 'eligible_count': None, 'included_count': None, 'excluded_count': None, 'exclusion_reasons': {}, 'unsupported_fields': $.get('archive_metadata', {}).get('missing_capabilities', [])})"
+    finished_fixtures: "$.get('archive_response', {}).get('finished_fixtures') if $.get('archive_hit', False) else ($.get('finished_fixtures', []))"
+    status: "$.get('archive_response', {}).get('status') if $.get('archive_hit', False) else ($.get('fixture_status', 'unavailable'))"
+    provenance: "$.get('archive_response', {}).get('provenance') if $.get('archive_hit', False) else ($.get('fixture_provenance', 'none'))"
+    warnings: "$.get('archive_response', {}).get('warnings', []) if $.get('archive_status', 'miss') != 'miss' else ($.get('fixture_warnings', []))"
+    audited_count: "$.get('archive_response', {}).get('audited_count') if $.get('archive_hit', False) else (len($.get('audits', [])))"
+    total_count: "$.get('archive_response', {}).get('total_count') if $.get('archive_hit', False) else ($.get('audit_total_count', 0))"
+    included_count: "$.get('archive_response', {}).get('included_count') if $.get('archive_hit', False) else ($.get('audit_included_count', 0))"
+    excluded_count: "$.get('archive_response', {}).get('excluded_count') if $.get('archive_hit', False) else ($.get('audit_excluded_count', 0))"
+    exclusion_reasons: "$.get('archive_response', {}).get('exclusion_reasons') if $.get('archive_hit', False) else ($.get('audit_exclusion_reasons', {}))"
+    sources: "$.get('archive_response', {}).get('sources') if $.get('archive_hit', False) else ($.get('audit_sources', []))"
+    track_record: "$.get('archive_response', {}).get('track_record') if $.get('archive_hit', False) else ($.get('backtesting_report', {}))"
+    clv_settled_count: "$.get('archive_response', {}).get('clv_settled_count') if $.get('archive_hit', False) else (len($.get('clv_settled', [])))"
+    clv_report: "$.get('archive_response', {}).get('clv_report') if $.get('archive_hit', False) else ($.get('clv_report', {}))"
+    calibration_settled_count: "$.get('archive_response', {}).get('calibration_settled_count') if $.get('archive_hit', False) else (len($.get('calibration_settled', [])))"
+    calibration_report: "$.get('archive_response', {}).get('calibration_report') if $.get('archive_hit', False) else ($.get('calibration_report', {}))"
     archive: >-
-      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+      $.get('archive_metadata', {}) if $.get('archive_status', 'miss') != 'miss' else ({'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
        'snapshot_as_of': ($.get('backtesting_report', {}) or {}).get('cutoff'),
        'capability_status': 'historical_aggregate' if $.get('backtesting_report', {}) else 'unavailable',
@@ -43,9 +49,59 @@ workflow:
        'missing_capabilities': ((['historical_forecast_aggregate'] if not $.get('backtesting_report', {}) else []) + (['statistically_sufficient_sample'] if $.get('backtesting_report', {}) and not $.get('backtesting_report', {}).get('sample_size_sufficient', False) else [])),
        'notes': ['Historical aggregate only; sample_size defines the evidence set. cutoff is null when the aggregate has no stored source-backed boundary.'],
        'sample_size': ($.get('backtesting_report', {}) or {}).get('sample_size', len($.get('audits', []))),
-       'cutoff': ($.get('backtesting_report', {}) or {}).get('cutoff')}
-    workflow-status: "len($.get('audits', [])) > 0 and 'executed' or 'skipped'"
+       'cutoff': ($.get('backtesting_report', {}) or {}).get('cutoff')})
+    workflow-status: "'executed' if $.get('archive_hit', False) else ('skipped' if $.get('archive_status') == 'error' else (len($.get('audits', [])) > 0 and 'executed' or 'skipped'))"
   tasks:
+    - type: document
+      name: load-final-archive-manifest
+      config:
+        action: search
+        search-limit: 2
+        search-vector: false
+      filters:
+        name: "'worldcup:final-archive-manifest'"
+        value.archive_version: "'world-cup-2026-final-v3'"
+      outputs:
+        archive_manifest_documents: $.get('documents', []) or []
+    - type: document
+      name: load-final-archive
+      description: Load immutable endpoint rows in a stable order before legacy execution.
+      config:
+        action: search
+        search-limit: 5000
+        search-vector: false
+        search-sorters:
+          - _id
+          - 1
+      filters:
+        name: "'worldcup:final-archive'"
+        value.archive_version: "'world-cup-2026-final-v3'"
+        value.endpoint: "'worldcup-backtest-forecasts'"
+      outputs:
+        archive_documents: $.get('documents', []) or []
+        archive_search_limit_reached: len($.get('documents', []) or []) >= 5000
+    - type: connector
+      name: serve-final-archive
+      description: Validate and serve an exact archive hit; clean misses alone may continue to legacy tasks.
+      connector:
+        name: worldcup-market-intelligence
+        command: serve_final_archive
+      inputs:
+        endpoint: "'worldcup-backtest-forecasts'"
+        archive_version: "'world-cup-2026-final-v3'"
+        request: "{'competition': $.get('competition', ''), 'league': $.get('league', ''), 'season': $.get('season', ''), 'calibration_window_days': $.get('calibration_window_days', 90)}"
+        documents: $.get('archive_documents', [])
+        archive_search_limit_reached: $.get('archive_search_limit_reached', False)
+        canonical_events: $.get('archive_canonical_events', [])
+        event_search_limit_reached: $.get('archive_canonical_events_search_limit_reached', False)
+        canonical_identities: $.get('archive_canonical_identities', [])
+        identity_search_limit_reached: $.get('archive_canonical_identities_search_limit_reached', False)
+        archive_manifest: $.get('archive_manifest_documents', [])
+      outputs:
+        archive_hit: $.get('archive_hit', False)
+        archive_status: $.get('archive_status', 'error')
+        archive_response: $.get('response', {})
+        archive_metadata: $.get('archive', {})
     - type: connector
       name: resolve-competition
       description: Competition registry -> league/season/URN code/search terms (World Cup by default; explicit league/season win).
@@ -69,9 +125,11 @@ workflow:
         kalshi_sport: "$.get('kalshi_sport', 'worldcup')"
         knockout: "$.get('knockout', False)"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: connector
       name: fetch-finished-fixtures
-      description: Prefer live API-Football final results when the provider is available.
+      description: Fetch provider finals only for non-archived competitions; completed World Cup uses persisted truth.
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('competition_slug', 'world-cup-2026') != 'world-cup-2026')"
       continue_on_error: true
       connector:
         name: api-football
@@ -85,7 +143,7 @@ workflow:
     - type: document
       name: load-cached-final-events
       description: Load only cached World Cup 2026 events for explicit fallback selection.
-      condition: "len($.get('api_finished_fixtures', [])) == 0"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('competition_slug', 'world-cup-2026') == 'world-cup-2026' or len($.get('api_finished_fixtures', [])) == 0)"
       config:
         action: search
         search-limit: 500
@@ -106,13 +164,19 @@ workflow:
       inputs:
         live_fixtures: "$.get('api_finished_fixtures', [])"
         cached_events: "$.get('cached_events', [])"
+        competition: "$.get('competition_slug', 'world-cup-2026')"
         cached_search_limit_reached: "$.get('cached_event_search_limit_reached', False)"
       outputs:
         finished_fixtures: "$.get('finished_fixtures', [])"
         fixture_status: "$.get('fixture_status', 'unavailable')"
         fixture_provenance: "$.get('provenance', 'none')"
         fixture_warnings: "$.get('warnings', [])"
+        fixture_total_count: "$.get('total_count', 0)"
+        fixture_included_count: "$.get('included_count', 0)"
+        fixture_excluded_count: "$.get('excluded_count', 0)"
+        fixture_exclusion_reasons: "$.get('exclusion_reasons', {})"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: document
       name: load-forecasts
       description: All model forecasts (matched to finished fixtures by api-football id).
@@ -125,10 +189,11 @@ workflow:
       outputs:
         forecasts: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: connector
       name: build-audits
       description: Brier + calibration per forecast whose fixture is now final.
-      condition: "len($.get('finished_fixtures', [])) > 0 and len($.get('forecasts', [])) > 0"
+      condition: "$.get('archive_status', 'miss') == 'miss' and (len($.get('finished_fixtures', [])) > 0 and len($.get('forecasts', [])) > 0)"
       connector:
         name: worldcup-market-intelligence
         command: compute_forecast_audit
@@ -136,13 +201,20 @@ workflow:
         mode: "'batch'"
         forecasts: "$.get('forecasts', [])"
         finished_fixtures: "$.get('finished_fixtures', [])"
+        events: "$.get('cached_events', [])"
+        require_pre_kickoff: "$.get('competition_slug', 'world-cup-2026') == 'world-cup-2026'"
       outputs:
         audits: "$.get('audits', [])"
+        audit_total_count: "$.get('total_count', 0)"
+        audit_included_count: "$.get('included_count', 0)"
+        audit_excluded_count: "$.get('excluded_count', 0)"
+        audit_exclusion_reasons: "$.get('exclusion_reasons', {})"
+        audit_sources: "$.get('sources', [])"
 
     - type: document
       name: save-audits
       description: Persist per-event audit docs.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('audits', [])) > 0"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live' and len($.get('audits', [])) > 0)"
       config:
         action: bulk-update
         embed-vector: false
@@ -156,7 +228,7 @@ workflow:
     - type: connector
       name: aggregate-audit
       description: Roll up audits into the Brier/calibration track record.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('audits', [])) > 0"
+      condition: "$.get('archive_status', 'miss') == 'miss' and (len($.get('audits', [])) > 0)"
       connector:
         name: worldcup-market-intelligence
         command: compute_forecast_audit
@@ -171,7 +243,7 @@ workflow:
     - type: document
       name: save-aggregate
       description: Persist the singleton aggregate track-record doc.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and $.get('backtesting_report', {}) != {}"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live' and $.get('backtesting_report', {}) != {})"
       config:
         action: bulk-update
         embed-vector: false
@@ -187,6 +259,7 @@ workflow:
     - type: document
       name: load-signal-ledger
       description: Logged signal entries to settle for CLV.
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live')"
       config:
         action: search
         search-limit: 2000
@@ -199,7 +272,7 @@ workflow:
     - type: document
       name: load-snapshots
       description: Hourly market snapshots (closing-line source).
-      condition: "len($.get('ledger_rows', [])) > 0"
+      condition: "$.get('archive_status', 'miss') == 'miss' and (len($.get('ledger_rows', [])) > 0)"
       config:
         action: search
         search-limit: 2000
@@ -212,7 +285,7 @@ workflow:
     - type: connector
       name: settle-clv
       description: Capture the closing line + compute CLV for newly-final entries.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('ledger_rows', [])) > 0"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live' and len($.get('ledger_rows', [])) > 0)"
       connector:
         name: worldcup-market-intelligence
         command: compute_clv
@@ -227,7 +300,7 @@ workflow:
     - type: document
       name: save-clv-settled
       description: Persist newly-settled ledger rows (closing line + CLV).
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('clv_settled', [])) > 0"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live' and len($.get('clv_settled', [])) > 0)"
       config:
         action: bulk-update
         embed-vector: false
@@ -241,7 +314,7 @@ workflow:
     - type: connector
       name: aggregate-clv
       description: Two-proportion Z-test on CLV+ vs CLV- win rates.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('clv_ledger', [])) > 0"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live' and len($.get('clv_ledger', [])) > 0)"
       connector:
         name: worldcup-market-intelligence
         command: compute_clv_report
@@ -255,7 +328,7 @@ workflow:
     - type: document
       name: save-clv-report
       description: Persist the singleton CLV track-record doc.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and $.get('clv_report', {}) != {}"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live' and $.get('clv_report', {}) != {})"
       config:
         action: bulk-update
         embed-vector: false
@@ -272,7 +345,7 @@ workflow:
     - type: document
       name: load-calibration-sample
       description: Calibration rows (one per 1X2 leg of every forecast that had markets), pending and settled.
-      condition: "$.get('fixture_provenance') == 'api-football-live'"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live')"
       config:
         action: search
         search-limit: 5000
@@ -285,7 +358,7 @@ workflow:
     - type: connector
       name: settle-calibration
       description: Mark newly-final legs won/lost against the actual 1X2 result.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('calibration_rows', [])) > 0"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live' and len($.get('calibration_rows', [])) > 0)"
       connector:
         name: worldcup-market-intelligence
         command: settle_calibration_rows
@@ -299,7 +372,7 @@ workflow:
     - type: document
       name: save-calibration-settled
       description: Persist newly-settled calibration rows.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('calibration_settled', [])) > 0"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live' and len($.get('calibration_settled', [])) > 0)"
       config:
         action: bulk-update
         embed-vector: false
@@ -313,7 +386,7 @@ workflow:
     - type: document
       name: load-calibration-report
       description: Every saved report (aggregate + one per competition) so each exponential update chains from its own last run.
-      condition: "$.get('fixture_provenance') == 'api-football-live'"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live')"
       config:
         action: search
         search-limit: 50
@@ -329,7 +402,7 @@ workflow:
     - type: connector
       name: compute-calibration
       description: Brier / log-loss / reliability per source, posterior vs market, learned weights.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and len($.get('calibration_rows_all', [])) > 0"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live' and len($.get('calibration_rows_all', [])) > 0)"
       connector:
         name: worldcup-market-intelligence
         command: compute_calibration
@@ -351,7 +424,7 @@ workflow:
     - type: document
       name: save-calibration-report
       description: Persist the calibration reports (aggregate + per competition; Brier per source + weights learned) that get-signal reads.
-      condition: "$.get('fixture_provenance') == 'api-football-live' and $.get('calibration_report', {}) != {}"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('fixture_provenance') == 'api-football-live' and $.get('calibration_report', {}) != {})"
       config:
         action: bulk-update
         embed-vector: false

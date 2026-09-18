@@ -828,7 +828,7 @@ class TestNormalizeInjuries:
         }})
         assert len(r["data"]["teams"]) == 2
         assert all(t["count"] == 0 for t in r["data"]["teams"])
-        assert any("closer to matchday" in w for w in r["data"]["warnings"])
+        assert any("does not prove complete historical" in w for w in r["data"]["warnings"])
 
     def test_accepts_bare_list(self):
         items = [_af_injury(7, "Uruguay", 100, "Player A", "Injury")]

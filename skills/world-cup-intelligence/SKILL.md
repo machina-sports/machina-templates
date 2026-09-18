@@ -14,6 +14,18 @@ By bundling these workflows under a unified manifest, we provide Studio operator
 
 This skill exposes three primary executable workflows.
 
+The completed-tournament storefront also defines eleven read-only archive
+routes documented in `agent-templates/world-cup-intelligence/docs/openapi.json`.
+The active runtime remains on immutable v2. The locally prepared v3 candidate
+adds all-104 schedule pagination, explicit historical coverage metadata,
+regulation-time backtesting, FIFA's final published 48-team registration
+snapshot, reconciled identity resolution across 1,249 provider IDs and 1,248
+people, source-grounded recap depth, and structured retrospective spotlights for
+every observed player. It is not live until a separate import/readback, workflow
+version switch, and external catalog publication are completed. `force_regen`
+never bypasses an archive hit, and archived misses never trigger candidate-time
+generation.
+
 ### 1. `worldcup-market-watch`
 
 Generates a tournament-wide, composite market intelligence card showing odds movers, price spreads, and candidate arbitrage edges.

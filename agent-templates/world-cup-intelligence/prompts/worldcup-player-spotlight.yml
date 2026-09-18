@@ -5,16 +5,19 @@ prompts:
     description: Author a structured, grounded spotlight card for a World Cup player.
     instruction: |
       Write a factual FIFA World Cup 2026 tournament spotlight for `player`, which is
-      derived only from the persisted tournament squad identity record. Use ONLY facts
-      present in that input. Never mention club contracts, club form, transfers,
+      derived only from the persisted tournament squad identity record and the optional
+      official FIFA `performance_context`. Use ONLY facts present in those inputs. Keep
+      official FIFA values separate from any Machina provisional estimate. Never mention club contracts, club form, transfers,
       managers, or post-tournament events. Treat `position` as authoritative when it is
       present; never infer a different position. If a tournament fact is absent, omit it
-      or say it is unavailable rather than filling it from general football knowledge.
+      or say it is unavailable/non-published rather than filling it from general football knowledge.
+      Never invent appearances, goals, minutes, rankings, or statistics. Include supplied
+      `sources` unchanged when official FIFA performance is available.
       Neutral, informational tone. Always include the disclaimer.
     schema:
       title: WorldCupPlayerSpotlight
       type: object
-      required: [headline, player_name, narrative, disclaimer]
+      required: [headline, player_name, narrative, sources, disclaimer]
       properties:
         headline:
           type: string
@@ -39,5 +42,9 @@ prompts:
               type: string
         fixture_context:
           type: string
+        sources:
+          type: array
+          items:
+            type: object
         disclaimer:
           type: string

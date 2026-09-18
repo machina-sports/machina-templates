@@ -1,0 +1,46 @@
+workflow:
+  name: worldcup-backfill-historical-data
+  title: World Cup Intelligence - Historical Archive Coverage Assessment
+  description: |
+    Read-only assessment of stored fixture-scoped injury, squad, and player-performance
+    evidence. Empty responses remain unverified, and current squads are never labelled historical.
+  inputs:
+    offset: "$.get('offset', 0)"
+    batch_size: "$.get('batch_size', 20)"
+    expected_fixture_count: "$.get('expected_fixture_count', 104)"
+    expected_event_urns: "$.get('expected_event_urns', [])"
+  outputs:
+    assessment: "$.get('assessment', {})"
+    workflow-status: "'executed' if $.get('assessment', {}) else 'skipped'"
+  tasks:
+    - type: document
+      name: load-archive-evidence
+      description: Load bounded historical evidence in stable document-id order.
+      config:
+        action: search
+        search-limit: 5000
+        search-vector: false
+        search-sorters: ["_id", 1]
+      filters:
+        name:
+          $in: ["worldcup:event", "worldcup:injuries", "worldcup:squads", "worldcup:player-performance-context"]
+      outputs:
+        archive_evidence: "[{'document_id': str(d.get('_id') or ''), 'name': d.get('name', ''), 'metadata': d.get('metadata', {}), 'value': d.get('value', {}), 'created': d.get('created'), 'updated': d.get('updated')} for d in ($.get('documents', []) or []) if isinstance(d, dict)]"
+        archive_search_limit_reached: "len($.get('documents', []) or []) >= 5000"
+
+    - type: connector
+      name: assess-archive
+      description: Classify stored response evidence without provider calls or archive writes.
+      connector:
+        name: worldcup-market-intelligence
+        command: plan_archive_repair
+      inputs:
+        mode: "'historical'"
+        evidence: "$.get('archive_evidence', [])"
+        search_limit_reached: "$.get('archive_search_limit_reached', False)"
+        offset: "$.get('offset', 0)"
+        batch_size: "$.get('batch_size', 20)"
+        expected_fixture_count: "$.get('expected_fixture_count', 104)"
+        expected_event_urns: "$.get('expected_event_urns', [])"
+      outputs:
+        assessment: "$"

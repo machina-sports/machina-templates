@@ -1,0 +1,409 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Machina Sports World Cup Intelligence",
+    "version": "1.3.0",
+    "description": "The canonical eleven-route World Cup 2026 storefront contract. The active runtime remains v2; the tested v3 contract is an inactive local publication candidate with the final published FIFA registration snapshot and raw-player reconciliation. Valid archive hits skip legacy work and archive errors fail closed."
+  },
+  "servers": [
+    {
+      "url": "https://agents.machina.gg/zcj/ajgpivnid8bn",
+      "description": "Pay-per-use access to Machina Sports's API"
+    }
+  ],
+  "security": [{"payPerUse": []}],
+  "x-transport-contract": "The 200 schemas describe the workflow's public source response. The external HTTP gateway may wrap it in a transport envelope; that envelope is platform-owned and is not implemented or asserted by this repository.",
+  "components": {
+    "securitySchemes": {
+      "payPerUse": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-payment",
+        "description": "Pay-per-use access. An unpaid call returns 402 Payment Required with a signed challenge; settle it with x402 or MPP and retry."
+      }
+    },
+    "schemas": {
+      "FixtureSelector": {
+        "type": "object",
+        "anyOf": [
+          {"required": ["event_urn"]},
+          {"required": ["provider_event_id"]},
+          {"required": ["event"]},
+          {"required": ["team"]}
+        ],
+        "properties": {
+          "event_urn": {"type": "string", "description": "Canonical event URN."},
+          "provider_event_id": {"type": "string", "description": "API-Football fixture id."},
+          "event": {"type": "string", "description": "Fixture label such as Brazil vs Morocco."},
+          "team": {"type": "string", "description": "One team name."},
+          "opponent": {"type": "string", "description": "Opponent name used to disambiguate."},
+          "date": {"type": "string", "format": "date", "description": "Fixture date, YYYY-MM-DD."}
+        },
+        "description": "Supply an exact id or enough team/date information to resolve exactly one fixture. Multiple supplied selectors are conjunctive. Ambiguous requests return candidates and do not call a provider."
+      },
+      "ArchiveMetadata": {
+        "type": "object",
+        "required": ["mode", "version", "status", "competition", "competition_status", "live", "snapshot_as_of", "capability_status", "provenance", "missing_capabilities", "notes"],
+        "properties": {
+          "mode": {"const": "final_archive"},
+          "version": {"type": "string", "enum": ["world-cup-2026-final-v2", "world-cup-2026-final-v3"]},
+          "status": {"type": "string", "enum": ["hit", "miss", "unavailable", "error"]},
+          "competition": {"const": "FIFA World Cup 2026"},
+          "competition_status": {"const": "completed"},
+          "live": {"const": false},
+          "snapshot_as_of": {"type": ["string", "null"]},
+          "source_observed_at": {"type": ["string", "null"]},
+          "content_created_at": {"type": ["string", "null"]},
+          "timestamp_semantics": {"type": "string"},
+          "capability_status": {"type": "string"},
+          "provenance": {"type": "array", "items": {"type": "string"}},
+          "missing_capabilities": {"type": "array", "items": {"type": "string"}},
+          "notes": {"type": "array", "items": {"type": "string"}},
+          "response_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "source_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "request_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      },
+      "Coverage": {
+        "type": "object",
+        "required": ["schema_version", "status", "reason", "scope", "mode", "source_provenance", "population_count", "eligible_count", "included_count", "excluded_count", "exclusion_reasons", "unsupported_fields"],
+        "properties": {
+          "schema_version": {"const": "worldcup-storefront-coverage-v1"},
+          "status": {"type": "string", "enum": ["complete", "partial", "unavailable", "error"]},
+          "reason": {"type": "string", "minLength": 1},
+          "scope": {"const": "completed_tournament_archive"},
+          "mode": {"const": "historical"},
+          "source_provenance": {"type": "array", "items": {"type": "string"}},
+          "population_count": {"type": ["integer", "null"], "minimum": 0, "description": "Null means the legacy response did not record this count; null is never equivalent to zero."},
+          "eligible_count": {"type": ["integer", "null"], "minimum": 0},
+          "included_count": {"type": ["integer", "null"], "minimum": 0},
+          "excluded_count": {"type": ["integer", "null"], "minimum": 0},
+          "exclusion_reasons": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+          "unsupported_fields": {"type": "array", "items": {"type": "string"}}
+        }
+      },
+      "ResponseBase": {
+        "type": "object",
+        "required": ["archive", "coverage", "warnings"],
+        "properties": {
+          "archive": {"$ref": "#/components/schemas/ArchiveMetadata"},
+          "coverage": {"$ref": "#/components/schemas/Coverage"},
+          "warnings": {"type": "array", "items": {"type": "string"}}
+        }
+      },
+      "UnavailableResponse": {
+        "allOf": [
+          {"$ref": "#/components/schemas/ResponseBase"},
+          {"type": "object", "properties": {"candidates": {"type": "array", "items": {"$ref": "#/components/schemas/FixtureSummary"}}}}
+        ]
+      },
+      "ProviderIds": {"type": "object", "additionalProperties": {"type": ["string", "integer", "null"]}},
+      "Entity": {
+        "type": "object",
+        "properties": {
+          "_id": {"type": ["string", "null"]}, "@id": {"type": ["string", "null"]}, "player_key": {"type": "string"},
+          "name": {"type": "string"}, "provider_ids": {"$ref": "#/components/schemas/ProviderIds"},
+          "provider_id_aliases": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
+          "identity_mapping_status": {"type": "string", "enum": ["canonical", "official_reconciled", "provider_only", "quarantined"]},
+          "official_registration": {"$ref": "#/components/schemas/OfficialRegistrationPlayer"}
+        }
+      },
+      "OfficialRegistrationPlayer": {
+        "type": "object",
+        "required": ["status", "source_url", "source_sha256", "published_at", "source_page", "team_name", "fifa_team_code", "jersey_number", "player_name_raw", "birth_date", "position_code", "warnings", "canonical_birth_date_conflict"],
+        "properties": {
+          "status": {"const": "verified_final_published_snapshot"},
+          "source": {"const": "FIFA"},
+          "source_url": {"type": "string", "format": "uri"},
+          "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "published_at": {"type": "string", "format": "date-time"},
+          "source_page": {"type": "integer", "minimum": 1, "maximum": 48},
+          "team_name": {"type": "string"}, "fifa_team_code": {"type": "string"},
+          "jersey_number": {"type": "integer", "minimum": 1, "maximum": 26},
+          "player_name_raw": {"type": "string"}, "first_names_raw": {"type": "string"},
+          "last_names_raw": {"type": "string"}, "shirt_name_raw": {"type": "string"},
+          "birth_date": {"type": "string", "format": "date"}, "position_code": {"enum": ["GK", "DF", "MF", "FW"]},
+          "club_raw": {"type": ["string", "null"]}, "height_cm": {"type": "integer"},
+          "international_caps_as_reported": {"type": "integer"}, "international_goals_as_reported": {"type": "integer"},
+          "warnings": {"type": "array", "items": {"type": "string"}},
+          "canonical_birth_date": {"type": ["string", "null"]},
+          "canonical_birth_date_conflict": {"type": "boolean"}, "scope_note": {"type": "string"}
+        }
+      },
+      "OfficialRegistrationTeam": {
+        "type": "object",
+        "required": ["team_name", "fifa_team_code", "source_page", "player_count", "players", "source", "completeness"],
+        "properties": {
+          "team_name": {"type": "string"}, "fifa_team_code": {"type": "string"},
+          "source_page": {"type": "integer", "minimum": 1, "maximum": 48}, "player_count": {"const": 26},
+          "players": {"type": "array", "minItems": 26, "maxItems": 26, "items": {"$ref": "#/components/schemas/OfficialRosterPlayer"}},
+          "source": {"type": "object", "required": ["publisher", "url", "sha256", "published_at", "page"]},
+          "completeness": {"type": "object", "required": ["status", "expected_players", "included_players"]}
+        }
+      },
+      "OfficialRosterPlayer": {
+        "type": "object",
+        "required": ["canonical_urn", "provider_ids", "provider_id_aliases", "identity_mapping_status", "team_name", "fifa_team_code", "jersey_number", "player_name_raw", "first_names_raw", "last_names_raw", "shirt_name_raw", "birth_date", "position_code", "club_raw", "height_cm", "international_caps_as_reported", "international_goals_as_reported", "source_page", "warnings", "canonical_birth_date", "canonical_birth_date_conflict"],
+        "properties": {
+          "canonical_urn": {"type": "string"}, "provider_ids": {"$ref": "#/components/schemas/ProviderIds"},
+          "provider_id_aliases": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
+          "identity_mapping_status": {"const": "official_reconciled"}, "team_name": {"type": "string"},
+          "fifa_team_code": {"type": "string"}, "jersey_number": {"type": "integer", "minimum": 1, "maximum": 26},
+          "player_name_raw": {"type": "string"}, "first_names_raw": {"type": "string"},
+          "last_names_raw": {"type": "string"}, "shirt_name_raw": {"type": "string"},
+          "birth_date": {"type": "string", "format": "date"}, "position_code": {"enum": ["GK", "DF", "MF", "FW"]},
+          "club_raw": {"type": ["string", "null"]}, "height_cm": {"type": "integer"},
+          "international_caps_as_reported": {"type": "integer"}, "international_goals_as_reported": {"type": "integer"},
+          "source_page": {"type": "integer", "minimum": 1, "maximum": 48},
+          "warnings": {"type": "array", "items": {"type": "string"}},
+          "canonical_birth_date": {"type": ["string", "null"]}, "canonical_birth_date_conflict": {"type": "boolean"}
+        }
+      },
+      "OfficialRegistrationSnapshot": {
+        "type": "object",
+        "required": ["scope", "published_at", "source_url", "source_sha256", "snapshot_team_count", "players_per_team", "teams", "completeness", "limitations"],
+        "properties": {
+          "scope": {"const": "final_published_tournament_roster_snapshot"},
+          "published_at": {"type": "string", "format": "date-time"}, "source_url": {"type": "string", "format": "uri"},
+          "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "snapshot_team_count": {"const": 48},
+          "players_per_team": {"const": 26}, "teams": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/components/schemas/OfficialRegistrationTeam"}},
+          "completeness": {"type": "object"}, "limitations": {"type": "array", "items": {"type": "string"}}
+        }
+      },
+      "TeamSummary": {
+        "type": "object", "required": ["name"],
+        "properties": {"team_urn": {"type": ["string", "null"]}, "name": {"type": "string"}, "qualifier": {"type": "string"}, "crest": {"type": ["string", "null"]}}
+      },
+      "Score": {
+        "type": ["object", "null"],
+        "properties": {"home": {"type": "integer", "minimum": 0}, "away": {"type": "integer", "minimum": 0}, "elapsed": {"type": "number", "minimum": 0}}
+      },
+      "ResultDetails": {
+        "type": "object", "required": ["schema_version", "fixture_id", "status", "regulation_time_score", "extra_time_score_contribution", "shootout_score", "winner", "provenance"],
+        "properties": {
+          "schema_version": {"const": "worldcup-result-details-v1"}, "fixture_id": {"type": "string"},
+          "status": {"type": "string", "enum": ["FT", "AET", "PEN"]},
+          "regulation_time_score": {"$ref": "#/components/schemas/Score"},
+          "extra_time_score_contribution": {"$ref": "#/components/schemas/Score"},
+          "shootout_score": {"$ref": "#/components/schemas/Score"},
+          "winner": {"type": ["object", "null"], "properties": {"qualifier": {"type": "string"}, "team_id": {"type": "string"}, "name": {"type": "string"}}},
+          "provenance": {"type": "object", "required": ["provider", "fixture_id", "provider_result_sha256", "source_url", "observed_at"], "properties": {"provider": {"type": "string"}, "fixture_id": {"type": "string"}, "provider_result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "source_url": {"type": "string", "format": "uri"}, "observed_at": {"type": ["string", "null"]}}}
+        }
+      },
+      "FixtureSummary": {
+        "type": "object", "required": ["event_urn", "name", "start_date", "status", "teams", "fixture_id"],
+        "properties": {
+          "event_urn": {"type": "string"}, "name": {"type": "string"}, "start_date": {"type": "string"}, "status": {"type": "string"},
+          "competition": {"type": "string"}, "score": {"$ref": "#/components/schemas/Score"}, "round": {"type": ["string", "null"]}, "stage": {"type": ["string", "null"]},
+          "teams": {"type": "array", "minItems": 2, "items": {"$ref": "#/components/schemas/TeamSummary"}}, "venue": {"type": ["string", "null"]},
+          "fixture_id": {"type": ["string", "integer"]}, "result_details": {"$ref": "#/components/schemas/ResultDetails"}
+        }
+      },
+      "ResolveResponse": {
+        "allOf": [{"$ref": "#/components/schemas/ResponseBase"}, {"type": "object", "required": ["entity", "entities", "count"], "properties": {"entity": {"$ref": "#/components/schemas/Entity"}, "entities": {"type": "array", "items": {"$ref": "#/components/schemas/Entity"}}, "count": {"type": "integer", "minimum": 0}}}]
+      },
+      "ScheduleResponse": {
+        "allOf": [{"$ref": "#/components/schemas/ResponseBase"}, {"type": "object", "required": ["schedule"], "properties": {"schedule": {"type": "object", "required": ["events", "count", "total_count", "offset", "limit", "has_more", "truncated"], "properties": {"events": {"type": "array", "items": {"$ref": "#/components/schemas/FixtureSummary"}}, "count": {"type": "integer"}, "total_count": {"type": "integer"}, "offset": {"type": "integer"}, "limit": {"type": "integer"}, "has_more": {"type": "boolean"}, "truncated": {"type": "boolean"}, "warnings": {"type": "array", "items": {"type": "string"}}}}}}]
+      },
+      "EventContextResponse": {
+        "allOf": [{"$ref": "#/components/schemas/ResponseBase"}, {"type": "object", "required": ["event_context", "event_urn", "resolved_fixture", "candidates"], "properties": {"event_context": {"type": "object", "required": ["event", "result_details", "sports_context", "context_coverage"], "properties": {"event": {"$ref": "#/components/schemas/Entity"}, "prematch_research": {"type": "object"}, "social_pulse": {"type": "object"}, "sports_context": {"type": "object", "required": ["status", "mode", "result_details", "final_group_standings"]}, "result_details": {"$ref": "#/components/schemas/ResultDetails"}, "context_coverage": {"type": "object", "required": ["sports_context", "prematch_research", "social_pulse", "reason"]}}}, "event_urn": {"type": "string"}, "resolved_fixture": {"$ref": "#/components/schemas/FixtureSummary"}, "candidates": {"type": "array", "items": {"$ref": "#/components/schemas/FixtureSummary"}}}}]
+      },
+      "StandingsResponse": {
+        "allOf": [{"$ref": "#/components/schemas/ResponseBase"}, {"type": "object", "required": ["standings"], "properties": {"standings": {"type": "object", "required": ["groups", "group_count", "third_place_ranking", "standings_scope", "team_count", "is_final_1_to_48_ranking"], "properties": {"groups": {"type": "array", "minItems": 12, "maxItems": 12}, "group_count": {"const": 12}, "third_place_ranking": {"type": "array", "minItems": 12, "maxItems": 12}, "standings_scope": {"const": "final_group_standings"}, "team_count": {"const": 48}, "is_final_1_to_48_ranking": {"const": false}}}}}]
+      },
+      "SquadsResponse": {
+        "allOf": [{"$ref": "#/components/schemas/ResponseBase"}, {"type": "object", "required": ["squads", "candidates"], "properties": {"squads": {"type": "object", "required": ["teams", "evidence_status", "official_registration_status", "observed_player_count", "official_registration_snapshot"], "properties": {"teams": {"type": "array", "minItems": 2, "items": {"type": "object", "required": ["side"]}}, "evidence_status": {"enum": ["observed_tournament_player_pool", "unavailable"]}, "official_registration_status": {"const": "verified_final_published_snapshot"}, "observed_player_count": {"type": "integer", "minimum": 0}, "official_registration_snapshot": {"$ref": "#/components/schemas/OfficialRegistrationSnapshot"}}}, "candidates": {"type": "array", "items": {"$ref": "#/components/schemas/FixtureSummary"}}}}]
+      },
+      "InjuriesResponse": {
+        "allOf": [{"$ref": "#/components/schemas/ResponseBase"}, {"type": "object", "required": ["injuries", "candidates"], "properties": {"injuries": {"type": "object", "required": ["source", "teams", "evidence_status", "observed_record_count", "historical_completeness_verified"], "properties": {"source": {"type": "string"}, "teams": {"type": "array", "items": {"type": "object", "required": ["side", "count", "missing"]}}, "evidence_status": {"enum": ["recorded_absences", "confirmed_none", "unavailable"]}, "observed_record_count": {"type": "integer", "minimum": 0}, "historical_completeness_verified": {"type": "boolean"}}}, "candidates": {"type": "array", "items": {"$ref": "#/components/schemas/FixtureSummary"}}}}]
+      },
+      "PlayerPerformanceResponse": {
+        "allOf": [
+          {"$ref": "#/components/schemas/ResponseBase"},
+          {
+            "type": "object",
+            "required": ["fixture_player_pack", "status", "identity_coverage"],
+            "properties": {
+              "fixture_player_pack": {"type": "object", "required": ["event_urn", "fixture_id", "player_count"], "properties": {"players": {"type": "array"}, "raw_player_count": {"type": "integer", "minimum": 0}}},
+              "status": {"type": "string"},
+              "identity_coverage": {"type": "object", "required": ["canonical_count", "provider_only_count", "ambiguous_omitted_count"]},
+              "player_performance_context": {"type": "object"},
+              "player_candidates": {"type": "array", "items": {"type": "object"}},
+              "candidates": {"type": "array", "items": {"$ref": "#/components/schemas/FixtureSummary"}}
+            }
+          }
+        ]
+      },
+      "ForecastResponse": {
+        "allOf": [
+          {"$ref": "#/components/schemas/ResponseBase"},
+          {
+            "type": "object",
+            "required": ["forecast", "forecast_integrity", "market_integrity", "model_vs_market", "candidates"],
+            "properties": {
+              "forecast": {"type": "object", "required": ["model", "probabilities"], "properties": {"model": {"type": "object", "required": ["computed_at"]}, "probabilities": {"type": "object", "required": ["home_win", "draw", "away_win"]}}},
+              "forecast_integrity": {"type": "object", "required": ["verified_pre_kickoff"]},
+              "market_integrity": {"type": "object", "required": ["classification"]},
+              "model_vs_market": {"type": "object", "required": ["comparison_status", "gaps"]},
+              "analysis": {"type": "object"},
+              "candidates": {"type": "array", "items": {"$ref": "#/components/schemas/FixtureSummary"}}
+            }
+          }
+        ]
+      },
+      "BacktestResponse": {
+        "allOf": [{"$ref": "#/components/schemas/ResponseBase"}, {"type": "object", "required": ["finished_fixtures", "status", "audited_count", "total_count", "included_count", "excluded_count", "exclusion_reasons", "sources", "track_record"], "properties": {"finished_fixtures": {"type": "array", "minItems": 104, "maxItems": 104}, "status": {"const": "available"}, "audited_count": {"const": 98}, "total_count": {"const": 104}, "included_count": {"const": 98}, "excluded_count": {"const": 6}, "exclusion_reasons": {"type": "object", "required": ["forecast_at_or_after_kickoff"]}, "sources": {"type": "array", "items": {"type": "string"}}, "track_record": {"type": "object", "required": ["sample_size", "sample_size_sufficient", "brier_scores", "accuracy", "calibration", "recommendation"]}, "clv_report": {"type": "object"}, "calibration_report": {"type": "object"}}}]
+      },
+      "RecapResponse": {
+        "allOf": [
+          {"$ref": "#/components/schemas/ResponseBase"},
+          {
+            "type": "object",
+            "required": ["skill_card", "event_urn", "resolved_fixture", "candidates", "served_from"],
+            "properties": {
+              "skill_card": {"type": "object", "required": ["headline", "final_score", "historical_perspective", "content_depth"], "properties": {"headline": {"type": "string"}, "final_score": {"type": "string"}, "historical_perspective": {"type": "string"}, "content_depth": {"type": "object", "required": ["tier", "observed_player_records", "unsupported_narrative", "narrative_verification"]}}},
+              "event_urn": {"type": "string"},
+              "resolved_fixture": {"$ref": "#/components/schemas/FixtureSummary"},
+              "candidates": {"type": "array", "items": {"$ref": "#/components/schemas/FixtureSummary"}},
+              "served_from": {"const": "final_archive"}
+            }
+          }
+        ]
+      },
+      "SpotlightResponse": {
+        "allOf": [
+          {"$ref": "#/components/schemas/ResponseBase"},
+          {
+            "type": "object",
+            "required": ["skill_card", "structured_retrospective", "content_type", "player_key", "player_urn", "resolved_player", "player_overview", "candidates", "served_from"],
+            "properties": {
+              "skill_card": {"type": "object"},
+              "structured_retrospective": {"type": "object", "required": ["content_type", "historical_perspective", "player_key", "name", "identity_mapping_status", "provider_ids", "observed_appearance_count", "observed_opponents", "observations", "unsupported_fields", "grounding"]},
+              "original_editorial": {"type": ["object", "null"]},
+              "content_type": {"enum": ["structured_retrospective", "original_editorial_with_structured_retrospective"]},
+              "player_key": {"type": "string"},
+              "player_urn": {"type": ["string", "null"]},
+              "resolved_player": {"$ref": "#/components/schemas/Entity"},
+              "player_overview": {"type": "object", "required": ["player_key", "name", "provider_ids", "identity_mapping_status"]},
+              "candidates": {"type": "array", "minItems": 1, "maxItems": 1},
+              "served_from": {"const": "final_archive"}
+            },
+            "allOf": [{"if": {"required": ["content_type"], "properties": {"content_type": {"const": "original_editorial_with_structured_retrospective"}}}, "then": {"required": ["original_editorial"], "properties": {"original_editorial": {"type": "object", "minProperties": 1}}}}]
+          }
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/world-cup/v1/backtest-forecasts": {
+      "post": {
+        "summary": "Historical forecast backtests",
+        "description": "Scores the 98 original archived forecasts computed before kickoff against verified 90-minute results, including AET/PEN fixtures through regulation_time_score. Six late forecasts are excluded. CLV and market calibration remain explicitly unsupported. This completed World Cup path is read-only.",
+        "x-zeroclick-services": ["forecasts"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "120000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.120000 per call (backtest, service forecasts)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.120000"}, "rates": [{"service": "forecasts", "meter": "backtest", "unit": "call", "unitSize": 1, "priceUsd": "0.120000", "includedUnits": 0}]},
+        "requestBody": {"required": false, "content": {"application/json": {"schema": {"type": "object", "properties": {"competition": {"type": "string", "enum": ["world-cup-2026"], "default": "world-cup-2026"}, "league": {"type": "string", "enum": ["", "1"], "default": ""}, "season": {"type": "string", "enum": ["", "2026"], "default": ""}, "calibration_window_days": {"type": "integer", "const": 90, "default": 90}}}, "examples": {"completedTournament": {"value": {"competition": "world-cup-2026"}}}}}},
+        "responses": {"200": {"description": "Archive backtest with total, included, excluded, sources, reasons, and track record.", "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/BacktestResponse"}, {"$ref": "#/components/schemas/UnavailableResponse"}]}}}}, "400": {"description": "Invalid competition or request value."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-event-context": {
+      "post": {
+        "summary": "Enriched context for one match",
+        "description": "Archived event truth plus optional enrichment. Ambiguous selectors return candidates instead of an arbitrary fixture.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (event_context, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "event_context", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FixtureSelector"}, "examples": {"canonical": {"value": {"event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor"}}, "plainEnglish": {"value": {"team": "Brazil", "opponent": "Morocco", "date": "2026-06-13"}}}}}},
+        "responses": {"200": {"description": "Resolved archived event context, or warnings and candidates.", "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/EventContextResponse"}, {"$ref": "#/components/schemas/UnavailableResponse"}]}}}}, "400": {"description": "Missing, invalid, or ambiguous fixture selector."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-injuries": {
+      "post": {
+        "summary": "Archived fixture injury reports",
+        "description": "Fixture-scoped provider evidence. An empty response does not prove complete historical injury coverage.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (injuries, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "injuries", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"allOf": [{"$ref": "#/components/schemas/FixtureSelector"}, {"type": "object", "properties": {"league": {"type": "string", "enum": ["", "1"], "default": "1"}, "season": {"type": "string", "enum": ["", "2026"], "default": "2026"}}}]}, "examples": {"fixture": {"value": {"event": "Brazil vs Morocco"}}}}}},
+        "responses": {"200": {"description": "Fixture-scoped injury evidence with coverage caveats.", "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/InjuriesResponse"}, {"$ref": "#/components/schemas/UnavailableResponse"}]}}}}, "400": {"description": "Missing, invalid, or ambiguous fixture selector."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-match-forecast": {
+      "post": {
+        "summary": "Archived match forecast probabilities",
+        "description": "Preserves the stored model probabilities and computed_at timestamp. Reports whether the model predates kickoff; market gaps are suppressed unless the cache is a verifiable historical pre-match quote.",
+        "x-zeroclick-services": ["forecasts"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "120000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.120000 per call (match_forecast, service forecasts)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.120000"}, "rates": [{"service": "forecasts", "meter": "match_forecast", "unit": "call", "unitSize": 1, "priceUsd": "0.120000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"allOf": [{"$ref": "#/components/schemas/FixtureSelector"}, {"type": "object", "properties": {"include_reasoning": {"type": "boolean", "default": false}, "min_gap_bps": {"type": "integer", "minimum": 0, "default": 100}}}]}, "examples": {"forecast": {"value": {"event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor", "include_reasoning": false}}}}}},
+        "responses": {"200": {"description": "Stored forecast with forecast and market integrity classifications.", "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/ForecastResponse"}, {"$ref": "#/components/schemas/UnavailableResponse"}]}}}}, "400": {"description": "Missing, invalid, or ambiguous fixture selector."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-player-performance-context": {
+      "post": {
+        "summary": "Player performance context",
+        "description": "Fixture-scoped player evidence with explicit player identity. Official FIFA values remain separate from Machina provisional estimates; ambiguous names return candidates.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (player_performance, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "player_performance", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"allOf": [{"$ref": "#/components/schemas/FixtureSelector"}, {"type": "object", "properties": {"player_urn": {"type": "string"}, "player": {"type": "string"}, "player_id": {"type": "string"}, "team_id": {"type": "string"}}, "anyOf": [{"required": ["player_urn"]}, {"required": ["player"]}, {"required": ["player_id"]}]}]}, "examples": {"namedPlayer": {"value": {"event": "Brazil vs Morocco", "player": "Vinicius Junior", "team": "Brazil"}}}}}},
+        "responses": {"200": {"description": "Explicit player context or unavailable/ambiguous evidence status.", "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/PlayerPerformanceResponse"}, {"$ref": "#/components/schemas/UnavailableResponse"}]}}}}, "400": {"description": "Fixture or player selector is missing, invalid, or ambiguous."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-schedule": {
+      "post": {
+        "summary": "Tournament fixtures",
+        "description": "All 104 archived World Cup 2026 fixtures and final results, filterable by team, opponent, status, and inclusive date range with bounded offset pagination.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (schedule, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "schedule", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": false, "content": {"application/json": {"schema": {"type": "object", "properties": {"team": {"type": "string"}, "opponent": {"type": "string"}, "date_from": {"type": "string", "format": "date"}, "date_to": {"type": "string", "format": "date"}, "status": {"type": "string", "enum": ["FT", "AET", "PEN", "ft", "aet", "pen"]}, "limit": {"type": "integer", "minimum": 1, "maximum": 500, "default": 104}, "offset": {"type": "integer", "minimum": 0, "default": 0}}}, "examples": {"teamSchedule": {"value": {"team": "Brazil", "limit": 25, "offset": 0}}, "allFixtures": {"value": {}}}}}},
+        "responses": {"200": {"description": "Archived fixture list with canonical and provider ids.", "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/ScheduleResponse"}, {"$ref": "#/components/schemas/UnavailableResponse"}]}}}}, "400": {"description": "Invalid date, status, limit, offset, or date range."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-squads": {
+      "post": {
+        "summary": "Archived tournament squad identities",
+        "description": "Joins persisted World Cup 2026 player identities to both fixture teams. This is an archived tournament identity snapshot, not proof of complete FIFA squad registration.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (squads, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "squads", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/FixtureSelector"}, {"type": "object", "required": ["home_team", "away_team"], "properties": {"home_team": {"type": "string"}, "away_team": {"type": "string"}}}]}, "examples": {"fixture": {"value": {"event": "Brazil vs Morocco"}}, "teamPair": {"value": {"home_team": "Brazil", "away_team": "Morocco"}}}}}},
+        "responses": {"200": {"description": "Both team identities and linked persisted tournament players with original timestamps.", "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/SquadsResponse"}, {"$ref": "#/components/schemas/UnavailableResponse"}]}}}}, "400": {"description": "Missing, invalid, or ambiguous fixture selector."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/get-standings": {
+      "post": {
+        "summary": "Final tournament standings",
+        "description": "Final World Cup 2026 group tables. An empty body defaults to API-Football league 1 and season 2026.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (standings, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "standings", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": false, "content": {"application/json": {"schema": {"type": "object", "properties": {"league": {"type": "string", "default": "1"}, "season": {"type": "string", "default": "2026"}, "event_urn": {"type": "string"}, "provider_event_id": {"type": "string"}}}, "examples": {"defaultTournament": {"value": {}}, "explicit": {"value": {"league": "1", "season": "2026"}}}}}},
+        "responses": {"200": {"description": "Final group tables and third-place ranking when available.", "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/StandingsResponse"}, {"$ref": "#/components/schemas/UnavailableResponse"}]}}}}, "400": {"description": "Invalid league or season."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/resolve": {
+      "post": {
+        "summary": "Resolve a provider id to a canonical entity",
+        "description": "Exact-id resolution over archived identity and event records.",
+        "x-zeroclick-services": ["match-context"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "10000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.010000 per call (resolve, service match-context)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.010000"}, "rates": [{"service": "match-context", "meter": "resolve", "unit": "call", "unitSize": 1, "priceUsd": "0.010000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["id"], "properties": {"id": {"type": "string", "minLength": 1, "description": "Provider id or canonical Machina URN."}}}, "examples": {"canonicalTeam": {"value": {"id": "urn:machina:sport:soccer:team:brazil:bra"}}, "providerFixture": {"value": {"id": "1489417"}}}}}},
+        "responses": {"200": {"description": "Resolved entity and cross-provider identifiers, or an explicit not-found warning.", "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/ResolveResponse"}, {"$ref": "#/components/schemas/UnavailableResponse"}]}}}}, "400": {"description": "The id is missing or empty."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/skills/match-recap": {
+      "post": {
+        "summary": "Match recap",
+        "description": "Returns original archived copy with its generation date, historical-perspective annotation, and event references when warmed. A clean miss retains legacy behavior during canary migration; force_regen cannot bypass a valid archive hit.",
+        "x-zeroclick-services": ["finished-content"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "400000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.400000 per call (match_recap, service finished-content)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.400000"}, "rates": [{"service": "finished-content", "meter": "match_recap", "unit": "call", "unitSize": 1, "priceUsd": "0.400000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"allOf": [{"$ref": "#/components/schemas/FixtureSelector"}, {"type": "object", "properties": {"force_regen": {"type": "boolean", "default": false, "deprecated": true, "description": "Ignored by archive serving."}}}]}, "examples": {"archived": {"value": {"event": "Brazil vs Morocco"}}}}}},
+        "responses": {"200": {"description": "Source-annotated archived recap or explicit archive miss.", "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/RecapResponse"}, {"$ref": "#/components/schemas/UnavailableResponse"}]}}}}, "400": {"description": "Fixture is missing, ambiguous, unknown, or unfinished."}, "402": {"description": "Payment required."}}
+      }
+    },
+    "/world-cup/v1/skills/player-spotlight": {
+      "post": {
+        "summary": "Player spotlight",
+        "description": "Source-grounded structured tournament retrospective for every observed provider player. The two original editorial cards are retained separately. Exact provider ids work when no canonical URN is evidenced; force_regen cannot bypass an archive hit.",
+        "x-zeroclick-services": ["finished-content"],
+        "x-payment-info": {"protocols": [{"mpp": {"method": "tempo", "intent": "charge", "currency": "USD"}}, {"x402": {"network": "eip155:8453", "scheme": "exact", "currency": "USDC"}}], "offers": [{"amount": "400000", "currency": "0x20C000000000000000000000b9537d11c60E8b50", "description": "$0.400000 per call (player_spotlight, service finished-content)", "intent": "charge", "method": "tempo"}], "price": {"mode": "fixed", "currency": "USD", "amount": "0.400000"}, "rates": [{"service": "finished-content", "meter": "player_spotlight", "unit": "call", "unitSize": 1, "priceUsd": "0.400000", "includedUnits": 0}]},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {"player_urn": {"type": "string"}, "player_id": {"type": "string", "description": "Exact API-Football player id, including provider-only archived identities."}, "player": {"type": "string"}, "team": {"type": "string"}, "team_id": {"type": "string"}, "force_regen": {"type": "boolean", "default": false, "deprecated": true, "description": "Ignored by archive serving."}}, "anyOf": [{"required": ["player_urn"]}, {"required": ["player_id"]}, {"required": ["player"]}]}, "examples": {"namedPlayer": {"value": {"player": "Vinicius Junior", "team": "Brazil"}}, "providerOnlyPlayer": {"value": {"player_id": "575283", "team_id": "1548"}}}}}},
+        "responses": {"200": {"description": "Archived original editorial where available plus a source-grounded structured retrospective for every observed provider player.", "content": {"application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/SpotlightResponse"}, {"$ref": "#/components/schemas/UnavailableResponse"}]}}}}, "400": {"description": "Player selector is missing, ambiguous, or unknown."}, "402": {"description": "Payment required."}}
+      }
+    }
+  }
+}

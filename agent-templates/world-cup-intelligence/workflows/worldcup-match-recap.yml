@@ -14,31 +14,127 @@ workflow:
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     event_urn: "$.get('event_urn', '')"
+    provider_event_id: "$.get('provider_event_id', '')"
     event: "$.get('event', '')"
     team: "$.get('team', '')"
     opponent: "$.get('opponent', '')"
     date: "$.get('date', '')"
     force_regen: "$.get('force_regen', False)"
   outputs:
-    skill_card: "dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('recap', {})), event_urn=$.get('event_urn', ''))"
-    event_urn: "$.get('event_urn', '')"
-    resolved_fixture: "$.get('resolved_fixture', {})"
-    served_from: "'cache' if $.get('cached') else 'generated'"
-    warnings: "[] if $.get('event_urn', '') else ['No fixture resolved -- pass event_urn, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.']"
+    coverage: "$.get('archive_response', {}).get('coverage', {'schema_version': 'worldcup-storefront-coverage-v1', 'status': 'partial', 'reason': 'Legacy v2 compatibility response; exact coverage was not recorded.', 'scope': 'completed_tournament_archive', 'mode': 'historical', 'source_provenance': $.get('archive_metadata', {}).get('provenance', []), 'population_count': None, 'eligible_count': None, 'included_count': None, 'excluded_count': None, 'exclusion_reasons': {}, 'unsupported_fields': $.get('archive_metadata', {}).get('missing_capabilities', [])})"
+    skill_card: "$.get('archive_response', {}).get('skill_card') if $.get('archive_hit', False) else ({} if $.get('archive_status', 'miss') != 'miss' else dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('recap', {})), event_urn=$.get('event_urn', ''), historical_perspective=('original_cached_matchday_copy' if $.get('cached') else 'retrospective_completed_tournament'), sources=($.get('event_sources', []) + (($.get('cached', {}).get('research_sources', []) or []) if $.get('cached') else ($.get('research_sources', []) or [])))))"
+    event_urn: "$.get('archive_response', {}).get('event_urn') if $.get('archive_hit', False) else ('' if $.get('archive_status', 'miss') != 'miss' else $.get('event_urn', ''))"
+    resolved_fixture: "$.get('archive_response', {}).get('resolved_fixture') if $.get('archive_hit', False) else ({} if $.get('archive_status', 'miss') != 'miss' else $.get('resolved_fixture', {}))"
+    candidates: "$.get('archive_response', {}).get('candidates', []) if $.get('archive_status', 'miss') != 'miss' else ($.get('fixture_candidates', []))"
+    served_from: "$.get('archive_response', {}).get('served_from') if $.get('archive_hit', False) else ('unavailable' if $.get('archive_status', 'miss') != 'miss' else ('cache' if $.get('cached') else 'generated'))"
+    warnings: "$.get('archive_response', {}).get('warnings', []) if $.get('archive_status', 'miss') != 'miss' else ($.get('resolution_warnings', []))"
     archive: >-
-      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+      $.get('archive_metadata', {}) if $.get('archive_status', 'miss') != 'miss' else ({'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
        'snapshot_as_of': ($.get('cached', {}) or {}).get('generated_at'),
        'capability_status': 'evergreen_editorial' if ($.get('cached') or $.get('recap', {})) else 'unavailable',
        'provenance': ((['worldcup:skill-match-recap'] if $.get('cached') else []) + (['worldcup:event'] if not $.get('cached') and $.get('event', {}) else []) + (['worldcup:model-forecast'] if not $.get('cached') and $.get('forecast', {}) else []) + (['google-genai-grounded-search'] if not $.get('cached') and $.get('research', '') else [])),
        'missing_capabilities': [] if ($.get('cached') or $.get('recap', {})) else ['evergreen_match_recap'],
-       'notes': ['Evergreen post-match editorial; cached generated_at is exposed when stored evidence is served.']}
-    workflow-status: "($.get('cached') or $.get('recap', {})) and 'executed' or 'skipped'"
+       'notes': ['Evergreen post-match editorial; cached generated_at is exposed when stored evidence is served.']})
+    workflow-status: "'executed' if $.get('archive_hit', False) else ('skipped' if $.get('archive_status') == 'error' else (($.get('cached') or $.get('recap', {})) and 'executed' or 'skipped'))"
   tasks:
     - type: document
+      name: load-final-archive-manifest
+      config:
+        action: search
+        search-limit: 2
+        search-vector: false
+      filters:
+        name: "'worldcup:final-archive-manifest'"
+        value.archive_version: "'world-cup-2026-final-v3'"
+      outputs:
+        archive_manifest_documents: $.get('documents', []) or []
+    - type: document
+      name: load-final-archive-scope-events
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value.machina_competition_slug: "'world-cup-2026'"
+      outputs:
+        archive_scope_events: $.get('documents', []) or []
+    - type: connector
+      name: resolve-final-archive-scope
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_archived_fixture
+      inputs:
+        events: $.get('archive_scope_events', [])
+        event_urn: $.get('event_urn', '')
+        provider_event_id: $.get('provider_event_id') or $.get('fixture_id', '')
+        event: $.get('event', '')
+        team: $.get('team', '')
+        opponent: $.get('opponent', '')
+        date: $.get('date', '')
+      outputs:
+        archive_resolved_event_urn: $.get('event_urn', '')
+    - type: document
+      name: load-final-archive
+      condition: "$.get('archive_resolved_event_urn', '') != ''"
+      description: Load immutable endpoint rows in a stable order before legacy execution.
+      config:
+        action: search
+        search-limit: 10
+        search-vector: false
+        search-sorters:
+          - _id
+          - 1
+      filters:
+        name: "'worldcup:final-archive'"
+        value.archive_version: "'world-cup-2026-final-v3'"
+        value.endpoint: "'worldcup-match-recap'"
+        value.subject.event_urn: $.get('archive_resolved_event_urn', '')
+      outputs:
+        archive_documents: $.get('documents', []) or []
+        archive_search_limit_reached: len($.get('documents', []) or []) >= 10
+    - type: document
+      name: load-final-archive-events
+      description: Load the complete canonical tournament index used to resolve archive selectors.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+        search-sorters:
+          - _id
+          - 1
+      filters:
+        name: "'worldcup:event'"
+        value.machina_competition_slug: "'world-cup-2026'"
+      outputs:
+        archive_canonical_events: $.get('documents', []) or []
+        archive_canonical_events_search_limit_reached: len($.get('documents', []) or []) >= 500
+    - type: connector
+      name: serve-final-archive
+      description: Validate and serve an exact archive hit; clean misses alone may continue to legacy tasks.
+      connector:
+        name: worldcup-market-intelligence
+        command: serve_final_archive
+      inputs:
+        endpoint: "'worldcup-match-recap'"
+        archive_version: "'world-cup-2026-final-v3'"
+        request: "{'event_urn': $.get('event_urn', ''), 'provider_event_id': $.get('provider_event_id', ''), 'event': $.get('event', ''), 'team': $.get('team', ''), 'opponent': $.get('opponent', ''), 'date': $.get('date', ''), 'force_regen': $.get('force_regen', False)}"
+        documents: $.get('archive_documents', [])
+        archive_search_limit_reached: $.get('archive_search_limit_reached', False)
+        canonical_events: $.get('archive_canonical_events', [])
+        event_search_limit_reached: $.get('archive_canonical_events_search_limit_reached', False)
+        canonical_identities: $.get('archive_canonical_identities', [])
+        identity_search_limit_reached: $.get('archive_canonical_identities_search_limit_reached', False)
+        archive_manifest: $.get('archive_manifest_documents', [])
+      outputs:
+        archive_hit: $.get('archive_hit', False)
+        archive_status: $.get('archive_status', 'error')
+        archive_response: $.get('response', {})
+        archive_metadata: $.get('archive', {})
+    - type: document
       name: resolve-load-events
-      description: When no event_urn is supplied, load cached events to resolve the fixture from event/team/opponent/date.
-      condition: "$.get('event_urn', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
+      description: Load archived events for exact-id or natural-language fixture resolution.
       config:
         action: search
         search-limit: 500
@@ -46,27 +142,31 @@ workflow:
       filters:
         name: "'worldcup:event'"
       outputs:
-        resolve_events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+        resolve_events: "$.get('documents', []) or []"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: connector
       name: resolve-fixture
-      description: Filter cached events by event/team/opponent/date, then pin the matching event_urn (also keys the cache lookup).
-      condition: "$.get('event_urn', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
+      description: Resolve exactly one archived fixture; ambiguous and unknown inputs fail closed.
       connector:
         name: worldcup-market-intelligence
-        command: normalize_schedule
+        command: resolve_archived_fixture
       inputs:
         events: "$.get('resolve_events', [])"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
         event: "$.get('event', '')"
         team: "$.get('team', '')"
         opponent: "$.get('opponent', '')"
-        date_from: "$.get('date', '')"
-        date_to: "$.get('date', '')"
-        limit: 10
+        date: "$.get('date', '')"
       outputs:
-        resolved_fixture: "($.get('events', [{}]) or [{}])[0]"
-        event_urn: "($.get('events', [{}]) or [{}])[0].get('event_urn', '')"
+        resolved_fixture: "$.get('resolved_fixture', {})"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
+        fixture_candidates: "$.get('candidates', [])"
+        resolution_warnings: "$.get('warnings', [])"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: document
       name: load-cached
       description: Serve the cached (evergreen) recap if present, unless force_regen.
@@ -81,10 +181,11 @@ workflow:
       outputs:
         cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) else {}"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: document
       name: load-event
       description: Event doc (final status + score live merged).
-      condition: "not $.get('cached')"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('event_urn', '') != '')"
       config:
         action: search
         search-limit: 1
@@ -95,11 +196,12 @@ workflow:
       outputs:
         event: "($.get('documents', []) or [{}])[0].get('value', {})"
         is_final: "($.get('documents', []) or [{}])[0].get('value', {}).get('sport:status') in ('FT', 'AET', 'PEN')"
+        event_sources: "[{'source': 'worldcup:event', 'event_urn': (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('_id'), 'provider_ids': (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('provider_ids', {}), 'start_date': (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('schema:startDate'), 'source_timestamp': ($.get('documents', []) or [{}])[0].get('date')}] if ($.get('documents', []) or []) else []"
 
     - type: document
       name: load-forecast
       description: Pre-match model forecast (for the scorecard).
-      condition: "not $.get('cached') and $.get('is_final') is True"
+      condition: "$.get('archive_status', 'miss') == 'miss' and (not $.get('cached') and $.get('is_final') is True)"
       continue_on_error: true
       config:
         action: search
@@ -114,7 +216,7 @@ workflow:
     - type: connector
       name: grounded-recap-research
       description: Grounded match-report research (only when final).
-      condition: "not $.get('cached') and $.get('is_final') is True"
+      condition: "$.get('archive_status', 'miss') == 'miss' and (not $.get('cached') and $.get('is_final') is True)"
       continue_on_error: true
       connector:
         name: google-genai
@@ -123,16 +225,17 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        search_query: "$.get('event', {}).get('name', 'FIFA World Cup 2026') + ' result match report goals key moments'"
-        recency_days: 3
+        search_query: "$.get('event', {}).get('name', 'FIFA World Cup 2026') + ' completed 2026 result official match report'"
+        recency_days: 3650
         timeout: 120
       outputs:
         research: "$.get('answer', '')"
+        research_sources: "$.get('search_results', []) or []"
 
     - type: prompt
       name: worldcup-match-recap
       description: Author the structured recap card (final fixtures only).
-      condition: "not $.get('cached') and $.get('is_final') is True"
+      condition: "$.get('archive_status', 'miss') == 'miss' and (not $.get('cached') and $.get('is_final') is True)"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -143,6 +246,7 @@ workflow:
         event: "$.get('event', {})"
         forecast: "$.get('forecast', {})"
         research: "$.get('research', '')"
+        sources: "$.get('event_sources', []) + ($.get('research_sources', []) or [])"
         timeout: 120
       outputs:
         recap: "$"
@@ -150,7 +254,7 @@ workflow:
     - type: document
       name: save-candidate
       description: Cache the recap EVERGREEN (one per match).
-      condition: "not $.get('cached') and $.get('recap', {}) != {}"
+      condition: "$.get('archive_status', 'miss') == 'miss' and (not $.get('cached') and $.get('recap', {}) != {})"
       config:
         action: bulk-update
         embed-vector: false
@@ -166,6 +270,8 @@ workflow:
             'event_urn': $.get('event_urn', ''),
             'freshness': 'EVERGREEN',
             'body': $.get('recap', {}),
+            'sources': $.get('event_sources', []),
+            'research_sources': $.get('research_sources', []) or [],
             'generated_at': datetime.utcnow().isoformat() + 'Z',
             'expires_at': (datetime.utcnow() + timedelta(days=365)).isoformat() + 'Z',
             'source_freshness': {'model_forecast_available': bool($.get('forecast', {}))},

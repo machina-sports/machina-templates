@@ -15,30 +15,100 @@ workflow:
   inputs:
     player_urn: "$.get('player_urn', '')"
     player: "$.get('player', '')"
+    player_id: "$.get('player_id', '')"
     team: "$.get('team', '')"
+    team_id: "$.get('team_id', '')"
     force_regen: "$.get('force_regen', False)"
   outputs:
-    skill_card: "dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('spotlight', {})), player_urn=$.get('player_urn', ''))"
-    player_urn: "$.get('player_urn', '')"
-    resolved_player: "$.get('resolved_player', {})"
-    candidates: "$.get('player_candidates', [])"
-    player_overview: "($.get('cached', {}) or {}).get('player_overview', {}) or $.get('player_overview', {})"
-    served_from: "'cache' if $.get('cached') else 'generated'"
-    warnings: "([] if $.get('player_urn', '') else (($.get('resolve_warnings', []) or []) or ['No player resolved -- pass player_urn, or player (name) + optional team.']))"
+    coverage: "$.get('archive_response', {}).get('coverage', {'schema_version': 'worldcup-storefront-coverage-v1', 'status': 'partial', 'reason': 'Legacy v2 compatibility response; exact coverage was not recorded.', 'scope': 'completed_tournament_archive', 'mode': 'historical', 'source_provenance': $.get('archive_metadata', {}).get('provenance', []), 'population_count': None, 'eligible_count': None, 'included_count': None, 'excluded_count': None, 'exclusion_reasons': {}, 'unsupported_fields': $.get('archive_metadata', {}).get('missing_capabilities', [])})"
+    player_key: "$.get('archive_response', {}).get('player_key', $.get('player_urn', '')) if $.get('archive_hit', False) else ('' if $.get('archive_status', 'miss') != 'miss' else $.get('player_urn', ''))"
+    structured_retrospective: "$.get('archive_response', {}).get('structured_retrospective', {}) if $.get('archive_hit', False) else ({})"
+    original_editorial: "$.get('archive_response', {}).get('original_editorial') if $.get('archive_hit', False) else (None)"
+    content_type: "$.get('archive_response', {}).get('content_type', 'legacy_v2_editorial') if $.get('archive_hit', False) else ('unavailable' if $.get('archive_status', 'miss') != 'miss' else 'generated')"
+    skill_card: "$.get('archive_response', {}).get('skill_card') if $.get('archive_hit', False) else ({} if $.get('archive_status', 'miss') != 'miss' else dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('spotlight', {})), player_urn=$.get('player_urn', ''), performance_context=$.get('player_overview', {}).get('performance_context', {'status': 'not_published', 'source': 'fifa.com'}), sources=$.get('player_overview', {}).get('sources', [])))"
+    player_urn: "$.get('archive_response', {}).get('player_urn') if $.get('archive_hit', False) else (None if $.get('archive_status', 'miss') != 'miss' else $.get('player_urn', ''))"
+    resolved_player: "$.get('archive_response', {}).get('resolved_player') if $.get('archive_hit', False) else ({} if $.get('archive_status', 'miss') != 'miss' else $.get('resolved_player', {}))"
+    candidates: "$.get('archive_response', {}).get('candidates', []) if $.get('archive_status', 'miss') != 'miss' else ($.get('player_candidates', []))"
+    player_overview: "$.get('archive_response', {}).get('player_overview', {}) if $.get('archive_status', 'miss') != 'miss' else (($.get('cached', {}) or {}).get('player_overview', {}) or $.get('player_overview', {}))"
+    served_from: "$.get('archive_response', {}).get('served_from') if $.get('archive_hit', False) else ('unavailable' if $.get('archive_status', 'miss') != 'miss' else ('cache' if $.get('cached') else 'generated'))"
+    warnings: "$.get('archive_response', {}).get('warnings', []) if $.get('archive_status', 'miss') != 'miss' else (($.get('resolve_warnings', []) or []) + ($.get('overview_warnings', []) or []))"
     archive: >-
-      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+      $.get('archive_metadata', {}) if $.get('archive_status', 'miss') != 'miss' else ({'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
        'snapshot_as_of': ($.get('cached', {}) or {}).get('generated_at'),
        'capability_status': 'archived_editorial' if ($.get('cached') or $.get('spotlight', {})) else 'unavailable',
-        'provenance': ((['worldcup:skill-player-spotlight'] if $.get('cached') else []) + (['worldcup:identity-crosswalk'] if not $.get('cached') and $.get('player_overview', {}) else [])),
+         'provenance': ((['worldcup:skill-player-spotlight'] if $.get('cached') else []) + (['worldcup:identity-crosswalk'] if $.get('player_overview', {}) else []) + (['fifa.com'] if $.get('official_fifa_performance', {}) else [])),
        'missing_capabilities': [] if ($.get('cached') or $.get('spotlight', {})) else ['archived_player_spotlight'],
-       'notes': ['Archived player editorial; cached generated_at is exposed when stored evidence is served.']}
-    workflow-status: "($.get('cached') or $.get('spotlight', {})) and 'executed' or 'skipped'"
+       'notes': ['Archived player editorial; cached generated_at is exposed when stored evidence is served.']})
+    workflow-status: "'executed' if $.get('archive_hit', False) else ('skipped' if $.get('archive_status') == 'error' else (($.get('cached') or $.get('spotlight', {})) and 'executed' or 'skipped'))"
   tasks:
+    - type: document
+      name: load-final-archive-manifest
+      config:
+        action: search
+        search-limit: 2
+        search-vector: false
+      filters:
+        name: "'worldcup:final-archive-manifest'"
+        value.archive_version: "'world-cup-2026-final-v3'"
+      outputs:
+        archive_manifest_documents: $.get('documents', []) or []
+    - type: connector
+      name: prepare-final-archive-lookup
+      connector:
+        name: worldcup-market-intelligence
+        command: build_final_archive_lookup
+      inputs:
+        endpoint: "'worldcup-player-spotlight'"
+        request: "{'player_urn': $.get('player_urn', ''), 'player_id': $.get('player_id', ''), 'player': $.get('player', ''), 'team': $.get('team', ''), 'team_id': $.get('team_id', '')}"
+      outputs:
+        archive_lookup_keys: $.get('lookup_keys', [])
+        archive_lookup_error: $.get('lookup_error', '')
+    - type: document
+      name: load-final-archive
+      condition: "len($.get('archive_lookup_keys', [])) > 0"
+      description: Load only immutable player rows matching a normalized singular selector.
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+        search-sorters:
+          - _id
+          - 1
+      filters:
+        name: "'worldcup:final-archive'"
+        value.archive_version: "'world-cup-2026-final-v3'"
+        value.endpoint: "'worldcup-player-spotlight'"
+        value.subject.lookup_keys: "{'$in': $.get('archive_lookup_keys', [])}"
+      outputs:
+        archive_documents: $.get('documents', []) or []
+        archive_search_limit_reached: len($.get('documents', []) or []) >= 100
+    - type: connector
+      name: serve-final-archive
+      description: Validate and serve an exact archive hit; clean misses alone may continue to legacy tasks.
+      connector:
+        name: worldcup-market-intelligence
+        command: serve_final_archive
+      inputs:
+        endpoint: "'worldcup-player-spotlight'"
+        archive_version: "'world-cup-2026-final-v3'"
+        request: "{'player_urn': $.get('player_urn', ''), 'player_id': $.get('player_id', ''), 'player': $.get('player', ''), 'team': $.get('team', ''), 'team_id': $.get('team_id', ''), 'force_regen': $.get('force_regen', False)}"
+        documents: $.get('archive_documents', [])
+        lookup_error: $.get('archive_lookup_error', '')
+        archive_search_limit_reached: $.get('archive_search_limit_reached', False)
+        canonical_events: $.get('archive_canonical_events', [])
+        event_search_limit_reached: $.get('archive_canonical_events_search_limit_reached', False)
+        canonical_identities: []
+        archive_manifest: $.get('archive_manifest_documents', [])
+      outputs:
+        archive_hit: $.get('archive_hit', False)
+        archive_status: $.get('archive_status', 'error')
+        archive_response: $.get('response', {})
+        archive_metadata: $.get('archive', {})
     - type: document
       name: resolve-load-players
       description: When no player_urn is supplied, load crosswalk player docs to resolve the player by name (+ optional team).
-      condition: "$.get('player_urn', '') == '' and $.get('player', '') != ''"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('player_urn', '') == '' and $.get('player', '') != '')"
       config:
         action: search
         search-limit: 2000
@@ -52,12 +122,13 @@ workflow:
     - type: connector
       name: resolve-player
       description: Slug-based player-name match (accent/case-insensitive) over the crosswalk, pinning the player_urn.
-      condition: "$.get('player_urn', '') == '' and $.get('player', '') != ''"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('player_urn', '') == '' and $.get('player', '') != '')"
       connector:
         name: worldcup-market-intelligence
         command: resolve_player
       inputs:
         players: "$.get('resolve_players', [])"
+        player_urn: "$.get('player_urn', '')"
         player: "$.get('player', '')"
         team: "$.get('team', '')"
         limit: 5
@@ -81,10 +152,11 @@ workflow:
       outputs:
         cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) else {}"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: document
       name: load-player
       description: Player identity-crosswalk doc.
-      condition: "not $.get('cached')"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('player_urn', '') != '')"
       config:
         action: search
         search-limit: 1
@@ -96,22 +168,39 @@ workflow:
       outputs:
         player: "($.get('documents', []) or [{}])[0].get('value', {})"
 
+    - type: document
+      name: load-final-fifa-performance
+      description: Load the official final FIFA performance record by canonical player URN for cache hits and new cards.
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('player_urn', '') != '')"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:final-fifa-player-power-ranking'"
+        value.player_urn: "$.get('player_urn', '')"
+        value.record_type: "'player_power_ranking'"
+      outputs:
+        official_fifa_performance: "($.get('documents', []) or [{}])[0].get('value', {})"
+
     - type: connector
       name: build-player-overview
       description: Build a tournament-only player overview; provider tournament position wins and identity position is fallback.
-      condition: "not $.get('cached') and $.get('player', {}) != {}"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('player', {}) != {})"
       connector:
         name: worldcup-market-intelligence
         command: build_tournament_player_overview
       inputs:
         player: "$.get('player', {})"
+        official_fifa_performance: "$.get('official_fifa_performance', {})"
       outputs:
         player_overview: "$.get('player_overview', {})"
+        overview_warnings: "$.get('warnings', [])"
 
     - type: prompt
       name: worldcup-player-spotlight
       description: Author the structured player-spotlight card.
-      condition: "not $.get('cached') and $.get('player_overview', {}) != {}"
+      condition: "$.get('archive_status', 'miss') == 'miss' and (not $.get('cached') and $.get('player_overview', {}) != {})"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -120,6 +209,8 @@ workflow:
         provider: vertex_ai
       inputs:
         player: "$.get('player_overview', {})"
+        performance_context: "$.get('player_overview', {}).get('performance_context', {})"
+        sources: "$.get('player_overview', {}).get('sources', [])"
         timeout: 120
       outputs:
         spotlight: "$"
@@ -127,7 +218,7 @@ workflow:
     - type: document
       name: save-candidate
       description: Cache the authored tournament-only spotlight as an archive candidate.
-      condition: "not $.get('cached') and $.get('spotlight', {}) != {}"
+      condition: "$.get('archive_status', 'miss') == 'miss' and (not $.get('cached') and $.get('spotlight', {}) != {})"
       config:
         action: bulk-update
         embed-vector: false
@@ -144,6 +235,8 @@ workflow:
             'source': 'worldcup:identity-crosswalk',
             'freshness': 'FRESH',
             'player_overview': $.get('player_overview', {}),
+            'performance_context': $.get('player_overview', {}).get('performance_context', {}),
+            'sources': $.get('player_overview', {}).get('sources', []),
             'body': $.get('spotlight', {}),
             'generated_at': datetime.utcnow().isoformat() + 'Z',
             'version_control': {'processing': False, 'finished': True, 'source': 'worldcup-player-spotlight'},

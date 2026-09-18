@@ -12,20 +12,35 @@ fixture-scoped tool now accepts human identifiers and resolves internally:
   separators), or `team` (+ optionally `opponent` + `date` as `YYYY-MM-DD`).
   This matches the public landing's own example payload
   `{ "event": "Brazil vs Morocco" }`.
-- `worldcup_player_spotlight` likewise accepts `player` (name) + optional
-  `team` and resolves the `player_urn` via the identity crosswalk
-  (slug-based, accent/case-insensitive; ambiguity returned as `candidates`).
+- `worldcup_player_spotlight` accepts a canonical `player_urn`, exact
+  API-Football `player_id`, or `player` (name) with optional `team`/`team_id`.
+  Selectors are conjunctive; collisions return candidates rather than choosing
+  the first match. The v3 candidate reconciles all observed provider players to
+  the official FIFA registration snapshot, supports both source IDs for the one
+  Qatar duplicate, and returns explicit quarantine guidance for the corrupt
+  legacy Mario/Marco identifier.
 - The tool echoes the resolved `event_urn`/`player_urn` (and
   `resolved_fixture`/`resolved_player`) so it can be reused across calls, and
   embeds it in the `skill_card` body.
 - If nothing resolves, the tool returns an explicit `recommendation` /
   `warnings` message ("No fixture resolved …") rather than an empty payload.
 
-Resolution is deterministic (substring/slug matching over same-pod cached
-docs) — no LLM call, no extra credits, no hallucinated-URN risk.
+Resolution is deterministic (substring/slug matching over the active
+`worldcup:final-archive` version) — no LLM call, no extra credits, no
+hallucinated-URN risk.
+
+The eleven completed-catalog tools listed in `docs/api-contracts.md` are
+archive-first. Sorted archive and canonical-index reads are followed by local
+hash validation, identity selection, and optional schedule filtering. A valid
+hit skips provider, LLM, and document-write tasks. A clean miss preserves the
+legacy path during canary migration; malformed, invalidated, duplicate,
+ambiguous, and truncated states fail closed. V3 also returns `unavailable` for
+out-of-catalog competition/season requests instead of entering legacy provider
+or write tasks. Live market tools remain outside that set.
 
 To discover URNs directly, expose **`worldcup_get_schedule`** (filter by
-`team`/`opponent`/`date_from`/`date_to`; returns fixtures with `event_urn`) and
+`team`/`opponent`/`date_from`/`date_to`/`status`, page with `limit`/`offset`,
+and inspect `total_count`/`has_more`; returns fixtures with `event_urn`) and
 **`worldcup_resolve`** (any provider id or canonical URN → entity). Keep at
 least one of these on every deployed MCP surface — without a discovery primitive
 `worldcup_get_signal` is unreachable.

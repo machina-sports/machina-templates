@@ -29,3 +29,6 @@ agent-templates/weekly-token-report/connectors/__pycache__/
 .venv/
 venv/
 .pytest_cache/
+
+# Local operator captures, verification receipts, and private source snapshots.
+.local/

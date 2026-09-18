@@ -16,24 +16,119 @@ workflow:
     include_prematch_research: "$.get('include_prematch_research', True)"
     include_social_pulse: "$.get('include_social_pulse', False)"
   outputs:
-    event_context: "$.get('event_context', {})"
-    event_urn: "$.get('event_urn', '')"
-    resolved_fixture: "$.get('resolved_fixture', {})"
+    coverage: "$.get('archive_response', {}).get('coverage', {'schema_version': 'worldcup-storefront-coverage-v1', 'status': 'partial', 'reason': 'Legacy v2 compatibility response; exact coverage was not recorded.', 'scope': 'completed_tournament_archive', 'mode': 'historical', 'source_provenance': $.get('archive_metadata', {}).get('provenance', []), 'population_count': None, 'eligible_count': None, 'included_count': None, 'excluded_count': None, 'exclusion_reasons': {}, 'unsupported_fields': $.get('archive_metadata', {}).get('missing_capabilities', [])})"
+    event_context: "$.get('archive_response', {}).get('event_context') if $.get('archive_hit', False) else ($.get('event_context', {}))"
+    event_urn: "$.get('archive_response', {}).get('event_urn') if $.get('archive_hit', False) else ($.get('event_urn', ''))"
+    resolved_fixture: "$.get('archive_response', {}).get('resolved_fixture') if $.get('archive_hit', False) else ($.get('resolved_fixture', {}))"
+    candidates: "$.get('archive_response', {}).get('candidates') if $.get('archive_hit', False) else ($.get('fixture_candidates', []))"
     archive: >-
-      {'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
+      $.get('archive_metadata', {}) if $.get('archive_status', 'miss') != 'miss' else ({'mode': 'final_archive', 'competition': 'FIFA World Cup 2026',
        'competition_status': 'completed', 'live': False,
        'snapshot_as_of': $.get('event_snapshot_as_of'),
        'capability_status': ('unavailable' if not ($.get('event_context', {}).get('event') or $.get('event_document', {})) else ('complete' if ($.get('event_context', {}).get('sports_context') or $.get('event_context', {}).get('prematch_research') or $.get('event_context', {}).get('social_pulse')) else 'partial')),
        'provenance': ((['worldcup:event'] if ($.get('event_context', {}).get('event') or $.get('event_document', {})) else []) + (['sports-skills'] if $.get('event_context', {}).get('sports_context') else []) + (['google-genai-grounded-search'] if $.get('event_context', {}).get('prematch_research') else []) + (['grok'] if $.get('event_context', {}).get('social_pulse') else [])),
        'missing_capabilities': (['event_context'] if not ($.get('event_context', {}).get('event') or $.get('event_document', {})) else (['event_enrichment'] if not ($.get('event_context', {}).get('sports_context') or $.get('event_context', {}).get('prematch_research') or $.get('event_context', {}).get('social_pulse')) else [])),
-       'notes': ['Archived event truth is complete independently of optional enrichment.']}
-    warnings: "[] if ($.get('event_urn', '') or $.get('provider_event_id', '')) else ['No fixture resolved -- pass event_urn, provider_event_id, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.']"
-    workflow-status: "$.get('event_context', {}) != {} and 'executed' or 'skipped'"
+       'notes': ['Archived event truth is complete independently of optional enrichment.']})
+    warnings: "$.get('archive_response', {}).get('warnings', []) if $.get('archive_status', 'miss') != 'miss' else ($.get('resolution_warnings', []))"
+    workflow-status: "'executed' if $.get('archive_hit', False) else ('skipped' if $.get('archive_status') == 'error' else ($.get('event_context', {}) != {} and 'executed' or 'skipped'))"
   tasks:
     - type: document
+      name: load-final-archive-manifest
+      config:
+        action: search
+        search-limit: 2
+        search-vector: false
+      filters:
+        name: "'worldcup:final-archive-manifest'"
+        value.archive_version: "'world-cup-2026-final-v3'"
+      outputs:
+        archive_manifest_documents: $.get('documents', []) or []
+    - type: document
+      name: load-final-archive-scope-events
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value.machina_competition_slug: "'world-cup-2026'"
+      outputs:
+        archive_scope_events: $.get('documents', []) or []
+    - type: connector
+      name: resolve-final-archive-scope
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_archived_fixture
+      inputs:
+        events: $.get('archive_scope_events', [])
+        event_urn: $.get('event_urn', '')
+        provider_event_id: $.get('provider_event_id') or $.get('fixture_id', '')
+        event: $.get('event', '')
+        team: $.get('team', '')
+        opponent: $.get('opponent', '')
+        date: $.get('date', '')
+      outputs:
+        archive_resolved_event_urn: $.get('event_urn', '')
+    - type: document
+      name: load-final-archive
+      condition: "$.get('archive_resolved_event_urn', '') != ''"
+      description: Load immutable endpoint rows in a stable order before legacy execution.
+      config:
+        action: search
+        search-limit: 10
+        search-vector: false
+        search-sorters:
+          - _id
+          - 1
+      filters:
+        name: "'worldcup:final-archive'"
+        value.archive_version: "'world-cup-2026-final-v3'"
+        value.endpoint: "'worldcup-get-event-context'"
+        value.subject.event_urn: $.get('archive_resolved_event_urn', '')
+      outputs:
+        archive_documents: $.get('documents', []) or []
+        archive_search_limit_reached: len($.get('documents', []) or []) >= 10
+    - type: document
+      name: load-final-archive-events
+      description: Load the complete canonical tournament index used to resolve archive selectors.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+        search-sorters:
+          - _id
+          - 1
+      filters:
+        name: "'worldcup:event'"
+        value.machina_competition_slug: "'world-cup-2026'"
+      outputs:
+        archive_canonical_events: $.get('documents', []) or []
+        archive_canonical_events_search_limit_reached: len($.get('documents', []) or []) >= 500
+    - type: connector
+      name: serve-final-archive
+      description: Validate and serve an exact archive hit; clean misses alone may continue to legacy tasks.
+      connector:
+        name: worldcup-market-intelligence
+        command: serve_final_archive
+      inputs:
+        endpoint: "'worldcup-get-event-context'"
+        archive_version: "'world-cup-2026-final-v3'"
+        request: "{'event_urn': $.get('event_urn', ''), 'provider_event_id': $.get('provider_event_id', ''), 'event': $.get('event', ''), 'team': $.get('team', ''), 'opponent': $.get('opponent', ''), 'date': $.get('date', ''), 'include_prematch_research': $.get('include_prematch_research', True), 'include_social_pulse': $.get('include_social_pulse', False)}"
+        documents: $.get('archive_documents', [])
+        archive_search_limit_reached: $.get('archive_search_limit_reached', False)
+        canonical_events: $.get('archive_canonical_events', [])
+        event_search_limit_reached: $.get('archive_canonical_events_search_limit_reached', False)
+        canonical_identities: $.get('archive_canonical_identities', [])
+        identity_search_limit_reached: $.get('archive_canonical_identities_search_limit_reached', False)
+        archive_manifest: $.get('archive_manifest_documents', [])
+      outputs:
+        archive_hit: $.get('archive_hit', False)
+        archive_status: $.get('archive_status', 'error')
+        archive_response: $.get('response', {})
+        archive_metadata: $.get('archive', {})
+    - type: document
       name: resolve-load-events
-      description: When no event_urn/provider_event_id is supplied, load cached events to resolve the fixture from event/team/opponent/date.
-      condition: "$.get('event_urn', '') == '' and $.get('provider_event_id', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
+      description: Load archived events for exact-id or natural-language fixture resolution.
       config:
         action: search
         search-limit: 500
@@ -41,47 +136,38 @@ workflow:
       filters:
         name: "'worldcup:event'"
       outputs:
-        resolve_events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+        resolve_events: "$.get('documents', []) or []"
 
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: connector
       name: resolve-fixture
-      description: Filter cached events by event/team/opponent/date, then pin the matching event_urn.
-      condition: "$.get('event_urn', '') == '' and $.get('provider_event_id', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
+      description: Resolve exactly one archived fixture; ambiguous and unknown inputs fail closed with candidates/warnings.
       connector:
         name: worldcup-market-intelligence
-        command: normalize_schedule
+        command: resolve_archived_fixture
       inputs:
         events: "$.get('resolve_events', [])"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
         event: "$.get('event', '')"
         team: "$.get('team', '')"
         opponent: "$.get('opponent', '')"
-        date_from: "$.get('date', '')"
-        date_to: "$.get('date', '')"
-        limit: 10
+        date: "$.get('date', '')"
       outputs:
-        resolved_fixture: "($.get('events', [{}]) or [{}])[0]"
-        event_urn: "($.get('events', [{}]) or [{}])[0].get('event_urn', '')"
+        event_document: "$.get('event', {})"
+        resolved_fixture: "$.get('resolved_fixture', {})"
+        event_urn: "$.get('event_urn', '')"
+        provider_event_id: "$.get('provider_event_id', '')"
+        fixture_candidates: "$.get('candidates', [])"
+        resolution_warnings: "$.get('warnings', [])"
+        event_sources: "$.get('sources', [])"
+        event_snapshot_as_of: "$.get('snapshot_as_of')"
 
-    - type: document
-      name: lookup-event
-      description: Lookup event context from the same pod document store. Requires an identifying input so an arbitrary event is never returned.
-      condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
-      config:
-        action: search
-        search-limit: 1
-        search-vector: false
-      filters:
-        name: "'worldcup:event'"
-        value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
-        value.provider_ids.api_football: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
-      outputs:
-        event_document: "($.get('documents', []) or [{}])[0].get('value', {})"
-        event_snapshot_as_of: "((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('updated_at') or (($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('fetched_at') or ($.get('documents', []) or [{}])[0].get('updated') or ($.get('documents', []) or [{}])[0].get('created'))"
-
+      condition: $.get('archive_status', 'miss') == 'miss'
     - type: connector
       name: fetch-event-summary
       description: Optional Sports Skills football event summary if a provider event id is available.
-      condition: "$.get('provider_event_id', '') != ''"
+      condition: "$.get('archive_status', 'miss') == 'miss' and ($.get('provider_event_id', '') != '')"
       continue_on_error: true
       connector:
         name: sports-skills
@@ -100,3 +186,4 @@ workflow:
         sports_context: "$.get('sports_context', {})"
       outputs:
         event_context: "$.get('event_context', {'event': $.get('event_document', {}), 'sports_context': $.get('sports_context', {})})"
+      condition: $.get('archive_status', 'miss') == 'miss'
