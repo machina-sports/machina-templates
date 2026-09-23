@@ -462,3 +462,14 @@ The eleven archived storefront workflows never fail loudly: when they cannot ans
 
 Request-side codes set `archive.missing_capabilities` to `[]` — a request the caller can fix is not a missing capability of the archive. Only `archive_row_missing` / `archive_error` keep `["archived_response"]`. The gateway (`machina-client-api core/worldcup/gateway.py`) maps these to the HTTP codes above **before** any credit debit, and a non-2xx carries no ZeroClick `zc-usage`, so an unserved answer is never billed on either rail. Before 0.11.4 an empty body answered HTTP 200 with "No world-cup-2026-final-v3 archive row is available for …" and was charged (ZeroClick report, 2026-09-16).
 
+
+## Transport envelope (spec 1.5.0)
+
+Every public answer leaves the platform wrapped in the `SystemResponse` envelope of `machina-client-api`, and the ZeroClick storefront proxies it verbatim:
+
+```json
+{ "status": "success", "meta": { "code": 200 }, "data": { "archive": {}, "coverage": {}, "warnings": [], "...": "endpoint payload" } }
+{ "status": "error",   "meta": { "code": 400 }, "data": {}, "error": { "code": 400, "type": "selector_required", "reason_code": "fixture_selector_required", "message": "...", "billed": false, "accepted_fields": [], "candidates": [], "archive": {}, "coverage": {} } }
+```
+
+Until spec 1.4.0 the OpenAPI 200 schemas and examples described only the inner `data` block, so a buyer who validated the raw body against the spec saw a mismatch (ZeroClick, 2026-09-22). Since 1.5.0 `docs/openapi.json` describes the wrapped body: each 200 schema is the envelope with the endpoint payload under `data` (`components.schemas.TransportMeta` for `meta`), every non-2xx references `components.schemas.GatewayError`, and the six endpoints from the ZeroClick report carry real 4xx bodies captured through the storefront as examples. `tests/test_worldcup_openapi_examples.py` validates every example against its schema, so the two must move together.
