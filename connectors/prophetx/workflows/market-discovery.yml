@@ -1,0 +1,56 @@
+workflow:
+  name: "prophetx-market-discovery"
+  title: "ProphetX Market Discovery"
+  description: "Read-only odds-screen data for one tournament: sport events plus v3 markets (odds + liquidity levels) for a chosen event. Sandbox by default."
+  context-variables:
+    debugger:
+      enabled: true
+    prophetx:
+      api_key: $MACHINA_CONTEXT_VARIABLE_PROPHETX_API_KEY
+      access_key: $MACHINA_CONTEXT_VARIABLE_PROPHETX_ACCESS_KEY
+      secret_key: $MACHINA_CONTEXT_VARIABLE_PROPHETX_SECRET_KEY
+  inputs:
+    environment: "$.get('environment', 'sandbox')"
+    tournament_id: "$.get('tournament_id')"
+    event_id: "$.get('event_id')"
+    api_version: "$.get('api_version', 'v3')"
+    market_types: "$.get('market_types')"
+  outputs:
+    sport_events: "$.get('sport_events', [])"
+    markets: "$.get('markets', [])"
+    workflow-status: "$.get('events_ok') is True and 'executed' or 'failed'"
+  tasks:
+
+    # task-get-sport-events
+    - type: connector
+      name: task-get-sport-events
+      description: List sport events for the tournament
+      condition: "$.get('tournament_id') is not None"
+      connector:
+        name: prophetx
+        command: get_sport_events
+      inputs:
+        environment: "$.get('environment')"
+        tournament_id: "$.get('tournament_id')"
+      outputs:
+        events_ok: "$.get('status', False)"
+        sport_events: "$.get('data', {}).get('sport_events', [])"
+        sport_events_count: "$.get('data', {}).get('count', 0)"
+
+    # task-get-markets
+    - type: connector
+      name: task-get-markets
+      description: Markets with odds/liquidity for the chosen event (v3 default)
+      condition: "$.get('event_id') is not None"
+      connector:
+        name: prophetx
+        command: get_markets
+      inputs:
+        environment: "$.get('environment')"
+        event_id: "$.get('event_id')"
+        api_version: "$.get('api_version')"
+        market_types: "$.get('market_types')"
+      outputs:
+        markets_ok: "$.get('status', False)"
+        markets: "$.get('data', {}).get('markets', [])"
+        markets_count: "$.get('data', {}).get('count', 0)"
