@@ -14,8 +14,11 @@ _SPEC.loader.exec_module(_MODULE)
 
 
 def test_prophetx_requires_the_release_that_added_the_module():
-    assert _MODULE._MIN_VERSION == (0, 33, 0)
-    assert _MODULE._PIP_PACKAGE == "sports-skills>=0.33.0,<1.0"
+    # ProphetX shipped in sports-skills 0.33.0; the exact pin must not predate it.
+    pinned = tuple(int(p) for p in _MODULE._PINNED_VERSION.split("."))
+    assert pinned == (0, 35, 0)
+    assert pinned >= (0, 33, 0)
+    assert _MODULE._PIP_PACKAGE == "sports-skills==0.35.0"
 
 
 def test_invoke_prophetx_dispatches_only_to_the_prophetx_module(monkeypatch):
