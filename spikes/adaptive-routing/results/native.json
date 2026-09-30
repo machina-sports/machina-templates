@@ -1,0 +1,231 @@
+{
+  "option": "A-native-machina-ai",
+  "mode": "offline-mocked-adapters",
+  "runnable_without_credentials": true,
+  "connector_file": "connectors/machina-ai/machina-ai.py",
+  "overhead": [
+    {
+      "workload": "chat-default-short",
+      "command": "invoke_chat",
+      "status": true,
+      "selected_provider": "vertex_ai",
+      "selected_model": "gemini-2.5-flash",
+      "route_reason": "profile:balanced",
+      "overhead_us": {
+        "mean": 36.3,
+        "p50": 32.8,
+        "p95": 65.5,
+        "iterations": 200
+      }
+    },
+    {
+      "workload": "chat-balanced-explicit",
+      "command": "invoke_chat",
+      "status": true,
+      "selected_provider": "vertex_ai",
+      "selected_model": "gemini-2.5-flash",
+      "route_reason": "profile:balanced",
+      "overhead_us": {
+        "mean": 35.2,
+        "p50": 35.1,
+        "p95": 36.4,
+        "iterations": 200
+      }
+    },
+    {
+      "workload": "chat-quality",
+      "command": "invoke_chat",
+      "status": true,
+      "selected_provider": "vertex_ai",
+      "selected_model": "gemini-2.5-pro",
+      "route_reason": "profile:quality",
+      "overhead_us": {
+        "mean": 41.5,
+        "p50": 38.3,
+        "p95": 46.8,
+        "iterations": 200
+      }
+    },
+    {
+      "workload": "chat-cheap",
+      "command": "invoke_chat",
+      "status": true,
+      "selected_provider": "vertex_ai",
+      "selected_model": "gemini-2.5-flash-lite",
+      "route_reason": "profile:cheap",
+      "overhead_us": {
+        "mean": 40.4,
+        "p50": 40.2,
+        "p95": 42.3,
+        "iterations": 200
+      }
+    },
+    {
+      "workload": "chat-long-context",
+      "command": "invoke_chat",
+      "status": true,
+      "selected_provider": "vertex_ai",
+      "selected_model": "gemini-2.5-pro",
+      "route_reason": "profile:long_context",
+      "overhead_us": {
+        "mean": 45.0,
+        "p50": 42.9,
+        "p95": 48.5,
+        "iterations": 200
+      }
+    },
+    {
+      "workload": "chat-json-extraction",
+      "command": "invoke_chat",
+      "status": true,
+      "selected_provider": "vertex_ai",
+      "selected_model": "gemini-2.5-flash",
+      "route_reason": "profile:balanced",
+      "overhead_us": {
+        "mean": 44.9,
+        "p50": 44.9,
+        "p95": 45.9,
+        "iterations": 200
+      }
+    },
+    {
+      "workload": "embedding-query",
+      "command": "embed_query",
+      "status": true,
+      "selected_provider": "vertex_ai",
+      "selected_model": "text-embedding-004",
+      "route_reason": "profile:balanced",
+      "overhead_us": {
+        "mean": 32.7,
+        "p50": 29.4,
+        "p95": 38.8,
+        "iterations": 200
+      }
+    },
+    {
+      "workload": "search-answer",
+      "command": "invoke_search",
+      "status": true,
+      "selected_provider": "vertex_ai",
+      "selected_model": "gemini-2.5-flash",
+      "route_reason": "profile:balanced",
+      "overhead_us": {
+        "mean": 29.8,
+        "p50": 29.6,
+        "p95": 30.2,
+        "iterations": 200
+      }
+    }
+  ],
+  "determinism": [
+    {
+      "workload": "chat-default-short",
+      "distinct_routes_over_repeats": 1,
+      "routes": [
+        "('vertex_ai', 'gemini-2.5-flash', 'profile:balanced')"
+      ],
+      "static_selection": true
+    },
+    {
+      "workload": "chat-balanced-explicit",
+      "distinct_routes_over_repeats": 1,
+      "routes": [
+        "('vertex_ai', 'gemini-2.5-flash', 'profile:balanced')"
+      ],
+      "static_selection": true
+    },
+    {
+      "workload": "chat-quality",
+      "distinct_routes_over_repeats": 1,
+      "routes": [
+        "('vertex_ai', 'gemini-2.5-pro', 'profile:quality')"
+      ],
+      "static_selection": true
+    },
+    {
+      "workload": "chat-cheap",
+      "distinct_routes_over_repeats": 1,
+      "routes": [
+        "('vertex_ai', 'gemini-2.5-flash-lite', 'profile:cheap')"
+      ],
+      "static_selection": true
+    },
+    {
+      "workload": "chat-long-context",
+      "distinct_routes_over_repeats": 1,
+      "routes": [
+        "('vertex_ai', 'gemini-2.5-pro', 'profile:long_context')"
+      ],
+      "static_selection": true
+    },
+    {
+      "workload": "chat-json-extraction",
+      "distinct_routes_over_repeats": 1,
+      "routes": [
+        "('vertex_ai', 'gemini-2.5-flash', 'profile:balanced')"
+      ],
+      "static_selection": true
+    },
+    {
+      "workload": "embedding-query",
+      "distinct_routes_over_repeats": 1,
+      "routes": [
+        "('vertex_ai', 'text-embedding-004', 'profile:balanced')"
+      ],
+      "static_selection": true
+    },
+    {
+      "workload": "search-answer",
+      "distinct_routes_over_repeats": 1,
+      "routes": [
+        "('vertex_ai', 'gemini-2.5-flash', 'profile:balanced')"
+      ],
+      "static_selection": true
+    }
+  ],
+  "fallback_probe": {
+    "primary_provider_failed": "vertex_ai",
+    "status": true,
+    "selected_provider": "groq",
+    "selected_model": "llama-3.3-70b-versatile",
+    "route_reason": "fallback:vertex_ai:1",
+    "fallback_used": true,
+    "fallback_attempts": [
+      {
+        "provider": "vertex_ai",
+        "model": "gemini-2.5-flash",
+        "error_class": "provider_unavailable",
+        "latency_ms": 0,
+        "retry": false
+      }
+    ],
+    "receipt_has_decision_metadata": true
+  },
+  "escalation_gap_probe": {
+    "calls_with_primary_failing": [
+      {
+        "fallback_used": true,
+        "selected_provider": "groq"
+      },
+      {
+        "fallback_used": true,
+        "selected_provider": "groq"
+      },
+      {
+        "fallback_used": false,
+        "selected_provider": "vertex_ai"
+      }
+    ],
+    "next_call_after_failures": {
+      "selected_provider": "vertex_ai",
+      "route_reason": "profile:balanced",
+      "fallback_used": false
+    },
+    "adaptive_escalation_present": false,
+    "note": "Router state is per-call; repeated failures do not change the next call's primary route."
+  },
+  "caveats": [
+    "Adapter time is mocked (~0); numbers isolate router overhead, not provider latency.",
+    "Output quality is NOT measured here \u2014 quality benchmarks require live routes and evals."
+  ]
+}
