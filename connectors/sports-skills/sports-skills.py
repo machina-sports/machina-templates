@@ -12,15 +12,19 @@ Design:
 - Most modules wrap public providers (ESPN, Understat, FPL, openfootball,
   Polymarket, Kalshi). No API keys for the public ones. Betting-market
   modules use their own keys when the customer wants order placement.
+- `invoke_bootstrap` calls no module: it only provisions the pinned
+  package (below) and reports the copy actually imported.
 
 Runtime requirement:
-- The pod's Python env must have `sports-skills` importable. The
-  preferred path is adding `sports-skills>=0.33.0` to
+- The pod's Python env must have exactly `sports-skills==0.35.0`
+  importable. The preferred path is pinning `sports-skills==0.35.0` in
   `machina-client-api/requirements.txt` and rebuilding the pod image.
 - As a fallback this module attempts a one-time `pip install
-  sports-skills` on first ImportError so customers can use the
-  connector without waiting on a pod-image rebuild. The first call is
-  then ~15-30s slower; subsequent calls are instant.
+  sports-skills==0.35.0` when the imported version is missing or differs
+  from the pin, so customers can use the connector without waiting on a
+  pod-image rebuild. The first call is then ~15-30s slower; subsequent
+  calls are instant. If that install fails, the connector returns
+  status False instead of running on whatever other version is present.
 """
 
 import importlib
@@ -30,8 +34,9 @@ import subprocess
 import sys
 
 
-_MIN_VERSION = (0, 33, 0)
-_PIP_PACKAGE = "sports-skills>=0.33.0,<1.0"
+_PINNED_VERSION = "0.35.0"
+_PIP_PACKAGE = f"sports-skills=={_PINNED_VERSION}"
+_PIP_TIMEOUT_SECONDS = 180
 # Writable install target for in-place upgrades. The pod runs as a non-root
 # user whose home dir is read-only (`pip install --user` fails with EACCES on
 # /home/machina), and system site-packages is root-owned — /tmp is the one
@@ -40,23 +45,25 @@ _PIP_PACKAGE = "sports-skills>=0.33.0,<1.0"
 _TARGET_DIR = "/tmp/sports-skills-site"
 
 
+def _loaded_version():
+    """__version__ of the ACTUALLY-IMPORTED sports_skills, or None."""
+    mod = sys.modules.get("sports_skills")
+    if mod is None:
+        return None
+    return str(getattr(mod, "__version__", ""))
+
+
 def _loaded_version_ok():
-    """True when the ACTUALLY-IMPORTED sports_skills meets _MIN_VERSION.
+    """True when the ACTUALLY-IMPORTED sports_skills is exactly _PINNED_VERSION.
 
     Must check the live module's __version__, not importlib.metadata: once
     _TARGET_DIR is on sys.path, metadata reports the upgraded version while a
     worker process may still hold the stale system module cached in
     sys.modules. Trusting metadata there reuses the old module (missing newer
     commands like markets.get_price_history) — a race across the worker pool.
+    Older and newer releases both fail: the pin is exact, not a floor.
     """
-    mod = sys.modules.get("sports_skills")
-    if mod is None:
-        return False
-    try:
-        parts = str(getattr(mod, "__version__", "0")).split(".")[:3]
-        return tuple(int(p) for p in parts) >= _MIN_VERSION
-    except Exception:
-        return False
+    return _loaded_version() == _PINNED_VERSION
 
 
 def _activate_target():
@@ -72,14 +79,16 @@ def _ensure_sports_skills():
     """Import sports_skills, pip-installing or upgrading when needed.
 
     Returns (ok: bool, err_msg: str|None). Pod base images bake a pinned
-    sports-skills into system site-packages; when that copy is older than
-    _MIN_VERSION (features like the 'worldcup' sport key would be missing),
-    this installs the current release to _TARGET_DIR and puts it first on
-    sys.path instead of silently using the stale version. Long-term the
-    floor should be enforced in the pod image requirements — this branch
-    keeps already-deployed pods working without a rebuild.
+    sports-skills into system site-packages; when that copy is not exactly
+    _PINNED_VERSION, this installs the pinned release to _TARGET_DIR and
+    puts it first on sys.path instead of silently using the other version.
+    ok is True only when the imported module reports _PINNED_VERSION — a
+    failed, timed-out or shadowed install returns False, never a fallback
+    to whatever version is already present. Long-term the pin should be
+    enforced in the pod image requirements — this branch keeps
+    already-deployed pods working without a rebuild.
     """
-    # Fast path: an acceptable version is already imported in THIS process.
+    # Fast path: the pinned version is already imported in THIS process.
     if _loaded_version_ok():
         return True, None
 
@@ -98,43 +107,48 @@ def _ensure_sports_skills():
     # Install/upgrade into the writable target. Capture stdout+stderr so
     # failures surface a real error in the workflow output instead of a
     # cryptic exit code.
-    proc = subprocess.run(  # noqa: S603 — args are constants, no shell
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "--no-cache-dir",
-            "--upgrade",
-            "--target",
-            _TARGET_DIR,
-            _PIP_PACKAGE,
-        ],
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
+    try:
+        proc = subprocess.run(  # noqa: S603 — args are constants, no shell
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--no-cache-dir",
+                "--upgrade",
+                "--target",
+                _TARGET_DIR,
+                _PIP_PACKAGE,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=_PIP_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"pip install {_PIP_PACKAGE} timed out after {_PIP_TIMEOUT_SECONDS}s"
+    except OSError as e:
+        return False, f"pip install {_PIP_PACKAGE} could not start: {e}"
     if proc.returncode != 0:
         # pip prints the actionable bit to stderr; include both for safety.
+        # No fallback to a baked copy: it is not the pinned version.
         tail = (proc.stderr or proc.stdout or "")[-1500:]
-        # If a stale baked copy exists, degrade gracefully rather than
-        # hard-fail (offline pods keep working on the old feature set).
-        try:
-            importlib.import_module("sports_skills")
-            return True, None
-        except ImportError:
-            pass
         return False, f"pip install {_PIP_PACKAGE} failed (rc={proc.returncode}): {tail}"
 
     _activate_target()
     try:
         importlib.import_module("sports_skills")
-        return True, None
     except ImportError as e:
         return False, (
             f"sports_skills installed but not importable from {_TARGET_DIR}: {e}. "
             f"pip stdout tail: {(proc.stdout or '')[-500:]}"
         )
+    # pip succeeding does not prove the pinned copy is what got imported.
+    if not _loaded_version_ok():
+        return False, (
+            f"pip install {_PIP_PACKAGE} succeeded but the imported sports_skills "
+            f"reports version {_loaded_version()!r}, not {_PINNED_VERSION!r}"
+        )
+    return True, None
 
 
 def _dispatch(module_name, request_data):
@@ -216,6 +230,28 @@ def _dispatch(module_name, request_data):
     elif hasattr(result, "dict"):
         result = result.dict()
     return {"status": True, "data": result}
+
+
+def invoke_bootstrap(request_data):
+    """Provision the pinned sports-skills in this container. No provider call.
+
+    Runs the same `_ensure_sports_skills()` every dispatcher runs first, so a
+    workflow can install the pin (to _TARGET_DIR on a cold container) before
+    tasks that only import it. `data` reports the version and file of the
+    ACTUALLY-IMPORTED module. A failure keeps status False but still answers
+    `data` (ready False plus the error), unlike the dispatch failure envelope,
+    so a continue_on_error task has a structured result to read.
+    """
+    ok, err = _ensure_sports_skills()
+    data = {
+        "ready": ok,
+        "pinned_version": _PINNED_VERSION,
+        "version": _loaded_version(),
+        "origin": getattr(sys.modules.get("sports_skills"), "__file__", None),
+    }
+    if not ok:
+        return {"status": False, "data": {**data, "error": err}, "message": err}
+    return {"status": True, "data": data}
 
 
 # -------------------------------------------------------------------
