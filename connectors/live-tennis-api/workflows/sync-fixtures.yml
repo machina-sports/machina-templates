@@ -1,0 +1,83 @@
+workflow:
+  name: "live-tennis-api-sync-fixtures"
+  title: "Live Tennis API - Sync Fixtures"
+  description: "Lists upcoming scheduled fixtures, earliest first (one FREE request), and saves one document per fixture. start_time is null until the order of play assigns a time; that null is a real state, not a gap."
+  context-variables:
+    debugger:
+      enabled: true
+    live-tennis-api:
+      api_key: "$TEMP_CONTEXT_VARIABLE_LIVE_TENNIS_API_KEY"
+  inputs:
+    tour: "$.get('tour')"
+    draw: "$.get('draw')"
+    limit: "$.get('limit', 50)"
+  outputs:
+    fixtures: "$.get('fixtures', [])"
+    fixtures_count: "$.get('fixtures_count', 0)"
+    error: "$.get('error')"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # task-load-fixtures
+    - type: "connector"
+      name: "task-load-fixtures"
+      description: "GET /fixtures — upcoming scheduled fixtures. One request against the FREE budget."
+      connector:
+        name: "live-tennis-api"
+        command: "get_fixtures"
+      inputs:
+        api_key: "$.get('api_key')"
+        tour: "$.get('tour')"
+        draw: "$.get('draw')"
+        limit: "$.get('limit', 50)"
+      outputs:
+        error: "None if $.get('fixtures') is not None else ($.get('message') or 'live-tennis-api call failed')"
+        fixtures: |
+          [
+            {
+              'fixture_id': f.get('id'),
+              'event_date': f.get('event_date'),
+              'start_time': f.get('start_time'),
+              'tour': f.get('tour'),
+              'tournament': f.get('tournament'),
+              'round': f.get('round'),
+              'round_code': f.get('round_code'),
+              'surface': f.get('surface'),
+              'player1_id': f.get('player1_id'),
+              'player1_name': f.get('player1_name'),
+              'player2_id': f.get('player2_id'),
+              'player2_name': f.get('player2_name'),
+              'status': f.get('status')
+            }
+            for f in ($.get('fixtures') if isinstance($.get('fixtures'), list) else [])
+            if isinstance(f, dict)
+          ]
+        fixtures_count: "len($.get('fixtures')) if isinstance($.get('fixtures'), list) else 0"
+        workflow-status: "'executed' if isinstance($.get('fixtures'), list) else 'failed'"
+
+    # task-bulk-save-fixtures
+    - type: "document"
+      name: "task-bulk-save-fixtures"
+      description: "Save one document per fixture, keyed by the provider fixture id."
+      condition: "len($.get('fixtures', [])) > 0"
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'live-tennis-api-fixture'"
+      documents:
+        items: |
+          [
+            {
+              **f,
+              'metadata': {
+                'fixture_id': str(f.get('fixture_id', '')),
+                'tour': f.get('tour'),
+                'event_date': f.get('event_date')
+              },
+              'title': f"{f.get('player1_name') or '?'} vs {f.get('player2_name') or '?'} - {f.get('tournament') or ''}",
+              'execution': datetime.utcnow(),
+              'status': 'active'
+            }
+            for f in $.get('fixtures', [])
+          ]

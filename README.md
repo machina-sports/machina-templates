@@ -115,6 +115,7 @@ The repository includes connectors for various services:
 - `sportradar-nba`: NBA data API
 - `sportradar-nfl`: NFL data API
 - `sportradar-rugby`: Rugby data API
+- `live-tennis-api`: Live Tennis API (read-only live match state, scores, fixtures, players, rankings, head-to-head; vendor-contributed, key via vault)
 - `sportingbet`: Sports betting data
 
 ### Utilities

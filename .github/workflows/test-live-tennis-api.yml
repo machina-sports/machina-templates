@@ -1,0 +1,27 @@
+name: Test Live Tennis API Connector
+
+on:
+  pull_request:
+    paths:
+      - "connectors/live-tennis-api/**"
+      - ".github/workflows/test-live-tennis-api.yml"
+  push:
+    branches: [main]
+    paths:
+      - "connectors/live-tennis-api/**"
+      - ".github/workflows/test-live-tennis-api.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-connector-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --disable-pip-version-check pytest pyyaml requests
+      - name: Run the offline connector contract (mocked HTTP, no key)
+        run: python -m pytest connectors/live-tennis-api/tests -q
