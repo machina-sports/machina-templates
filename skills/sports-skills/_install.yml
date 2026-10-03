@@ -1,0 +1,12 @@
+setup:
+  title: Sports Skills (managed, read-only)
+  description: Read-only sports-skills guides installed as managed instruction skills that execute through the sports-skills connector allowlist.
+  category:
+  - sports
+  - skills
+  status: available
+  value: skills/sports-skills
+  version: 1.0.0
+datasets:
+- type: managed_skill_bundle
+  path: bundle.yml
