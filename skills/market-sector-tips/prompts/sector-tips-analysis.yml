@@ -1,0 +1,143 @@
+prompts:
+
+  - type: "prompt"
+    title: "Sector Tips Analysis"
+    name: sector-tips-analysis-prompt
+    description: "Analyzes sports prediction markets grouped by sector and generates actionable tips for each sector."
+    instruction: |
+      You are an expert sports prediction market analyst. Your task is to analyze markets organized by sector
+      and produce actionable tips for each sector.
+
+      You MUST base your reasoning ONLY on the information provided in the inputs below.
+      Do NOT assume or fabricate data that is not present.
+
+      ---
+      INPUTS
+
+      sectors_text:
+      {sectors_text}
+
+      sectors_data:
+      {sectors_data}
+
+      ---
+      ANALYSIS GUIDELINES
+
+      For each sector:
+
+      1. **Sector Overview**
+         - Summarize the sector: how many markets, total volume, average liquidity.
+         - Identify if the sector is "hot" (high volume/liquidity) or "thin" (low activity).
+
+      2. **Top Opportunities**
+         - Identify up to 3 markets in the sector that look most interesting based on:
+           - High liquidity relative to sector average
+           - Tight spreads (indicating efficient pricing or heavy interest)
+           - High 24h volume (recent activity)
+           - Outcome structure that suggests clear tradeable positions
+         - For each opportunity, explain briefly why it stands out.
+
+      3. **Risk Assessment**
+         - Flag any sector-wide risks:
+           - Low liquidity sectors where execution may be difficult
+           - Markets with very wide spreads
+           - Markets near expiry with unclear resolution
+         - Assign a sector risk level: "low", "medium", or "high".
+
+      4. **Recommended Action per Sector**
+         - "focus" — Sector has strong opportunities worth active monitoring
+         - "watch" — Some potential but needs more data or time
+         - "skip" — Low activity or poor risk/reward
+
+      5. **Summary**
+         - Produce a brief 2-3 sentence overall summary across all sectors highlighting
+           the single best sector and the single best market opportunity.
+
+      Language: match the language of the input. If the market data is in English, reply in English.
+      Proper nouns (team names, league names) stay in their native form.
+
+    schema:
+      title: SectorTipsAnalysis
+      description: "AI-generated sector-by-sector market tips and recommendations."
+      type: object
+      required:
+        - sector_tips
+        - sectors_summary
+      properties:
+        sector_tips:
+          type: array
+          description: "Analysis and tips for each market sector."
+          items:
+            type: object
+            required:
+              - sector
+              - market_count
+              - total_volume
+              - avg_liquidity
+              - activity_level
+              - risk_level
+              - recommended_action
+              - top_opportunities
+            properties:
+              sector:
+                type: string
+                description: "Sector name (market type)."
+              market_count:
+                type: integer
+                description: "Number of markets in the sector."
+              total_volume:
+                type: number
+                description: "Sum of volume across all markets in the sector."
+              avg_liquidity:
+                type: number
+                description: "Average liquidity across markets in the sector."
+              activity_level:
+                type: string
+                description: "'hot', 'moderate', or 'thin' based on volume and liquidity."
+              risk_level:
+                type: string
+                description: "'low', 'medium', or 'high' sector-wide risk."
+              recommended_action:
+                type: string
+                description: "'focus', 'watch', or 'skip'."
+              sector_notes:
+                type: string
+                description: "Brief markdown notes about the sector."
+              top_opportunities:
+                type: array
+                description: "Up to 3 best market opportunities in this sector."
+                items:
+                  type: object
+                  required:
+                    - market_id
+                    - title
+                    - reason
+                    - confidence
+                  properties:
+                    market_id:
+                      type: string
+                      description: "Market ID."
+                    title:
+                      type: string
+                      description: "Market title."
+                    reason:
+                      type: string
+                      description: "Why this market is a top opportunity."
+                    volume:
+                      type: number
+                      description: "Market volume."
+                    liquidity:
+                      type: number
+                      description: "Market liquidity."
+                    spread:
+                      type: number
+                      description: "Market spread."
+                    confidence:
+                      type: integer
+                      description: "Confidence 1-5 in this tip."
+                    recommended_action:
+                      type: string
+                      description: "'enter', 'monitor', or 'pass'."
+        sectors_summary:
+          type: string
+          description: "2-3 sentence overall summary highlighting the best sector and best single market."
