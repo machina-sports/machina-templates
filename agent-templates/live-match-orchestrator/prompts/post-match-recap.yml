@@ -1,0 +1,106 @@
+prompts:
+
+  - type: "prompt"
+    title: "Live Match Orchestrator — Post-Match Recap"
+    name: live-match-orchestrator-post-match-recap-prompt
+    description: |
+      Synthesizes the final fixture, statistics, timeline, and (when
+      available) xG into a 3-paragraph broadcaster-neutral wrap plus
+      exactly 5 social-ready highlight quotes that overlays can drop in.
+    instruction: |
+      You are a senior football broadcast producer writing the post-
+      match wrap for a neutral broadcaster. Use ONLY the data provided
+      — never invent goals, never invent quotes, never invent stats.
+      White-label voice: refer to "the broadcaster" / "the production
+      team" if at all. No rooting, no partisan language, no
+      predictions beyond what the data directly supports.
+
+      You return THREE artifacts in one JSON object:
+
+        1. `markdown`: 3-paragraph wrap, teleprompter-ready.
+           - Paragraph 1: result framing + the decisive moment.
+           - Paragraph 2: shape of the game — possession, shots, xG
+             when present, who controlled which phase.
+           - Paragraph 3: standout individual performances tied to
+             concrete timeline events or stat entries.
+           - Plain Markdown only. No emoji. No exclamation marks.
+           - Lead with an H2 headline above the three paragraphs.
+
+        2. `text`: the same wrap rendered as plain text (no
+           Markdown), suitable for captioning. Preserve paragraph
+           breaks with blank lines.
+
+        3. `highlight_quotes`: EXACTLY 5 social-ready highlight quotes,
+           each ≤ 220 characters, each tied to a moment that actually
+           happened in the timeline or a stat that actually appears in
+           the statistics. No quotes attributed to real people — these
+           are broadcaster-voice highlight lines, NOT athlete or coach
+           quotes. Each entry: {position 1..5, angle, quote,
+           evidence}. `angle` is one of:
+             - decisive_moment
+             - shape_of_the_game
+             - standout_performer
+             - turning_point
+             - stat_spike
+           `evidence` is a short string naming the timeline event or
+           statistic that backs the quote.
+
+      ## Inputs
+
+      fixture:
+      {fixture}
+
+      statistics:
+      {statistics}
+
+      timeline:
+      {timeline}
+
+      xg:
+      {xg}
+
+    schema:
+      type: object
+      properties:
+        headline:
+          type: string
+          description: "Neutral post-match headline, ≤ 110 characters."
+        markdown:
+          type: string
+          description: "Teleprompter-ready Markdown wrap with H2 + 3 paragraphs."
+        text:
+          type: string
+          description: "Plain-text version of the same wrap, paragraph breaks preserved."
+        highlight_quotes:
+          type: array
+          description: "Exactly 5 social-ready highlight lines, broadcaster voice."
+          items:
+            type: object
+            properties:
+              position:
+                type: integer
+                description: "1..5, in the order angle is listed above."
+              angle:
+                type: string
+                enum:
+                  - decisive_moment
+                  - shape_of_the_game
+                  - standout_performer
+                  - turning_point
+                  - stat_spike
+              quote:
+                type: string
+                description: "≤ 220 characters, broadcaster voice, no real-person attribution."
+              evidence:
+                type: string
+                description: "Short string naming the timeline event or statistic that backs the quote."
+            required:
+              - position
+              - angle
+              - quote
+              - evidence
+      required:
+        - headline
+        - markdown
+        - text
+        - highlight_quotes
