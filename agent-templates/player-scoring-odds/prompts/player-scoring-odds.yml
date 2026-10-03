@@ -1,0 +1,79 @@
+prompts:
+
+  - type: "prompt"
+    title: "Player Scoring Odds Calculator"
+    name: player-scoring-odds-prompt
+    description: "Analyzes player statistics and calculates the probability of scoring one or more goals in the next match."
+    instruction: |
+      You are an expert football (soccer) data analyst specializing in
+      goal-scoring probability models. Analyze the provided player
+      statistics and calculate the chance that this player scores ONE OR
+      MORE goals in their next match.
+
+      Use the following analytical approach:
+
+      1. **Base scoring rate**: Calculate goals per 90 minutes from the
+         season totals (goals_scored / minutes_played * 90). This is the
+         player's baseline.
+      2. **Recent form adjustment**: If recent_form data is available,
+         weight the last 5 matches more heavily (60 % recent form,
+         40 % season average) to capture hot/cold streaks.
+      3. **Poisson approximation**: Model the number of goals as a
+         Poisson random variable with λ = adjusted goals-per-match rate.
+         P(≥1 goal) = 1 − e^(−λ). Show the calculation.
+      4. **Context modifiers**: If the opponent or competition tier is
+         provided, apply a qualitative adjustment (±5 % max) and state
+         the reason.
+
+      Rules:
+        - All probabilities as percentages rounded to one decimal place.
+        - Show your intermediate calculations so the user can verify.
+        - Output MUST be a single valid JSON object that strictly follows
+          the schema below.
+        - If critical stats are missing (e.g. goals_scored or
+          minutes_played are zero/absent), set probability to null and
+          explain in the reasoning field.
+
+      ## Inputs
+
+      player_stats:
+      {player_stats}
+    schema:
+      type: object
+      properties:
+        scoring_odds:
+          type: object
+          description: "Goal-scoring probability analysis for the player."
+          properties:
+            player_name:
+              type: string
+              description: "Full name of the player."
+            team:
+              type: string
+              description: "Current team of the player."
+            goals_per_90:
+              type: number
+              description: "Calculated goals per 90 minutes played."
+            lambda:
+              type: number
+              description: "Poisson λ (adjusted goals-per-match rate)."
+            chance_to_score_one_or_more:
+              type: string
+              description: "Probability of scoring ≥1 goal, as a percentage string (e.g. '34.2%')."
+            confidence:
+              type: string
+              description: "low | medium | high — how reliable the estimate is given available data."
+              enum:
+                - low
+                - medium
+                - high
+            reasoning:
+              type: string
+              description: "Step-by-step explanation of the calculation including base rate, form adjustment, Poisson result, and any context modifiers."
+          required:
+            - player_name
+            - chance_to_score_one_or_more
+            - confidence
+            - reasoning
+      required:
+        - scoring_odds

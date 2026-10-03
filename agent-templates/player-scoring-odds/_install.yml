@@ -1,0 +1,21 @@
+setup:
+  title: "Player Scoring Odds"
+  description: "Fetches player stats and calculates the probability of a player scoring one or more goals in an upcoming match."
+  category:
+    - custom-templates
+  estimatedTime: 2 minutes
+  features:
+    - "Accepts player statistics (goals, appearances, minutes, recent form)"
+    - "Calculates probability of scoring one or more goals"
+    - "Returns structured odds with confidence level and reasoning"
+  integrations:
+    - google-genai
+  status: available
+  value: "agent-templates/player-scoring-odds"
+  version: 1.0.0
+
+datasets:
+  - type: "workflow"
+    path: "workflows/player-scoring-odds.yml"
+  - type: "prompts"
+    path: "prompts/player-scoring-odds.yml"
