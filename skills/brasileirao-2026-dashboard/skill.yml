@@ -1,0 +1,30 @@
+skill:
+  name: "brasileirao-2026-dashboard"
+  title: "Brasileirão 2026 Dashboard"
+  description: "Static HTML dashboard with Chart.js graphs showing mock Brasileirão 2026 data (top scorers, points percentage, goals scatter, goals per round)."
+  version: "1.0.0"
+  category:
+    - "sports-data"
+    - "dashboard"
+    - "visualization"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+    - name: "skill-guide"
+      title: "Brasileirão 2026 Dashboard Guide"
+      filename: "SKILL.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-guide"
+        skill: "brasileirao-2026-dashboard"
+        output_kind: "html"
+        entry: "index.html"
+
+    - name: "dashboard-page"
+      title: "Dashboard HTML"
+      filename: "index.html"
+      filetype: "html"
+      metadata:
+        category: "dashboard"
+        skill: "brasileirao-2026-dashboard"
