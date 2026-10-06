@@ -462,6 +462,8 @@ The eleven archived storefront workflows never fail loudly: when they cannot ans
 
 Request-side codes set `archive.missing_capabilities` to `[]` — a request the caller can fix is not a missing capability of the archive. Only `archive_row_missing` / `archive_error` keep `["archived_response"]`. The gateway (`machina-client-api core/worldcup/gateway.py`) maps these to the HTTP codes above **before** any credit debit, and a non-2xx carries no ZeroClick `zc-usage`, so an unserved answer is never billed on either rail. Before 0.11.4 an empty body answered HTTP 200 with "No world-cup-2026-final-v3 archive row is available for …" and was charged (ZeroClick report, 2026-09-16).
 
+Since 0.11.5 a `worldcup-resolve` `id` with no row in a closed archive is `entity_not_found` (404), not `archive_row_missing` (503): resolve loads rows by exact id, so a miss means no archived entity carries that id. Spec 1.5.1 also gives the `id` property a real `examples` value (`1489371`). A prober that fills strings from the schema kept sending `{"id": "example"}` and read the 503 as an origin failure (ZeroClick report, 2026-10-06).
+
 
 ## Transport envelope (spec 1.5.0)
 

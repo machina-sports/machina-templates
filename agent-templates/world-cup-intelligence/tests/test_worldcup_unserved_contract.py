@@ -136,6 +136,37 @@ def test_resolve_requires_an_id(monkeypatch):
     assert result["response"]["coverage"]["accepted_fields"] == ["id"]
 
 
+@pytest.mark.parametrize("version", [CONNECTOR.FINAL_ARCHIVE_VERSION, V3])
+def test_unknown_resolve_id_is_not_found(monkeypatch, version):
+    # 2026-10-06: a prober sent {"id": "example"}; the closed archive answered
+    # "row missing" and the gateway turned it into a retryable 503.
+    _closed(monkeypatch)
+    result = _serve("worldcup-resolve", {"id": "example"}, version=version)
+    assert result["reason_code"] == "entity_not_found"
+    coverage = result["response"]["coverage"]
+    assert coverage["reason_code"] == "entity_not_found"
+    assert coverage["accepted_fields"] == ["id"]
+    assert "'example'" in coverage["reason"]
+    assert result["archive"]["missing_capabilities"] == []
+
+
+def test_migration_mode_resolve_miss_keeps_the_archive_label():
+    # No closure: the legacy crosswalk may still match the id.
+    result = _serve("worldcup-resolve", {"id": "example"}, manifest=[])
+    assert result["archive_status"] == "miss"
+    assert result["reason_code"] == "archive_row_missing"
+
+
+def test_yaml_workflow_unknown_resolve_id_is_not_found(monkeypatch):
+    _closed(monkeypatch)
+    outputs, store, connectors = execute_yaml("worldcup-resolve", {"id": "example"}, [], archive_version=V3)
+    # The gateway maps coverage.reason_code to HTTP: entity_not_found -> 404.
+    assert outputs["coverage"]["status"] == "unavailable"
+    assert outputs["coverage"]["reason_code"] == "entity_not_found"
+    assert outputs["workflow-status"] == "skipped"
+    assert connectors.external_calls == []
+
+
 def test_spotlight_requires_a_player_selector(monkeypatch):
     _closed(monkeypatch)
     result = _serve("worldcup-player-spotlight", {})
