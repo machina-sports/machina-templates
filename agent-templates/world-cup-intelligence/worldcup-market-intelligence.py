@@ -9430,6 +9430,17 @@ def serve_final_archive(request_data: dict[str, Any]) -> dict[str, Any]:
                 miss_status, version=version, reason_code="entity_selector_required",
                 accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint), warnings=[ENTITY_SELECTOR_REQUIRED_MESSAGE],
             )
+        elif endpoint == "worldcup-resolve" and closed:
+            # Resolve loads rows by exact id, and a closed archive is the whole
+            # tournament: no row means no archived entity carries this id. That
+            # is a 404 the caller can fix, not a gap to retry — a prober sending
+            # {"id": "example"} read the old 503 as an origin failure (ZeroClick,
+            # 2026-10-06). Migration mode keeps the label: legacy may still match.
+            return _final_archive_result(
+                miss_status, version=version, reason_code="entity_not_found",
+                accepted_fields=ARCHIVE_ACCEPTED_FIELDS.get(endpoint),
+                warnings=[f"No archived FIFA World Cup 2026 entity matched id {_text(request_params.get('id'))!r}."],
+            )
         elif endpoint == "worldcup-player-spotlight" and not _player_selector_supplied(request_params):
             return _final_archive_result(
                 miss_status, version=version, reason_code="player_selector_required",

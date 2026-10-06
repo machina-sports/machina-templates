@@ -1760,7 +1760,7 @@
   "info": {
     "description": "The canonical eleven-route World Cup 2026 storefront contract. The active runtime remains v2; the tested v3 contract is an inactive local publication candidate with the final published FIFA registration snapshot and raw-player reconciliation. Valid archive hits skip legacy work and archive errors fail closed.",
     "title": "Machina Sports World Cup Intelligence",
-    "version": "1.5.0"
+    "version": "1.5.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6200,6 +6200,9 @@
                 "properties": {
                   "id": {
                     "description": "Provider id or canonical Machina URN.",
+                    "examples": [
+                      "1489371"
+                    ],
                     "minLength": 1,
                     "type": "string"
                   }

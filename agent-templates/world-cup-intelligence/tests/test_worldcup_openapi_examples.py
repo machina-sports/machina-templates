@@ -121,4 +121,4 @@ def test_import_source_mirrors_the_buyer_facing_spec():
     assert strip(IMPORT_SOURCE) == strip(SPEC)
     assert IMPORT_SOURCE["servers"][0]["url"] == "https://api.machina.gg"
     assert SPEC["servers"][0]["url"].startswith("https://agents.machina.gg/")
-    assert SPEC["info"]["version"] == "1.5.0"
+    assert SPEC["info"]["version"] == "1.5.1"
