@@ -103,7 +103,8 @@ bills Claude under the GCP project.
 ## 1. Validate the model ids in the target Vertex project
 
 `allowed_models.chat` is seeded with the canonical current-gen bare ids
-(`claude-haiku-4-5`, `claude-sonnet-4-6`, `claude-sonnet-5`, `claude-opus-4-8`).
+(`claude-haiku-4-5`, `claude-sonnet-4-6`, `claude-sonnet-5`, `claude-opus-4-8`),
+plus the opt-in `claude-haiku-5-5` (§1a).
 Model Garden enablement is **per-project** — confirm which are enabled in the target
 project/region (`global`) before relying on them, e.g.:
 
@@ -114,6 +115,31 @@ gcloud ai model-garden models list --project <ENTAIN_VERTEX_PROJECT> \
 
 Override the list per environment if it differs (see §2). If a requested id is not
 enabled, the route returns a sanitized `provider_unavailable` / `provider_bad_response`.
+
+### 1a. Claude Haiku 5.5 (opt-in only)
+
+`claude-haiku-5-5` is allowlisted for `vertex_anthropic` chat on the `global`
+endpoint, per the [Google Cloud Claude Haiku 5.5 partner-model page](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/haiku-5-5).
+No repository default, profile, fallback, or remap references it. Enable the
+provider (§2), then select it explicitly as below. Operator-owned runtime policy
+may also select it through the existing remap mechanism (§4):
+
+```yaml
+- type: prompt
+  connector:
+    name: machina-ai
+    command: invoke_prompt
+    provider: vertex_anthropic
+    model: claude-haiku-5-5
+    location: global
+  inputs:
+    prompt: "$.get('prompt')"
+```
+
+Validation status: offline tests only (`tests/test_router.py::TestVertexAnthropicRoute`)
+— policy routing, `list_models`, and model forwarding into a **mocked**
+`ChatAnthropicVertex`. No live Vertex call has been made; a live receipt
+(§3, with `"model": "claude-haiku-5-5"`) is still required in the target project.
 
 ## 2. Enable (per environment)
 

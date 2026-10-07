@@ -281,6 +281,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
                     "claude-sonnet-4-6",
                     "claude-sonnet-5",
                     "claude-opus-4-8",
+                    # Opt-in only: not referenced by any default, profile, or fallback.
+                    "claude-haiku-5-5",
                 ],
             },
         },

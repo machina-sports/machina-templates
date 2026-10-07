@@ -1555,6 +1555,75 @@ class TestVertexAnthropicRoute:
         assert result["metadata"]["selected_model"] == "claude-haiku-4-5"
         assert result["metadata"]["route_reason"] == "remap:capability:chat"
 
+    def test_haiku_5_5_explicit_opt_in_routes(self):
+        result = router.invoke_prompt(
+            {"_runtime": self._runtime(), "provider": "vertex_anthropic", "model": "claude-haiku-5-5", "prompt": "hi"}
+        )
+        assert result["metadata"].get("error_class") is None
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_anthropic"
+        assert result["metadata"]["selected_model"] == "claude-haiku-5-5"
+        assert result["metadata"]["route_reason"] == "explicit_provider"
+
+    def test_haiku_5_5_rejected_while_provider_dormant(self):
+        result = router.invoke_prompt(
+            {"_runtime": FakeRuntime(), "provider": "vertex_anthropic", "model": "claude-haiku-5-5", "prompt": "hi"}
+        )
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] == "policy_provider_not_allowed"
+
+    def test_haiku_5_5_rejected_on_wrong_provider_or_capability(self):
+        gemini_route = router.invoke_prompt(
+            {"_runtime": self._runtime(), "provider": "vertex_ai", "model": "claude-haiku-5-5", "prompt": "hi"}
+        )
+        assert gemini_route["metadata"]["error_class"] == "policy_model_not_allowed"
+        embedding = router.invoke_embedding(
+            {"_runtime": self._runtime(), "provider": "vertex_anthropic", "model": "claude-haiku-5-5", "text": "hi"}
+        )
+        assert embedding["status"] is False
+        assert embedding["metadata"]["error_class"] == "unsupported_capability"
+
+    def test_list_models_exposes_haiku_5_5_only_when_enabled(self):
+        entry = {"provider": "vertex_anthropic", "model": "claude-haiku-5-5", "capability": "chat", "enabled": True}
+        assert entry in router.list_models({"_runtime": self._runtime()})["data"]
+        assert entry not in router.list_models({"_runtime": FakeRuntime()})["data"]
+
+    def test_haiku_5_5_is_opt_in_only(self):
+        conf = router.DEFAULT_CONFIG["providers"]["vertex_anthropic"]
+        assert conf["enabled"] is False
+        assert conf["location"] == "global"
+        assert conf["allowed_models"]["chat"] == [
+            "claude-haiku-4-5",
+            "claude-sonnet-4-6",
+            "claude-sonnet-5",
+            "claude-opus-4-8",
+            "claude-haiku-5-5",
+        ]
+        for section in ("defaults", "profiles", "fallbacks", "remaps"):
+            assert "claude-haiku-5-5" not in json.dumps(router.DEFAULT_CONFIG.get(section, {}))
+        # Enabling Claude does not move default chat off the Gemini route.
+        result = router.invoke_prompt({"_runtime": self._runtime(), "prompt": "hi"})
+        assert result["metadata"]["selected_provider"] == "vertex_ai"
+        assert result["metadata"]["selected_model"] == "gemini-3.5-flash-lite"
+
+    def test_haiku_5_5_reaches_chat_anthropic_vertex_factory(self, monkeypatch):
+        monkeypatch.delenv("TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL", raising=False)
+        monkeypatch.delenv("TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID", raising=False)
+        sdk = MagicMock()
+        sdk.return_value.invoke.return_value = "pong"
+        # No vertex_anthropic fake: the router builds the real VertexAnthropicAdapter.
+        runtime = FakeRuntime(config={"providers": {"vertex_anthropic": {"enabled": True}}})
+        with patch.dict(sys.modules, {"langchain_google_vertexai.model_garden": SimpleNamespace(ChatAnthropicVertex=sdk)}):
+            result = router.invoke_prompt(
+                {"_runtime": runtime, "provider": "vertex_anthropic", "model": "claude-haiku-5-5", "prompt": "hi"}
+            )
+            assert result["status"] is True, result
+            assert result["data"].invoke("ping") == "pong"
+        assert sdk.call_args.kwargs["model_name"] == "claude-haiku-5-5"
+        assert sdk.call_args.kwargs["location"] == "global"
+        sdk.return_value.invoke.assert_called_once()
+        assert sdk.return_value.invoke.call_args.args[0] == "ping"
+
 
 class TestCerebrasFastRoute:
     def _runtime(self, cerebras, groq, **config):
