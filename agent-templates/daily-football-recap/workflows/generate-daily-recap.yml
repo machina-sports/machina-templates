@@ -33,14 +33,17 @@ workflow:
   tasks:
 
     # resolve yesterday's date if not provided
+    # `datetime` (the class) and `timedelta` are in the workflow evaluator's
+    # namespace; `__import__` and dunder access (`__sub__`) are not, and the
+    # AST-whitelisted evaluator rejects them. In `outputs`, `$.get` reads this
+    # task's (empty) response, so the caller's `recap_date` comes from `context`.
     - type: expression
       name: resolve-recap-date
       description: "Resolve the target date for the recap (defaults to yesterday, UTC)."
       inputs:
         recap_date: "$.get('recap_date')"
       outputs:
-        target_date: |
-          __import__('datetime').datetime.utcnow().date().__sub__(__import__('datetime').timedelta(days=1)).isoformat() if not $.get('recap_date') else $.get('recap_date')
+        target_date: "context.get('recap_date') or (datetime.utcnow() - timedelta(days=1)).date().isoformat()"
 
     # fetch Bundesliga fixtures
     - type: connector
