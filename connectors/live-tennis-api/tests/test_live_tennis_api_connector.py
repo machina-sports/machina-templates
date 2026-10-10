@@ -1,17 +1,22 @@
 """Offline contract tests for the Live Tennis API connector.
 
-No network, no key. HTTP is mocked at `requests.get`; the break-point
-derivation is pure. The descriptor and install manifest are pinned so a
-renamed command or a missing dataset shows up here rather than at import
-time on a pod.
+No network, no key. HTTP is mocked at `requests.get`, or — for the
+hardening tests — at `HTTPAdapter.send`, so real Requests URL preparation,
+header validation and redirect handling run; the break-point derivation is
+pure. The descriptor and install manifest are pinned so a renamed command or
+a missing dataset shows up here rather than at import time on a pod.
 """
 
 import importlib.util
+import json
 import os
+import socket
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+import requests
 import yaml
 
 CONNECTOR_DIR = Path(__file__).resolve().parents[1]
@@ -22,6 +27,55 @@ _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 
 KEY = "test-key-never-real"
+BASE = _module.BASE_URL
+
+
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch):
+    """Fail any test that tries to resolve or connect, even if the connector
+    swallows the resulting error."""
+    attempts = []
+
+    def deny(*args, **kwargs):
+        attempts.append(args)
+        raise OSError("network disabled in tests")
+
+    for name in ("getaddrinfo", "gethostbyname", "create_connection"):
+        monkeypatch.setattr(socket, name, deny)
+    # Keeps Requests' proxy-bypass check off the OS resolver (macOS sysconf).
+    monkeypatch.setenv("no_proxy", "*")
+    yield
+    assert attempts == [], attempts
+
+
+@contextmanager
+def wire(*replies):
+    """Replace only `HTTPAdapter.send`; yields every PreparedRequest it receives.
+
+    Each reply is `(status, json_body_or_None, headers)` or an exception to
+    raise. Once the replies run out, every further send answers 200 `{}`.
+    """
+    sent = []
+    replies = list(replies)
+
+    def send(adapter, request, **kwargs):
+        sent.append(request)
+        reply = replies.pop(0) if replies else (200, {}, {})
+        if isinstance(reply, Exception):
+            raise reply
+        status, body, headers = reply
+        response = requests.Response()
+        response.status_code = status
+        response.headers.update(headers)
+        response._content = b"" if body is None else json.dumps(body).encode()
+        response._content_consumed = True
+        response.encoding = "utf-8"
+        response.request = request
+        response.url = request.url
+        return response
+
+    with patch.object(requests.adapters.HTTPAdapter, "send", send):
+        yield sent
 
 
 def read_yaml(path):
@@ -303,3 +357,120 @@ def test_generic_request_fills_the_id_and_passes_the_query_through():
     assert get.call_args.args[0].endswith("/matches/99/events")
     assert get.call_args.kwargs["params"] == {"limit": 5}
     assert result["data"]["response"] == body
+
+
+# ------------------------------------- hardening (real Requests pipeline)
+
+
+@pytest.mark.parametrize("path, path_id, expected", [
+    ("/matches/{id}", 42, "/matches/42"),
+    ("/matches/{id}", "42", "/matches/42"),
+    ("/matches/{id}/events", 99, "/matches/99/events"),
+    ("/players/{id}", "123456", "/players/123456"),
+    ("/history/archive/matches/{id}", 7, "/history/archive/matches/7"),
+    ("/markets/{id}/prices", "8", "/markets/8/prices"),
+])
+def test_generic_request_accepts_numeric_path_ids(path, path_id, expected):
+    with wire((200, {"id": 1}, {})) as sent:
+        result = _module.invoke_request({"params": {"api_key": KEY, "path": path, "path_id": path_id}})
+    assert [r.url for r in sent] == [BASE + expected]
+    assert sent[0].headers["X-API-Key"] == KEY
+    assert result == {"status": True, "data": {"response": {"id": 1}}}
+
+
+HOSTILE_PATH_IDS = [
+    # traversal Requests normalises into off-list routes
+    "../webhooks", "../ws-token", "../../../../../outside-api", "1/../../webhooks", "..", ".",
+    # delimiters
+    "1/2", "1?token=x", "1#frag", "1;x", "1\\..\\webhooks", "1\n",
+    # percent-encoded escapes (Requests unquotes %2e back to ".")
+    "%2e%2e", "%2e%2e%2fwebhooks", "1%2f..%2fwebhooks", "%252e%252e",
+    # not a plain decimal id
+    "-1", "+1", "1_000", "1e3", "0x10", "٤٢",
+    # malformed types
+    True, False, 1.0, 1.5, -1, [1], {"id": 1}, b"1",
+]
+
+
+@pytest.mark.parametrize("path_id", HOSTILE_PATH_IDS, ids=repr)
+def test_generic_request_refuses_non_numeric_path_ids_before_any_call(path_id):
+    with wire() as sent:
+        result = _module.invoke_request({"params": {"api_key": KEY, "path": "/matches/{id}", "path_id": path_id}})
+    assert [r.url for r in sent] == []
+    assert result["status"] is False
+    assert result["data"]["error"] == "path_not_allowed"
+
+
+@pytest.mark.parametrize("command, id_param", [
+    ("get_match", "match_id"), ("get_match_score", "match_id"), ("get_player", "player_id"),
+])
+def test_dedicated_id_commands_refuse_traversal_ids_before_any_call(command, id_param):
+    with wire() as sent:
+        result = getattr(_module, command)({"params": {"api_key": KEY, id_param: "1/../../webhooks"}})
+    assert sent == []
+    assert result["status"] is False
+
+
+@pytest.mark.parametrize("status, location", [
+    (302, "https://review-target.invalid/collect"),
+    (307, "https://review-target.invalid/collect"),
+    (308, "https://review-target.invalid/collect"),
+    (301, "http://api.livetennisapi.com/api/public/v1/usage"),     # scheme downgrade
+    (302, "/api/public/v1/webhooks"),                              # same origin, off the allow-list
+    (303, "https://api.livetennisapi.com/api/public/v1/ws-token"),
+])
+def test_redirects_are_refused_and_never_followed(status, location):
+    with wire((status, None, {"Location": location})) as sent:
+        result = _module.get_usage({"params": {"api_key": KEY}})
+    assert [r.url for r in sent] == [BASE + "/usage"]
+    assert result["status"] is False
+    assert result["data"]["error"] == "redirect_refused"
+    assert result["data"]["status_code"] == status
+    assert KEY not in repr(result)
+
+
+@pytest.mark.parametrize("api_key", [
+    KEY + "\nX-Injected: 1",
+    KEY + "\rX-Injected: 1",
+    KEY + "\x00",
+    KEY + "’",  # not latin-1: http.client would raise an uncaught UnicodeEncodeError
+    12345678,
+    True,
+    [KEY],
+    {"value": KEY},
+], ids=repr)
+def test_malformed_api_keys_are_refused_before_any_call_without_echo(api_key):
+    with wire() as sent:
+        result = _module.get_usage({"params": {"api_key": api_key}})
+    assert sent == []
+    assert result["status"] is False
+    assert result["data"]["error"] == "invalid_api_key"
+    for secret in (KEY, "X-Injected", "12345678"):
+        assert secret not in repr(result)
+
+
+@pytest.mark.parametrize("exc_type", [
+    requests.exceptions.ConnectionError,
+    requests.exceptions.SSLError,
+    requests.exceptions.ProxyError,
+    requests.exceptions.ChunkedEncodingError,
+    requests.exceptions.InvalidURL,
+    requests.exceptions.RequestException,
+])
+def test_transport_errors_never_echo_exception_text_or_key(exc_type):
+    with wire(exc_type(f"upstream detail X-API-Key: {KEY}")) as sent:
+        result = _module.get_usage({"params": {"api_key": KEY}})
+    assert len(sent) == 1
+    assert result["status"] is False
+    assert result["data"]["error"] == "request_failed"
+    assert "upstream detail" not in repr(result)
+    assert KEY not in repr(result)
+
+
+def test_transport_timeout_is_typed_sent_once_and_never_echoes_the_key():
+    with wire(requests.exceptions.ReadTimeout(f"upstream detail {KEY}")) as sent:
+        result = _module.get_usage({"params": {"api_key": KEY}})
+    assert len(sent) == 1
+    assert result["status"] is False
+    assert result["data"]["error"] == "timeout"
+    assert KEY not in repr(result)

@@ -27,6 +27,8 @@ https://docs.livetennisapi.com/openapi.yaml). Base URL verified against
 that spec on 2026-09-12.
 """
 
+import re
+
 import requests
 
 BASE_URL = "https://api.livetennisapi.com/api/public/v1"
@@ -132,7 +134,9 @@ def _resolve_path(path, path_id=None):
     path = path.rstrip("/") or "/"
     if path in ALLOWED_PATHS and "{id}" not in path:
         return path
-    if path_id is None or path_id == "":
+    # Documented ids are numeric; anything else could smuggle "../" or delimiters.
+    if isinstance(path_id, bool) or not isinstance(path_id, (int, str)) \
+            or not re.fullmatch(r"[0-9]{1,20}", str(path_id)):
         return None
     for template in ALLOWED_PATHS:
         if template == path and "{id}" in template:
@@ -161,16 +165,25 @@ def _request(api_key, path, query=None, timeout=DEFAULT_TIMEOUT):
             "context-variables; never commit it.",
             error="missing_api_key",
         )
+    if not isinstance(api_key, str) or not re.fullmatch(r"[\x21-\x7e]+", api_key):
+        return _error("api_key must be a printable ASCII string", error="invalid_api_key")
 
     url = f"{BASE_URL}{path}"
     headers = {"X-API-Key": api_key, "Accept": "application/json", "User-Agent": USER_AGENT}
 
     try:
-        response = requests.get(url, params=_clean_query(query), headers=headers, timeout=timeout)
+        response = requests.get(url, params=_clean_query(query), headers=headers, timeout=timeout,
+                                allow_redirects=False)
     except requests.exceptions.Timeout:
         return _error(f"Request timed out after {timeout}s", error="timeout", path=path)
     except requests.exceptions.RequestException as exc:
-        return _error(f"Request failed: {exc}", error="request_failed", path=path)
+        # Never echo the exception text: header errors quote the key verbatim.
+        return _error(f"Request failed ({type(exc).__name__})", error="request_failed", path=path)
+
+    # A redirect would carry X-API-Key to wherever Location points.
+    if 300 <= response.status_code < 400:
+        return _error("Redirect refused; the connector only calls the Live Tennis API directly.",
+                      error="redirect_refused", path=path, status_code=response.status_code)
 
     try:
         body = response.json()
@@ -539,7 +552,7 @@ def invoke_request(request_data):
     Params:
         api_key (str, required)
         path (str, required): one of ALLOWED_PATHS, e.g. "/matches/{id}/events"
-        path_id (str|int): fills `{id}` when the path has one
+        path_id (str|int): numeric id that fills `{id}` when the path has one
         query (dict, optional): query parameters, passed through
 
     Returns data.response = the provider body, unmodified. Any path outside
