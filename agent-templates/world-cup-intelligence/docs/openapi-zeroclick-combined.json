@@ -1758,7 +1758,10 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 512,
-            "description": "`https://polymarket.com/event/<slug>[/<market-slug>]` or `https://kalshi.com/markets/<series>/<slug>/<event-ticker>`, single games only.\n"
+            "description": "`https://polymarket.com/event/<slug>[/<market-slug>]` or `https://kalshi.com/markets/<series>/<slug>/<event-ticker>`, single games only.\n",
+            "examples": [
+              "https://polymarket.com/event/nfl-ne-chi-2026-10-23"
+            ]
           }
         }
       },
