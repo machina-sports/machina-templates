@@ -1681,23 +1681,56 @@ def invoke_video(request_data):
     }
 
 
+TTS_DEFAULT_MODEL = "gemini-2.5-flash-tts"
+
+# The Gemini API (AI Studio) serves the 2.5 TTS models under preview ids; the
+# bare ids are the Vertex AI / Cloud TTS names that workflows already pass.
+_AI_STUDIO_TTS_MODEL_ALIASES = {
+    "gemini-2.5-flash-tts": "gemini-2.5-flash-preview-tts",
+    "gemini-2.5-pro-tts": "gemini-2.5-pro-preview-tts",
+}
+
+
+def _is_structured_tts_model(model_id):
+    """True for Gemini 3.8+ TTS models (gemini-3.8-flash-tts, gemini-3.8-flash-lite-tts).
+
+    From 3.8 on, Google reads the text as a verbatim transcript (a style
+    prefix would be spoken aloud, so it goes in `speechMetadata.style`),
+    selects the voice with `voiceConfig.voice`, returns a complete WAV file
+    instead of raw PCM, and serves the models on Vertex AI from `global` only.
+    """
+    match = re.match(r"^gemini-(\d+)(?:\.(\d+))?-.*tts", model_id or "")
+    if not match:
+        return False
+    return (int(match.group(1)), int(match.group(2) or 0)) >= (3, 8)
+
+
 def invoke_tts(request_data):
     """
-    Text-to-Speech using Gemini TTS via Vertex AI API.
+    Text-to-Speech using Gemini TTS (Vertex AI by default, AI Studio opt-in).
 
     Parameters (via inputs in workflows):
     - text: Required - Text content to synthesize
     - voice_name: Voice to use (default: "Kore")
-    - model_id: TTS model (default: "gemini-2.5-flash-tts")
-    - language_code: BCP-47 language code (default: "en-us")
-    - prompt: Optional styling instructions (e.g., "Say in a cheerful tone")
-    - location: Vertex AI region (default: "us-central1")
+    - model_id: TTS model (default: "gemini-2.5-flash-tts"). Also accepts
+      "gemini-3.8-flash-tts" and "gemini-3.8-flash-lite-tts".
+    - language_code: Accepted for compatibility but not sent; Gemini TTS
+      detects the language from the text.
+    - prompt: Optional styling instructions (e.g., "Say in a cheerful tone").
+      Prefixed to the text for pre-3.8 models, sent as speechMetadata.style
+      for 3.8+ models.
+    - location: Vertex AI location (default: "us-central1"; "global" for
+      3.8+ models, the only location they are served from)
+    - provider: "vertex_ai" (default) or "ai_studio". Read from params only,
+      so existing callers keep the Vertex AI path.
 
     Authentication (via context-variables headers):
-    - credential + project_id: Vertex AI service account (required)
+    - vertex_ai: credential + project_id (service account)
+    - ai_studio: api_key
 
     Returns:
     - file_path: Path to generated WAV audio file
+    - model_id, provider, duration_seconds
     """
     from google.auth.transport.requests import Request as AuthRequest
 
@@ -1706,74 +1739,107 @@ def invoke_tts(request_data):
 
     credential = headers.get("credential")
     project_id = headers.get("project_id")
+    api_key = headers.get("api_key")
 
     text = params.get("text")
     voice_name = params.get("voice_name") or "Kore"
-    model_id = params.get("model_id") or "gemini-2.5-flash-tts"
+    model_id = params.get("model_id") or TTS_DEFAULT_MODEL
     language_code = params.get("language_code") or "en-us"
     style_prompt = params.get("prompt")
-    location = params.get("location") or "us-central1"
+    provider = (params.get("provider") or "vertex_ai").lower()
+    structured = _is_structured_tts_model(model_id)
+    location = params.get("location") or ("global" if structured else "us-central1")
 
-    if not credential or not project_id:
+    if provider not in ("vertex_ai", "ai_studio"):
+        return {"status": False, "message": f"Invalid provider: {provider}. Must be 'vertex_ai' or 'ai_studio'."}
+
+    if provider == "vertex_ai" and (not credential or not project_id):
         return {"status": False, "message": "Missing Vertex AI credentials (credential + project_id required)."}
+
+    if provider == "ai_studio" and not api_key:
+        return {"status": False, "message": "API key is required for AI Studio."}
 
     if not text:
         return {"status": False, "message": "Missing text parameter."}
 
     try:
-        # Parse credentials
-        cred = credential
-        if isinstance(cred, str):
-            try:
-                cred = json.loads(cred)
-            except json.JSONDecodeError:
-                return {"status": False, "message": "credential must be valid JSON"}
+        if provider == "vertex_ai":
+            # Parse credentials
+            cred = credential
+            if isinstance(cred, str):
+                try:
+                    cred = json.loads(cred)
+                except json.JSONDecodeError:
+                    return {"status": False, "message": "credential must be valid JSON"}
 
-        credentials = service_account.Credentials.from_service_account_info(
-            cred,
-            scopes=["https://www.googleapis.com/auth/cloud-platform"],
-        )
-        credentials.refresh(AuthRequest())
+            credentials = service_account.Credentials.from_service_account_info(
+                cred,
+                scopes=["https://www.googleapis.com/auth/cloud-platform"],
+            )
+            credentials.refresh(AuthRequest())
 
-        # Build content text
-        if style_prompt:
-            content_text = f"{style_prompt}: {text}"
+            host = "aiplatform.googleapis.com" if location == "global" else f"{location}-aiplatform.googleapis.com"
+            url = (
+                f"https://{host}/v1"
+                f"/projects/{project_id}/locations/{location}"
+                f"/publishers/google/models/{model_id}:generateContent"
+            )
+            request_headers = {
+                "Authorization": f"Bearer {credentials.token}",
+                "Content-Type": "application/json",
+            }
         else:
-            content_text = text
+            api_model = _AI_STUDIO_TTS_MODEL_ALIASES.get(model_id, model_id)
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{api_model}:generateContent"
+            request_headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
 
-        print(f"TTS: model={model_id}, voice={voice_name}, lang={language_code}, location={location}, text_len={len(text)}")
-
-        # Vertex AI API endpoint
-        url = (
-            f"https://{location}-aiplatform.googleapis.com/v1"
-            f"/projects/{project_id}/locations/{location}"
-            f"/publishers/google/models/{model_id}:generateContent"
+        print(
+            f"TTS: provider={provider}, model={model_id}, voice={voice_name}, lang={language_code}, "
+            f"location={location}, text_len={len(text)}"
         )
 
-        payload = {
-            "contents": {
-                "role": "user",
-                "parts": {"text": content_text},
-            },
-            "generationConfig": {
-                "speechConfig": {
-                    "voiceConfig": {
-                        "prebuiltVoiceConfig": {
-                            "voiceName": voice_name
-                        }
-                    }
+        if structured:
+            part = {"text": text}
+            if style_prompt:
+                part["speechMetadata"] = {"style": style_prompt}
+            payload = {
+                "contents": [{"role": "user", "parts": [part]}],
+                "generationConfig": {
+                    "responseModalities": ["AUDIO"],
+                    "speechConfig": {"voiceConfig": {"voice": voice_name}},
                 },
-                "temperature": 2.0,
-            },
-        }
+            }
+        else:
+            # Build content text
+            if style_prompt:
+                content_text = f"{style_prompt}: {text}"
+            else:
+                content_text = text
+
+            payload = {
+                "contents": {
+                    "role": "user",
+                    "parts": {"text": content_text},
+                },
+                "generationConfig": {
+                    "speechConfig": {
+                        "voiceConfig": {
+                            "prebuiltVoiceConfig": {
+                                "voiceName": voice_name
+                            }
+                        }
+                    },
+                    "temperature": 2.0,
+                },
+            }
+            if provider == "ai_studio":
+                # The Gemini API rejects TTS requests that do not ask for AUDIO.
+                payload["generationConfig"]["responseModalities"] = ["AUDIO"]
 
         response = requests.post(
             url,
             json=payload,
-            headers={
-                "Authorization": f"Bearer {credentials.token}",
-                "Content-Type": "application/json",
-            },
+            headers=request_headers,
             timeout=120,
         )
 
@@ -1801,23 +1867,34 @@ def invoke_tts(request_data):
 
         audio_data = base64.b64decode(audio_b64)
 
-        # Save as WAV (Vertex AI returns PCM 24kHz 16-bit)
         temp_dir = tempfile.mkdtemp()
         save_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.wav")
 
-        with wave.open(save_file_path, "wb") as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(24000)
-            wf.writeframes(audio_data)
+        if audio_data[:4] == b"RIFF":
+            # Gemini 3.8+ returns a complete WAV by default; wrapping it again
+            # would play its header as noise.
+            with open(save_file_path, "wb") as f:
+                f.write(audio_data)
+            with wave.open(save_file_path, "rb") as wf:
+                audio_duration = wf.getnframes() / float(wf.getframerate())
+        else:
+            # Save as WAV (pre-3.8 models return PCM 24kHz 16-bit)
+            with wave.open(save_file_path, "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(24000)
+                wf.writeframes(audio_data)
 
-        audio_duration = len(audio_data) / (24000 * 2)
+            audio_duration = len(audio_data) / (24000 * 2)
         print(f"TTS: WAV saved to {save_file_path} ({audio_duration:.1f}s, {len(audio_data)} bytes)")
 
         return {
             "status": True,
             "data": {
                 "file_path": save_file_path,
+                "model_id": model_id,
+                "provider": provider,
+                "duration_seconds": round(audio_duration, 2),
             },
             "message": "Text to speech converted and saved successfully.",
         }
