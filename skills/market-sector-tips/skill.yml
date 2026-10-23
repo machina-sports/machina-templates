@@ -1,0 +1,31 @@
+skill:
+  name: "market-sector-tips"
+  title: "Market Sector Tips"
+  description: "Organizes sports prediction markets by sector (sport, market type) and generates actionable market tips for each sector using AI analysis."
+  version: "1.0.0"
+  category:
+    - "prediction-markets"
+    - "sports"
+    - "analytics"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+    - name: "skill-guide"
+      title: "Market Sector Tips Guide"
+      filename: "SKILL.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-guide"
+        skill: "market-sector-tips"
+
+  workflows:
+    - name: "market-sector-tips"
+      description: "Fetches markets from Polymarket, groups by sector, and generates AI-powered tips."
+      inputs:
+        tag_id: "$.get('tag_id', 1)"
+        limit: "$.get('limit', 100)"
+      outputs:
+        sector_tips: "$.get('sector_tips', [])"
+        sectors_summary: "$.get('sectors_summary', '')"
+        workflow-status: "$.get('workflow-status')"
