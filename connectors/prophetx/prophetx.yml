@@ -1,0 +1,18 @@
+connector:
+  name: "prophetx"
+  description: "ProphetX Affiliate API - Authenticated read-only market data (tournaments, events, markets with odds/liquidity) plus official Auto-Fill handoff links. No wager execution."
+  filename: "prophetx.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Get Tournaments"
+      value: "get_tournaments"
+    - name: "Get Sport Events"
+      value: "get_sport_events"
+    - name: "Get Markets"
+      value: "get_markets"
+    - name: "Get Multiple Markets"
+      value: "get_multiple_markets"
+    - name: "Build Auto-Fill Link"
+      value: "build_autofill_link"
+    - name: "Health"
+      value: "health"
