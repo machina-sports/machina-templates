@@ -1,0 +1,8 @@
+connector:
+  name: "fact-articles-rank"
+  description: "Score every fact by how far it is from normal (params: facts_docs)."
+  filename: "rank.py"
+  filetype: "pyscript"
+  commands:
+    - name: "rank"
+      value: "invoke_rank"

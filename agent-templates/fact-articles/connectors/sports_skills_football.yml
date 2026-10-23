@@ -1,0 +1,8 @@
+connector:
+  name: "fact-articles-sports-skills-football"
+  description: "Fetch one football competition's round (local date range) plus closed results and standings from sports-skills, as the fact-articles dataset. Params: competition_id, date_from, date_to (YYYY-MM-DD), timezone_offset_hours."
+  filename: "sports_skills_football.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Fetch round"
+      value: "invoke_fetch_round"

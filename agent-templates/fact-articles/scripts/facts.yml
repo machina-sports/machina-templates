@@ -1,0 +1,8 @@
+connector:
+  name: "fact-articles-facts"
+  description: "Build the facts docs of a round from the connector dataset (params: dataset, contract, client)."
+  filename: "facts.py"
+  filetype: "pyscript"
+  commands:
+    - name: "facts"
+      value: "invoke_facts"

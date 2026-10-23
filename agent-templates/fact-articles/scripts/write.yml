@@ -1,0 +1,8 @@
+connector:
+  name: "fact-articles-write"
+  description: "Write the article JSON from a planned facts doc (params: facts_doc, client). Backend claude-cli is local-only."
+  filename: "write.py"
+  filetype: "pyscript"
+  commands:
+    - name: "write"
+      value: "invoke_write"

@@ -1,0 +1,30 @@
+# Demo client: Brazilian Série A previews in pt-BR. Nothing is published; output is local files.
+site_name: "Prévias Ancoradas (demo)"
+language: pt-BR
+author: {type: Organization, name: "Redação Prévias Ancoradas"}
+data_source_label: "sports-skills football (ESPN open data)"
+disclosure: "Texto gerado por IA a partir de dados abertos; cada frase cita o dado de que veio."
+
+client: demo-ptbr
+connector: sports_skills_football
+contract: football_preview
+sport: Futebol                             # match fact value, for the page's JSON-LD
+competition_id: serie-a-brazil
+competition_name: "Brasileirão Série A"   # shown in the match fact; the feed calls it "Serie A Brazil"
+timezone_offset_hours: -3
+timezone_label: "Brasília"
+relegation_spots: 4
+
+# A team is called by the name in the facts. These fail unless the word is in the cited facts,
+# the venue/city or an official team name ("Mineirão" and "Belo Horizonte" are fine).
+nicknames: ['colorad', 'tricolor', 'alvinegr', 'alviverd', 'rubro-?negr', 'alvirrubr', 'cruzmaltin', 'carioca',
+  'paulista', 'ga[uú]ch', 'baian', 'mineir', 'paranaense', 'catarinense', 'tim[aã]o', 'verd[aã]o', 'meng[aã]o',
+  '\bgalo\b', '\bpeixe\b', 'furac[aã]o', '\ble[aã]o\b', '\braposa\b', '\bfog[aã]o\b', '\bvoz[aã]o\b',
+  '\bcoxa\b', '\bverdinho\b', 'massa bruta', '\bchape\b']
+
+compliance:
+  forbidden: ['\bodds?\b', palpite, favorit, oportunidade, '\baposta', cotaç]
+
+writer: {backend: claude-cli, model: sonnet}
+verifier_model: sonnet   # entailment judge (layer b of scripts/verify.py)
+output_dir: ~/machina/entain/fact-articles-out
