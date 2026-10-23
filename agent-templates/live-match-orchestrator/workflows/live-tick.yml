@@ -1,0 +1,106 @@
+workflow:
+
+  name: live-match-orchestrator-live-tick
+  title: Live Match Orchestrator — Live Tick
+  description: |
+    Single poll of a live fixture. Pulls the current timeline + state
+    from `sports-skills.football`, filters to "card-worthy" events
+    (goals, red cards, substitutions, big chances) that occurred AFTER
+    the optional `since_minute` watermark, and asks Gemini for a
+    one-line broadcaster narrative per event. Call repeatedly from a
+    scheduler during the match; pass the previous call's `latest_minute`
+    back in as `since_minute` to avoid duplicates.
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    event_id: "$.get('event_id')"
+    since_minute: "$.get('since_minute', 0)"
+
+  outputs:
+    event_id: "$.get('event_id')"
+    since_minute: "$.get('since_minute', 0)"
+    fixture_state: "$.get('fixture_state', {})"
+    score: "$.get('score', {})"
+    status: "$.get('status', {})"
+    timeline: "$.get('timeline', [])"
+    new_events_raw: "$.get('filtered', [])"
+    new_events: "$.get('cards', [])"
+    cards: "$.get('cards', [])"
+    latest_minute: "$.get('latest_minute', $.get('since_minute', 0))"
+    workflow-status: "'executed'"
+
+  tasks:
+
+    # 1. Snapshot the fixture (status, score, period)
+    - type: connector
+      name: fetch-event-summary
+      description: Current fixture state — score, period, clock.
+      condition: "$.get('event_id') is not None"
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_event_summary'"
+        event_id: "$.get('event_id')"
+      outputs:
+        fixture_state: "$"
+        score: "{'home': ($.get('home_team') or ($.get('competitors', [{}])[0] if $.get('competitors') else {})).get('score'), 'away': ($.get('away_team') or ($.get('competitors', [{}, {}])[1] if len($.get('competitors', [])) > 1 else {})).get('score')}"
+        status: "$.get('status', {})"
+
+    # 2. Pull the timeline AND filter inline to events past the watermark.
+    #    Filter logic stays in this task's `outputs` expressions —
+    #    restricted-Python comprehensions are safe, no stdlib imports.
+    - type: connector
+      name: fetch-event-timeline
+      description: Full event timeline (goals, cards, subs, key chances).
+      condition: "$.get('event_id') is not None"
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_event_timeline'"
+        event_id: "$.get('event_id')"
+      outputs:
+        timeline: "$ if isinstance($, list) else $.get('events', $.get('timeline', []))"
+        filtered: |
+          [
+            e for e in ($ if isinstance($, list) else $.get('events', $.get('timeline', [])))
+            if isinstance(e, dict)
+            and (e.get('type') or e.get('event_type') or '').lower().replace('_', '-') in [
+              'goal', 'own-goal', 'penalty-goal', 'red-card', 'second-yellow',
+              'substitution', 'sub', 'big-chance', 'penalty-miss', 'var'
+            ]
+            and float(str(e.get('minute') or e.get('time') or e.get('clock') or 0).split('+')[0] or 0) > float($.get('since_minute', 0))
+          ]
+        latest_minute: |
+          max(
+            [float($.get('since_minute', 0))] + [
+              float(str(e.get('minute') or e.get('time') or e.get('clock') or 0).split('+')[0] or 0)
+              for e in ($ if isinstance($, list) else $.get('events', $.get('timeline', [])))
+              if isinstance(e, dict)
+            ]
+          )
+
+    # 3. Narrate each new event (one card per event, one line each)
+    - type: prompt
+      name: live-match-orchestrator-live-event-narrative
+      description: Generate one neutral broadcaster line per new event.
+      condition: "$.get('filtered') is not None and len($.get('filtered', [])) > 0"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        fixture_state: "$.get('fixture_state', {})"
+        score: "$.get('score', {})"
+        events: "$.get('filtered', [])"
+      outputs:
+        cards: "$.get('cards', [])"
