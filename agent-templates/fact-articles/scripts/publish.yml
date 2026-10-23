@@ -1,0 +1,8 @@
+connector:
+  name: "fact-articles-publish"
+  description: "Drop the sentences the verifier failed and empty sections (params: article, verify)."
+  filename: "publish.py"
+  filetype: "pyscript"
+  commands:
+    - name: "publish"
+      value: "invoke_publish"

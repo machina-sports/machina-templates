@@ -1,0 +1,8 @@
+connector:
+  name: "fact-articles-verify"
+  description: "Check every sentence of an article against the facts it cites (params: facts_doc, article, client, known_names)."
+  filename: "verify.py"
+  filetype: "pyscript"
+  commands:
+    - name: "verify"
+      value: "invoke_verify"

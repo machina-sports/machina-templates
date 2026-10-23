@@ -1,0 +1,942 @@
+[
+ {
+  "id": "401841287",
+  "status": "not_started",
+  "start_time": "2026-10-23T23:00Z",
+  "matchday": null,
+  "round": "",
+  "round_name": "",
+  "competition": {
+   "id": "serie-a-brazil",
+   "name": "Serie A Brazil"
+  },
+  "season": {
+   "id": "serie-a-brazil-2026",
+   "name": "2026",
+   "year": "2026"
+  },
+  "venue": {
+   "id": "5109",
+   "name": "Estadio Mineirão",
+   "city": "Belo Horizonte",
+   "country": "Brazil"
+  },
+  "competitors": [
+   {
+    "team": {
+     "id": "2022",
+     "name": "Cruzeiro",
+     "short_name": "Cruzeiro",
+     "abbreviation": "CRU"
+    },
+    "qualifier": "home",
+    "score": 0
+   },
+   {
+    "team": {
+     "id": "4936",
+     "name": "Remo",
+     "short_name": "Remo",
+     "abbreviation": "REMO"
+    },
+    "qualifier": "away",
+    "score": 0
+   }
+  ],
+  "scores": {
+   "home": 0,
+   "away": 0
+  },
+  "odds": {
+   "provider": "DraftKings",
+   "details": "CRU -275",
+   "spread": "",
+   "over_under": 3.5,
+   "favorite": null,
+   "moneyline": {
+    "home": "-275",
+    "away": "+600",
+    "draw": "+400"
+   },
+   "spread_line": {
+    "home": {
+     "line": "-1.5",
+     "odds": "-105"
+    },
+    "away": {
+     "line": "+1.5",
+     "odds": "-135"
+    }
+   },
+   "total": {
+    "over": {
+     "line": "o3.5",
+     "odds": "+130"
+    },
+    "under": {
+     "line": "u3.5",
+     "odds": "-180"
+    }
+   },
+   "open": {
+    "moneyline": {
+     "home": "-300",
+     "away": "+600",
+     "draw": "+425"
+    },
+    "spread": {
+     "home": "-1.5",
+     "away": "+1.5"
+    },
+    "total": "o3.5"
+   }
+  },
+  "referees": []
+ },
+ {
+  "id": "401841285",
+  "status": "not_started",
+  "start_time": "2026-10-24T19:30Z",
+  "matchday": null,
+  "round": "",
+  "round_name": "",
+  "competition": {
+   "id": "serie-a-brazil",
+   "name": "Serie A Brazil"
+  },
+  "season": {
+   "id": "serie-a-brazil-2026",
+   "name": "2026",
+   "year": "2026"
+  },
+  "venue": {
+   "id": "5376",
+   "name": "Estadio Beira-Rio",
+   "city": "Porto Alegre",
+   "country": "Brazil"
+  },
+  "competitors": [
+   {
+    "team": {
+     "id": "1936",
+     "name": "Internacional",
+     "short_name": "Internacional",
+     "abbreviation": "INT"
+    },
+    "qualifier": "home",
+    "score": 0
+   },
+   {
+    "team": {
+     "id": "6086",
+     "name": "Botafogo",
+     "short_name": "Botafogo",
+     "abbreviation": "BOT"
+    },
+    "qualifier": "away",
+    "score": 0
+   }
+  ],
+  "scores": {
+   "home": 0,
+   "away": 0
+  },
+  "odds": {
+   "provider": "DraftKings",
+   "details": "INT -105",
+   "spread": "",
+   "over_under": 2.5,
+   "favorite": null,
+   "moneyline": {
+    "home": "-105",
+    "away": "+260",
+    "draw": "+265"
+   },
+   "spread_line": {
+    "home": {
+     "line": "-0.5",
+     "odds": "-115"
+    },
+    "away": {
+     "line": "+0.5",
+     "odds": "-125"
+    }
+   },
+   "total": {
+    "over": {
+     "line": "o2.5",
+     "odds": "-135"
+    },
+    "under": {
+     "line": "u2.5",
+     "odds": "+100"
+    }
+   },
+   "open": {
+    "moneyline": {
+     "home": "-115",
+     "away": "+275",
+     "draw": "+260"
+    },
+    "spread": {
+     "home": "-0.5",
+     "away": "+0.5"
+    },
+    "total": "o2.5"
+   }
+  },
+  "referees": []
+ },
+ {
+  "id": "401841284",
+  "status": "not_started",
+  "start_time": "2026-10-24T19:30Z",
+  "matchday": null,
+  "round": "",
+  "round_name": "",
+  "competition": {
+   "id": "serie-a-brazil",
+   "name": "Serie A Brazil"
+  },
+  "season": {
+   "id": "serie-a-brazil-2026",
+   "name": "2026",
+   "year": "2026"
+  },
+  "venue": {
+   "id": "10812",
+   "name": "Estadio Municipal José Maria de Campos Maia",
+   "city": "Mirassol",
+   "country": "Brazil"
+  },
+  "competitors": [
+   {
+    "team": {
+     "id": "9169",
+     "name": "Mirassol",
+     "short_name": "Mirassol",
+     "abbreviation": "MIR"
+    },
+    "qualifier": "home",
+    "score": 0
+   },
+   {
+    "team": {
+     "id": "2026",
+     "name": "São Paulo",
+     "short_name": "São Paulo",
+     "abbreviation": "SAO"
+    },
+    "qualifier": "away",
+    "score": 0
+   }
+  ],
+  "scores": {
+   "home": 0,
+   "away": 0
+  },
+  "odds": {
+   "provider": "DraftKings",
+   "details": "MIR +120",
+   "spread": "",
+   "over_under": 2.5,
+   "favorite": null,
+   "moneyline": {
+    "home": "+120",
+    "away": "+215",
+    "draw": "+230"
+   },
+   "spread_line": {
+    "home": {
+     "line": "-0.5",
+     "odds": "+110"
+    },
+    "away": {
+     "line": "+0.5",
+     "odds": "-160"
+    }
+   },
+   "total": {
+    "over": {
+     "line": "o2.5",
+     "odds": "-105"
+    },
+    "under": {
+     "line": "u2.5",
+     "odds": "-130"
+    }
+   },
+   "open": {
+    "moneyline": {
+     "home": "+120",
+     "away": "+220",
+     "draw": "+225"
+    },
+    "spread": {
+     "home": "-0.5",
+     "away": "+0.5"
+    },
+    "total": "o2.5"
+   }
+  },
+  "referees": []
+ },
+ {
+  "id": "401841280",
+  "status": "not_started",
+  "start_time": "2026-10-24T19:30Z",
+  "matchday": null,
+  "round": "",
+  "round_name": "",
+  "competition": {
+   "id": "serie-a-brazil",
+   "name": "Serie A Brazil"
+  },
+  "season": {
+   "id": "serie-a-brazil-2026",
+   "name": "2026",
+   "year": "2026"
+  },
+  "venue": {
+   "id": "5627",
+   "name": "Estadio Manoel Barradas",
+   "city": "Salvador",
+   "country": "Brazil"
+  },
+  "competitors": [
+   {
+    "team": {
+     "id": "3457",
+     "name": "Vitória",
+     "short_name": "Vitória",
+     "abbreviation": "VIT"
+    },
+    "qualifier": "home",
+    "score": 0
+   },
+   {
+    "team": {
+     "id": "3458",
+     "name": "Athletico-PR",
+     "short_name": "Athletico-PR",
+     "abbreviation": "CAP"
+    },
+    "qualifier": "away",
+    "score": 0
+   }
+  ],
+  "scores": {
+   "home": 0,
+   "away": 0
+  },
+  "odds": {
+   "provider": "DraftKings",
+   "details": "VIT +150",
+   "spread": "",
+   "over_under": 2.5,
+   "favorite": null,
+   "moneyline": {
+    "home": "+150",
+    "away": "+175",
+    "draw": "+225"
+   },
+   "spread_line": {
+    "home": {
+     "line": "-0.5",
+     "odds": "+140"
+    },
+    "away": {
+     "line": "+0.5",
+     "odds": "-205"
+    }
+   },
+   "total": {
+    "over": {
+     "line": "o2.5",
+     "odds": "-115"
+    },
+    "under": {
+     "line": "u2.5",
+     "odds": "-120"
+    }
+   },
+   "open": {
+    "moneyline": {
+     "home": "+150",
+     "away": "+170",
+     "draw": "+220"
+    },
+    "spread": {
+     "home": "-0.5",
+     "away": "+0.5"
+    },
+    "total": "o2.5"
+   }
+  },
+  "referees": []
+ },
+ {
+  "id": "401841283",
+  "status": "not_started",
+  "start_time": "2026-10-24T21:30Z",
+  "matchday": null,
+  "round": "",
+  "round_name": "",
+  "competition": {
+   "id": "serie-a-brazil",
+   "name": "Serie A Brazil"
+  },
+  "season": {
+   "id": "serie-a-brazil-2026",
+   "name": "2026",
+   "year": "2026"
+  },
+  "venue": {
+   "id": "4042",
+   "name": "Arena Barueri",
+   "city": "Barueri",
+   "country": "Brazil"
+  },
+  "competitors": [
+   {
+    "team": {
+     "id": "2029",
+     "name": "Palmeiras",
+     "short_name": "Palmeiras",
+     "abbreviation": "PAL"
+    },
+    "qualifier": "home",
+    "score": 0
+   },
+   {
+    "team": {
+     "id": "6079",
+     "name": "Red Bull Bragantino",
+     "short_name": "Bragantino",
+     "abbreviation": "BRA"
+    },
+    "qualifier": "away",
+    "score": 0
+   }
+  ],
+  "scores": {
+   "home": 0,
+   "away": 0
+  },
+  "odds": {
+   "provider": "DraftKings",
+   "details": "PAL -185",
+   "spread": "",
+   "over_under": 2.5,
+   "favorite": null,
+   "moneyline": {
+    "home": "-185",
+    "away": "+450",
+    "draw": "+320"
+   },
+   "spread_line": {
+    "home": {
+     "line": "-1.5",
+     "odds": "+135"
+    },
+    "away": {
+     "line": "+1.5",
+     "odds": "-200"
+    }
+   },
+   "total": {
+    "over": {
+     "line": "o2.5",
+     "odds": "-150"
+    },
+    "under": {
+     "line": "u2.5",
+     "odds": "+110"
+    }
+   },
+   "open": {
+    "moneyline": {
+     "home": "-190",
+     "away": "+425",
+     "draw": "+310"
+    },
+    "spread": {
+     "home": "-1.5",
+     "away": "+1.5"
+    },
+    "total": "o2.5"
+   }
+  },
+  "referees": []
+ },
+ {
+  "id": "401841281",
+  "status": "not_started",
+  "start_time": "2026-10-24T21:30Z",
+  "matchday": null,
+  "round": "",
+  "round_name": "",
+  "competition": {
+   "id": "serie-a-brazil",
+   "name": "Serie A Brazil"
+  },
+  "season": {
+   "id": "serie-a-brazil-2026",
+   "name": "2026",
+   "year": "2026"
+  },
+  "venue": {
+   "id": "5151",
+   "name": "Estádio São Januário",
+   "city": "Rio de Janeiro",
+   "country": "Brazil"
+  },
+  "competitors": [
+   {
+    "team": {
+     "id": "3454",
+     "name": "Vasco da Gama",
+     "short_name": "Vasco",
+     "abbreviation": "VAS"
+    },
+    "qualifier": "home",
+    "score": 0
+   },
+   {
+    "team": {
+     "id": "874",
+     "name": "Corinthians",
+     "short_name": "Corinthians",
+     "abbreviation": "COR"
+    },
+    "qualifier": "away",
+    "score": 0
+   }
+  ],
+  "scores": {
+   "home": 0,
+   "away": 0
+  },
+  "odds": {
+   "provider": "DraftKings",
+   "details": "VAS -145",
+   "spread": "",
+   "over_under": 2.5,
+   "favorite": null,
+   "moneyline": {
+    "home": "-145",
+    "away": "+370",
+    "draw": "+275"
+   },
+   "spread_line": {
+    "home": {
+     "line": "-0.5",
+     "odds": "-155"
+    },
+    "away": {
+     "line": "+0.5",
+     "odds": "+110"
+    }
+   },
+   "total": {
+    "over": {
+     "line": "o2.5",
+     "odds": "-110"
+    },
+    "under": {
+     "line": "u2.5",
+     "odds": "-125"
+    }
+   },
+   "open": {
+    "moneyline": {
+     "home": "-150",
+     "away": "+380",
+     "draw": "+270"
+    },
+    "spread": {
+     "home": "-0.5",
+     "away": "+0.5"
+    },
+    "total": "o2.5"
+   }
+  },
+  "referees": []
+ },
+ {
+  "id": "401841278",
+  "status": "not_started",
+  "start_time": "2026-10-24T22:30Z",
+  "matchday": null,
+  "round": "",
+  "round_name": "",
+  "competition": {
+   "id": "serie-a-brazil",
+   "name": "Serie A Brazil"
+  },
+  "season": {
+   "id": "serie-a-brazil-2026",
+   "name": "2026",
+   "year": "2026"
+  },
+  "venue": {
+   "id": "10773",
+   "name": "Arena Condá",
+   "city": "Chapecó",
+   "country": "Brazil"
+  },
+  "competitors": [
+   {
+    "team": {
+     "id": "9318",
+     "name": "Chapecoense",
+     "short_name": "Chapecoense",
+     "abbreviation": "CHA"
+    },
+    "qualifier": "home",
+    "score": 0
+   },
+   {
+    "team": {
+     "id": "3445",
+     "name": "Fluminense",
+     "short_name": "Fluminense",
+     "abbreviation": "FLU"
+    },
+    "qualifier": "away",
+    "score": 0
+   }
+  ],
+  "scores": {
+   "home": 0,
+   "away": 0
+  },
+  "odds": {
+   "provider": "DraftKings",
+   "details": "FLU -120",
+   "spread": "",
+   "over_under": 2.5,
+   "favorite": null,
+   "moneyline": {
+    "home": "+300",
+    "away": "-120",
+    "draw": "+260"
+   },
+   "spread_line": {
+    "home": {
+     "line": "+0.5",
+     "odds": "-110"
+    },
+    "away": {
+     "line": "-0.5",
+     "odds": "-130"
+    }
+   },
+   "total": {
+    "over": {
+     "line": "o2.5",
+     "odds": "-125"
+    },
+    "under": {
+     "line": "u2.5",
+     "odds": "-115"
+    }
+   },
+   "open": {
+    "moneyline": {
+     "home": "+300",
+     "away": "-120",
+     "draw": "+255"
+    },
+    "spread": {
+     "home": "+0.5",
+     "away": "-0.5"
+    },
+    "total": "o2.5"
+   }
+  },
+  "referees": []
+ },
+ {
+  "id": "401841282",
+  "status": "not_started",
+  "start_time": "2026-10-25T00:00Z",
+  "matchday": null,
+  "round": "",
+  "round_name": "",
+  "competition": {
+   "id": "serie-a-brazil",
+   "name": "Serie A Brazil"
+  },
+  "season": {
+   "id": "serie-a-brazil-2026",
+   "name": "2026",
+   "year": "2026"
+  },
+  "venue": {
+   "id": "5480",
+   "name": "Estádio Vila Belmiro (Urbano Caldeira)",
+   "city": "Santos",
+   "country": "Brazil"
+  },
+  "competitors": [
+   {
+    "team": {
+     "id": "2674",
+     "name": "Santos",
+     "short_name": "Santos",
+     "abbreviation": "SAN"
+    },
+    "qualifier": "home",
+    "score": 0
+   },
+   {
+    "team": {
+     "id": "9967",
+     "name": "Bahia",
+     "short_name": "Bahia",
+     "abbreviation": "BAH"
+    },
+    "qualifier": "away",
+    "score": 0
+   }
+  ],
+  "scores": {
+   "home": 0,
+   "away": 0
+  },
+  "odds": {
+   "provider": "DraftKings",
+   "details": "SAN -105",
+   "spread": "",
+   "over_under": 2.5,
+   "favorite": null,
+   "moneyline": {
+    "home": "-105",
+    "away": "+260",
+    "draw": "+265"
+   },
+   "spread_line": {
+    "home": {
+     "line": "-0.5",
+     "odds": "-120"
+    },
+    "away": {
+     "line": "+0.5",
+     "odds": "-125"
+    }
+   },
+   "total": {
+    "over": {
+     "line": "o2.5",
+     "odds": "-150"
+    },
+    "under": {
+     "line": "u2.5",
+     "odds": "+110"
+    }
+   },
+   "open": {
+    "moneyline": {
+     "home": "-105",
+     "away": "+235",
+     "draw": "+265"
+    },
+    "spread": {
+     "home": "-0.5",
+     "away": "+0.5"
+    },
+    "total": "o2.5"
+   }
+  },
+  "referees": []
+ },
+ {
+  "id": "401841279",
+  "status": "not_started",
+  "start_time": "2026-10-26T22:30Z",
+  "matchday": null,
+  "round": "",
+  "round_name": "",
+  "competition": {
+   "id": "serie-a-brazil",
+   "name": "Serie A Brazil"
+  },
+  "season": {
+   "id": "serie-a-brazil-2026",
+   "name": "2026",
+   "year": "2026"
+  },
+  "venue": {
+   "id": "3265",
+   "name": "Couto Pereira",
+   "city": "Curitiba",
+   "country": "Brazil"
+  },
+  "competitors": [
+   {
+    "team": {
+     "id": "3456",
+     "name": "Coritiba",
+     "short_name": "Coritiba",
+     "abbreviation": "CFC"
+    },
+    "qualifier": "home",
+    "score": 0
+   },
+   {
+    "team": {
+     "id": "6273",
+     "name": "Grêmio",
+     "short_name": "Grêmio",
+     "abbreviation": "GRE"
+    },
+    "qualifier": "away",
+    "score": 0
+   }
+  ],
+  "scores": {
+   "home": 0,
+   "away": 0
+  },
+  "odds": {
+   "provider": "DraftKings",
+   "details": "CFC +110",
+   "spread": "",
+   "over_under": 2.5,
+   "favorite": null,
+   "moneyline": {
+    "home": "+110",
+    "away": "+215",
+    "draw": "+245"
+   },
+   "spread_line": {
+    "home": {
+     "line": "-0.5",
+     "odds": "+100"
+    },
+    "away": {
+     "line": "+0.5",
+     "odds": "-155"
+    }
+   },
+   "total": {
+    "over": {
+     "line": "o2.5",
+     "odds": "-120"
+    },
+    "under": {
+     "line": "u2.5",
+     "odds": "-120"
+    }
+   },
+   "open": {
+    "moneyline": {
+     "home": "+110",
+     "away": "+215",
+     "draw": "+245"
+    },
+    "spread": {
+     "home": "-0.5",
+     "away": "+0.5"
+    },
+    "total": "o2.5"
+   }
+  },
+  "referees": []
+ },
+ {
+  "id": "401841286",
+  "status": "not_started",
+  "start_time": "2026-10-26T23:00Z",
+  "matchday": null,
+  "round": "",
+  "round_name": "",
+  "competition": {
+   "id": "serie-a-brazil",
+   "name": "Serie A Brazil"
+  },
+  "season": {
+   "id": "serie-a-brazil-2026",
+   "name": "2026",
+   "year": "2026"
+  },
+  "venue": {
+   "id": "5120",
+   "name": "Estadio do Maracana",
+   "city": "Rio de Janeiro",
+   "country": "Brazil"
+  },
+  "competitors": [
+   {
+    "team": {
+     "id": "819",
+     "name": "Flamengo",
+     "short_name": "Flamengo",
+     "abbreviation": "FLA"
+    },
+    "qualifier": "home",
+    "score": 0
+   },
+   {
+    "team": {
+     "id": "7632",
+     "name": "Atlético-MG",
+     "short_name": "Atlético-MG",
+     "abbreviation": "CAM"
+    },
+    "qualifier": "away",
+    "score": 0
+   }
+  ],
+  "scores": {
+   "home": 0,
+   "away": 0
+  },
+  "odds": {
+   "provider": "DraftKings",
+   "details": "FLA -310",
+   "spread": "",
+   "over_under": 2.5,
+   "favorite": null,
+   "moneyline": {
+    "home": "-310",
+    "away": "+650",
+    "draw": "+425"
+   },
+   "spread_line": {
+    "home": {
+     "line": "-1.5",
+     "odds": "-110"
+    },
+    "away": {
+     "line": "+1.5",
+     "odds": "-135"
+    }
+   },
+   "total": {
+    "over": {
+     "line": "o2.5",
+     "odds": "-185"
+    },
+    "under": {
+     "line": "u2.5",
+     "odds": "+125"
+    }
+   },
+   "open": {
+    "moneyline": {
+     "home": "-280",
+     "away": "+600",
+     "draw": "+400"
+    },
+    "spread": {
+     "home": "-1.5",
+     "away": "+1.5"
+    },
+    "total": "o2.5"
+   }
+  },
+  "referees": []
+ }
+]

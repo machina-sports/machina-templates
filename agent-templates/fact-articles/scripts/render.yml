@@ -1,0 +1,8 @@
+connector:
+  name: fact-articles-render
+  description: Render a verified article to HTML with JSON-LD
+  filename: render.py
+  filetype: pyscript
+  commands:
+    - name: Render article
+      value: invoke_render

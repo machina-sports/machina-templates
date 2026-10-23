@@ -1,0 +1,394 @@
+{
+  "status": true,
+  "data": {
+    "standings": [
+      {
+        "name": "2026",
+        "type": "TOTAL",
+        "entries": [
+          {
+            "position": 1,
+            "team": {
+              "id": "819",
+              "name": "Flamengo",
+              "short_name": "Flamengo",
+              "abbreviation": "FLA",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/819.png"
+            },
+            "played": 31,
+            "won": 20,
+            "drawn": 7,
+            "lost": 4,
+            "goals_for": 61,
+            "goals_against": 25,
+            "goal_difference": 36,
+            "points": 67,
+            "form": ""
+          },
+          {
+            "position": 2,
+            "team": {
+              "id": "2029",
+              "name": "Palmeiras",
+              "short_name": "Palmeiras",
+              "abbreviation": "PAL",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/2029.png"
+            },
+            "played": 31,
+            "won": 19,
+            "drawn": 9,
+            "lost": 3,
+            "goals_for": 54,
+            "goals_against": 22,
+            "goal_difference": 32,
+            "points": 66,
+            "form": ""
+          },
+          {
+            "position": 3,
+            "team": {
+              "id": "3458",
+              "name": "Athletico Paranaense",
+              "short_name": "Athletico-PR",
+              "abbreviation": "CAP",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/3458.png"
+            },
+            "played": 31,
+            "won": 15,
+            "drawn": 8,
+            "lost": 8,
+            "goals_for": 49,
+            "goals_against": 37,
+            "goal_difference": 12,
+            "points": 53,
+            "form": ""
+          },
+          {
+            "position": 4,
+            "team": {
+              "id": "2022",
+              "name": "Cruzeiro",
+              "short_name": "Cruzeiro",
+              "abbreviation": "CRU",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/2022.png"
+            },
+            "played": 31,
+            "won": 15,
+            "drawn": 6,
+            "lost": 10,
+            "goals_for": 50,
+            "goals_against": 46,
+            "goal_difference": 4,
+            "points": 51,
+            "form": ""
+          },
+          {
+            "position": 5,
+            "team": {
+              "id": "3445",
+              "name": "Fluminense",
+              "short_name": "Fluminense",
+              "abbreviation": "FLU",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/3445.png"
+            },
+            "played": 31,
+            "won": 14,
+            "drawn": 9,
+            "lost": 8,
+            "goals_for": 49,
+            "goals_against": 39,
+            "goal_difference": 10,
+            "points": 51,
+            "form": ""
+          },
+          {
+            "position": 6,
+            "team": {
+              "id": "7632",
+              "name": "Atlético-MG",
+              "short_name": "Atlético-MG",
+              "abbreviation": "CAM",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/7632.png"
+            },
+            "played": 31,
+            "won": 14,
+            "drawn": 8,
+            "lost": 9,
+            "goals_for": 42,
+            "goals_against": 35,
+            "goal_difference": 7,
+            "points": 50,
+            "form": ""
+          },
+          {
+            "position": 7,
+            "team": {
+              "id": "9967",
+              "name": "Bahia",
+              "short_name": "Bahia",
+              "abbreviation": "BAH",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/9967.png"
+            },
+            "played": 31,
+            "won": 13,
+            "drawn": 10,
+            "lost": 8,
+            "goals_for": 44,
+            "goals_against": 39,
+            "goal_difference": 5,
+            "points": 49,
+            "form": ""
+          },
+          {
+            "position": 8,
+            "team": {
+              "id": "2674",
+              "name": "Santos",
+              "short_name": "Santos",
+              "abbreviation": "SAN",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/2674.png"
+            },
+            "played": 31,
+            "won": 12,
+            "drawn": 9,
+            "lost": 10,
+            "goals_for": 48,
+            "goals_against": 46,
+            "goal_difference": 2,
+            "points": 45,
+            "form": ""
+          },
+          {
+            "position": 9,
+            "team": {
+              "id": "2026",
+              "name": "São Paulo",
+              "short_name": "São Paulo",
+              "abbreviation": "SAO",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/2026.png"
+            },
+            "played": 31,
+            "won": 12,
+            "drawn": 6,
+            "lost": 13,
+            "goals_for": 36,
+            "goals_against": 35,
+            "goal_difference": 1,
+            "points": 42,
+            "form": ""
+          },
+          {
+            "position": 10,
+            "team": {
+              "id": "6079",
+              "name": "Red Bull Bragantino",
+              "short_name": "Bragantino",
+              "abbreviation": "BRA",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/6079.png"
+            },
+            "played": 31,
+            "won": 11,
+            "drawn": 8,
+            "lost": 12,
+            "goals_for": 39,
+            "goals_against": 36,
+            "goal_difference": 3,
+            "points": 41,
+            "form": ""
+          },
+          {
+            "position": 11,
+            "team": {
+              "id": "6086",
+              "name": "Botafogo",
+              "short_name": "Botafogo",
+              "abbreviation": "BOT",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/6086.png"
+            },
+            "played": 31,
+            "won": 10,
+            "drawn": 9,
+            "lost": 12,
+            "goals_for": 44,
+            "goals_against": 48,
+            "goal_difference": -4,
+            "points": 39,
+            "form": ""
+          },
+          {
+            "position": 12,
+            "team": {
+              "id": "3456",
+              "name": "Coritiba",
+              "short_name": "Coritiba",
+              "abbreviation": "CFC",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/3456.png"
+            },
+            "played": 31,
+            "won": 10,
+            "drawn": 9,
+            "lost": 12,
+            "goals_for": 38,
+            "goals_against": 49,
+            "goal_difference": -11,
+            "points": 39,
+            "form": ""
+          },
+          {
+            "position": 13,
+            "team": {
+              "id": "3457",
+              "name": "Vitória",
+              "short_name": "Vitória",
+              "abbreviation": "VIT",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/3457.png"
+            },
+            "played": 31,
+            "won": 10,
+            "drawn": 7,
+            "lost": 14,
+            "goals_for": 34,
+            "goals_against": 45,
+            "goal_difference": -11,
+            "points": 37,
+            "form": ""
+          },
+          {
+            "position": 14,
+            "team": {
+              "id": "9169",
+              "name": "Mirassol",
+              "short_name": "Mirassol",
+              "abbreviation": "MIR",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/9169.png"
+            },
+            "played": 31,
+            "won": 9,
+            "drawn": 9,
+            "lost": 13,
+            "goals_for": 36,
+            "goals_against": 44,
+            "goal_difference": -8,
+            "points": 36,
+            "form": ""
+          },
+          {
+            "position": 15,
+            "team": {
+              "id": "3454",
+              "name": "Vasco da Gama",
+              "short_name": "Vasco",
+              "abbreviation": "VAS",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/3454.png"
+            },
+            "played": 30,
+            "won": 9,
+            "drawn": 8,
+            "lost": 13,
+            "goals_for": 36,
+            "goals_against": 43,
+            "goal_difference": -7,
+            "points": 35,
+            "form": ""
+          },
+          {
+            "position": 16,
+            "team": {
+              "id": "874",
+              "name": "Corinthians",
+              "short_name": "Corinthians",
+              "abbreviation": "COR",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/874.png"
+            },
+            "played": 31,
+            "won": 8,
+            "drawn": 9,
+            "lost": 14,
+            "goals_for": 32,
+            "goals_against": 39,
+            "goal_difference": -7,
+            "points": 33,
+            "form": ""
+          },
+          {
+            "position": 17,
+            "team": {
+              "id": "1936",
+              "name": "Internacional",
+              "short_name": "Internacional",
+              "abbreviation": "INT",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/1936.png"
+            },
+            "played": 31,
+            "won": 7,
+            "drawn": 11,
+            "lost": 13,
+            "goals_for": 33,
+            "goals_against": 40,
+            "goal_difference": -7,
+            "points": 32,
+            "form": ""
+          },
+          {
+            "position": 18,
+            "team": {
+              "id": "6273",
+              "name": "Grêmio",
+              "short_name": "Grêmio",
+              "abbreviation": "GRE",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/6273.png"
+            },
+            "played": 31,
+            "won": 7,
+            "drawn": 10,
+            "lost": 14,
+            "goals_for": 34,
+            "goals_against": 44,
+            "goal_difference": -10,
+            "points": 31,
+            "form": ""
+          },
+          {
+            "position": 19,
+            "team": {
+              "id": "4936",
+              "name": "Remo",
+              "short_name": "Remo",
+              "abbreviation": "REMO",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/4936.png"
+            },
+            "played": 31,
+            "won": 5,
+            "drawn": 11,
+            "lost": 15,
+            "goals_for": 34,
+            "goals_against": 49,
+            "goal_difference": -15,
+            "points": 26,
+            "form": ""
+          },
+          {
+            "position": 20,
+            "team": {
+              "id": "9318",
+              "name": "Chapecoense",
+              "short_name": "Chapecoense",
+              "abbreviation": "CHA",
+              "crest": "https://a.espncdn.com/i/teamlogos/soccer/500/9318.png"
+            },
+            "played": 30,
+            "won": 3,
+            "drawn": 9,
+            "lost": 18,
+            "goals_for": 30,
+            "goals_against": 62,
+            "goal_difference": -32,
+            "points": 18,
+            "form": ""
+          }
+        ]
+      }
+    ]
+  },
+  "message": ""
+}

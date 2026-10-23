@@ -1,0 +1,8 @@
+connector:
+  name: "fact-articles-plan"
+  description: "Normalise scores per kind across the round, pick leads under the kind cap, order sections (params: facts_docs, contract)."
+  filename: "plan.py"
+  filetype: "pyscript"
+  commands:
+    - name: "plan"
+      value: "invoke_plan"

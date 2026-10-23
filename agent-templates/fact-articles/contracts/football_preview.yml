@@ -1,0 +1,26 @@
+# Contract for a football match preview: which facts exist, which are mandatory, and
+# which sections an article may have. A section only exists when it has min_facts facts.
+name: football_preview
+lead_cap: 0.3          # one fact kind opens at most 30% of the round's matches
+
+kinds:
+  match: kickoff date, local time, venue, city, competition and feed status (subject "both")
+  standing: position, points and record of one team
+  relegation_gap: points over the first relegation spot, or points to safety when inside it
+  last5: last five results with W/D/L counts
+  streak: current run of 3+ games (wins, unbeaten, winless, losses) with the game that broke it
+  goals_rate: goals for and against per game against the league average
+  casa_record: home team's home record
+  fora_record: away team's away record
+  h2h_season: the two teams' earlier meeting this season
+
+# match needs every value field; the others need a fact for both home and away.
+mandatory: [match, standing, last5]
+match_fields: [home, away, date, time_local, start_iso, venue, city, competition, status]
+
+sections:
+  - {title: Momento, kinds: [last5, streak], min_facts: 2}
+  - {title: Tabela, kinds: [standing, relegation_gap], min_facts: 2}
+  - {title: Casa e fora, kinds: [casa_record, fora_record], min_facts: 1}
+  - {title: Ataque e defesa, kinds: [goals_rate], min_facts: 1}
+  - {title: Primeiro turno, kinds: [h2h_season], min_facts: 1}
