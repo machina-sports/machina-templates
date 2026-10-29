@@ -31,7 +31,7 @@ _EXPECTED_ARGV = [
     "--upgrade",
     "--target",
     None,  # filled with the per-test target dir
-    "sports-skills==0.35.0",
+    "sports-skills==0.40.0",
 ]
 
 
@@ -81,15 +81,15 @@ def _pip_ok(*args, **kwargs):
     return subprocess.CompletedProcess(args[0], 0, stdout="ok", stderr="")
 
 
-def test_pin_is_exactly_0_35_0():
-    assert _module._PINNED_VERSION == "0.35.0"
-    assert _module._PIP_PACKAGE == "sports-skills==0.35.0"
+def test_pin_is_exactly_0_40_0():
+    assert _module._PINNED_VERSION == "0.40.0"
+    assert _module._PIP_PACKAGE == "sports-skills==0.40.0"
 
 
 def test_runtime_requirement_docs_state_only_the_exact_pin():
     pins = re.findall(r"sports-skills(==|>=)([0-9][0-9.]*[0-9])", _module.__doc__)
     assert pins, "runtime requirement docs must state the sports-skills pin"
-    assert all(p == ("==", "0.35.0") for p in pins), pins
+    assert all(p == ("==", "0.40.0") for p in pins), pins
 
 
 def test_upgrade_target_stays_in_tmp():
@@ -97,28 +97,30 @@ def test_upgrade_target_stays_in_tmp():
 
 
 def test_exact_pinned_version_preloaded_skips_install(env):
-    env["preload"]("0.35.0")
+    env["preload"]("0.40.0")
     assert _module._ensure_sports_skills() == (True, None)
     assert env["run_calls"] == []
     assert env["import_calls"] == []
 
 
-@pytest.mark.parametrize("preloaded", [None, "0.31.0", "0.33.0", "0.34.0", "0.36.0", "1.0.0"])
+@pytest.mark.parametrize(
+    "preloaded", [None, "0.31.0", "0.33.0", "0.34.0", "0.35.0", "0.36.0", "0.39.0", "0.41.0", "1.0.0"]
+)
 def test_missing_stale_or_later_version_installs_the_pin(env, preloaded):
     env["preload"](preloaded)
     env["run"] = _pip_ok
-    env["import_version"] = "0.35.0"
+    env["import_version"] = "0.40.0"
 
     assert _module._ensure_sports_skills() == (True, None)
     assert len(env["run_calls"]) == 1
-    assert sys.modules["sports_skills"].__version__ == "0.35.0"
+    assert sys.modules["sports_skills"].__version__ == "0.40.0"
     assert sys.path[0] == _module._TARGET_DIR
 
 
 def test_pip_runs_exact_argv_without_shell(env):
-    env["preload"]("0.34.0")
+    env["preload"]("0.35.0")
     env["run"] = _pip_ok
-    env["import_version"] = "0.35.0"
+    env["import_version"] = "0.40.0"
 
     _module._ensure_sports_skills()
 
@@ -136,7 +138,7 @@ def test_pip_failure_returns_structured_false(env):
 
     ok, err = _module._ensure_sports_skills()
     assert ok is False
-    assert "rc=1" in err and "boom" in err and "sports-skills==0.35.0" in err
+    assert "rc=1" in err and "boom" in err and "sports-skills==0.40.0" in err
     assert env["import_calls"] == []
 
 
@@ -165,13 +167,13 @@ def test_pip_start_error_returns_structured_false(env):
 
 
 def test_successful_pip_with_stale_import_fails(env):
-    env["preload"]("0.34.0")
+    env["preload"]("0.35.0")
     env["run"] = _pip_ok
-    env["import_version"] = "0.34.0"
+    env["import_version"] = "0.35.0"
 
     ok, err = _module._ensure_sports_skills()
     assert ok is False
-    assert "'0.34.0'" in err and "'0.35.0'" in err
+    assert "'0.35.0'" in err and "'0.40.0'" in err
 
 
 def test_successful_pip_but_not_importable_fails(env):
@@ -201,11 +203,11 @@ def _no_dispatch(*a, **k):
 
 def test_bootstrap_reports_the_imported_pin_and_origin(env, monkeypatch):
     monkeypatch.setattr(_module, "_dispatch", _no_dispatch)
-    env["preload"]("0.35.0")
+    env["preload"]("0.40.0")
     sys.modules["sports_skills"].__file__ = "/image.invalid/sports_skills/__init__.py"
 
     assert _module.invoke_bootstrap({"params": {}}) == {"status": True, "data": {
-        "ready": True, "pinned_version": "0.35.0", "version": "0.35.0",
+        "ready": True, "pinned_version": "0.40.0", "version": "0.40.0",
         "origin": "/image.invalid/sports_skills/__init__.py"}}
     assert env["run_calls"] == [] and env["import_calls"] == []
 
@@ -214,11 +216,11 @@ def test_bootstrap_installs_the_pin_on_a_cold_container(env, monkeypatch):
     monkeypatch.setattr(_module, "_dispatch", _no_dispatch)
     env["preload"](None)
     env["run"] = _pip_ok
-    env["import_version"] = "0.35.0"
+    env["import_version"] = "0.40.0"
 
     result = _module.invoke_bootstrap({"params": {}})
     assert result["status"] is True
-    assert (result["data"]["ready"], result["data"]["version"]) == (True, "0.35.0")
+    assert (result["data"]["ready"], result["data"]["version"]) == (True, "0.40.0")
     assert len(env["run_calls"]) == 1
     assert env["import_calls"] == ["sports_skills"], "only the package itself is imported"
     assert sys.path[0] == _module._TARGET_DIR
@@ -231,7 +233,7 @@ def test_bootstrap_failure_answers_structured_data(env):
     result = _module.invoke_bootstrap({"params": {}})
     assert result["status"] is False
     data = result["data"]
-    assert (data["ready"], data["pinned_version"], data["version"]) == (False, "0.35.0", "0.34.0")
+    assert (data["ready"], data["pinned_version"], data["version"]) == (False, "0.40.0", "0.34.0")
     assert "rc=1" in data["error"] and "boom" in data["error"]
     assert result["message"] == data["error"]
 

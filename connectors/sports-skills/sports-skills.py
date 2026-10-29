@@ -16,11 +16,11 @@ Design:
   package (below) and reports the copy actually imported.
 
 Runtime requirement:
-- The pod's Python env must have exactly `sports-skills==0.35.0`
-  importable. The preferred path is pinning `sports-skills==0.35.0` in
+- The pod's Python env must have exactly `sports-skills==0.40.0`
+  importable. The preferred path is pinning `sports-skills==0.40.0` in
   `machina-client-api/requirements.txt` and rebuilding the pod image.
 - As a fallback this module attempts a one-time `pip install
-  sports-skills==0.35.0` when the imported version is missing or differs
+  sports-skills==0.40.0` when the imported version is missing or differs
   from the pin, so customers can use the connector without waiting on a
   pod-image rebuild. The first call is then ~15-30s slower; subsequent
   calls are instant. If that install fails, the connector returns
@@ -34,7 +34,7 @@ import subprocess
 import sys
 
 
-_PINNED_VERSION = "0.35.0"
+_PINNED_VERSION = "0.40.0"
 _PIP_PACKAGE = f"sports-skills=={_PINNED_VERSION}"
 _PIP_TIMEOUT_SECONDS = 180
 # Writable install target for in-place upgrades. The pod runs as a non-root
@@ -280,6 +280,24 @@ def invoke_nba(request_data):
     return _dispatch("nba", request_data)
 
 
+def invoke_gleague(request_data):
+    """NBA G League — ESPN + G League Stats (sports-skills 0.40.0).
+
+    Commands: get_teams, get_scoreboard, get_schedule, get_standings,
+    get_team_roster, get_team_schedule, get_game_summary, get_play_by_play,
+    get_news, get_live_boxscore, get_live_playbyplay, find_nba_player,
+    get_nbastats_game_log, get_nbastats_player_career,
+    get_nbastats_team_stats, get_nbastats_shot_chart,
+    get_nbastats_play_by_play, get_nbastats_advanced_boxscore,
+    get_nbastats_leaders.
+
+    ESPN functions take ESPN ids and the season's ending year; get_nbastats_*
+    take G League Stats ids and the starting year. Never pass NBA ids. Live
+    functions read a CDN that may be unavailable.
+    """
+    return _dispatch("gleague", request_data)
+
+
 def invoke_wnba(request_data):
     """WNBA — ESPN."""
     return _dispatch("wnba", request_data)
@@ -481,6 +499,11 @@ def invoke_sports_skills(request_data):
     elif college_basketball:
         module_name = "cbb"
         default_command = "get_player_stats"
+    elif league in ("G LEAGUE", "NBA G LEAGUE", "GLEAGUE"):
+        # gleague has no get_player_stats. No default: the caller names a real
+        # command, otherwise _dispatch refuses with "missing required command".
+        module_name = "gleague"
+        default_command = None
     elif league == "NBA":
         module_name = "nba"
         default_command = "get_player_stats"
