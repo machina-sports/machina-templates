@@ -1,0 +1,34 @@
+workflow:
+  name: eval-judge-quality
+  title: "Eval Judge - Output Quality"
+  description: "Evaluator workflow for runtime evals: receives the evaluator envelope (content.input / content.output) and returns verdict, score, reason and labels."
+  context-variables:
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+  inputs:
+    workflow_input: $.get('content', {}).get('input', {})
+    workflow_output: $.get('content', {}).get('output', {})
+  tasks:
+    - name: judge
+      type: prompt
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        provider: vertex_ai
+        location: global
+      prompt:
+        name: eval-judge-quality-prompt
+      inputs:
+        workflow_input: $.get('workflow_input')
+        workflow_output: $.get('workflow_output')
+      outputs:
+        judgement: $
+  outputs:
+    verdict: $.get('judgement', {}).get('verdict')
+    score: $.get('judgement', {}).get('score')
+    reason: $.get('judgement', {}).get('reason')
+    labels: $.get('judgement', {}).get('labels')
+    workflow-status: "'executed' if $.get('judgement', {}).get('verdict') else 'failed'"
+  status: active
