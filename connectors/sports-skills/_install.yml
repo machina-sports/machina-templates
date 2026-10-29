@@ -8,6 +8,7 @@ setup:
   features:
     - Football (soccer) — standings, schedules, lineups, xG, transfers, player profiles across 13 leagues
     - NBA, WNBA, NFL, NHL, MLB, CFB, CBB — scoreboards, schedules, standings, boxscores
+    - NBA G League — teams, scoreboards, schedules, standings, rosters, G League Stats
     - Tennis, golf, F1, volleyball, XCTF — schedules, results, leaders
     - Cricket — ESPN live/standings + Cricsheet ball-by-ball deliveries
     - Esports — OpenDota (Dota 2) and Leaguepedia (LoL) pro matches, teams, tournaments

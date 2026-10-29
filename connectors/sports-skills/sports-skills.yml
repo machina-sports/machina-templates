@@ -8,6 +8,8 @@ connector:
       value: "invoke_football"
     - name: "NBA"
       value: "invoke_nba"
+    - name: "NBA G League"
+      value: "invoke_gleague"
     - name: "WNBA"
       value: "invoke_wnba"
     - name: "NFL"

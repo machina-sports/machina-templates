@@ -12,6 +12,8 @@ These tests pin the routing table and, just as importantly, pin the refusal.
 import importlib.util
 import os
 
+import pytest
+
 _parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _spec = importlib.util.spec_from_file_location(
     "sports_skills_connector", os.path.join(_parent_dir, "sports-skills.py")
@@ -115,6 +117,30 @@ def test_basketball_without_league_still_cascades(monkeypatch):
     monkeypatch.setattr(_module, "_dispatch", fake_dispatch)
     _module.invoke_sports_skills({"params": {"sport": "basketball"}})
     assert tried == ["wnba", "nba", "cbb"]
+
+
+@pytest.mark.parametrize("league", ["G LEAGUE", "g league", "NBA G LEAGUE", "GLEAGUE"])
+def test_g_league_aliases_route_to_gleague_without_a_default_command(monkeypatch, league):
+    """gleague has no get_player_stats; the caller must name the command."""
+    seen, _ = _route(monkeypatch, sport="basketball", league=league)
+    assert seen["module"] == "gleague"
+    assert not seen["command"]
+
+
+def test_g_league_keeps_an_explicit_command(monkeypatch):
+    seen, _ = _route(monkeypatch, league="G LEAGUE", command="get_teams")
+    assert (seen["module"], seen["command"]) == ("gleague", "get_teams")
+
+
+def test_nba_league_never_routes_to_gleague(monkeypatch):
+    seen, _ = _route(monkeypatch, sport="basketball", league="NBA")
+    assert seen["module"] == "nba"
+
+
+def test_unlisted_g_league_spelling_still_refuses(monkeypatch):
+    seen, result = _route(monkeypatch, league="GL")
+    assert "module" not in seen
+    assert result["status"] is False
 
 
 def test_metadata_docstring_names_search_players():
