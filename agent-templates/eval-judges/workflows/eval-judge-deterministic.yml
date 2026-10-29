@@ -1,0 +1,22 @@
+workflow:
+  name: eval-judge-deterministic
+  title: "Eval Judge - Deterministic (non-empty output)"
+  description: "Evaluator without an LLM: passes when the target produced a non-empty result, fails otherwise. Returns the eval verdict contract."
+  inputs:
+    produced: "$.get('content', {}).get('output', {}).get('result', '')"
+  tasks:
+    - type: document
+      name: probe-document-store
+      description: "Read-only probe so the workflow has one task; needs no credentials."
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        name: "'eval-judge-deterministic'"
+  outputs:
+    verdict: "'pass' if $.get('produced') else 'fail'"
+    score: "1.0 if $.get('produced') else 0.0"
+    reason: "'The target returned a non-empty result.' if $.get('produced') else 'The target returned an empty result.'"
+    labels: "['deterministic', 'non-empty' if $.get('produced') else 'empty-output']"
+    workflow-status: "'executed'"
+  status: active

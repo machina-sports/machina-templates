@@ -1,0 +1,19 @@
+workflow:
+  name: eval-demo-echo
+  title: "Eval Demo - Echo Target"
+  description: "Demo target for runtime evals. Returns the text upper-cased; text containing #fail returns an empty result, so the judge has something to fail."
+  inputs:
+    text: $.get('text', '')
+  tasks:
+    - type: document
+      name: probe-document-store
+      description: "Read-only probe so the workflow has one task; needs no credentials."
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        name: "'eval-demo-echo'"
+  outputs:
+    result: "'' if '#fail' in $.get('text', '') else $.get('text', '').upper()"
+    workflow-status: "'executed'"
+  status: active

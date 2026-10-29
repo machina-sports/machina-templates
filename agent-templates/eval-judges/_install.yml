@@ -1,0 +1,29 @@
+setup:
+  title: Eval Judges
+  description: 'Evaluator workflows for runtime evals (Studio > Arena > Evals): an
+    LLM judge for output quality, a deterministic judge that needs no credentials,
+    and a demo target to exercise the loop.'
+  category:
+  - custom-templates
+  estimatedTime: 1 minute
+  integrations:
+  - google-genai
+  status: available
+  value: agent-templates/eval-judges
+  version: 1.0.0
+  features:
+  - 'eval-judge-quality: Gemini judge returning the eval verdict contract (verdict,
+    score, reason, labels). Needs the Vertex AI secrets.'
+  - 'eval-judge-deterministic: passes when the target returned a non-empty result;
+    no credentials.'
+  - 'eval-demo-echo: demo target; text containing #fail returns an empty result so
+    the judge fails it.'
+datasets:
+- type: prompt
+  path: prompts/eval-judge-quality.yml
+- type: workflow
+  path: workflows/eval-judge-quality.yml
+- type: workflow
+  path: workflows/eval-demo-echo.yml
+- type: workflow
+  path: workflows/eval-judge-deterministic.yml
