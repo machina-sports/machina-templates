@@ -1,0 +1,15 @@
+agent:
+  name: obs-canary-heartbeat
+  title: Observability Canary Heartbeat
+  description: "Runs a no-op workflow every 15 minutes so the critical-path alert cp-required-agent-stale can tell a working scheduler from a silent one. Disable the job to drill the alert (fires after 30 min + 5 min)."
+  workflows:
+    - name: obs-canary-heartbeat
+      description: "No-op; completes immediately."
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+  jobs:
+    - name: obs-canary-heartbeat-15m
+      enabled: true
+      type: agent
+      target: obs-canary-heartbeat
+      cron: "*/15 * * * *"
