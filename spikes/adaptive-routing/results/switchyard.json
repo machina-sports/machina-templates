@@ -1,0 +1,175 @@
+{
+  "option": "C-switchyard-libsy",
+  "status": "RAN",
+  "mode": "offline-decision-only-fake-host-clients",
+  "runnable_without_credentials": true,
+  "installed_version": "0.2.0",
+  "pinned": {
+    "package": "nemo-switchyard",
+    "version_expected": "0.2.0",
+    "repo": "https://github.com/NVIDIA-NeMo/Switchyard",
+    "commit_observed": "b256d936f1d77bf13ec9bec399ea0a253e07ca05",
+    "observed_on": "2026-08-13",
+    "maturity": "pre-alpha \u2014 'Experimental software. Not for production use.' (upstream README)"
+  },
+  "measurements": {
+    "random": [
+      {
+        "workload": "chat-default-short",
+        "last_decision": {
+          "reasoning": "random routing selected target 'capable-model'",
+          "selected_model": "capable-model"
+        },
+        "decision_overhead_us": {
+          "mean": 100.5,
+          "p50": 92.0,
+          "p95": 140.1,
+          "iterations": 200
+        }
+      },
+      {
+        "workload": "chat-balanced-explicit",
+        "last_decision": {
+          "reasoning": "random routing selected target 'efficient-model'",
+          "selected_model": "efficient-model"
+        },
+        "decision_overhead_us": {
+          "mean": 95.0,
+          "p50": 92.5,
+          "p95": 108.0,
+          "iterations": 200
+        }
+      },
+      {
+        "workload": "chat-quality",
+        "last_decision": {
+          "reasoning": "random routing selected target 'efficient-model'",
+          "selected_model": "efficient-model"
+        },
+        "decision_overhead_us": {
+          "mean": 93.3,
+          "p50": 91.8,
+          "p95": 104.2,
+          "iterations": 200
+        }
+      },
+      {
+        "workload": "chat-cheap",
+        "last_decision": {
+          "reasoning": "random routing selected target 'capable-model'",
+          "selected_model": "capable-model"
+        },
+        "decision_overhead_us": {
+          "mean": 94.8,
+          "p50": 92.1,
+          "p95": 108.7,
+          "iterations": 200
+        }
+      },
+      {
+        "workload": "chat-long-context",
+        "last_decision": {
+          "reasoning": "random routing selected target 'capable-model'",
+          "selected_model": "capable-model"
+        },
+        "decision_overhead_us": {
+          "mean": 93.3,
+          "p50": 91.1,
+          "p95": 102.7,
+          "iterations": 200
+        }
+      },
+      {
+        "workload": "chat-json-extraction",
+        "last_decision": {
+          "reasoning": "random routing selected target 'efficient-model'",
+          "selected_model": "efficient-model"
+        },
+        "decision_overhead_us": {
+          "mean": 92.7,
+          "p50": 90.6,
+          "p95": 102.0,
+          "iterations": 200
+        }
+      }
+    ],
+    "classifier_low_confidence": {
+      "scenario": "p_solve below threshold -> capable",
+      "judge_p_solve": 0.2,
+      "base_threshold": 0.5,
+      "decisions": [
+        {
+          "reasoning": "fall-through selected capable-model (confidence 1.000)",
+          "selected_model": "capable-model"
+        }
+      ],
+      "judge_calls": 200,
+      "efficient_calls": 0,
+      "capable_calls": 200,
+      "decision_overhead_us_with_fake_judge": {
+        "mean": 161.2,
+        "p50": 157.2,
+        "p95": 188.1,
+        "iterations": 200
+      },
+      "note": "Judge round-trip is faked (~0); with a real judge LLM this adds one full model call of latency+tokens per unlatched turn."
+    },
+    "classifier_high_confidence": {
+      "scenario": "p_solve above threshold -> efficient",
+      "judge_p_solve": 0.9,
+      "base_threshold": 0.5,
+      "decisions": [
+        {
+          "reasoning": "fall-through selected efficient-model (confidence 1.000)",
+          "selected_model": "efficient-model"
+        }
+      ],
+      "judge_calls": 200,
+      "efficient_calls": 200,
+      "capable_calls": 0,
+      "decision_overhead_us_with_fake_judge": {
+        "mean": 159.7,
+        "p50": 156.0,
+        "p95": 171.3,
+        "iterations": 200
+      },
+      "note": "Judge round-trip is faked (~0); with a real judge LLM this adds one full model call of latency+tokens per unlatched turn."
+    },
+    "session_affinity": {
+      "first_call_decisions": [
+        {
+          "reasoning": "fall-through selected efficient-model (confidence 1.000)",
+          "selected_model": "efficient-model"
+        }
+      ],
+      "second_call_decisions": [
+        {
+          "reasoning": "fall-through selected efficient-model (confidence 1.000)",
+          "selected_model": "efficient-model"
+        }
+      ],
+      "judge_calls_after_first": 1,
+      "judge_calls_after_second": 1,
+      "judge_skipped_on_second_call": true,
+      "note": "Affinity is process-local (in-memory, lifetime of the process) \u2014 no external store."
+    }
+  },
+  "skipped_workloads": [
+    {
+      "workload": "embedding-query",
+      "capability": "embedding",
+      "reason": "Switchyard has no embeddings/search surface (no /v1/embeddings; chat protocols only)."
+    },
+    {
+      "workload": "search-answer",
+      "capability": "search_answer",
+      "reason": "Switchyard has no embeddings/search surface (no /v1/embeddings; chat protocols only)."
+    }
+  ],
+  "caveats": [
+    "Model and judge calls are faked; numbers isolate Switchyard decision overhead, not provider latency.",
+    "Output quality is NOT measured; classifier/escalation quality requires a real judge LLM and evals.",
+    "Known issues 0.2.0 (upstream docs/known_issues.md) remain open, incl. post-disconnect provider spend and incomplete tier attribution in stats.",
+    "API drift observed live: the released 0.2.0 wheel emits decision key 'selected_model', while repo HEAD (b256d936, 2 days after the release) already renamed it to 'selected_model_id' \u2014 concrete pre-alpha churn."
+  ]
+}
