@@ -1,0 +1,136 @@
+workflow:
+
+  name: live-match-orchestrator-pre-game-brief
+  title: Live Match Orchestrator — Pre-Game Brief
+  description: |
+    Given a soccer `event_id`, resolves the competition + both squads
+    via `sports-skills.football` and asks Gemini for a broadcaster-
+    ready pre-game brief (storylines, projected lineups, head-to-head,
+    recent form). Returns BOTH the structured JSON the production
+    team can pipe into an overlay AND a `markdown` field for teleprompter
+    use.
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    event_id: "$.get('event_id')"
+
+  outputs:
+    event_id: "$.get('event_id')"
+    fixture: "$.get('fixture', {})"
+    home_team: "$.get('home_team', {})"
+    away_team: "$.get('away_team', {})"
+    competition_id: "$.get('competition_id')"
+    season: "$.get('season')"
+    lineups: "$.get('lineups', {})"
+    head_to_head: "$.get('head_to_head', [])"
+    home_recent_form: "$.get('home_recent_form', [])"
+    away_recent_form: "$.get('away_recent_form', [])"
+    brief: "$.get('brief', {})"
+    markdown: "$.get('brief', {}).get('markdown', '')"
+    workflow-status: "$.get('brief') and 'executed' or 'skipped'"
+
+  tasks:
+
+    # 1. Resolve the fixture envelope (teams, competition, kickoff)
+    - type: connector
+      name: fetch-event-summary
+      description: Resolve the fixture envelope — both squad ids, competition, kickoff.
+      condition: "$.get('event_id') is not None"
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_event_summary'"
+        event_id: "$.get('event_id')"
+      outputs:
+        fixture: "$"
+        home_team: "$.get('home_team', $.get('competitors', [{}, {}])[0]) if isinstance($, dict) else {}"
+        away_team: "$.get('away_team', $.get('competitors', [{}, {}])[1]) if isinstance($, dict) else {}"
+        competition_id: "$.get('competition_id') or $.get('league', {}).get('id') or $.get('league_id')"
+        season: "$.get('season') or $.get('year')"
+        home_team_id: "($.get('home_team') or ($.get('competitors', [{}])[0] if $.get('competitors') else {})).get('id')"
+        away_team_id: "($.get('away_team') or ($.get('competitors', [{}, {}])[1] if len($.get('competitors', [])) > 1 else {})).get('id')"
+
+    # 2. Lineups (projected when pre-game, confirmed within ~1h of kickoff)
+    - type: connector
+      name: fetch-event-lineups
+      description: Fetch projected / confirmed lineups for both squads.
+      condition: "$.get('event_id') is not None"
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_event_lineups'"
+        event_id: "$.get('event_id')"
+      outputs:
+        lineups: "$"
+
+    # 3. Head-to-head — last meetings between the two clubs
+    - type: connector
+      name: fetch-head-to-head
+      description: Recent meetings between the same two clubs.
+      condition: "$.get('home_team_id') is not None and $.get('away_team_id') is not None"
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_head_to_head'"
+        home_team_id: "$.get('home_team_id')"
+        away_team_id: "$.get('away_team_id')"
+      outputs:
+        head_to_head: "$ if isinstance($, list) else $.get('events', $.get('matches', []))"
+
+    # 4. Recent form — last fixtures for each squad
+    - type: connector
+      name: fetch-home-recent-form
+      description: Recent fixtures for the home side.
+      condition: "$.get('home_team_id') is not None"
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_team_schedule'"
+        team_id: "$.get('home_team_id')"
+      outputs:
+        home_recent_form: "($ if isinstance($, list) else $.get('events', $.get('schedule', [])))[:8]"
+
+    - type: connector
+      name: fetch-away-recent-form
+      description: Recent fixtures for the away side.
+      condition: "$.get('away_team_id') is not None"
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_team_schedule'"
+        team_id: "$.get('away_team_id')"
+      outputs:
+        away_recent_form: "($ if isinstance($, list) else $.get('events', $.get('schedule', [])))[:8]"
+
+    # 5. Compose the broadcaster-ready brief (structured JSON + markdown)
+    - type: prompt
+      name: live-match-orchestrator-pre-game-brief-prompt
+      description: Synthesize the data into a broadcaster-neutral pre-game brief.
+      condition: "$.get('fixture') is not None and $.get('fixture') != {}"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+      inputs:
+        fixture: "$.get('fixture', {})"
+        home_team: "$.get('home_team', {})"
+        away_team: "$.get('away_team', {})"
+        lineups: "$.get('lineups', {})"
+        head_to_head: "$.get('head_to_head', [])"
+        home_recent_form: "$.get('home_recent_form', [])"
+        away_recent_form: "$.get('away_recent_form', [])"
+      outputs:
+        brief: "$"
