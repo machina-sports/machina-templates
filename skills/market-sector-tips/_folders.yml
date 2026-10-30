@@ -1,0 +1,41 @@
+workflow:
+  name: market-sector-tips-folders
+  title: Market Sector Tips - Folders
+  description: Market Sector Tips - Folders Structure
+  context-variables:
+    debugger:
+      enabled: false
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # Setup folder structure
+    - type: document
+      name: install-documents
+      description: Install documents and folder structure.
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        doc-structure: |-
+          [
+            {
+              "title": "Market Sector Tips",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "market-sector-tips",
+                  "title": "Sector Tips",
+                  "description": "AI-generated tips organized by market sector",
+                  "category": "Sector Tips",
+                  "metadata": {
+                    "name": ["market-sector-tips"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]
