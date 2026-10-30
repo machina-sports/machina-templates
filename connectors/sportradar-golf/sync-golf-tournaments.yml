@@ -1,0 +1,96 @@
+workflow:
+  name: "sportradar-golf-sync-tournaments"
+  title: "Sync Tournaments"
+  description: "Workflow to synchronize golf tournaments from SportRadar API to Machina."
+  context-variables:
+    sportradar-golf:
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_GOLF_API_KEY"
+  inputs:
+    season_id: "$.get('season_id', '2024')"
+  outputs:
+    golf-tournaments: "$.get('tournaments')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+
+    # check-document-timedelta
+    - type: "document"
+      name: "check-document-timedelta"
+      description: "Check if the tournaments document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata.document_type: "'synchronization'"
+        metadata.season_id: "$.get('season_id')"
+      inputs:
+        name: "'golf-tournaments'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # load-tournaments
+    - type: "connector"
+      name: "load-tournaments"
+      description: "Get season tournaments from SportRadar Golf API"
+      connector:
+        name: "sportradar-golf"
+        command: "get-seasons/{season_id}/tournaments/schedule.json"
+        command_attribute:
+          season_id: "$.get('season_id')"
+      condition: "$.get('should_update') == True"
+      outputs:
+        tournaments: "$.get('tournaments', [])"
+        tournaments_parsed: |
+          [
+            {
+              **c,
+              'metadata': {
+                'event_code': c.get('id', ''),
+              },
+              'version_control': {
+                'processing': False,
+                'updated': datetime.utcnow()
+              },
+              'season_id': '$.(season_id)',
+              'start_time': c.get('start_date', ''),
+              'title': c.get('name', '')
+            }
+            for c in $.get('tournaments', [])
+          ]
+
+    # update-tournaments
+    - type: "document"
+      name: "update-tournaments"
+      description: "Update the tournaments document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('should_update') == True"
+      documents:
+        golf-tournaments: |
+          {
+            'data': $.get('tournaments'),
+            'title': f"{$.get('season_id')} - All Tournaments ({len($.get('tournaments', []))})",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        season_id: "$.get('season_id')"
+        document_type: "'synchronization'"
+
+    # bulk-save-tournaments
+    - type: "document"
+      name: "bulk-save-tournaments"
+      condition: "$.get('should_update') == True"
+      description: "Bulk save the tournaments."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'golf-tournament'"
+      documents:
+        items: "$.get('tournaments_parsed')"
+      inputs:
+        tournaments_parsed: "$.get('tournaments_parsed')"
