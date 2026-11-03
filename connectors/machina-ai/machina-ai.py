@@ -1367,6 +1367,9 @@ class ProviderAdapter:
         priority_paygo = safe_params.pop("priority_paygo", None)
         if self.delegate_connector == "google-genai" and command == "invoke_prompt" and route.provider == "vertex_ai":
             safe_params["priority_mode"] = priority_paygo if priority_paygo is not None else False
+        if self.delegate_connector == "google-genai" and command == "invoke_prompt":
+            # google-genai's prompt factory reads only `timeout` (seconds); send the policy-bounded route deadline.
+            safe_params["timeout"] = route.timeout_ms / 1000.0
         if self.delegate_connector == "google-genai" and command == "invoke_search":
             # Existing grounded-search connector uses search_query and seconds.
             safe_params["search_query"] = request.input.get("prompt") or request.input.get("input")
@@ -1677,6 +1680,7 @@ class GoogleGenAIAdapter(ProviderAdapter):
                     "location": route.credentials.get("location") or "global",
                     "temperature": request.options.get("temperature", 0.2),
                     "request_parallelism": 1,
+                    "timeout": route.timeout_ms / 1000.0,
                 }
                 if request.options.get("priority_paygo"):
                     kwargs["additional_headers"] = {
