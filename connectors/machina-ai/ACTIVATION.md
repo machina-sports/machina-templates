@@ -215,3 +215,112 @@ Receipts then show `route_reason: "remap:capability:chat"`.
 Instant, config-only — remove the remap and/or set
 `providers.vertex_anthropic.enabled: false`. All traffic falls back to the Gemini
 repository default; no workflow or code change is needed.
+
+## Vercel AI Gateway backend (`vercel_gateway`)
+
+Vercel AI Gateway is an optional backend behind this router, not a replacement
+for it. Profiles, model allowlists, retries, fallbacks and receipts stay owned
+by `machina-ai`. The provider ships **dormant** (`enabled: false`, empty
+`allowed_models`), so no existing route changes until an operator opts in.
+
+Transport: the existing OpenAI-compatible adapter against the fixed endpoint
+`https://ai-gateway.vercel.sh/v1` (`FIXED_PROVIDER_ENDPOINTS`; a workflow cannot
+replace it). Capability: **chat only** (direct `invoke_chat` /
+`completion_receipt` and the model returned by `invoke_prompt`). Embeddings,
+search, image and other modalities are not wired through the gateway.
+
+### Ordinary activation (no ZDR)
+
+1. Store the gateway key server-side as `TEMP_CONTEXT_VARIABLE_AI_GATEWAY_API_KEY`
+   (or `AI_GATEWAY_API_KEY`). Workflow-supplied credentials are always refused
+   (`reject_request_credentials: true`).
+2. Enable the provider and list the gateway model ids this environment may use.
+   The list is a policy bound, not a claim that the whole Vercel catalog works:
+
+   ```json
+   {
+     "providers": {
+       "vercel_gateway": {
+         "enabled": true,
+         "allowed_models": { "chat": ["anthropic/claude-sonnet-4.5"] }
+       }
+     }
+   }
+   ```
+
+3. Route traffic to it with an operator remap (§4 pattern). Committed workflows
+   cannot name `provider: vercel_gateway`; the repository policy lint rejects it.
+4. Check `health` with `provider: vercel_gateway`: `ready: true` means the
+   configuration is present, not that a model call succeeded.
+
+In this mode the request **omits** `providerOptions.gateway.zeroDataRetention`
+entirely (it is never sent as `false`). No ZDR guarantee is made. Vercel treats
+team-wide and request-level ZDR as an OR, so if the Vercel team enforces ZDR it
+still applies; the router cannot see that and reports it as `unknown`.
+Ordinary fallbacks configured under `fallbacks.chat.vercel_gateway` apply.
+
+### Zero Data Retention opt-in (separate step)
+
+ZDR is operator policy, OFF by default. Turn it on only after all of these hold:
+
+- The Vercel team is on a plan that supports per-request ZDR (Pro or
+  Enterprise per Vercel's docs). The router cannot check entitlement.
+- Every model in `allowed_models.chat` has a ZDR-eligible provider on the
+  gateway for the features you use (tools, structured output, caching). Some
+  features and provider-side caching are excluded from ZDR even when the flag is
+  accepted. Verify against the [Vercel ZDR docs](https://vercel.com/docs/ai-gateway/capabilities/zdr).
+- No BYOK keys are configured on the Vercel account for those providers:
+  Vercel does not enforce ZDR on BYOK requests, and account-side BYOK is not
+  visible to the router.
+
+Then opt in through `MACHINA_AI_ROUTER_CONFIG_JSON`:
+
+```json
+{ "providers": { "vercel_gateway": { "zero_data_retention": true } } }
+```
+
+What the router then guarantees, offline-tested in `tests/test_vercel_gateway.py`:
+
+- Every request sends `providerOptions.gateway.zeroDataRetention: true`, via
+  `extra_body`, on the direct path and on the returned model's `invoke`,
+  `bind_tools`, `with_structured_output` and `stream`, including router retries.
+- The route is protected and fail-closed: no fallback and no profile skip to a
+  provider with weaker or unknown retention. A gateway error (including "no
+  ZDR-eligible provider") is returned typed, never retried elsewhere.
+- Operator BYOK config (`providers.vercel_gateway.byok`) is refused with
+  `policy_credential_not_allowed`, as are request credentials even if
+  `reject_request_credentials` is relaxed.
+- In both modes a workflow cannot set `provider_options`, `providerOptions`,
+  `extra_body`, `zero_data_retention` or `byok`; the request fails
+  `unsupported_option` before any outbound call.
+
+What it does **not** guarantee: plan entitlement, per-model or per-feature
+eligibility, account-side BYOK state, or that a successful response proves
+retention compliance. A successful call is not evidence of ZDR.
+
+### Receipts and health
+
+Gateway routes add to the receipt `metadata`:
+
+```json
+{ "zdr_mode": "requested",
+  "gateway": { "backend": "vercel_ai_gateway", "zdr_effective": "unknown",
+               "upstream_provider": null, "upstream_model": "anthropic/claude-sonnet-4.5" } }
+```
+
+`zdr_mode` is what the router asked for (`requested` / `not_requested`).
+`selected_provider`/`selected_model` are the gateway route; `upstream_model` is
+what the gateway reported back (`null` when not reported, e.g. factory mode).
+The upstream provider is not exposed by the OpenAI-compatible response and stays
+`null`. `health` adds `zdr_mode` and `gateway.{zdr_effective, zdr_entitlement,
+account_byok}`, all `unknown`. No prompt or response content is logged.
+
+### Validation status and rollback
+
+Offline only: fake SDKs plus the real `langchain-openai`/`openai` clients
+against an `httpx` mock transport. No Vercel call, live or paid, has been made;
+ZDR-on against a real entitled team is unverified.
+
+Rollback is config-only: set `zero_data_retention: false` to stop sending the
+flag, or `enabled: false` (and remove any remap) to take the gateway out of the
+route entirely.
