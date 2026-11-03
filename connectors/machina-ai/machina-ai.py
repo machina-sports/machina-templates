@@ -2307,6 +2307,17 @@ class Router:
         if request and "priority_paygo" in request.options:
             metadata["requested_priority_paygo"] = request.options["priority_paygo"]
         metadata.update(updates)
+        if request and request.operation_mode == "factory":
+            # A factory receipt is written when the model object is built, before
+            # any inference happens: the elapsed time is construction, and there
+            # is no usage to report. Name it for what it is so a consumer cannot
+            # present it as inference latency.
+            metadata["construction_latency_ms"] = metadata.pop("latency_ms")
+            metadata.pop("usage", None)
+            metadata["fallback_attempts"] = [
+                {("construction_latency_ms" if key == "latency_ms" else key): value for key, value in attempt.items()}
+                for attempt in metadata.get("fallback_attempts") or []
+            ]
         selected_provider = metadata.get("selected_provider")
         if selected_provider:
             metadata["resolved_route"] = {

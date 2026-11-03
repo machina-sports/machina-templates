@@ -185,6 +185,13 @@ Run once for `claude-haiku-4-5` and once for `claude-sonnet-5`. Expected receipt
                 "route_reason": "explicit_provider", "fallback_used": false } }
 ```
 
+`invoke_prompt` is a factory: the receipt is written when the model object is
+built, before any inference. Its elapsed time is therefore reported as
+`construction_latency_ms` (also per entry in `fallback_attempts`), and the
+receipt carries no `latency_ms` or `usage`. Inference latency and token usage
+for a factory route are not recorded by the router; treat them as unknown. The
+direct `invoke_chat` / `completion_receipt` path keeps `latency_ms` and `usage`.
+
 A repeatable workflow probe ships alongside this file:
 `test-smoke-claude-vertex.yml` (Haiku; swap `model` to `claude-sonnet-5` for
 Sonnet). The repository policy lint (`scripts/check-machina-ai-policy.py`) allows
