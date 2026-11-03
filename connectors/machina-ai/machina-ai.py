@@ -29,7 +29,21 @@ from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional,
 from urllib.parse import urlparse
 
 CONTRACT_VERSION = "v1"
-FIXED_PROVIDER_ENDPOINTS = {"cerebras": "https://api.cerebras.ai/v1"}
+FIXED_PROVIDER_ENDPOINTS = {
+    "cerebras": "https://api.cerebras.ai/v1",
+    "vercel_gateway": "https://ai-gateway.vercel.sh/v1",
+}
+# Request fields that would let a caller reshape the gateway's provider options
+# (retention, BYOK, routing). Those belong to runtime policy, never to a workflow.
+GATEWAY_POLICY_FIELDS = {
+    "provider_options",
+    "providerOptions",
+    "extra_body",
+    "zero_data_retention",
+    "zeroDataRetention",
+    "byok",
+}
+GATEWAY_ZDR_BODY = {"providerOptions": {"gateway": {"zeroDataRetention": True}}}
 TRANSIENT_ERRORS = {
     "provider_timeout",
     "provider_rate_limited",
@@ -65,6 +79,8 @@ PROVIDER_ALIASES = {
     "anthropic": "vertex_anthropic",
     "claude": "vertex_anthropic",
     "cerebras_cloud": "cerebras",
+    "vercel": "vercel_gateway",
+    "vercel_ai_gateway": "vercel_gateway",
 }
 COMMANDS = {
     "invoke_prompt": ("chat", "factory"),
@@ -355,6 +371,23 @@ DEFAULT_CONFIG: Dict[str, Any] = {
                 "chat": ["grok-4.6", "grok-4-fast", "grok-4-latest", "grok-4.3"],
                 "search_answer": ["grok-4.6", "grok-4-fast", "grok-4-latest", "grok-4.3"],
             },
+        },
+        "vercel_gateway": {
+            # Vercel AI Gateway as an optional backend behind this router, not a
+            # replacement for it. Dormant until an operator enables it and lists
+            # the gateway model ids (e.g. "anthropic/claude-sonnet-4.5") it may use.
+            # `zero_data_retention` is an operator opt-in; when false the request
+            # omits the field entirely (team-wide ZDR on the Vercel account still
+            # applies and is not visible from here).
+            "enabled": False,
+            "adapter": "vercel_gateway",
+            "reject_request_credentials": True,
+            "require_credential": True,
+            "credential_env": "TEMP_CONTEXT_VARIABLE_AI_GATEWAY_API_KEY",
+            "credential_env_aliases": ["AI_GATEWAY_API_KEY"],
+            "endpoint": "https://ai-gateway.vercel.sh/v1",
+            "zero_data_retention": False,
+            "allowed_models": {"chat": []},
         },
         "perplexity": {
             "enabled": False,
@@ -1023,6 +1056,28 @@ def _reject_unsafe_host(hostname: str) -> None:
             raise RouterError("policy_endpoint_not_allowed", "The endpoint resolves to a protected network address.")
 
 
+def _zdr_requested(conf: Mapping[str, Any]) -> bool:
+    return conf.get("adapter") == "vercel_gateway" and _as_bool(conf.get("zero_data_retention"))
+
+
+def _gateway_receipt(conf: Mapping[str, Any], upstream_model: Any = None) -> Dict[str, Any]:
+    """Sanitized gateway identity for receipts and health.
+
+    `zdr_mode` is only what this router asks for. Team-wide ZDR, plan
+    entitlement and account-side BYOK live on the Vercel account and are not
+    visible from here, so they are reported unknown rather than guessed.
+    """
+    return {
+        "zdr_mode": "requested" if _zdr_requested(conf) else "not_requested",
+        "gateway": {
+            "backend": "vercel_ai_gateway",
+            "zdr_effective": "unknown",
+            "upstream_provider": None,
+            "upstream_model": upstream_model,
+        },
+    }
+
+
 def _validate_endpoint(endpoint: str, allowed_hosts: Iterable[str], *, protected: bool = False) -> str:
     parsed = urlparse(endpoint)
     if parsed.scheme not in {"https", "http"} or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
@@ -1092,7 +1147,9 @@ class PolicyEngine:
                 if request.model and allowed_models and request.model not in allowed_models:
                     continue
                 credential = self._read_env(conf, "credential") or self._read_env(conf, "api_key")
-                if _as_bool(conf.get("require_credential")) and not credential:
+                # A missing credential must not quietly hand a ZDR route's traffic
+                # to a candidate with weaker retention; route() fails it typed.
+                if _as_bool(conf.get("require_credential")) and not credential and not _zdr_requested(conf):
                     continue
                 return candidate, f"profile:{request.profile}", False
             return _as_dict(candidates[-1]), f"profile:{request.profile}", False
@@ -1161,6 +1218,14 @@ class PolicyEngine:
 
         policy = _as_dict(self.config.get("policy"))
         protected = _as_bool(conf.get("protected"))
+        zdr = False
+        if conf.get("adapter") == "vercel_gateway":
+            zdr = self._gateway_policy(request, conf)
+            if zdr:
+                # A ZDR route never falls back: every fallback would be a
+                # retention downgrade the operator did not choose.
+                protected = True
+                conf["fail_closed"] = True
         supplied_endpoint = request.security.get("endpoint") or request.security.get("base_url")
         callback_url = request.security.get("callback_url")
         if callback_url and callback_url not in set(policy.get("allowed_callback_urls") or []):
@@ -1183,7 +1248,7 @@ class PolicyEngine:
 
         credential = self._read_env(conf, "credential") or self._read_env(conf, "api_key")
         request_credential = request.security.get("api_key") or request.security.get("credential")
-        if (provider == "cerebras" or _as_bool(conf.get("reject_request_credentials"))) and request_credential:
+        if (provider == "cerebras" or zdr or _as_bool(conf.get("reject_request_credentials"))) and request_credential:
             raise RouterError("policy_credential_not_allowed", "This route credential is controlled by runtime policy.")
         if request_credential:
             trusted = _as_bool(request.security.get("_credential_trusted"))
@@ -1251,6 +1316,19 @@ class PolicyEngine:
             retries=retries,
             protected=protected,
         )
+
+    @staticmethod
+    def _gateway_policy(request: NormalizedRequest, conf: MutableMapping[str, Any]) -> bool:
+        """Apply operator-owned gateway policy; return whether ZDR is requested."""
+        sources = (request.options, request.raw, _as_dict(request.raw.get("params")))
+        if any(key in source for source in sources for key in GATEWAY_POLICY_FIELDS):
+            raise RouterError("unsupported_option", "Gateway provider options are controlled by runtime policy.")
+        zdr = _zdr_requested(conf)
+        conf["zero_data_retention"] = zdr
+        if zdr and conf.get("byok"):
+            # Vercel does not enforce ZDR on BYOK requests.
+            raise RouterError("policy_credential_not_allowed", "BYOK is not allowed while zero data retention is requested.")
+        return zdr
 
     def fallback_candidates(self, route: Route, request: NormalizedRequest) -> List[Tuple[Dict[str, Any], str]]:
         """Return raw fallback candidate specs; routes are built lazily at dispatch
@@ -1769,7 +1847,14 @@ class OpenAICompatibleAdapter(ProviderAdapter):
             kwargs["default_headers"] = {"OpenAI-Project": route.credentials["project"]}
         if request.options.get("max_tokens") is not None:
             kwargs["max_tokens"] = request.options["max_tokens"]
+        kwargs["extra_body"] = self._extra_body(route)
         return {key: value for key, value in kwargs.items() if value is not None}
+
+    def _extra_body(self, route: Route) -> Optional[Dict[str, Any]]:
+        return None
+
+    def _response_extensions(self, response: Any) -> Dict[str, Any]:
+        return {}
 
     def create_chat_model(self, route: Route, request: NormalizedRequest) -> AdapterResult:
         try:
@@ -1814,6 +1899,9 @@ class OpenAICompatibleAdapter(ProviderAdapter):
         for key in ("temperature", "max_tokens", "response_format", "tools"):
             if request.options.get(key) is not None:
                 kwargs[key] = request.options[key]
+        extra_body = self._extra_body(route)
+        if extra_body is not None:
+            kwargs["extra_body"] = extra_body
         try:
             response = self._client(route).chat.completions.create(**kwargs)
             choice = response.choices[0]
@@ -1827,6 +1915,7 @@ class OpenAICompatibleAdapter(ProviderAdapter):
                 _chat_data(content, finish_reason=getattr(choice, "finish_reason", None), tool_calls=tool_calls),
                 provider_request_id=getattr(response, "id", None),
                 usage=usage,
+                extensions=self._response_extensions(response),
             )
         except RouterError:
             raise
@@ -2045,6 +2134,27 @@ class XAIAdapter(OpenAICompatibleAdapter):
             raise RouterError(error_class, message)
 
 
+class VercelGatewayAdapter(OpenAICompatibleAdapter):
+    """Vercel AI Gateway over its OpenAI-compatible endpoint.
+
+    The only provider-specific mapping is retention: with operator opt-in every
+    request, on both the direct and the returned-model path, carries the
+    gateway ZDR flag; otherwise the field is omitted, never sent as false.
+    """
+
+    provider_id = "vercel_gateway"
+    capabilities = {"chat"}
+
+    def _extra_body(self, route: Route) -> Optional[Dict[str, Any]]:
+        if _as_bool(route.config.get("zero_data_retention")):
+            return copy.deepcopy(GATEWAY_ZDR_BODY)
+        return None
+
+    def _response_extensions(self, response: Any) -> Dict[str, Any]:
+        model = getattr(response, "model", None)
+        return {"upstream_model": model} if isinstance(model, str) and model else {}
+
+
 class NvidiaNimAdapter(OpenAICompatibleAdapter):
     provider_id = "nvidia_nim"
     capabilities = {"chat"}
@@ -2228,6 +2338,7 @@ class AdapterRegistry:
             "perplexity": PerplexityAdapter,
             "xai": XAIAdapter,
             "nvidia_nim": NvidiaNimAdapter,
+            "vercel_gateway": VercelGatewayAdapter,
             "stability": StabilityAdapter,
             "elevenlabs": ElevenLabsAdapter,
             "google_speech": GoogleSpeechAdapter,
@@ -2306,8 +2417,12 @@ class Router:
             metadata["normalization_conflicts"] = list(request.conflicts)
         if request and "priority_paygo" in request.options:
             metadata["requested_priority_paygo"] = request.options["priority_paygo"]
+        upstream_model = updates.pop("upstream_model", None)
         metadata.update(updates)
         selected_provider = metadata.get("selected_provider")
+        provider_conf = _as_dict(_as_dict(self.config.get("providers")).get(selected_provider))
+        if provider_conf.get("adapter") == "vercel_gateway":
+            metadata.update(_gateway_receipt(provider_conf, upstream_model))
         if selected_provider:
             metadata["resolved_route"] = {
                 "provider": selected_provider,
@@ -2366,7 +2481,7 @@ class Router:
                     missing.append("credential")
                 if enabled and conf.get("endpoint_env") and not (conf.get("endpoint") or os.getenv(str(conf.get("endpoint_env")))):
                     missing.append("endpoint")
-                entries.append({
+                entry = {
                     "provider": provider,
                     "enabled": enabled,
                     "ready": enabled and not missing,
@@ -2374,7 +2489,17 @@ class Router:
                     "adapter": conf.get("adapter"),
                     "capabilities": sorted(key for key, models in allowed_models.items() if models),
                     "models": {key: list(models) for key, models in allowed_models.items() if models},
-                })
+                }
+                if conf.get("adapter") == "vercel_gateway":
+                    receipt = _gateway_receipt(conf)
+                    entry["zdr_mode"] = receipt["zdr_mode"]
+                    entry["gateway"] = {
+                        "backend": receipt["gateway"]["backend"],
+                        "zdr_effective": "unknown",
+                        "zdr_entitlement": "unknown",
+                        "account_byok": "unknown",
+                    }
+                entries.append(entry)
         message = "Allowed models listed." if request.command == "list_models" else "Router health evaluated."
         extra: Dict[str, Any] = {}
         if request.command == "list_models":
@@ -2512,6 +2637,7 @@ class Router:
                         if time.monotonic() >= deadline:
                             raise RouterError("provider_timeout", "The router invocation deadline was exhausted.", transient=True)
                         self.runtime.circuit_record(route_id, True)
+                        extensions = dict(result.extensions)
                         metadata = self._metadata(
                             request,
                             started,
@@ -2522,9 +2648,10 @@ class Router:
                             fallback_attempts=attempts,
                             provider_request_id=result.provider_request_id,
                             usage=result.usage,
+                            upstream_model=extensions.pop("upstream_model", None),
                         )
-                        if result.extensions:
-                            metadata["provider_extensions"] = result.extensions
+                        if extensions:
+                            metadata["provider_extensions"] = extensions
                         data = result.data
                         if request.command == "invoke_search" and isinstance(data, Mapping):
                             data = dict(data)
