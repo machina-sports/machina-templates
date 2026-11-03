@@ -1,0 +1,19 @@
+{
+  "providers": {
+    "perplexity": {
+      "enabled": false,
+      "allowed_models": {
+        "chat": [],
+        "search_answer": ["sonar", "sonar-pro"]
+      }
+    }
+  },
+  "profile_intents": {
+    "perplexity_search": "Cited web answers from Perplexity Sonar. Inactive until an operator enables the provider."
+  },
+  "profiles": {
+    "perplexity_search": {
+      "search_answer": [{"provider": "perplexity", "model": "sonar"}]
+    }
+  }
+}

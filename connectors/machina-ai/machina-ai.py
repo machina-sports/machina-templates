@@ -390,11 +390,16 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "allowed_models": {"chat": []},
         },
         "perplexity": {
+            # Sonar web search (POST /v1/sonar), dormant until an operator enables
+            # it. No default, profile or fallback routes here. require_credential
+            # stops the OpenAI SDK from silently using an ambient OPENAI_API_KEY.
+            # Chat stays empty: only invoke_search is prepared. See PERPLEXITY.md.
             "enabled": False,
             "adapter": "perplexity",
+            "require_credential": True,
             "credential_env": "TEMP_CONTEXT_VARIABLE_PERPLEXITY_API_KEY",
             "endpoint": "https://api.perplexity.ai",
-            "allowed_models": {"chat": [], "search_answer": []},
+            "allowed_models": {"chat": [], "search_answer": ["sonar", "sonar-pro"]},
         },
         "nvidia_nim": {
             "enabled": False,
@@ -2072,7 +2077,63 @@ class CerebrasAdapter(OpenAICompatibleAdapter):
         return super().invoke_chat(route, request)
 
 
+def _sonar_url(value: Any) -> Optional[str]:
+    """Return a provider-supplied URL only if it is a plain http(s) web address."""
+    if not isinstance(value, str) or not value or any(ch.isspace() or ord(ch) < 32 or ord(ch) == 127 for ch in value):
+        return None
+    try:
+        parsed = urlparse(value)
+        parsed.port  # raises ValueError for a malformed or out-of-range port
+    except ValueError:
+        return None
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or "@" in parsed.netloc:
+        return None
+    return value
+
+
+def _sonar_citations(body: Mapping[str, Any]) -> List[Dict[str, Any]]:
+    """Normalize web citations, preserving original marker indices when supplied.
+
+    Invalid/attachment entries are dropped. Consumers matching answer markers
+    must use citation_index, not the filtered list position. Titles come only
+    from a web search result with the exact same URL.
+    """
+    titles: Dict[str, str] = {}
+    web: List[str] = []
+    attachments = set()
+    for item in body.get("search_results") or []:
+        if not isinstance(item, Mapping):
+            continue
+        url = _sonar_url(item.get("url"))
+        if not url:
+            continue
+        if item.get("source", "web") == "attachment":
+            attachments.add(url)
+            continue
+        web.append(url)
+        title = item.get("title")
+        titles.setdefault(url, title if isinstance(title, str) else "")
+    citations = body.get("citations")
+    urls = citations if isinstance(citations, list) else web
+    normalized = []
+    for index, raw in enumerate(urls, 1):
+        url = _sonar_url(raw)
+        if not url or (url in attachments and url not in titles):
+            continue
+        item: Dict[str, Any] = {"url": url, "title": titles.get(url, "")}
+        if isinstance(citations, list):
+            item["citation_index"] = index
+        normalized.append(item)
+    return normalized
+
+
 class PerplexityAdapter(OpenAICompatibleAdapter):
+    """Perplexity Sonar search over the documented POST /v1/sonar contract.
+
+    Reuses the inherited OpenAI SDK client (router-owned timeout, max_retries=0)
+    only as an HTTP transport. Chat is inherited unchanged and not enabled.
+    """
+
     provider_id = "perplexity"
     capabilities = {"chat", "search_answer"}
 
@@ -2083,23 +2144,44 @@ class PerplexityAdapter(OpenAICompatibleAdapter):
             if not prompt:
                 raise RouterError("invalid_request", "Search execution requires messages or a prompt.")
             messages = [{"role": "user", "content": prompt}]
+        # Fixed fields only: web search always on, no classifier deciding to skip it.
+        payload = {
+            "model": route.model,
+            "messages": messages,
+            "stream": False,
+            "disable_search": False,
+            "enable_search_classifier": False,
+        }
         try:
-            response = self._client(route).chat.completions.create(model=route.model, messages=messages, stream=False)
-            choice = response.choices[0]
-            citations = list(getattr(response, "citations", None) or [])
-            usage = getattr(response, "usage", None)
-            if usage is not None and hasattr(usage, "model_dump"):
-                usage = usage.model_dump()
-            return AdapterResult(
-                _chat_data(getattr(choice.message, "content", None), finish_reason=getattr(choice, "finish_reason", None), citations=citations),
-                provider_request_id=getattr(response, "id", None),
-                usage=usage,
-            )
+            body = self._client(route).post("/v1/sonar", cast_to=Dict[str, Any], body=payload)
         except RouterError:
             raise
         except Exception as error:
             error_class, message = _safe_exception(error)
             raise RouterError(error_class, message)
+        if not isinstance(body, Mapping):
+            raise RouterError("provider_bad_response", "The search provider returned no usable answer.")
+        choices = body.get("choices")
+        choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], Mapping) else {}
+        message = _as_dict(choice.get("message"))
+        content = message.get("content")
+        finish_reason = choice.get("finish_reason")
+        if finish_reason == "content_filter" or message.get("refusal"):
+            raise RouterError("provider_content_rejected", "The provider declined to answer this request.")
+        if not isinstance(content, str) or not content.strip() or finish_reason not in (None, "stop"):
+            raise RouterError("provider_bad_response", "The search provider returned no usable answer.")
+        usage = body.get("usage")
+        model = body.get("model")
+        return AdapterResult(
+            _chat_data(
+                content,
+                finish_reason=finish_reason,
+                citations=_sonar_citations(body),
+                extensions={"provider_model": model} if isinstance(model, str) and model else None,
+            ),
+            provider_request_id=body.get("id") if isinstance(body.get("id"), str) else None,
+            usage=dict(usage) if isinstance(usage, Mapping) else None,
+        )
 
 
 class XAIAdapter(OpenAICompatibleAdapter):

@@ -50,6 +50,12 @@ The factory remains callable for LCEL composition, forwards invocation config,
 and delegates streaming to the underlying model. Validate both structured and
 plain-text workflows against the deployed client runtime before a rollout.
 
+## Perplexity Sonar search (`perplexity`)
+
+Prepared for `invoke_search` only and shipped disabled. See
+[PERPLEXITY.md](PERPLEXITY.md) for the contract, policy, and the unapplied example
+config. Enabling, keys and smoke tests need separate approval.
+
 ## Activating the Claude on Vertex route (`vertex_anthropic`)
 
 The `vertex_anthropic` provider ships **dormant** (`enabled: false`). Nothing routes
