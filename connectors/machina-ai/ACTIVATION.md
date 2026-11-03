@@ -50,6 +50,34 @@ The factory remains callable for LCEL composition, forwards invocation config,
 and delegates streaming to the underlying model. Validate both structured and
 plain-text workflows against the deployed client runtime before a rollout.
 
+### Governed Vertex inference and vault-bound credentials
+
+A Vertex chat factory returned by `invoke_prompt` routes its real calls (`invoke`,
+`stream`, async, batch, and `with_structured_output` / `bind_tools` views) through
+the router's retry, fallback, circuit and deadline rules. The deadline is the
+original absolute one from the factory request. Every attempt rebuilds the model
+with only the remaining budget. The SDK is built with `max_retries: 0`. A late
+result counts as a timeout, and a stream that fails after its first emitted chunk
+is not retried. `get_inference_receipt()` returns a separate receipt with
+`execution_phase: "inference"` and real `latency_ms`. Provider errors are logged
+as status and class only.
+
+An operator can bind `providers.vertex_ai` to `credential_vault_ref`,
+`project_vault_ref` and a non-empty `vault_scope_allowlist`. The runtime then
+supplies the pair through a zero-argument `resolve_vertex_auth()`. The router
+never reads the environment or ADC for that route, and it refuses every caller
+auth field, even when workflow credentials are allowed. A partial binding, a
+missing resolver, or a malformed pair fails typed without falling back. A bound
+profile candidate resolves only once it is selected. A ZDR gateway candidate
+missing its credential is never skipped in favour of a weaker route.
+
+Compatibility gate: when the router delegates the prompt factory to an installed
+`google-genai` connector, that connector's `invoke_prompt` must accept
+`max_retries` and `timeout`. Check that one function before rollout. Do not
+re-import the whole connector, because other commands may differ between
+installed and repository versions. Non-Vertex Google prompt factories are not
+governed, so they keep the SDK retry default.
+
 ## Perplexity Sonar search (`perplexity`)
 
 Prepared for `invoke_search` only and shipped disabled. See
@@ -195,8 +223,10 @@ Run once for `claude-haiku-4-5` and once for `claude-sonnet-5`. Expected receipt
 built, before any inference. Its elapsed time is therefore reported as
 `construction_latency_ms` (also per entry in `fallback_attempts`), and the
 receipt carries no `latency_ms` or `usage`. Inference latency and token usage
-for a factory route are not recorded by the router; treat them as unknown. The
-direct `invoke_chat` / `completion_receipt` path keeps `latency_ms` and `usage`.
+for a factory route are not in this receipt; treat them as unknown. The one
+exception is a governed Vertex factory (below), whose separate inference receipt
+is not merged into task metadata. The direct `invoke_chat` /
+`completion_receipt` path keeps `latency_ms` and `usage`.
 
 A repeatable workflow probe ships alongside this file:
 `test-smoke-claude-vertex.yml` (Haiku; swap `model` to `claude-sonnet-5` for

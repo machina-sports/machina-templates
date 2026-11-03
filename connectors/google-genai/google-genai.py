@@ -453,6 +453,10 @@ def invoke_prompt(params):
         except (TypeError, ValueError):
             timeout_seconds = None
 
+    # Optional SDK retry override. The machina-ai router passes 0 because it
+    # owns retries and the deadline; when absent the SDK default stands.
+    max_retries = params.get("max_retries")
+
     # AI Studio Implementation (default)
     if provider == "ai_studio":
         api_key = params.get("api_key")
@@ -464,6 +468,8 @@ def invoke_prompt(params):
             llm_kwargs = {"model": model_name, "api_key": api_key}
             if timeout_seconds is not None:
                 llm_kwargs["timeout"] = timeout_seconds
+            if max_retries is not None:
+                llm_kwargs["max_retries"] = max_retries
             llm = ChatGoogleGenerativeAI(**llm_kwargs)
             return {
                 "status": True,
@@ -521,6 +527,8 @@ def invoke_prompt(params):
                 "credentials": credentials,
                 "additional_headers": additional_headers if additional_headers else None,
             }
+            if max_retries is not None:
+                vertex_kwargs["max_retries"] = max_retries
             if timeout_seconds is not None:
                 # ChatVertexAI accepts both `timeout` (modern langchain) and
                 # `request_timeout` (legacy). Pass `timeout`; fall back if the

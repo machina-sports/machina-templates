@@ -1,6 +1,9 @@
+import copy
 import importlib.util
+import inspect
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -1870,3 +1873,537 @@ class TestCerebrasFastRoute:
         assert result.data["content"] == "ok"
         assert result.provider_request_id == "cerebras-1"
         assert result.usage == {"total_tokens": 2}
+
+
+# --- Vault-bound Vertex auth -------------------------------------------------
+# An operator binds providers.vertex_ai to vault references; the router then
+# asks the runtime for the (credential, project) pair through the zero-argument
+# RuntimeFacade.resolve_vertex_auth() and never reads the environment, ADC, or
+# a caller-supplied value for that route. All secrets below are synthetic.
+
+SYNTHETIC_KEY_MARKER = "SYNTHETIC-TEST-KEY-NOT-A-SECRET"
+SYNTHETIC_KEY_ID = "synthetic-key-id"
+SYNTHETIC_PROJECT = "syntheticproject"
+SYNTHETIC_SERVICE_ACCOUNT = json.dumps({
+    "type": "service_account",
+    "project_id": SYNTHETIC_PROJECT,
+    "private_key_id": SYNTHETIC_KEY_ID,
+    "private_key": f"-----BEGIN PRIVATE KEY-----\n{SYNTHETIC_KEY_MARKER}\n-----END PRIVATE KEY-----\n",
+    "client_email": f"router-test@{SYNTHETIC_PROJECT}.iam.gserviceaccount.com",
+})
+VAULT_CREDENTIAL_REF = "TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+VAULT_PROJECT_REF = "TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+VAULT_SCOPE = {"organization_id": "org-synthetic", "project_id": "project-synthetic"}
+VAULT_BINDING = {
+    "credential_vault_ref": VAULT_CREDENTIAL_REF,
+    "project_vault_ref": VAULT_PROJECT_REF,
+    "vault_scope_allowlist": [dict(VAULT_SCOPE)],
+}
+ENV_CREDENTIAL = "env-credential-must-not-be-used"
+ENV_PROJECT = "env-project-must-not-be-used"
+CALLER_VALUE = "caller-value-must-not-leak"
+# Typed, non-transient failure classes for an unusable vault pair.
+VAULT_FAILURE_CLASSES = {"credential_missing", "credential_invalid"}
+_UNSET = object()
+
+
+def vault_bound_config(**extra):
+    return router._deep_merge({"providers": {"vertex_ai": copy.deepcopy(VAULT_BINDING)}}, extra)
+
+
+def assert_no_secret(*values):
+    for value in values:
+        text = value if isinstance(value, str) else json.dumps(value, default=repr)
+        for secret in (SYNTHETIC_KEY_MARKER, SYNTHETIC_KEY_ID, CALLER_VALUE):
+            assert secret not in text
+
+
+def assert_sanitized_vault_error(error):
+    assert isinstance(error, router.RouterError)
+    assert error.error_class in VAULT_FAILURE_CLASSES
+    assert error.transient is False
+    # The original exception must not ride along as an explicit or implicit cause.
+    assert error.__cause__ is None
+    assert error.__context__ is None or error.__suppress_context__ is True
+    assert_no_secret(error.safe_message, str(error), repr(error), repr(error.args), error.details)
+
+
+class ScopedRuntime(FakeRuntime):
+    def scope(self):
+        return {**VAULT_SCOPE, "actor_id": "actor-1"}
+
+
+class VaultRuntime(ScopedRuntime):
+    """Runtime exposing the zero-argument resolve_vertex_auth() contract."""
+
+    def __init__(self, config=None, adapters=None, trusted_headers=None, auth=_UNSET, error=None):
+        super().__init__(config=config, adapters=adapters, trusted_headers=trusted_headers)
+        self.auth = {"credential": SYNTHETIC_SERVICE_ACCOUNT, "project": SYNTHETIC_PROJECT} if auth is _UNSET else auth
+        self.error = error
+        self.auth_calls = []
+
+    def resolve_vertex_auth(self, *args, **kwargs):
+        # Records every call so tests can prove no params or reference are passed.
+        self.auth_calls.append((args, kwargs))
+        if self.error is not None:
+            raise self.error() if callable(self.error) else self.error
+        return copy.deepcopy(self.auth)
+
+
+class NonCallableResolverRuntime(ScopedRuntime):
+    resolve_vertex_auth = "not-callable"
+
+
+class VaultDelegateRuntime(VaultRuntime):
+    """No injected adapters, so the built-in Google adapter delegates here."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.adapters = {}
+        self.payloads = []
+
+    def delegate(self, connector, request_data=None, command=None):
+        self.payloads.append((connector, command, request_data))
+        return {"status": True, "data": "vertex-chat", "metadata": {}}
+
+
+MALFORMED_AUTH = [
+    pytest.param(None, id="none"),
+    pytest.param({}, id="empty"),
+    pytest.param({"credential": SYNTHETIC_SERVICE_ACCOUNT}, id="missing-project"),
+    pytest.param({"project": SYNTHETIC_PROJECT}, id="missing-credential"),
+    pytest.param({"credential": "", "project": SYNTHETIC_PROJECT}, id="empty-credential"),
+    pytest.param({"credential": SYNTHETIC_SERVICE_ACCOUNT, "project": ""}, id="empty-project"),
+    pytest.param({"credential": SYNTHETIC_SERVICE_ACCOUNT, "project": None}, id="null-project"),
+    pytest.param({"credential": 42, "project": SYNTHETIC_PROJECT}, id="non-string-credential"),
+    pytest.param({"credential": SYNTHETIC_SERVICE_ACCOUNT, "project": [SYNTHETIC_PROJECT]}, id="non-string-project"),
+    pytest.param((SYNTHETIC_SERVICE_ACCOUNT, SYNTHETIC_PROJECT), id="tuple"),
+    pytest.param(SYNTHETIC_SERVICE_ACCOUNT, id="bare-string"),
+]
+
+RESOLVER_ERRORS = [
+    pytest.param(lambda: RuntimeError(f"vault read failed {SYNTHETIC_KEY_MARKER}"), id="runtime-error"),
+    pytest.param(lambda: KeyError(SYNTHETIC_SERVICE_ACCOUNT), id="key-error"),
+    pytest.param(lambda: TypeError(f"bad call {SYNTHETIC_KEY_MARKER}"), id="type-error"),
+    pytest.param(lambda: TimeoutError(f"vault timeout {SYNTHETIC_KEY_MARKER}"), id="timeout"),
+    pytest.param(lambda: PermissionError(f"denied {SYNTHETIC_KEY_ID}"), id="permission"),
+    pytest.param(lambda: router.RouterError("credential_missing", f"leaky {SYNTHETIC_KEY_MARKER}"), id="router-error"),
+]
+
+MISSING_RESOLVER_RUNTIMES = [
+    pytest.param(ScopedRuntime, id="no-method"),
+    pytest.param(NonCallableResolverRuntime, id="non-callable"),
+]
+
+_CALLER_OVERRIDE_FIELDS = {
+    "credential": CALLER_VALUE,
+    "api_key": CALLER_VALUE,
+    "project": CALLER_VALUE,
+    "project_id": CALLER_VALUE,
+    "location": CALLER_VALUE,
+    "credential_vault_ref": CALLER_VALUE,
+    "project_vault_ref": CALLER_VALUE,
+    "vault_scope_allowlist": [{"organization_id": "org-attacker", "project_id": CALLER_VALUE}],
+}
+# (workflow params, runtime trusted_headers)
+CALLER_OVERRIDES = (
+    [pytest.param({name: value}, {}, id=f"top-level-{name}") for name, value in _CALLER_OVERRIDE_FIELDS.items()]
+    + [pytest.param({"params": {name: value}}, {}, id=f"params-{name}") for name, value in _CALLER_OVERRIDE_FIELDS.items()]
+    + [pytest.param({"headers": {name: CALLER_VALUE}}, {}, id=f"headers-{name}")
+       for name in ("credential", "api_key", "project", "project_id")]
+    + [pytest.param({"headers": {name: CALLER_VALUE}}, {name: True}, id=f"trusted-header-{name}")
+       for name in ("credential", "api_key")]
+)
+
+
+class TestRuntimeFacadeResolveVertexAuth:
+    def test_accepts_validated_service_account_mapping_from_runtime(self):
+        credential = json.loads(SYNTHETIC_SERVICE_ACCOUNT)
+        credential["token_uri"] = "https://oauth2.googleapis.com/token"
+        auth = {"credential": credential, "project": SYNTHETIC_PROJECT}
+        runtime = VaultRuntime(auth=auth)
+        assert router.RuntimeFacade(runtime).resolve_vertex_auth() == auth
+        assert runtime.auth_calls == [((), {})]
+
+    def test_facade_method_takes_no_parameters(self):
+        parameters = list(inspect.signature(router.RuntimeFacade.resolve_vertex_auth).parameters)
+        assert parameters == ["self"]
+
+    def test_invokes_runtime_method_with_zero_arguments_and_returns_exact_pair(self):
+        runtime = VaultRuntime()
+        pair = router.RuntimeFacade(runtime).resolve_vertex_auth()
+        assert pair == {"credential": SYNTHETIC_SERVICE_ACCOUNT, "project": SYNTHETIC_PROJECT}
+        assert runtime.auth_calls == [((), {})]
+
+    @pytest.mark.parametrize("candidate", [
+        pytest.param(None, id="no-runtime"),
+        pytest.param(object(), id="bare-object"),
+        pytest.param(SimpleNamespace(resolve_vertex_auth="not-callable"), id="non-callable"),
+        pytest.param(ScopedRuntime(), id="runtime-without-method"),
+    ])
+    def test_missing_runtime_method_is_typed_and_never_reads_environment(self, monkeypatch, candidate):
+        monkeypatch.setenv(VAULT_CREDENTIAL_REF, ENV_CREDENTIAL)
+        monkeypatch.setenv(VAULT_PROJECT_REF, ENV_PROJECT)
+        with pytest.raises(router.RouterError) as failure:
+            router.RuntimeFacade(candidate).resolve_vertex_auth()
+        assert_sanitized_vault_error(failure.value)
+        assert ENV_CREDENTIAL not in str(failure.value)
+
+    @pytest.mark.parametrize("error", RESOLVER_ERRORS)
+    def test_runtime_exception_is_typed_and_sanitized(self, capsys, error):
+        runtime = VaultRuntime(error=error)
+        with pytest.raises(router.RouterError) as failure:
+            router.RuntimeFacade(runtime).resolve_vertex_auth()
+        assert_sanitized_vault_error(failure.value)
+        # A TypeError must not trigger a retry with a different call shape.
+        assert runtime.auth_calls == [((), {})]
+        captured = capsys.readouterr()
+        assert_no_secret(captured.out, captured.err)
+
+    @pytest.mark.parametrize("auth", MALFORMED_AUTH)
+    def test_empty_or_malformed_pair_is_typed_and_sanitized(self, auth):
+        with pytest.raises(router.RouterError) as failure:
+            router.RuntimeFacade(VaultRuntime(auth=auth)).resolve_vertex_auth()
+        assert_sanitized_vault_error(failure.value)
+
+
+class TestVaultBoundVertexRoute:
+    def test_explicit_null_binding_fails_closed_without_environment(self, monkeypatch):
+        monkeypatch.setenv(VAULT_CREDENTIAL_REF, ENV_CREDENTIAL)
+        monkeypatch.setenv(VAULT_PROJECT_REF, ENV_PROJECT)
+        config = {"providers": {"vertex_ai": {key: None for key in VAULT_BINDING}}}
+        adapter = FakeAdapter()
+        runtime = VaultRuntime(config=config, adapters={"vertex_ai": adapter})
+        result = router.invoke_prompt({"_runtime": runtime, "prompt": "hello"})
+        assert result["status"] is False
+        assert runtime.auth_calls == []
+        assert not adapter.routes
+        assert_no_secret(result)
+
+    @pytest.mark.parametrize("nested", [False, True])
+    @pytest.mark.parametrize("field", list(_CALLER_OVERRIDE_FIELDS))
+    def test_options_auth_override_fails_before_resolution(self, nested, field):
+        options = {field: CALLER_VALUE}
+        if nested:
+            options = {"provider_options": options}
+        adapter = FakeAdapter()
+        runtime = VaultRuntime(config=vault_bound_config(), adapters={"vertex_ai": adapter})
+        result = router.invoke_prompt({"_runtime": runtime, "prompt": "hello", "options": options})
+        assert result["status"] is False
+        assert runtime.auth_calls == []
+        assert not adapter.routes
+        assert_no_secret(result)
+
+    @pytest.fixture(autouse=True)
+    def ambient_environment(self, monkeypatch):
+        # Present on purpose: a bound route must ignore these entirely.
+        monkeypatch.setenv(VAULT_CREDENTIAL_REF, ENV_CREDENTIAL)
+        monkeypatch.setenv(VAULT_PROJECT_REF, ENV_PROJECT)
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "groq-env-secret")
+
+    def fallback_config(self, **extra):
+        return vault_bound_config(
+            fallbacks={"chat": {"vertex_ai": [{"provider": "groq", "model": "openai/gpt-oss-120b"}]}},
+            **extra,
+        )
+
+    @pytest.mark.parametrize("command", ["invoke_prompt", "invoke_chat", "invoke_embedding", "invoke_search"])
+    def test_bound_route_consumes_resolved_pair(self, command):
+        adapter = FakeAdapter()
+        runtime = VaultRuntime(config=vault_bound_config(), adapters={"vertex_ai": adapter})
+        result = getattr(router, command)({"_runtime": runtime, "prompt": "hello"})
+
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_ai"
+        assert runtime.auth_calls == [((), {})]
+        credentials = adapter.routes[-1].credentials
+        assert credentials["credential"] == SYNTHETIC_SERVICE_ACCOUNT
+        assert credentials["project"] == SYNTHETIC_PROJECT
+        assert credentials["location"] == "global"
+        serialized = json.dumps(credentials, default=repr)
+        assert ENV_CREDENTIAL not in serialized
+        assert ENV_PROJECT not in serialized
+
+    def test_bound_route_keeps_secrets_out_of_receipt_logs_and_config(self, capsys):
+        config = vault_bound_config()
+        runtime = VaultRuntime(config=config, adapters={"vertex_ai": FakeAdapter()})
+        instance = router.Router(runtime)
+        result = instance.dispatch("invoke_chat", {"prompt": "hello"})
+
+        assert result["status"] is True
+        assert runtime.auth_calls == [((), {})]
+        assert_no_secret(result["metadata"], result["message"])
+        assert_no_secret(instance.config)
+        assert runtime._config == config
+        captured = capsys.readouterr()
+        assert_no_secret(captured.out, captured.err)
+
+    def test_bound_route_uses_existing_google_delegation(self):
+        runtime = VaultDelegateRuntime(config=vault_bound_config())
+        with patch.object(router.time, "monotonic", lambda: 0.0):
+            result = router.invoke_prompt({"_runtime": runtime, "provider": "vertex_ai",
+                                           "model": "gemini-3.8-flash", "timeout_ms": 20000})
+
+        assert result["status"] is True
+        assert result["data"] == "vertex-chat"
+        assert runtime.auth_calls == [((), {})]
+        connector, command, payload = runtime.payloads[-1]
+        assert (connector, command) == ("google-genai", "invoke_prompt")
+        assert payload["params"]["credential"] == SYNTHETIC_SERVICE_ACCOUNT
+        assert payload["params"]["project_id"] == SYNTHETIC_PROJECT
+        assert payload["headers"]["project_id"] == SYNTHETIC_PROJECT
+        assert payload["params"]["location"] == "global"
+        # Existing timeout/retry corrections still apply on the bound route.
+        assert payload["params"]["timeout"] == pytest.approx(20.0)
+        assert payload["params"]["max_retries"] == 0
+        serialized = json.dumps(payload, default=repr)
+        assert ENV_CREDENTIAL not in serialized
+        assert ENV_PROJECT not in serialized
+        for key in VAULT_BINDING:
+            assert key not in payload
+            assert key not in payload["params"]
+
+    def test_bound_route_uses_existing_in_process_vertex_factory(self):
+        runtime = VaultRuntime(config=vault_bound_config())
+        runtime.adapters = {}
+        chat = MagicMock(return_value="vertex-chat")
+        from_info = MagicMock(return_value="scoped-creds")
+        modules = {
+            "langchain_google_vertexai": SimpleNamespace(ChatVertexAI=chat, VertexAIEmbeddings=MagicMock()),
+            "google.oauth2.service_account": SimpleNamespace(Credentials=SimpleNamespace(from_service_account_info=from_info)),
+        }
+        with patch.dict(sys.modules, modules):
+            result = router.invoke_prompt({"_runtime": runtime})
+
+        assert result["status"] is True
+        assert runtime.auth_calls == [((), {})]
+        assert chat.call_args.kwargs["project"] == SYNTHETIC_PROJECT
+        assert chat.call_args.kwargs["credentials"] == "scoped-creds"
+        assert from_info.call_args.args[0]["project_id"] == SYNTHETIC_PROJECT
+
+    @pytest.mark.parametrize("params", [
+        pytest.param({"provider": "vertex_ai", "model": "gemini-arbitrary-unsupported"}, id="explicit-provider"),
+        pytest.param({"model": "gemini-arbitrary-unsupported"}, id="profile"),
+    ])
+    def test_unsupported_model_rejects_before_resolution(self, params):
+        adapter = FakeAdapter()
+        runtime = VaultRuntime(config=vault_bound_config(), adapters={"vertex_ai": adapter})
+        result = router.invoke_chat({"_runtime": runtime, "prompt": "hello", **params})
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] == "policy_model_not_allowed"
+        assert runtime.auth_calls == []
+        assert adapter.calls == []
+
+    @pytest.mark.parametrize("params", [
+        pytest.param({"base_url": "https://caller.test/v1"}, id="base-url"),
+        pytest.param({"endpoint": "https://caller.test/v1"}, id="endpoint"),
+        pytest.param({"callback_url": "https://caller.test/callback"}, id="callback-url"),
+    ])
+    def test_request_security_violation_rejects_before_resolution(self, params):
+        adapter = FakeAdapter()
+        runtime = VaultRuntime(config=vault_bound_config(), adapters={"vertex_ai": adapter})
+        result = router.invoke_chat({"_runtime": runtime, "prompt": "hello", **params})
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] == "policy_endpoint_not_allowed"
+        assert runtime.auth_calls == []
+        assert adapter.calls == []
+
+    @pytest.mark.parametrize("params,trusted_headers", CALLER_OVERRIDES)
+    def test_bound_route_rejects_caller_auth_overrides_even_when_workflow_credentials_allowed(self, params, trusted_headers):
+        vertex = FakeAdapter()
+        groq = FakeAdapter()
+        runtime = VaultRuntime(
+            config=self.fallback_config(policy={"allow_workflow_credentials": True}),
+            adapters={"vertex_ai": vertex, "groq": groq},
+            trusted_headers=trusted_headers,
+        )
+        result = router.invoke_chat({"_runtime": runtime, "prompt": "hello", **params})
+
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] == "policy_credential_not_allowed"
+        assert runtime.auth_calls == []
+        assert vertex.calls == []
+        assert groq.calls == []
+        assert_no_secret(result)
+
+    @pytest.mark.parametrize("runtime_class", MISSING_RESOLVER_RUNTIMES)
+    def test_missing_resolver_fails_typed_without_env_or_fallback(self, runtime_class):
+        vertex = FakeAdapter()
+        groq = FakeAdapter()
+        runtime = runtime_class(config=self.fallback_config(), adapters={"vertex_ai": vertex, "groq": groq})
+        result = router.invoke_chat({"_runtime": runtime, "prompt": "hello"})
+
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] in VAULT_FAILURE_CLASSES
+        assert result["metadata"]["fallback_used"] is False
+        assert vertex.calls == []
+        assert groq.calls == []
+        assert ENV_CREDENTIAL not in json.dumps(result, default=repr)
+
+    @pytest.mark.parametrize("error", RESOLVER_ERRORS)
+    def test_resolver_exception_fails_typed_sanitized_without_fallback(self, capsys, error):
+        vertex = FakeAdapter()
+        groq = FakeAdapter()
+        runtime = VaultRuntime(config=self.fallback_config(), adapters={"vertex_ai": vertex, "groq": groq}, error=error)
+        result = router.invoke_chat({"_runtime": runtime, "prompt": "hello"})
+
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] in VAULT_FAILURE_CLASSES
+        assert runtime.auth_calls == [((), {})]
+        assert vertex.calls == []
+        assert groq.calls == []
+        assert_no_secret(result)
+        captured = capsys.readouterr()
+        assert_no_secret(captured.out, captured.err)
+
+    @pytest.mark.parametrize("auth", MALFORMED_AUTH)
+    def test_malformed_pair_fails_typed_without_env_or_fallback(self, auth):
+        vertex = FakeAdapter()
+        groq = FakeAdapter()
+        runtime = VaultRuntime(config=self.fallback_config(), adapters={"vertex_ai": vertex, "groq": groq}, auth=auth)
+        result = router.invoke_chat({"_runtime": runtime, "prompt": "hello"})
+
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] in VAULT_FAILURE_CLASSES
+        assert vertex.calls == []
+        assert groq.calls == []
+        assert_no_secret(result)
+        assert ENV_CREDENTIAL not in json.dumps(result, default=repr)
+
+    def test_resolver_failure_never_builds_an_adc_client(self):
+        runtime = VaultRuntime(config=vault_bound_config(), error=lambda: RuntimeError("vault down"))
+        runtime.adapters = {}
+        chat = MagicMock(return_value="vertex-chat")
+        from_info = MagicMock(return_value="scoped-creds")
+        modules = {
+            "langchain_google_vertexai": SimpleNamespace(ChatVertexAI=chat, VertexAIEmbeddings=MagicMock()),
+            "google.oauth2.service_account": SimpleNamespace(Credentials=SimpleNamespace(from_service_account_info=from_info)),
+        }
+        with patch.dict(sys.modules, modules):
+            result = router.invoke_prompt({"_runtime": runtime})
+
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] in VAULT_FAILURE_CLASSES
+        chat.assert_not_called()
+        from_info.assert_not_called()
+
+    def test_profile_resolver_failure_does_not_fall_through_to_next_candidate(self):
+        vertex = FakeAdapter()
+        groq = FakeAdapter()
+        runtime = VaultRuntime(
+            config=vault_bound_config(profiles={"balanced": {"chat": [
+                {"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"},
+                {"provider": "groq", "model": "openai/gpt-oss-120b"},
+            ]}}),
+            adapters={"vertex_ai": vertex, "groq": groq},
+            error=lambda: RuntimeError("vault down"),
+        )
+        result = router.invoke_chat({"_runtime": runtime, "prompt": "hello"})
+
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] in VAULT_FAILURE_CLASSES
+        assert vertex.calls == []
+        assert groq.calls == []
+
+
+class TestVaultBindingProfileAvailability:
+    @pytest.fixture(autouse=True)
+    def groq_environment(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "groq-env-secret")
+
+    def test_unrelated_available_candidate_never_resolves_vertex(self, monkeypatch):
+        monkeypatch.setenv(VAULT_CREDENTIAL_REF, ENV_CREDENTIAL)
+        groq = FakeAdapter()
+        runtime = VaultRuntime(
+            config=vault_bound_config(profiles={"fast": {"chat": [
+                {"provider": "groq", "model": "openai/gpt-oss-120b"},
+                {"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"},
+            ]}}),
+            adapters={"vertex_ai": FakeAdapter(), "groq": groq},
+        )
+        result = router.invoke_prompt({"_runtime": runtime, "profile": "fast"})
+
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "groq"
+        assert runtime.auth_calls == []
+
+    def test_unkeyed_xai_is_skipped_and_bound_vertex_resolves_once(self, monkeypatch):
+        monkeypatch.delenv("TEMP_CONTEXT_VARIABLE_XAI_API_KEY", raising=False)
+        monkeypatch.delenv("MACHINA_CONTEXT_VARIABLE_GROK_API_KEY", raising=False)
+        monkeypatch.setenv(VAULT_CREDENTIAL_REF, ENV_CREDENTIAL)
+        vertex = FakeAdapter()
+        runtime = VaultRuntime(config=vault_bound_config(), adapters={"vertex_ai": vertex, "xai": FakeAdapter()})
+        result = router.invoke_prompt({"_runtime": runtime, "profile": "social_pulse"})
+
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_ai"
+        assert runtime.auth_calls == [((), {})]
+        assert vertex.routes[-1].credentials["credential"] == SYNTHETIC_SERVICE_ACCOUNT
+
+    def test_bound_candidate_is_not_skipped_because_environment_is_absent(self, monkeypatch):
+        monkeypatch.delenv(VAULT_CREDENTIAL_REF, raising=False)
+        monkeypatch.delenv(VAULT_PROJECT_REF, raising=False)
+        vertex = FakeAdapter()
+        groq = FakeAdapter()
+        runtime = VaultRuntime(
+            config=vault_bound_config(
+                providers={"vertex_ai": {"require_credential": True}},
+                profiles={"balanced": {"chat": [
+                    {"provider": "vertex_ai", "model": "gemini-3.5-flash-lite"},
+                    {"provider": "groq", "model": "openai/gpt-oss-120b"},
+                ]}},
+            ),
+            adapters={"vertex_ai": vertex, "groq": groq},
+        )
+        result = router.invoke_prompt({"_runtime": runtime})
+
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_ai"
+        assert runtime.auth_calls == [((), {})]
+        assert vertex.routes[-1].credentials["project"] == SYNTHETIC_PROJECT
+        assert groq.calls == []
+
+
+class TestEnvironmentOnlyVertexRouteUnchanged:
+    @pytest.fixture(autouse=True)
+    def ambient_environment(self, monkeypatch):
+        monkeypatch.setenv(VAULT_CREDENTIAL_REF, ENV_CREDENTIAL)
+        monkeypatch.setenv(VAULT_PROJECT_REF, ENV_PROJECT)
+
+    def test_env_only_route_never_calls_resolver(self):
+        adapter = FakeAdapter()
+        runtime = VaultRuntime(adapters={"vertex_ai": adapter})
+        result = router.invoke_chat({"_runtime": runtime, "prompt": "hello"})
+
+        assert result["status"] is True
+        assert runtime.auth_calls == []
+        assert adapter.routes[-1].credentials["credential"] == ENV_CREDENTIAL
+        assert adapter.routes[-1].credentials["project"] == ENV_PROJECT
+
+    def test_env_only_route_keeps_existing_workflow_credential_policy(self):
+        adapter = FakeAdapter()
+        runtime = VaultRuntime(config={"policy": {"allow_workflow_credentials": True}}, adapters={"vertex_ai": adapter})
+        result = router.invoke_chat({"_runtime": runtime, "prompt": "hello", "headers": {"credential": "fresh-from-vault"}})
+
+        assert result["status"] is True
+        assert runtime.auth_calls == []
+        assert adapter.routes[-1].credentials["credential"] == "fresh-from-vault"
+
+    def test_other_providers_never_call_resolver_when_vertex_is_bound(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "groq-env-secret")
+        groq = FakeAdapter()
+        runtime = VaultRuntime(config=vault_bound_config(), adapters={"vertex_ai": FakeAdapter(), "groq": groq})
+        result = router.invoke_chat({"_runtime": runtime, "provider": "groq", "model": "openai/gpt-oss-120b", "prompt": "hi"})
+
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "groq"
+        assert runtime.auth_calls == []
+
+
+class TestVaultBindingManifest:
+    def test_manifest_commands_are_unchanged(self):
+        manifest = (CONNECTOR_DIR / "machina-ai.yml").read_text()
+        values = set(re.findall(r'^\s*value:\s*"([^"]+)"', manifest, flags=re.MULTILINE))
+        assert values == set(router.COMMANDS)
+        assert not any("vault" in value or "auth" in value for value in values)
+        assert not callable(getattr(router, "resolve_vertex_auth", None))
