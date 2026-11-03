@@ -138,6 +138,10 @@ HEADER_FIELDS = {
     "api_version",
 }
 PATH_FIELDS = {"task_id", "id", "operation"}
+# An operator binds providers.vertex_ai to vault references; no caller source may
+# name any of these fields on a bound route.
+VAULT_BINDING_FIELDS = ("credential_vault_ref", "project_vault_ref", "vault_scope_allowlist")
+VAULT_CALLER_FIELDS = {"credential", "api_key", "project", "project_id", "location", *VAULT_BINDING_FIELDS}
 SAFE_FILENAME = re.compile(r"[^A-Za-z0-9._-]+")
 
 
@@ -493,6 +497,18 @@ class AdapterResult:
     extensions: Dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class PlanOutcome:
+    """Result of walking a route plan: a success, or the error that ended it."""
+
+    attempts: List[Dict[str, Any]]
+    route: Optional[Route] = None
+    index: int = 0
+    result: Optional[AdapterResult] = None
+    error: Optional[RouterError] = None
+    exhausted: bool = False
+
+
 def _deep_merge(base: Mapping[str, Any], overlay: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
     merged = copy.deepcopy(dict(base))
     if not isinstance(overlay, Mapping):
@@ -571,32 +587,22 @@ def _thaw(value: Any) -> Any:
     return value
 
 
-def _log_provider_error(status_code: Any, error: Exception) -> None:
-    """Record what the provider actually said, for the pod log only.
-
-    Callers get a typed, non-leaking message, which is right for them and
-    useless for an operator: "The provider rejected the request parameters"
-    does not say which parameter. Only the response body is logged — it is the
-    provider's own error text, never the request or its headers.
-    """
-    body = None
-    response = getattr(error, "response", None)
-    if response is not None:
-        body = getattr(response, "text", None)
-    if body in (None, ""):
-        body = str(error)
-    try:
-        print(f"[machina-ai] provider error status={status_code} body={str(body)[:500]}")
-    except Exception:  # logging must never mask the original failure
-        pass
-
-
 def _safe_exception(error: Exception) -> Tuple[str, str]:
     status_code = getattr(error, "status_code", None)
     response = getattr(error, "response", None)
     if status_code is None and response is not None:
         status_code = getattr(response, "status_code", None)
-    _log_provider_error(status_code, error)
+    error_class, message = _classify_exception(error, status_code)
+    # Classification only: provider error text and response bodies can echo
+    # prompts or secrets, so neither is ever logged.
+    try:
+        print(f"[machina-ai] provider error status={status_code if type(status_code) is int else None} class={error_class}")
+    except Exception:  # logging must never mask the original failure
+        pass
+    return error_class, message
+
+
+def _classify_exception(error: Exception, status_code: Any) -> Tuple[str, str]:
     name = error.__class__.__name__.lower()
     if isinstance(error, TimeoutError) or "timeout" in name or status_code == 408:
         return "provider_timeout", "The provider did not respond before the route timeout."
@@ -714,6 +720,38 @@ class RuntimeFacade:
         if isinstance(value, (set, list, tuple)):
             return {key: incoming[key] for key in value if key in incoming}
         return {}
+
+    def resolve_vertex_auth(self) -> Dict[str, Any]:
+        """Return the operator-bound Vertex pair; never the environment or ADC.
+
+        The runtime authorizes the operator's vault references and scope itself.
+        Nothing is passed, so no caller value can steer the lookup, and a failed
+        call is not retried with another shape. Runtime error text may carry
+        secret material, so it is dropped rather than chained or logged.
+        """
+        target = getattr(self.raw, "resolve_vertex_auth", None) if self.raw is not None else None
+        pair: Any = None
+        if callable(target):
+            try:
+                pair = target()
+            except Exception:
+                pair = None
+        if not isinstance(pair, Mapping) or set(pair) != {"credential", "project"}:
+            raise RouterError(
+                "credential_missing" if not pair else "credential_invalid",
+                "The operator-bound Vertex credential is not available for this runtime.",
+                details={"vault_bound": True},
+            )
+        credential, project = pair.get("credential"), pair.get("project")
+        credential_valid = isinstance(credential, str) and bool(credential.strip())
+        if isinstance(credential, Mapping):
+            credential_valid = credential.get("type") == "service_account" and all(
+                isinstance(credential.get(field), str) and credential[field].strip()
+                for field in ("private_key", "client_email", "token_uri")
+            )
+        if not (credential_valid and isinstance(project, str) and project.strip()):
+            raise RouterError("credential_invalid", "The operator-bound Vertex credential is invalid.", details={"vault_bound": True})
+        return {"credential": credential, "project": project}
 
     def adapter(self, provider: str) -> Any:
         result = self._call("adapter", provider)
@@ -1151,17 +1189,54 @@ class PolicyEngine:
                 allowed_models = self._allowed_models(provider, conf, request.capability)
                 if request.model and allowed_models and request.model not in allowed_models:
                     continue
-                credential = self._read_env(conf, "credential") or self._read_env(conf, "api_key")
-                # A missing credential must not quietly hand a ZDR route's traffic
-                # to a candidate with weaker retention; route() fails it typed.
-                if _as_bool(conf.get("require_credential")) and not credential and not _zdr_requested(conf):
-                    continue
+                # A vault-bound candidate counts as available; it resolves only
+                # once selected, never here.
+                if not self._vault_binding(provider, conf):
+                    credential = self._read_env(conf, "credential") or self._read_env(conf, "api_key")
+                    # A missing credential must not quietly hand a ZDR route's traffic
+                    # to a candidate with weaker retention; route() fails it typed.
+                    if _as_bool(conf.get("require_credential")) and not credential and not _zdr_requested(conf):
+                        continue
                 return candidate, f"profile:{request.profile}", False
             return _as_dict(candidates[-1]), f"profile:{request.profile}", False
         defaults = _as_dict(_as_dict(self.config.get("defaults")).get(request.capability))
         if defaults:
             return defaults, f"default:{request.capability}", False
         raise RouterError("unsupported_capability", "No allowed route is configured for this capability.")
+
+    def _vault_binding(self, provider: str, conf: Mapping[str, Any]) -> bool:
+        if not any(name in conf for name in VAULT_BINDING_FIELDS):
+            return False
+        refs = [conf.get(name) for name in VAULT_BINDING_FIELDS[:2]]
+        scopes = conf.get("vault_scope_allowlist")
+        complete = (
+            all(isinstance(ref, str) and ref.strip() for ref in refs)
+            and isinstance(scopes, (list, tuple)) and bool(scopes)
+            and all(isinstance(scope, Mapping) and scope for scope in scopes)
+        )
+        # Partial or unsupported bindings fail closed instead of reverting to env.
+        if provider != "vertex_ai" or not complete:
+            raise RouterError(
+                "credential_invalid",
+                "The operator vault binding for this provider is incomplete or unsupported.",
+                details={"vault_bound": True},
+            )
+        return True
+
+    def _reject_caller_auth(self, request: NormalizedRequest) -> None:
+        raw = request.raw
+        headers = _as_dict(raw.get("headers"))
+        sources = (
+            raw,
+            _as_dict(raw.get("params")),
+            headers,
+            self.runtime.trusted_headers(headers),
+            request.options,
+            _as_dict(request.options.get("provider_options")),
+        )
+        for source in sources:
+            if any(str(key).strip().lower().replace("-", "_") in VAULT_CALLER_FIELDS for key in source):
+                raise RouterError("policy_credential_not_allowed", "This route credential is controlled by runtime policy.")
 
     def _read_env(self, conf: Mapping[str, Any], field_name: str) -> Any:
         direct = conf.get(field_name)
@@ -1251,7 +1326,12 @@ class PolicyEngine:
                 protected=protected or (not supplied_endpoint),
             )
 
-        credential = self._read_env(conf, "credential") or self._read_env(conf, "api_key")
+        # A vault binding owns this route's auth: caller values are refused even
+        # when workflow credentials are allowed, and the environment is never read.
+        bound = self._vault_binding(provider, conf)
+        if bound:
+            self._reject_caller_auth(request)
+        credential = None if bound else (self._read_env(conf, "credential") or self._read_env(conf, "api_key"))
         request_credential = request.security.get("api_key") or request.security.get("credential")
         if (provider == "cerebras" or zdr or _as_bool(conf.get("reject_request_credentials"))) and request_credential:
             raise RouterError("policy_credential_not_allowed", "This route credential is controlled by runtime policy.")
@@ -1281,12 +1361,12 @@ class PolicyEngine:
                 credential = request_credential
             elif not credential:
                 raise RouterError("credential_missing", "Workflow-supplied credentials are disabled by runtime policy.")
-        if not credential and _as_bool(conf.get("require_credential")):
+        if not credential and not bound and _as_bool(conf.get("require_credential")):
             raise RouterError("credential_missing", "The provider credential is not configured for this runtime.")
         credentials = {
             "api_key": credential,
             "credential": credential,
-            "project": self._read_env(conf, "project") or request.security.get("project"),
+            "project": None if bound else (self._read_env(conf, "project") or request.security.get("project")),
             "organization": self._read_env(conf, "organization") or request.security.get("organization"),
             "deployment": self._read_env(conf, "deployment"),
             "api_version": self._read_env(conf, "api_version") or conf.get("api_version"),
@@ -1303,6 +1383,10 @@ class PolicyEngine:
             credentials["deployment"] = request.security.get("deployment")
         if request.security.get("api_version") and not credentials["api_version"]:
             credentials["api_version"] = request.security.get("api_version")
+        if bound:
+            # Resolved last, after every policy gate, exactly once per route.
+            auth = self.runtime.resolve_vertex_auth()
+            credentials.update(api_key=auth["credential"], credential=auth["credential"], project=auth["project"])
 
         adapter_name = str(conf.get("adapter") or provider)
         timeout_ms = _safe_int(request.options.get("timeout_ms"), 30000, minimum=1, maximum=_safe_int(policy.get("max_timeout_ms"), 120000))
@@ -1375,6 +1459,9 @@ class ProviderAdapter:
         if self.delegate_connector == "google-genai" and command == "invoke_prompt":
             # google-genai's prompt factory reads only `timeout` (seconds); send the policy-bounded route deadline.
             safe_params["timeout"] = route.timeout_ms / 1000.0
+            if route.provider == "vertex_ai":
+                # Vertex factories are governed by InferenceGovernor, which owns retries.
+                safe_params["max_retries"] = 0
         if self.delegate_connector == "google-genai" and command == "invoke_search":
             # Existing grounded-search connector uses search_query and seconds.
             safe_params["search_query"] = request.input.get("prompt") or request.input.get("input")
@@ -1554,6 +1641,96 @@ def _vertex_response_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
 
 
 _VERTEX_RUNNABLE_PROXY_CLASS: Any = None
+# Inference entry points and raw clients that would bypass the governed loop.
+_UNGOVERNED_MODEL_ATTRIBUTES = {
+    "generate", "agenerate", "generate_prompt", "agenerate_prompt",
+    "predict", "apredict", "predict_messages", "apredict_messages",
+    "client", "async_client", "prediction_client", "async_prediction_client",
+}
+_STREAM_END = object()
+
+
+class InferenceGovernor:
+    """Runs a factory model's real invocations through the router's route loop.
+
+    Each attempt refreshes the model from the route's factory with only the
+    remaining end-to-end budget, replays recorded views, and is subject to the
+    same retry, fallback, circuit, and late-result rules as factory setup.
+    """
+
+    def __init__(self, router: Any, request: NormalizedRequest, plan: List[Any], start: int, deadline: float):
+        self.router = router
+        self.request = request
+        self.plan = plan
+        self.start = start
+        self.deadline = deadline
+        self.receipt: Optional[Dict[str, Any]] = None
+
+    def run(self, transforms: Tuple[Any, ...], call: Any) -> Any:
+        started = time.monotonic()
+
+        def execute(adapter: Any, route: Route) -> AdapterResult:
+            failure: Optional[Tuple[str, str, bool]] = None
+            try:
+                model = adapter.create_chat_model(route, self.request).data
+                for name, args, kwargs in transforms:
+                    model = getattr(model, name)(*args, **kwargs)
+                # Rebuilding and replaying views spend budget, so re-read the
+                # deadline; an exhausted budget makes no inference call.
+                remaining_s = self.deadline - time.monotonic()
+                if remaining_s <= 0:
+                    raise RouterError("provider_timeout", "The router invocation deadline was exhausted.")
+                # Vertex takes a per-request timeout in seconds; other routes keep
+                # the timeout their factory was built with.
+                timeout = min(route.timeout_ms / 1000.0, remaining_s) if route.provider == "vertex_ai" else None
+                return AdapterResult(call(model, timeout))
+            except RouterError as error:
+                failure = (error.error_class, error.safe_message, error.transient)
+            except Exception as error:
+                error_class, message = _safe_exception(error)
+                failure = (error_class, message, False)
+            # Raised outside the handler so no provider exception is chained.
+            raise RouterError(failure[0], failure[1], transient=failure[2])
+
+        outcome = self.router._run_plan(self.request, self.plan, self.deadline, execute, start=self.start)
+        extra: Dict[str, Any] = {"execution_phase": "inference"}
+        if outcome.error is not None:
+            extra["error_class"] = outcome.error.error_class
+        self.receipt = self.router._outcome_metadata(self.request, started, outcome, self.plan, **extra)
+        if outcome.error is not None:
+            raise RouterError(outcome.error.error_class, outcome.error.safe_message)
+        return outcome.result.data
+
+    def stream(self, transforms: Tuple[Any, ...], open_stream: Any) -> Any:
+        def first(model: Any, timeout: Optional[float]) -> Tuple[Any, Any]:
+            # Only the first chunk is inside the retryable attempt.
+            chunks = iter(open_stream(model, timeout))
+            return chunks, next(chunks, _STREAM_END)
+
+        chunks, chunk = self.run(transforms, first)
+        failure: Optional[Tuple[str, str]] = None
+        while chunk is not _STREAM_END:
+            yield chunk
+            try:
+                chunk = next(chunks, _STREAM_END)
+            except Exception as error:
+                failure = _safe_exception(error)
+                break
+            if chunk is not _STREAM_END and time.monotonic() >= self.deadline:
+                failure = ("provider_timeout", "The router invocation deadline was exhausted.")
+                break
+        if failure is None:
+            return
+        # Emitted chunks cannot be replayed, so a mid-stream failure is final.
+        self.receipt["error_class"] = failure[0]
+        self.receipt["fallback_attempts"].append({
+            "provider": self.receipt.get("selected_provider"),
+            "model": self.receipt.get("selected_model"),
+            "error_class": failure[0],
+            "latency_ms": 0,
+            "retry": False,
+        })
+        raise RouterError(failure[0], failure[1])
 
 
 def _vertex_runnable_proxy_class() -> Any:
@@ -1566,8 +1743,41 @@ def _vertex_runnable_proxy_class() -> Any:
     runnable_type = importlib.import_module("langchain_core.runnables").Runnable
 
     class VertexChatModelProxy(runnable_type):
-        def __init__(self, model: Any):
+        # With a governor, every real invocation runs through the router's route
+        # loop. `_transforms` records structured-output/tool-binding views so each
+        # refreshed model can be rebuilt with the same boundary.
+        def __init__(self, model: Any, governor: Any = None, transforms: Tuple[Any, ...] = ()):
             self._model = model
+            self._governor = governor
+            self._transforms = transforms
+
+        def _view(self, name: str, args: Tuple[Any, ...], kwargs: Dict[str, Any], view: Any) -> Any:
+            return type(self)(view, self._governor, self._transforms + ((name, args, kwargs),))
+
+        def _governed_call(self, method: str, input: Any, config: Any, kwargs: Dict[str, Any]) -> Any:
+            def call(model: Any, timeout: Optional[float]) -> Any:
+                call_kwargs = kwargs
+                if timeout is not None:
+                    # A shorter caller timeout stands; a longer one cannot expand
+                    # the budget. The caller's kwargs are never mutated.
+                    caller = kwargs.get("timeout")
+                    if type(caller) in (int, float) and 0 < caller < timeout:
+                        timeout = caller
+                    call_kwargs = {**kwargs, "timeout": timeout}
+                if config is None:
+                    return getattr(model, method)(input, **call_kwargs)
+                return getattr(model, method)(input, config=config, **call_kwargs)
+            return call
+
+        def get_inference_receipt(self) -> Optional[Dict[str, Any]]:
+            governor = self.__dict__.get("_governor")
+            if governor is None or governor.receipt is None:
+                return None
+            return copy.deepcopy(governor.receipt)
+
+        def get_inference_deadline(self) -> Optional[float]:
+            governor = self.__dict__.get("_governor")
+            return governor.deadline if governor is not None else None
 
         @property
         def InputType(self) -> Any:
@@ -1590,14 +1800,23 @@ def _vertex_runnable_proxy_class() -> Any:
         def with_structured_output(self, schema: Any, **kwargs: Any) -> Any:
             if isinstance(schema, dict):
                 schema = _vertex_response_schema(schema)
-            return self._model.with_structured_output(schema, **kwargs)
+            view = self._model.with_structured_output(schema, **kwargs)
+            if self._governor is None:
+                return view
+            return self._view("with_structured_output", (schema,), kwargs, view)
 
         def invoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+            if self._governor is not None:
+                return self._governor.run(self._transforms, self._governed_call("invoke", input, config, kwargs))
             if config is None:
                 return self._model.invoke(input, **kwargs)
             return self._model.invoke(input, config=config, **kwargs)
 
+        # Governed async and batch calls use the Runnable defaults, which run the
+        # governed sync invoke in an executor; the route loop stays the only path.
         async def ainvoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+            if self._governor is not None:
+                return await super().ainvoke(input, config, **kwargs)
             if config is None:
                 return await self._model.ainvoke(input, **kwargs)
             return await self._model.ainvoke(input, config=config, **kwargs)
@@ -1610,6 +1829,8 @@ def _vertex_runnable_proxy_class() -> Any:
             return_exceptions: bool = False,
             **kwargs: Any,
         ) -> List[Any]:
+            if self._governor is not None:
+                return super().batch(inputs, config, return_exceptions=return_exceptions, **kwargs)
             return self._model.batch(
                 inputs,
                 config=config,
@@ -1625,6 +1846,8 @@ def _vertex_runnable_proxy_class() -> Any:
             return_exceptions: bool = False,
             **kwargs: Any,
         ) -> List[Any]:
+            if self._governor is not None:
+                return await super().abatch(inputs, config, return_exceptions=return_exceptions, **kwargs)
             return await self._model.abatch(
                 inputs,
                 config=config,
@@ -1633,12 +1856,19 @@ def _vertex_runnable_proxy_class() -> Any:
             )
 
         def stream(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
-            if config is None:
+            if self._governor is not None:
+                yield from self._governor.stream(self._transforms, self._governed_call("stream", input, config, kwargs))
+            elif config is None:
                 yield from self._model.stream(input, **kwargs)
             else:
                 yield from self._model.stream(input, config=config, **kwargs)
 
         async def astream(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+            if self._governor is not None:
+                # Single governed result; nothing is emitted that a retry could replay.
+                async for chunk in super().astream(input, config, **kwargs):
+                    yield chunk
+                return
             if config is None:
                 stream = self._model.astream(input, **kwargs)
             else:
@@ -1650,7 +1880,22 @@ def _vertex_runnable_proxy_class() -> Any:
             return self.invoke(input, config=config, **kwargs)
 
         def __getattr__(self, name: str) -> Any:
-            return getattr(self._model, name)
+            value = getattr(self._model, name)
+            governor = self.__dict__.get("_governor")
+            if governor is None:
+                return value
+            if name in _UNGOVERNED_MODEL_ATTRIBUTES or (name.startswith("_") and not name.startswith("__")):
+                raise AttributeError("This model attribute is not available through the governed router factory.")
+            if not callable(value):
+                return value
+
+            def governed(*args: Any, **kwargs: Any) -> Any:
+                # Views such as bind_tools stay behind the boundary; plain values pass.
+                view = value(*args, **kwargs)
+                if callable(getattr(view, "invoke", None)):
+                    return self._view(name, args, kwargs, view)
+                return view
+            return governed
 
     _VERTEX_RUNNABLE_PROXY_CLASS = VertexChatModelProxy
     return VertexChatModelProxy
@@ -1683,10 +1928,17 @@ class GoogleGenAIAdapter(ProviderAdapter):
                     "model_name": route.model,
                     "project": route.credentials.get("project"),
                     "location": route.credentials.get("location") or "global",
-                    "temperature": request.options.get("temperature", 0.2),
                     "request_parallelism": 1,
                     "timeout": route.timeout_ms / 1000.0,
+                    # The router owns retries; SDK defaults would multiply its budget.
+                    "max_retries": 0,
                 }
+                # gemini-3.8-flash gets no implicit sampling default; an explicit
+                # value (including 0) is still forwarded.
+                if route.model != "gemini-3.8-flash":
+                    kwargs["temperature"] = request.options.get("temperature", 0.2)
+                elif "temperature" in request.options:
+                    kwargs["temperature"] = request.options["temperature"]
                 if request.options.get("priority_paygo"):
                     kwargs["additional_headers"] = {
                         "x-vertex-ai-llm-shared-request-type": "priority"
@@ -2505,11 +2757,12 @@ class Router:
             metadata["requested_priority_paygo"] = request.options["priority_paygo"]
         upstream_model = updates.pop("upstream_model", None)
         metadata.update(updates)
-        if request and request.operation_mode == "factory":
+        if request and request.operation_mode == "factory" and metadata.get("execution_phase") != "inference":
             # A factory receipt is written when the model object is built, before
             # any inference happens: the elapsed time is construction, and there
             # is no usage to report. Name it for what it is so a consumer cannot
-            # present it as inference latency.
+            # present it as inference latency. A governed inference receipt
+            # (execution_phase="inference") does time real calls and keeps them.
             metadata["construction_latency_ms"] = metadata.pop("latency_ms")
             metadata.pop("usage", None)
             metadata["fallback_attempts"] = [
@@ -2669,6 +2922,99 @@ class Router:
                 result.extensions["task_recorded"] = True
         return result
 
+    def _run_plan(self, request: NormalizedRequest, plan: Sequence[Any], deadline: float, execute: Any, *, start: int = 0) -> PlanOutcome:
+        """Walk routes under one absolute deadline with retry, fallback, and
+        circuit rules. Shared by factory setup and governed inference."""
+        attempts: List[Dict[str, Any]] = []
+        last_error: Optional[RouterError] = None
+        for route_index in range(start, len(plan)):
+            planned = plan[route_index]
+            if route_index > start and time.monotonic() >= deadline:
+                last_error = last_error or RouterError("provider_timeout", "The router invocation deadline was exhausted.")
+                break
+            if isinstance(planned, Route):
+                route = planned
+            else:
+                candidate, fallback_reason = planned
+                try:
+                    # Fallback routes are built lazily and tolerantly: a candidate
+                    # that cannot be built is skipped instead of failing the request.
+                    route = self.policy.route(request, candidate, fallback_reason, prefer_candidate_model=True)
+                except RouterError as error:
+                    if error.details.get("vault_bound"):
+                        # A vault-bound route that cannot resolve fails closed.
+                        return PlanOutcome(attempts, error=error)
+                    attempts.append({
+                        "provider": _canonical_provider(candidate.get("provider")),
+                        "model": candidate.get("model"),
+                        "error_class": error.error_class,
+                        "latency_ms": 0,
+                        "retry": False,
+                        "skipped": True,
+                    })
+                    continue
+            route_id = f"{route.provider}:{route.model or '-'}:{route.capability}"
+            if not self.runtime.circuit_allow(route_id):
+                error = RouterError("provider_unavailable", "The selected provider route circuit is open.", transient=True)
+                attempts.append({"provider": route.provider, "model": route.model, "error_class": error.error_class, "latency_ms": 0, "retry": False})
+                last_error = error
+                continue
+            for retry in range(route.retries + 1):
+                if time.monotonic() >= deadline:
+                    last_error = RouterError("provider_timeout", "The router invocation deadline was exhausted.")
+                    break
+                attempt_started = time.monotonic()
+                remaining_ms = int((deadline - attempt_started) * 1000)
+                if remaining_ms <= 0:
+                    last_error = RouterError("provider_timeout", "The router invocation deadline was exhausted.")
+                    break
+                attempt_route = replace(route, timeout_ms=min(route.timeout_ms, remaining_ms))
+                try:
+                    result = execute(self.registry.get(attempt_route), attempt_route)
+                    # SDK timeouts are cooperative, not process cancellation.
+                    # A provider ignoring its timeout must not become a late success.
+                    if time.monotonic() >= deadline:
+                        raise RouterError("provider_timeout", "The router invocation deadline was exhausted.", transient=True)
+                    self.runtime.circuit_record(route_id, True)
+                    return PlanOutcome(attempts, route=route, index=route_index, result=result)
+                except RouterError as error:
+                    self.runtime.circuit_record(route_id, False, error.error_class)
+                    attempts.append({
+                        "provider": route.provider,
+                        "model": route.model,
+                        "error_class": error.error_class,
+                        "latency_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
+                        "retry": retry < route.retries and error.transient,
+                    })
+                    last_error = error
+                    if not error.transient:
+                        return PlanOutcome(attempts, route=route, index=route_index, error=error)
+                    if retry < route.retries:
+                        continue
+                    break
+            if last_error and not last_error.transient:
+                break
+        error = last_error or RouterError("provider_unavailable", "No configured route completed the request.")
+        return PlanOutcome(attempts, error=error, exhausted=True)
+
+    def _outcome_metadata(self, request: NormalizedRequest, started: float, outcome: PlanOutcome, plan: Sequence[Any], **extra: Any) -> Dict[str, Any]:
+        if outcome.route is None and not outcome.exhausted:
+            return self._metadata(request, started, fallback_attempts=outcome.attempts, **extra)
+        # Total-failure receipts carry the PRIMARY route identity in the headline
+        # fields; fallback_attempts keeps the per-attempt truth.
+        route = outcome.route if outcome.route is not None else plan[0]
+        updates: Dict[str, Any] = {
+            "selected_provider": route.provider,
+            "selected_model": route.model,
+            "route_reason": route.reason,
+            "fallback_used": len(plan) > 1 if outcome.exhausted else outcome.index > 0,
+            "fallback_attempts": outcome.attempts,
+        }
+        if outcome.result is not None:
+            updates.update(provider_request_id=outcome.result.provider_request_id, usage=outcome.result.usage)
+        updates.update(extra)
+        return self._metadata(request, started, **updates)
+
     def dispatch(self, command: str, params: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
         started = time.monotonic()
         request: Optional[NormalizedRequest] = None
@@ -2685,131 +3031,52 @@ class Router:
             budget_ms = _safe_int(policy.get("total_deadline_ms"), 120000, minimum=1)
             budget_ms = min(budget_ms, request.options.get("total_deadline_ms", budget_ms))
             deadline = started + (budget_ms / 1000.0)
-            attempts: List[Dict[str, Any]] = []
-            last_error: Optional[RouterError] = None
             plan: List[Any] = [primary] + list(fallback_specs)
-            for route_index, planned in enumerate(plan):
-                if route_index > 0 and time.monotonic() >= deadline:
-                    last_error = last_error or RouterError("provider_timeout", "The router invocation deadline was exhausted.")
-                    break
-                if isinstance(planned, Route):
-                    route = planned
-                else:
-                    candidate, fallback_reason = planned
-                    try:
-                        # Fallback routes are built lazily and tolerantly: a candidate
-                        # that cannot be built is skipped instead of failing the request.
-                        route = self.policy.route(request, candidate, fallback_reason, prefer_candidate_model=True)
-                    except RouterError as error:
-                        attempts.append({
-                            "provider": _canonical_provider(candidate.get("provider")),
-                            "model": candidate.get("model"),
-                            "error_class": error.error_class,
-                            "latency_ms": 0,
-                            "retry": False,
-                            "skipped": True,
-                        })
-                        continue
-                route_id = f"{route.provider}:{route.model or '-'}:{route.capability}"
-                if not self.runtime.circuit_allow(route_id):
-                    error = RouterError("provider_unavailable", "The selected provider route circuit is open.", transient=True)
-                    attempts.append({"provider": route.provider, "model": route.model, "error_class": error.error_class, "latency_ms": 0, "retry": False})
-                    last_error = error
-                    continue
-                for retry in range(route.retries + 1):
-                    if time.monotonic() >= deadline:
-                        last_error = RouterError("provider_timeout", "The router invocation deadline was exhausted.")
-                        break
-                    attempt_started = time.monotonic()
-                    remaining_ms = int((deadline - attempt_started) * 1000)
-                    if remaining_ms <= 0:
-                        last_error = RouterError("provider_timeout", "The router invocation deadline was exhausted.")
-                        break
-                    attempt_route = replace(route, timeout_ms=min(route.timeout_ms, remaining_ms))
-                    try:
-                        adapter = self.registry.get(attempt_route)
-                        result = self._execute_adapter(adapter, attempt_route, request)
-                        # SDK timeouts are cooperative, not process cancellation.
-                        # A provider ignoring its timeout must not become a late success.
-                        if time.monotonic() >= deadline:
-                            raise RouterError("provider_timeout", "The router invocation deadline was exhausted.", transient=True)
-                        self.runtime.circuit_record(route_id, True)
-                        extensions = dict(result.extensions)
-                        metadata = self._metadata(
-                            request,
-                            started,
-                            selected_provider=route.provider,
-                            selected_model=route.model,
-                            route_reason=route.reason,
-                            fallback_used=route_index > 0,
-                            fallback_attempts=attempts,
-                            provider_request_id=result.provider_request_id,
-                            usage=result.usage,
-                            upstream_model=extensions.pop("upstream_model", None),
-                        )
-                        if extensions:
-                            metadata["provider_extensions"] = extensions
-                        data = result.data
-                        if request.command == "invoke_search" and isinstance(data, Mapping):
-                            data = dict(data)
-                            provider_extensions = _as_dict(data.get("provider_extensions"))
-                            provider_extensions["router_receipt"] = {
-                                key: metadata[key]
-                                for key in (
-                                    "selected_provider",
-                                    "selected_model",
-                                    "resolved_route",
-                                    "decision_method",
-                                    "requested_profile",
-                                    "route_reason",
-                                    "fallback_used",
-                                    "provider_request_id",
-                                )
-                            }
-                            data["provider_extensions"] = provider_extensions
-                        message = "Route completed."
-                        if request.operation_mode == "factory":
-                            message = "Model loaded."
-                        elif request.capability == "video":
-                            message = "Video task operation completed."
-                        return self._success(data, message, metadata)
-                    except RouterError as error:
-                        self.runtime.circuit_record(route_id, False, error.error_class)
-                        attempts.append({
-                            "provider": route.provider,
-                            "model": route.model,
-                            "error_class": error.error_class,
-                            "latency_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
-                            "retry": retry < route.retries and error.transient,
-                        })
-                        last_error = error
-                        if not error.transient:
-                            metadata = self._metadata(
-                                request, started,
-                                selected_provider=route.provider,
-                                selected_model=route.model,
-                                route_reason=route.reason,
-                                fallback_used=route_index > 0,
-                                fallback_attempts=attempts,
-                            )
-                            return self._failure(error, metadata)
-                        if retry < route.retries:
-                            continue
-                        break
-                if last_error and not last_error.transient:
-                    break
-            error = last_error or RouterError("provider_unavailable", "No configured route completed the request.")
-            # Total-failure receipts carry the PRIMARY route identity in the headline
-            # fields; fallback_attempts keeps the per-attempt truth.
-            metadata = self._metadata(
-                request, started,
-                selected_provider=primary.provider,
-                selected_model=primary.model,
-                route_reason=primary.reason,
-                fallback_used=bool(fallback_specs),
-                fallback_attempts=attempts,
+            outcome = self._run_plan(
+                request, plan, deadline,
+                lambda adapter, attempt_route: self._execute_adapter(adapter, attempt_route, request),
             )
-            return self._failure(error, metadata)
+            if outcome.error is not None:
+                return self._failure(outcome.error, self._outcome_metadata(request, started, outcome, plan))
+            route, result = outcome.route, outcome.result
+            extensions = dict(result.extensions)
+            metadata = self._outcome_metadata(request, started, outcome, plan, upstream_model=extensions.pop("upstream_model", None))
+            if extensions:
+                metadata["provider_extensions"] = extensions
+            data = result.data
+            if (
+                request.command == "invoke_prompt"
+                and _VERTEX_RUNNABLE_PROXY_CLASS is not None
+                and isinstance(data, _VERTEX_RUNNABLE_PROXY_CLASS)
+            ):
+                # Factory success is not inference success: govern real calls
+                # from the selected route onward under the same deadline.
+                inference_plan = list(plan)
+                inference_plan[outcome.index] = route
+                data = type(data)(data._model, InferenceGovernor(self, request, inference_plan, outcome.index, deadline))
+            if request.command == "invoke_search" and isinstance(data, Mapping):
+                data = dict(data)
+                provider_extensions = _as_dict(data.get("provider_extensions"))
+                provider_extensions["router_receipt"] = {
+                    key: metadata[key]
+                    for key in (
+                        "selected_provider",
+                        "selected_model",
+                        "resolved_route",
+                        "decision_method",
+                        "requested_profile",
+                        "route_reason",
+                        "fallback_used",
+                        "provider_request_id",
+                    )
+                }
+                data["provider_extensions"] = provider_extensions
+            message = "Route completed."
+            if request.operation_mode == "factory":
+                message = "Model loaded."
+            elif request.capability == "video":
+                message = "Video task operation completed."
+            return self._success(data, message, metadata)
         except RouterError as error:
             return self._failure(error, self._metadata(request, started))
         except Exception:
