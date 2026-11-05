@@ -1,0 +1,117 @@
+workflow:
+  name: "google-genai-test-tts-gemini-3-8"
+  title: "Google Gemini Test TTS 3.8"
+  description: "Workflow to compare Gemini 3.8 TTS with the current default. Generates a pt-BR and an en-US line with the new model and the en-US line with gemini-2.5-flash-tts, then uploads all three."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    google-storage:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+  inputs:
+    model_id: "$.get('model_id', 'gemini-3.8-flash-tts')"
+    baseline_model_id: "$.get('baseline_model_id', 'gemini-2.5-flash-tts')"
+    provider: "$.get('provider', 'vertex_ai')"
+    voice_name: "$.get('voice_name', 'Kore')"
+    prompt: "$.get('prompt', 'excited live football commentator')"
+    text_pt_br: "$.get('text_pt_br', 'E é gol do Brasil! Vinícius Júnior recebe pela esquerda, corta o zagueiro e bate no ângulo aos quarenta e dois do segundo tempo!')"
+    text_en_us: "$.get('text_en_us', 'And it is in! Bukayo Saka curls a left-footed stunner into the top corner, and the stadium erupts in the ninetieth minute!')"
+  outputs:
+    audio_url_pt_br: "$.get('audio_url_pt_br')"
+    audio_url_en_us: "$.get('audio_url_en_us')"
+    audio_url_baseline_en_us: "$.get('audio_url_baseline_en_us')"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # 1 new model, pt-BR
+    - type: "connector"
+      name: "tts-pt-br"
+      description: "Generate the pt-BR line with the new Gemini TTS model."
+      connector:
+        name: "google-genai"
+        command: "invoke_tts"
+      inputs:
+        text: "$.get('text_pt_br')"
+        voice_name: "$.get('voice_name')"
+        model_id: "$.get('model_id')"
+        language_code: "'pt-br'"
+        prompt: "$.get('prompt')"
+        provider: "$.get('provider')"
+      outputs:
+        filepath_pt_br: "$.get('file_path')"
+
+    # 2 new model, en-US
+    - type: "connector"
+      name: "tts-en-us"
+      description: "Generate the en-US line with the new Gemini TTS model."
+      connector:
+        name: "google-genai"
+        command: "invoke_tts"
+      inputs:
+        text: "$.get('text_en_us')"
+        voice_name: "$.get('voice_name')"
+        model_id: "$.get('model_id')"
+        language_code: "'en-us'"
+        prompt: "$.get('prompt')"
+        provider: "$.get('provider')"
+      outputs:
+        filepath_en_us: "$.get('file_path')"
+
+    # 3 current default model, en-US (regression check)
+    - type: "connector"
+      name: "tts-baseline-en-us"
+      description: "Generate the en-US line with the current default model."
+      connector:
+        name: "google-genai"
+        command: "invoke_tts"
+      inputs:
+        text: "$.get('text_en_us')"
+        voice_name: "$.get('voice_name')"
+        model_id: "$.get('baseline_model_id')"
+        language_code: "'en-us'"
+        prompt: "$.get('prompt')"
+        provider: "$.get('provider')"
+      outputs:
+        filepath_baseline_en_us: "$.get('file_path')"
+
+    # 4 uploads
+    - type: "connector"
+      name: "save-audio-pt-br"
+      description: "Upload the pt-BR audio to Google Cloud Storage."
+      condition: "$.get('filepath_pt_br') is not None"
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        image_path: "$.get('filepath_pt_br')"
+      outputs:
+        audio_url_pt_br: "$.get('url')"
+
+    - type: "connector"
+      name: "save-audio-en-us"
+      description: "Upload the en-US audio to Google Cloud Storage."
+      condition: "$.get('filepath_en_us') is not None"
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        image_path: "$.get('filepath_en_us')"
+      outputs:
+        audio_url_en_us: "$.get('url')"
+
+    - type: "connector"
+      name: "save-audio-baseline-en-us"
+      description: "Upload the baseline en-US audio to Google Cloud Storage."
+      condition: "$.get('filepath_baseline_en_us') is not None"
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        image_path: "$.get('filepath_baseline_en_us')"
+      outputs:
+        audio_url_baseline_en_us: "$.get('url')"
+        workflow-status: "'executed'"

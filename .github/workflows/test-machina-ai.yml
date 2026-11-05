@@ -12,6 +12,7 @@ on:
       - "connectors/nvidia-nim/**"
       - "connectors/google-genai/**"
       - "tests/test_google_image_contract.py"
+      - "tests/test_google_tts_contract.py"
       - "connectors/azure-foundry/**"
       - "connectors/groq/**"
       - "connectors/grok/**"
@@ -35,6 +36,7 @@ on:
       - "connectors/nvidia-nim/**"
       - "connectors/google-genai/**"
       - "tests/test_google_image_contract.py"
+      - "tests/test_google_tts_contract.py"
       - "connectors/grok/**"
       - "connectors/perplexity/**"
       - "connectors/byteplus-modelark/**"
@@ -74,3 +76,5 @@ jobs:
         run: python -m pip install --disable-pip-version-check pytest Pillow==10.4.0 google-genai==1.49.0 langchain-core==1.0.1 langchain-google-vertexai==3.0.1 langchain-google-genai==3.0.0 pydantic==2.11.0
       - name: Verify image receipts and real SDK compatibility without model calls
         run: python -m pytest tests/test_google_image_contract.py -q
+      - name: Verify TTS request shapes (Gemini 2.5 and 3.8) without model calls
+        run: python -m pytest tests/test_google_tts_contract.py -q
