@@ -2729,6 +2729,457 @@
       "owner": "machina-templates:connectors/stats-perform",
       "disposition": "compat-alias",
       "evidence": "inventory.json couplings: storage-predicate `value.sport:status` at connectors/stats-perform/workflows/sync-update-live.yml:62. PR3-CONSUMER-INVENTORY.md \u00a79 group E and \u00a710.3: a storage predicate binds the persisted document shape, and is preserved by an exact-path derived compatibility alias at the same path \u2014 a document-store migration, not a consumer edit. Task 1 evidence amendment: the surfaces welded to the persisted event shape are the provider connector workflows, so this row is owned here and not by world-cup-intelligence."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "category": "document-name",
+      "literal": "worldcup:event",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "compat-alias",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:event` at agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py:82, 519. `synthetic_event()` (l. 76-94) builds in-memory `worldcup:event` evidence rows and l. 517-521 a malformed one; both are passed to `plan_archive_repair`, which only assesses (asserts `mutation_capability == 'disabled'` and zero documents created/updated, l. 211-213). This is a test assertion over the persisted event document name, not another production consumer. PR3-CONSUMER-INVENTORY.md \u00a79 group E / \u00a710.4: the `worldcup:event` name is kept and exact-path compatibility aliases are derived underneath it, so this fixture follows the compat-alias plan."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "category": "document-name",
+      "literal": "worldcup:market-cache",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:market-cache` at agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py:139, 246, 269, 289, 328, 487, 496. Synthetic market-cache evidence rows fed to the read-only `plan_archive_repair` markets mode; l. 156 asserts the planner reports `collection: worldcup:market-cache`. Test assertion only. Current event-seam source-scope decision: a world-cup-intelligence side document (cache / ledger / crosswalk / skill output), not the event document; PR 3 changes the event envelope only, so this document name is unaffected."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "category": "document-name",
+      "literal": "worldcup:model-forecast",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:model-forecast` at agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py:182, 192, 220. Synthetic forecast evidence for `plan_archive_repair` forecasts mode; l. 207-211 assert the input is not mutated and zero forecast computations / document writes occur. Test assertion only. Current event-seam source-scope decision: a world-cup-intelligence side document, not the event document; PR 3 changes the event envelope only, so this document name is unaffected."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "category": "document-name",
+      "literal": "worldcup:squads",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "excluded",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:squads` at agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py:295, 363. Synthetic squad rows keyed by `event_urn` for `plan_archive_repair` historical mode; l. 318 and 377 assert `partial` / `unverified_temporal_scope` states. Test assertion only. Current event-seam source-scope decision: a world-cup-intelligence side document keyed to the event, not the event document; PR 3 changes the event envelope only, so the name is not renamed. Canonical coverage of squad content remains open under \u00a710.5; this row records only that the document name is untouched by the event migration. Disposition is excluded, not an approved content migration/no-change decision: canonical coverage remains unresolved under PR3-CONSUMER-INVENTORY.md \u00a710.5. The cited synthetic fixture remains unchanged; this entry records its dependency without expanding canonical scope."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "category": "document-name",
+      "literal": "worldcup:player-performance-context",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "excluded",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:player-performance-context` at agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py:307, 334, 339, 368. Synthetic per-event performance rows for `plan_archive_repair` historical mode; l. 319, 348, 378 assert `partial` / `empty_unverified` states. Test assertion only. Current event-seam source-scope decision: a world-cup-intelligence side document, not the event document; PR 3 changes the event envelope only, so the name is not renamed. Canonical coverage of this content remains open under \u00a710.5. Disposition is excluded, not an approved content migration/no-change decision: canonical coverage remains unresolved under PR3-CONSUMER-INVENTORY.md \u00a710.5. The cited synthetic fixture remains unchanged; this entry records its dependency without expanding canonical scope."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "category": "document-name",
+      "literal": "worldcup:injuries",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "excluded",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:injuries` at agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py:358. One synthetic injuries row for `plan_archive_repair` historical mode; l. 376 asserts `empty_unverified`. Test assertion only. Current event-seam source-scope decision: a world-cup-intelligence side document, not the event document; PR 3 changes the event envelope only, so the name is not renamed. Canonical coverage of injury content remains open under \u00a710.5. Disposition is excluded, not an approved content migration/no-change decision: canonical coverage remains unresolved under PR3-CONSUMER-INVENTORY.md \u00a710.5. The cited synthetic fixture remains unchanged; this entry records its dependency without expanding canonical scope."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "category": "document-name",
+      "literal": "worldcup:identity-crosswalk",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:identity-crosswalk` at agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py:391, 396, 439, 617. Synthetic team/player crosswalk rows for `plan_archive_repair` crosswalks/master modes; l. 630 asserts the evidence list is unmodified. Test assertion only. Current event-seam source-scope decision: a world-cup-intelligence side document (crosswalk), not the event document; PR 3 changes the event envelope only, so this document name is unaffected."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "category": "document-name",
+      "literal": "worldcup:skill-match-recap",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:skill-match-recap` at agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py:536. Synthetic empty recap row for `plan_archive_repair` editorial mode; l. 547 asserts `empty_unverified`. Test assertion only. Current event-seam source-scope decision: a world-cup-intelligence side document (skill output), not the event document; PR 3 changes the event envelope only, so this document name is unaffected."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "category": "document-name",
+      "literal": "worldcup:skill-player-spotlight",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:skill-player-spotlight` at agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py:541. Synthetic current-scope spotlight row for `plan_archive_repair` editorial mode; l. 548 asserts it does not satisfy the archived-spotlight check. Test assertion only. Current event-seam source-scope decision: a world-cup-intelligence side document (skill output), not the event document; PR 3 changes the event envelope only, so this document name is unaffected."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_serving.py",
+      "category": "document-name",
+      "literal": "worldcup:forecast-audit",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:forecast-audit` at agent-templates/world-cup-intelligence/tests/test_worldcup_archive_serving.py:747. `_operator_manifest()` (l. 716-771) builds a synthetic archive source manifest; for the backtest endpoint it appends a `worldcup:forecast-audit` source entry with a hashed `backtesting_report` payload. Test fixture for archive provenance only. Current event-seam source-scope decision: a world-cup-intelligence side document (ledger), not the event document; PR 3 changes the event envelope only, so this document name is unaffected."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-archive-capture-players.yml",
+      "category": "document-name",
+      "literal": "worldcup:event",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "compat-alias",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:event` at agent-templates/world-cup-intelligence/workflows/worldcup-archive-capture-players.yml:26. Task `lookup-archived-fixture` (l. 19-29) is a read-only document search (search-limit 2) on `name: 'worldcup:event'` filtered by `value.provider_ids.api_football` and `value.machina_competition_slug: 'world-cup-2026'`. Operator archive-capture workflow (listed in tools/worldcup_bulk.py CAPTURE_WORKFLOWS). PR3-CONSUMER-INVENTORY.md \u00a79 group E / \u00a710.4: the `worldcup:event` name is kept and exact-path compatibility aliases are derived underneath it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive-manifest",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive-manifest` at agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml:62. Task `load-final-archive-manifest` (l. 55-65) is a read-only search filtered on `value.archive_version: 'world-cup-2026-final-v3'`; its output feeds `serve-final-archive` (l. 83), and the legacy tasks are gated on `archive_status == 'miss'` (l. 128 onward). Immutable archive-control document, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive` at agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml:77. Task `load-final-archive` (l. 66-82) is a read-only search for immutable archived endpoint rows filtered on archive_version v3 and `value.endpoint: 'worldcup-backtest-forecasts'` (l. 79), served by `serve-final-archive`. Archive store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "category": "document-name",
+      "literal": "worldcup:calibration-sample",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:calibration-sample` at agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml:354, 380. Task `load-calibration-sample` (l. 345-357) reads the store and `save-calibration-settled` (l. 372-385) writes it via `bulk-update` with `document_name: 'worldcup:calibration-sample'`; both run only on archive miss with `fixture_provenance == 'api-football-live'`. Calibration store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it. Source reading only; no write was executed."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "category": "document-name",
+      "literal": "worldcup:calibration-report",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:calibration-report` at agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml:395, 432. Task `load-calibration-report` (l. 386-401) reads and `save-calibration-report` (l. 424-437) writes via `bulk-update` the aggregate report keyed `worldcup:calibration-report:aggregate`, gated on archive miss and live API-Football provenance. Calibration store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-explain-market-move.yml",
+      "category": "document-name",
+      "literal": "worldcup:market-snapshot",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:market-snapshot` at agent-templates/world-cup-intelligence/workflows/worldcup-explain-market-move.yml:95, 110. Tasks `load-event-snapshots` (l. 85-100) and `load-team-snapshots` (l. 101-115) are read-only document searches over stored market snapshots that feed the move-detection connectors. Market side document, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1); PR 3 changes the event envelope only, so this document name is unaffected."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-calibration.yml",
+      "category": "document-name",
+      "literal": "worldcup:calibration-sample",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:calibration-sample` at agent-templates/world-cup-intelligence/workflows/worldcup-get-calibration.yml:32. Task `load-calibration-sample` (l. 24-36) is a read-only search whose rows feed `compute-calibration` (l. 51). Calibration store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-calibration.yml",
+      "category": "document-name",
+      "literal": "worldcup:calibration-report",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:calibration-report` at agent-templates/world-cup-intelligence/workflows/worldcup-get-calibration.yml:45. Task `load-calibration-report` (l. 37-50) is a read-only search filtered on `metadata.event_urn: 'worldcup:calibration-report:aggregate'` (l. 46). Calibration store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-event-context.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive-manifest",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive-manifest` at agent-templates/world-cup-intelligence/workflows/worldcup-get-event-context.yml:42. Task `load-final-archive-manifest` (l. 35-45) is a read-only search (search-limit 2) filtered on `value.archive_version: 'world-cup-2026-final-v3'`, feeding the archive gate before legacy execution. Immutable archive-control document, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-event-context.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive` at agent-templates/world-cup-intelligence/workflows/worldcup-get-event-context.yml:84. Read-only search (search-limit 10) for immutable archived rows filtered on archive_version v3, `value.endpoint: 'worldcup-get-event-context'` and `value.subject.event_urn` (l. 85-87). Archive store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive-manifest",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive-manifest` at agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml:41. Read-only manifest search filtered on archive_version v3 that gates the legacy task graph. Immutable archive-control document, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive` at agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml:83. Read-only search for immutable archived rows filtered on archive_version v3 and `value.endpoint: 'worldcup-get-injuries'` (l. 85). Archive store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive-manifest",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive-manifest` at agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml:51. Task `load-final-archive-manifest` (l. 44-54) is a read-only search filtered on `value.archive_version: 'world-cup-2026-final-v3'`. Immutable archive-control document, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml",
+      "category": "document-name",
+      "literal": "worldcup:event",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "compat-alias",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:event` at agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml:62, 111, 146. Three read-only searches on `name: 'worldcup:event'`: `load-final-archive-scope-events` (l. 56-65) and the canonical-index load at l. 103-114, both filtered on `value.machina_competition_slug: 'world-cup-2026'` for archive selector resolution, and `resolve-load-events` (l. 138-148) for exact-id / natural-language fixture resolution. PR3-CONSUMER-INVENTORY.md \u00a79 group E / \u00a710.4: the `worldcup:event` name is kept and exact-path compatibility aliases are derived underneath it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive` at agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml:93. Read-only search (search-limit 10) for immutable archived rows filtered on archive_version v3, `value.endpoint: 'worldcup-get-match-forecast'` and `value.subject.event_urn` (l. 94-96). Archive store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive-manifest",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive-manifest` at agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml:50. Read-only manifest search filtered on archive_version v3 that gates the legacy task graph. Immutable archive-control document, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive` at agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml:92. Read-only search for immutable archived rows filtered on archive_version v3 and `value.endpoint: 'worldcup-get-player-performance-context'` (l. 94). Archive store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-schedule.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive-manifest",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive-manifest` at agent-templates/world-cup-intelligence/workflows/worldcup-get-schedule.yml:38. Task `load-final-archive-manifest` (l. 31-41) is a read-only search (search-limit 2) filtered on `value.archive_version: 'world-cup-2026-final-v3'`, consumed by `serve-final-archive` (l. 75-84). Immutable archive-control document, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-schedule.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive` at agent-templates/world-cup-intelligence/workflows/worldcup-get-schedule.yml:53. Task `load-final-archive` (l. 42-58) is a read-only search (search-limit 5000, sorted by `_id`) for immutable endpoint rows filtered on archive_version v3 and `value.endpoint: 'worldcup-get-schedule'`. Archive store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-signal.yml",
+      "category": "document-name",
+      "literal": "worldcup:calibration-report",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:calibration-report` at agent-templates/world-cup-intelligence/workflows/worldcup-get-signal.yml:106, 121. Tasks `load-calibration-weights` (l. 97-111, `metadata.event_urn: 'worldcup:calibration-report:aggregate'`) and `load-competition-weights` (l. 112-126, per-competition key) are read-only searches feeding `compute-signal`. Calibration store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive-manifest",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive-manifest` at agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml:39. Read-only manifest search filtered on archive_version v3 that gates the legacy task graph. Immutable archive-control document, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive` at agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml:81. Read-only search for immutable archived rows filtered on archive_version v3 and `value.endpoint: 'worldcup-get-squads'` (l. 83). Archive store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-standings.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive-manifest",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive-manifest` at agent-templates/world-cup-intelligence/workflows/worldcup-get-standings.yml:36. Read-only manifest search filtered on archive_version v3 that gates the legacy task graph. Immutable archive-control document, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-get-standings.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive` at agent-templates/world-cup-intelligence/workflows/worldcup-get-standings.yml:51. Read-only search for immutable archived rows filtered on archive_version v3 and `value.endpoint: 'worldcup-get-standings'` (l. 53). Archive store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
+      "category": "document-name",
+      "literal": "worldcup:calibration-sample",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:calibration-sample` at agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml:73, 134. Task `load-existing-calibration` (l. 65-76) reads and `save-calibration-sample` (l. 126-134) writes via `bulk-update` with `document_name: 'worldcup:calibration-sample'` (workflow description l. 12-16). Calibration store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it. Source reading only; no write was executed."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
+      "category": "document-name",
+      "literal": "worldcup:calibration-report",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:calibration-report` at agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml:85. Task `load-calibration-weights` (l. 77-90) is a read-only search filtered on `metadata.event_urn: 'worldcup:calibration-report:aggregate'`, feeding `build-ledger-rows`. Calibration store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive-manifest",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive-manifest` at agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml:48. Read-only manifest search filtered on archive_version v3 that gates the legacy task graph. Immutable archive-control document, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive` at agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml:90. Read-only search for immutable archived rows filtered on archive_version v3 and `value.endpoint: 'worldcup-match-recap'` (l. 92). Archive store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive-manifest",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive-manifest` at agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml:52. Task `load-final-archive-manifest` (l. 45-55) is a read-only search filtered on `value.archive_version: 'world-cup-2026-final-v3'`. Immutable archive-control document, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive` at agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml:79. Read-only search (search-limit 100) for immutable archived rows filtered on archive_version v3, `value.endpoint: 'worldcup-player-spotlight'` and `value.subject.lookup_keys $in` (l. 80-82). Archive store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-fifa-player-power-ranking",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-fifa-player-power-ranking` at agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml:180. Task `load-final-fifa-performance` (l. 172-183) is a read-only search (search-limit 1) by `value.player_urn` and `value.record_type: 'player_power_ranking'`, run only on archive miss with a player URN. Same disposition as the existing get-player-performance-context and import-final-fifa-player-rankings rows: an immutable player-ranking side document, not an event envelope; its name is unchanged by the event migration."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-resolve.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive-manifest",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive-manifest` at agent-templates/world-cup-intelligence/workflows/worldcup-resolve.yml:39. Task `load-final-archive-manifest` (l. 32-42) is a read-only search filtered on `value.archive_version: 'world-cup-2026-final-v3'`. Immutable archive-control document, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/workflows/worldcup-resolve.yml",
+      "category": "document-name",
+      "literal": "worldcup:final-archive",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json document-name `worldcup:final-archive` at agent-templates/world-cup-intelligence/workflows/worldcup-resolve.yml:65. Read-only search (search-limit 10) for immutable archived rows filtered on archive_version v3, `value.endpoint: 'worldcup-resolve'` and `value.subject.lookup_keys $in` (l. 66-68). Archive store, not the event envelope (PR3-CONSUMER-INVENTORY.md \u00a73.1 side-document rule); the event migration does not rename it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "category": "field-path-read",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json consumers[kind=test].reads_field_paths = `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:status` (4 paths). `synthetic_event()` (l. 76-94) builds legacy-shaped `worldcup:event` values; tests read/mutate `sport:competitors` (l. 143, 266, 386, 436, 471, 490), `schema:startDate` (l. 434) and `sport:status` (l. 470, 520) to drive the read-only `plan_archive_repair` assessor (conflict, missing-competitor and non-final-status gaps). Test fixtures pinning behaviour over the persisted legacy event shape that the `worldcup:event` compat-alias plan keeps readable; they do not establish a new production event model. Any future canonical-shape fixtures would follow the planner's migration, not lead it."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_serving.py",
+      "category": "field-path-read",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json consumers[kind=test].reads_field_paths = `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:qualifier`, `sport:status` (5 paths). The module-level `EVENT` fixture (l. 62-67) and schedule/ambiguity tests (l. 536-542, 574, 580-582, 636, 872) supply legacy-shaped event values to the immutable v3 archive-serving path and the legacy cold-miss path. Test fixtures exercising archive serving and legacy-preservation over the persisted shape kept by the compat-alias plan; not a production consumer and not evidence of a new model."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_bulk.py",
+      "category": "field-path-read",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json consumers[kind=test].reads_field_paths = `sport:status` (1 path). `test_grounded_recap_uses_only_final_event_and_original_forecast` sets `event['sport:status']` (l. 153) and the baseline-assembly test reads `entry['subject']['event']['sport:status']` (l. 385, 390) to check PEN/AET recap grounding. Test assertions over the operator archive tool tools/worldcup_bulk.py and its captured legacy-shaped event subjects; no change while that archive baseline is the input."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_endpoint_repairs.py",
+      "category": "field-path-read",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json consumers[kind=test].reads_field_paths = `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:qualifier`, `sport:status` (5 paths). An event-builder fixture (l. 42-49) emits legacy `schema:startDate`, `sport:status` and `sport:competitors[sport:qualifier]` values, and two forecast-timing cases pass `{'schema:startDate': ...}` (l. 245, 256). Test fixtures for endpoint repair behaviour over the persisted legacy event shape kept by the compat-alias plan; not a production consumer."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_unserved_contract.py",
+      "category": "field-path-read",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json consumers[kind=test].reads_field_paths = `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:qualifier` (4 paths). `SECOND_EVENT` fixture sets `schema:startDate` (l. 32) and `sport:competitors` with `sport:qualifier` (l. 35-37) to drive selector-error, ambiguity and not-found contract tests (l. 63-205). Test fixtures over the persisted legacy event shape kept by the compat-alias plan; not a production consumer."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tools/worldcup_bulk.py",
+      "category": "field-path-read",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json consumers[kind=script].reads_field_paths = `sport:status` (1 path). Operator tool (docstring l. 2: plan/capture/assemble/import/verify/close the 104-match archive). It reads `event.get('sport:status')` from captured event subjects to require terminal FT/AET/PEN status (l. 114-116, 228-229) and to choose the recap path (l. 735). Operational archive helper over already-captured legacy-shaped event snapshots for the immutable `world-cup-2026-final-v3` archive, not a live event consumer or emitter. No change while that archive is the input; if a future re-capture reads migrated event documents, this row must be re-reviewed for migrate."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tools/worldcup_storefront_readiness.py",
+      "category": "field-path-read",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "no-change",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json consumers[kind=script].reads_field_paths = `sport:competitor`, `sport:competitors` (2 paths). Offline readiness tool (docstring l. 2: build and verify the storefront v3 candidate from v2). It reads `event.get('sport:competitors', [])` from archived entry subjects to map team names/URNs (l. 301-308, 597-601, 728-733, 1015-1018). Operational readiness helper over archived legacy-shaped subjects; it does not query or emit the live event document. No change while it operates on the archived v2/v3 bundle; re-review if it is pointed at migrated event documents."
+    },
+    {
+      "repo": "machina-templates",
+      "path": "agent-templates/world-cup-intelligence/tests/test_worldcup_market_intelligence.py",
+      "category": "payload-key-read",
+      "owner": "machina-templates:agent-templates/world-cup-intelligence",
+      "disposition": "migrate",
+      "evidence": "2026-11-05 source review at 44c19ac8: inventory.json consumers[kind=test].reads_payload_keys = `iptc_events` (1 key). `test_events_are_minted_with_the_competition_code_and_urn` reads `out.get('events') or out.get('iptc_events')` from `mint_event_identity` output (l. 3384, 3390) and asserts legacy `sport:competition` fields (l. 3387-3388). Same disposition as the existing field-path-read row for this file: PR3-CONSUMER-INVENTORY.md \u00a73.1/\u00a73.3 says this test scaffold migrates in lockstep with `mint_event_identity`, never ahead of it. That migration is future work; nothing here is migrated yet."
     }
   ]
 }
