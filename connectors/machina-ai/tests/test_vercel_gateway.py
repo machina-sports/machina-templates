@@ -79,7 +79,7 @@ class TestDormantByDefault:
         assert conf["enabled"] is False
         assert conf["reject_request_credentials"] is True
         assert conf["zero_data_retention"] is False
-        assert conf["allowed_models"] == {"chat": []}
+        assert conf["allowed_models"] == {"chat": [], "search_answer": []}
         assert router.FIXED_PROVIDER_ENDPOINTS["vercel_gateway"] == "https://ai-gateway.vercel.sh/v1"
 
     def test_default_config_refuses_the_route(self):

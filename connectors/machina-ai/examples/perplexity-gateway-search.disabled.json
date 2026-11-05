@@ -1,0 +1,20 @@
+{
+  "providers": {
+    "vercel_gateway": {
+      "enabled": false,
+      "zero_data_retention": false,
+      "allowed_models": {
+        "chat": [],
+        "search_answer": ["perplexity/sonar"]
+      }
+    }
+  },
+  "profile_intents": {
+    "perplexity_gateway_search": "Cited web answers from Perplexity Sonar through the Vercel AI Gateway. Inactive until an operator enables the gateway."
+  },
+  "profiles": {
+    "perplexity_gateway_search": {
+      "search_answer": [{"provider": "vercel_gateway", "model": "perplexity/sonar"}]
+    }
+  }
+}
