@@ -14,7 +14,7 @@ setup:
     - api-mailgun
   status: available
   value: agent-templates/daily-football-recap
-  version: 1.0.0
+  version: 1.0.1
 
 datasets:
 
