@@ -44,6 +44,31 @@ GATEWAY_POLICY_FIELDS = {
     "byok",
 }
 GATEWAY_ZDR_BODY = {"providerOptions": {"gateway": {"zeroDataRetention": True}}}
+# Gateway model families whose answers are themselves grounded web search with
+# sources. Listing any other gateway model under `search_answer` would hand back
+# an ungrounded chat answer labelled as search, so the route refuses it.
+GATEWAY_SEARCH_MODEL_PREFIXES = ("perplexity/",)
+# Caller options the gateway search route does not implement. They are refused
+# by name instead of being dropped, so a workflow never believes a filter (or a
+# tool, or a schema) was applied when it was not.
+GATEWAY_SEARCH_UNSUPPORTED_OPTIONS = (
+    "tools",
+    "response_format",
+    "seed",
+    "search_recency_filter",
+    "search_domain_filter",
+    "search_after_date_filter",
+    "search_before_date_filter",
+    "last_updated_after_filter",
+    "last_updated_before_filter",
+    "search_mode",
+    "web_search_options",
+    "return_related_questions",
+    "return_images",
+    "reasoning_effort",
+    "disable_search",
+    "enable_search_classifier",
+)
 TRANSIENT_ERRORS = {
     "provider_timeout",
     "provider_rate_limited",
@@ -383,6 +408,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             # `zero_data_retention` is an operator opt-in; when false the request
             # omits the field entirely (team-wide ZDR on the Vercel account still
             # applies and is not visible from here).
+            # `search_answer` takes only grounded gateway models (perplexity/*,
+            # see GATEWAY_SEARCH_MODEL_PREFIXES); it ships empty like chat.
             "enabled": False,
             "adapter": "vercel_gateway",
             "reject_request_credentials": True,
@@ -391,7 +418,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "credential_env_aliases": ["AI_GATEWAY_API_KEY"],
             "endpoint": "https://ai-gateway.vercel.sh/v1",
             "zero_data_retention": False,
-            "allowed_models": {"chat": []},
+            "allowed_models": {"chat": [], "search_answer": []},
         },
         "perplexity": {
             # Sonar web search (POST /v1/sonar), dormant until an operator enables
@@ -1103,19 +1130,21 @@ def _zdr_requested(conf: Mapping[str, Any]) -> bool:
     return conf.get("adapter") == "vercel_gateway" and _as_bool(conf.get("zero_data_retention"))
 
 
-def _gateway_receipt(conf: Mapping[str, Any], upstream_model: Any = None) -> Dict[str, Any]:
+def _gateway_receipt(conf: Mapping[str, Any], upstream_model: Any = None, upstream_provider: Any = None) -> Dict[str, Any]:
     """Sanitized gateway identity for receipts and health.
 
     `zdr_mode` is only what this router asks for. Team-wide ZDR, plan
     entitlement and account-side BYOK live on the Vercel account and are not
     visible from here, so they are reported unknown rather than guessed.
+    The upstream fields are what the gateway response reported, never the
+    route the router requested; absent means unknown.
     """
     return {
         "zdr_mode": "requested" if _zdr_requested(conf) else "not_requested",
         "gateway": {
             "backend": "vercel_ai_gateway",
             "zdr_effective": "unknown",
-            "upstream_provider": None,
+            "upstream_provider": upstream_provider,
             "upstream_model": upstream_model,
         },
     }
@@ -2379,6 +2408,76 @@ def _sonar_citations(body: Mapping[str, Any]) -> List[Dict[str, Any]]:
     return normalized
 
 
+def _search_answer_text(body: Any) -> Tuple[str, Any]:
+    """Return (content, finish_reason) of a chat-completions-shaped search answer.
+
+    Refusals fail provider_content_rejected without echoing provider text; an
+    empty, missing, non-text or truncated answer fails provider_bad_response.
+    Nothing without an answer is ever returned as a success.
+    """
+    if not isinstance(body, Mapping):
+        raise RouterError("provider_bad_response", "The search provider returned no usable answer.")
+    choices = body.get("choices")
+    choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], Mapping) else {}
+    message = _as_dict(choice.get("message"))
+    content = message.get("content")
+    finish_reason = choice.get("finish_reason")
+    if finish_reason == "content_filter" or message.get("refusal"):
+        raise RouterError("provider_content_rejected", "The provider declined to answer this request.")
+    if not isinstance(content, str) or not content.strip() or finish_reason not in (None, "stop"):
+        raise RouterError("provider_bad_response", "The search provider returned no usable answer.")
+    return content, finish_reason
+
+
+def _annotation_citations(body: Mapping[str, Any]) -> List[Dict[str, Any]]:
+    """OpenAI-style `url_citation` annotations on the answer message.
+
+    Accepts the nested (`{"type": "url_citation", "url_citation": {...}}`) and
+    the flat form. Only the URL and a string title are kept; no marker index is
+    invented because annotations do not carry one.
+    """
+    choices = body.get("choices")
+    choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], Mapping) else {}
+    annotations = _as_dict(choice.get("message")).get("annotations")
+    normalized: List[Dict[str, Any]] = []
+    for item in annotations if isinstance(annotations, list) else []:
+        if not isinstance(item, Mapping) or item.get("type") != "url_citation":
+            continue
+        detail = item.get("url_citation") if isinstance(item.get("url_citation"), Mapping) else item
+        url = _sonar_url(detail.get("url"))
+        if not url:
+            continue
+        title = detail.get("title")
+        normalized.append({"url": url, "title": title if isinstance(title, str) else ""})
+    return normalized
+
+
+def _gateway_search_citations(body: Mapping[str, Any]) -> Tuple[List[Dict[str, Any]], str]:
+    """Citations from a gateway search answer, and which response field held them.
+
+    Perplexity-native top-level `citations`/`search_results` win when the
+    gateway passes them through (they carry marker indices); otherwise message
+    annotations are used. Neither present means no citations: sources are
+    never derived from answer text.
+    """
+    if isinstance(body.get("citations"), list) or isinstance(body.get("search_results"), list):
+        return _sonar_citations(body), "perplexity_fields"
+    annotations = _annotation_citations(body)
+    if annotations:
+        return annotations, "message_annotations"
+    return [], "none"
+
+
+def _gateway_upstream_provider(body: Mapping[str, Any]) -> Optional[str]:
+    """The upstream provider the gateway reports having used, if it says so."""
+    for key in ("provider_metadata", "providerMetadata"):
+        routing = _as_dict(_as_dict(_as_dict(body.get(key)).get("gateway")).get("routing"))
+        value = routing.get("finalProvider") or routing.get("final_provider")
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
 class PerplexityAdapter(OpenAICompatibleAdapter):
     """Perplexity Sonar search over the documented POST /v1/sonar contract.
 
@@ -2411,17 +2510,7 @@ class PerplexityAdapter(OpenAICompatibleAdapter):
         except Exception as error:
             error_class, message = _safe_exception(error)
             raise RouterError(error_class, message)
-        if not isinstance(body, Mapping):
-            raise RouterError("provider_bad_response", "The search provider returned no usable answer.")
-        choices = body.get("choices")
-        choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], Mapping) else {}
-        message = _as_dict(choice.get("message"))
-        content = message.get("content")
-        finish_reason = choice.get("finish_reason")
-        if finish_reason == "content_filter" or message.get("refusal"):
-            raise RouterError("provider_content_rejected", "The provider declined to answer this request.")
-        if not isinstance(content, str) or not content.strip() or finish_reason not in (None, "stop"):
-            raise RouterError("provider_bad_response", "The search provider returned no usable answer.")
+        content, finish_reason = _search_answer_text(body)
         usage = body.get("usage")
         model = body.get("model")
         return AdapterResult(
@@ -2481,7 +2570,7 @@ class VercelGatewayAdapter(OpenAICompatibleAdapter):
     """
 
     provider_id = "vercel_gateway"
-    capabilities = {"chat"}
+    capabilities = {"chat", "search_answer"}
 
     def _extra_body(self, route: Route) -> Optional[Dict[str, Any]]:
         if _as_bool(route.config.get("zero_data_retention")):
@@ -2491,6 +2580,69 @@ class VercelGatewayAdapter(OpenAICompatibleAdapter):
     def _response_extensions(self, response: Any) -> Dict[str, Any]:
         model = getattr(response, "model", None)
         return {"upstream_model": model} if isinstance(model, str) and model else {}
+
+    def invoke_search(self, route: Route, request: NormalizedRequest) -> AdapterResult:
+        """Grounded web search through the gateway's chat completions endpoint.
+
+        Only grounded model families are accepted. The body is fixed: model,
+        messages, stream=false, optional caller temperature/max_tokens, and the
+        operator-owned providerOptions. `only` pins the upstream provider so the
+        gateway cannot fail over to a provider the operator did not choose, and
+        no `models` list is sent, so there is no gateway-side model fallback.
+        """
+        model = str(route.model or "")
+        if not model.startswith(GATEWAY_SEARCH_MODEL_PREFIXES):
+            raise RouterError("unsupported_capability", "This gateway model does not provide grounded web search.")
+        sources = (request.options, request.raw, _as_dict(request.raw.get("params")))
+        for name in GATEWAY_SEARCH_UNSUPPORTED_OPTIONS:
+            if any(source.get(name) not in (None, "") for source in sources):
+                raise RouterError("unsupported_option", f"The gateway search route does not support '{name}'.")
+        messages = request.input.get("messages")
+        if not messages:
+            prompt = request.input.get("prompt") or request.input.get("input")
+            if not prompt:
+                raise RouterError("invalid_request", "Search execution requires messages or a prompt.")
+            messages = [{"role": "user", "content": prompt}]
+        gateway_options: Dict[str, Any] = {"only": [model.split("/", 1)[0]]}
+        if _as_bool(route.config.get("zero_data_retention")):
+            gateway_options.update(GATEWAY_ZDR_BODY["providerOptions"]["gateway"])
+        payload: Dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "stream": False,
+            "providerOptions": {"gateway": gateway_options},
+        }
+        for key in ("temperature", "max_tokens"):
+            if request.options.get(key) is not None:
+                payload[key] = request.options[key]
+        try:
+            body = self._client(route).post("/chat/completions", cast_to=Dict[str, Any], body=payload)
+        except RouterError:
+            raise
+        except Exception as error:
+            error_class, message = _safe_exception(error)
+            raise RouterError(error_class, message)
+        content, finish_reason = _search_answer_text(body)
+        citations, citation_source = _gateway_search_citations(body)
+        usage = body.get("usage")
+        upstream_model = body.get("model")
+        extensions: Dict[str, Any] = {}
+        if isinstance(upstream_model, str) and upstream_model:
+            extensions["upstream_model"] = upstream_model
+        upstream_provider = _gateway_upstream_provider(body)
+        if upstream_provider:
+            extensions["upstream_provider"] = upstream_provider
+        return AdapterResult(
+            _chat_data(
+                content,
+                finish_reason=finish_reason,
+                citations=citations,
+                extensions={"citation_source": citation_source},
+            ),
+            provider_request_id=body.get("id") if isinstance(body.get("id"), str) else None,
+            usage=dict(usage) if isinstance(usage, Mapping) else None,
+            extensions=extensions,
+        )
 
 
 class NvidiaNimAdapter(OpenAICompatibleAdapter):
@@ -2756,6 +2908,7 @@ class Router:
         if request and "priority_paygo" in request.options:
             metadata["requested_priority_paygo"] = request.options["priority_paygo"]
         upstream_model = updates.pop("upstream_model", None)
+        upstream_provider = updates.pop("upstream_provider", None)
         metadata.update(updates)
         if request and request.operation_mode == "factory" and metadata.get("execution_phase") != "inference":
             # A factory receipt is written when the model object is built, before
@@ -2772,7 +2925,7 @@ class Router:
         selected_provider = metadata.get("selected_provider")
         provider_conf = _as_dict(_as_dict(self.config.get("providers")).get(selected_provider))
         if provider_conf.get("adapter") == "vercel_gateway":
-            metadata.update(_gateway_receipt(provider_conf, upstream_model))
+            metadata.update(_gateway_receipt(provider_conf, upstream_model, upstream_provider))
         if selected_provider:
             metadata["resolved_route"] = {
                 "provider": selected_provider,
@@ -3040,7 +3193,11 @@ class Router:
                 return self._failure(outcome.error, self._outcome_metadata(request, started, outcome, plan))
             route, result = outcome.route, outcome.result
             extensions = dict(result.extensions)
-            metadata = self._outcome_metadata(request, started, outcome, plan, upstream_model=extensions.pop("upstream_model", None))
+            metadata = self._outcome_metadata(
+                request, started, outcome, plan,
+                upstream_model=extensions.pop("upstream_model", None),
+                upstream_provider=extensions.pop("upstream_provider", None),
+            )
             if extensions:
                 metadata["provider_extensions"] = extensions
             data = result.data
@@ -3070,6 +3227,11 @@ class Router:
                         "provider_request_id",
                     )
                 }
+                # A gateway route also records the backend and the upstream the
+                # gateway reported, kept apart from the route the router chose.
+                for key in ("zdr_mode", "gateway"):
+                    if key in metadata:
+                        provider_extensions["router_receipt"][key] = copy.deepcopy(metadata[key])
                 data["provider_extensions"] = provider_extensions
             message = "Route completed."
             if request.operation_mode == "factory":
