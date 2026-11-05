@@ -363,7 +363,7 @@ account_byok}`, all `unknown`. No prompt or response content is logged.
 ### Grounded search through the gateway (Perplexity)
 
 Route: consumer → `machina-ai invoke_search` → `vercel_gateway` →
-`POST https://ai-gateway.vercel.sh/v1/chat/completions` → Perplexity Sonar.
+`POST https://ai-gateway.vercel.sh/v3/ai/language-model` → Perplexity Sonar.
 This is separate from the direct `perplexity` provider (`PERPLEXITY.md`), which
 stays dormant and untouched.
 
@@ -378,12 +378,28 @@ gateway key is missing, which is a provider change nobody approved.
   (`GATEWAY_SEARCH_MODEL_PREFIXES`). Any other gateway model, even when
   allowlisted, fails `unsupported_capability` before HTTP: a chat model is not
   grounded search. Initial candidate: `perplexity/sonar`.
-- Wire body (fixed): `model`, `messages`, `stream: false`, optional caller
-  `temperature`/`max_tokens`, and `providerOptions.gateway.only: ["perplexity"]`
-  so the gateway cannot fail over to a provider the operator did not choose. No
-  `models` list is sent, so there is no gateway-side model fallback. With ZDR
-  opted in, `zeroDataRetention: true` is added next to `only` (Perplexity is not
-  in Vercel's ZDR provider list, so expect a typed failure rather than a weaker
+- Why not `/v1/chat/completions`: live calls on 2026-11-05 showed the gateway's
+  OpenAI-compatible endpoints (`/v1/chat/completions` and `/v1/responses`)
+  answer Perplexity requests but drop the search sources: the answer keeps its
+  `[n]` markers, while the message carries only a search count
+  (`provider_metadata.perplexity.toolCalls.search_web.invocation`) and
+  `annotations` is empty. Vercel documents sources only for the AI SDK. The
+  adapter therefore sends the request `@ai-sdk/gateway` sends for a
+  non-streaming generate: `POST {gateway origin}/v3/ai/language-model` with
+  `Authorization: Bearer`, `ai-gateway-protocol-version: 0.0.1`,
+  `ai-gateway-auth-method: api-key`, `ai-language-model-specification-version: 3`,
+  `ai-language-model-id: <model>` and `ai-language-model-streaming: false`.
+  This HTTP protocol is what the AI SDK uses, not a documented public API; if
+  Vercel changes it, the route fails typed (`provider_bad_response` or an HTTP
+  class), never silently without sources.
+- Wire body (fixed): the AI SDK `prompt` (plain-text system/user/assistant
+  turns only; anything else is `invalid_request` before HTTP), optional caller
+  `temperature` and `maxOutputTokens` (from `max_tokens`), and
+  `providerOptions.gateway.only: ["perplexity"]` so the gateway cannot fail over
+  to a provider the operator did not choose. No `models` list is sent, so there
+  is no gateway-side model fallback. With ZDR opted in,
+  `zeroDataRetention: true` is added next to `only` (Perplexity is not in
+  Vercel's ZDR provider list, so expect a typed failure rather than a weaker
   route).
 - Refused by name with `unsupported_option`, never silently dropped:
   `tools`, `response_format`, `seed` and the Sonar search options
@@ -391,23 +407,28 @@ gateway key is missing, which is a provider change nobody approved.
   `web_search_options`, `return_related_questions`, `return_images`,
   `reasoning_effort`, `disable_search`, `enable_search_classifier`). The gateway
   does not document passing these through; they need a live check before support.
-- Answer: an empty, non-text or truncated answer fails `provider_bad_response`;
-  a refusal fails `provider_content_rejected` without echoing provider text.
-- Citations: the gateway does not document where Perplexity sources appear on
-  its chat completions endpoint. The adapter accepts Perplexity's own top-level
-  `citations`/`search_results` (same normalization as the direct adapter,
-  `citation_index` preserved) and otherwise OpenAI-style `url_citation`
-  message annotations. Neither present means `citations: []`; nothing is derived
-  from answer text. `data.provider_extensions.citation_source` records which
-  shape was used (`perplexity_fields` / `message_annotations` / `none`).
+- Answer: the concatenated `text` parts. An empty answer or any finish other
+  than `stop` (length, error, tool calls) fails `provider_bad_response`; a
+  `content-filter` finish fails `provider_content_rejected` without echoing
+  provider text.
+- Citations: the `source` parts with `sourceType: "url"`, in order. Perplexity
+  numbers them; that id is the answer's `[n]` marker and is kept as
+  `citation_index` (positive integers only). Invalid URLs are dropped. No source
+  parts means `citations: []`; nothing is derived from answer text.
+  `data.provider_extensions.citation_source` is `source_parts` or `none`.
 - Receipt: `data.provider_extensions.router_receipt` also carries `zdr_mode`
-  and `gateway` (backend plus the upstream model/provider the gateway
-  reported), separate from `selected_provider: vercel_gateway`. Usage passes
-  through or stays `null`; cost is not inferred.
+  and `gateway` (backend plus the upstream provider/model the gateway reported:
+  `providerMetadata.gateway.routing.finalProvider` and `response.modelId` or
+  `routing.canonicalSlug`), separate from `selected_provider: vercel_gateway`.
+  `provider_request_id` is the gateway `generationId`. Usage is normalized to
+  `prompt_tokens`/`completion_tokens`/`total_tokens` plus `web_search_calls`, or
+  stays `null`; cost is not inferred.
 
 Offline-tested in `tests/test_vercel_gateway_search.py` with the real `openai`
-SDK over an `httpx` mock transport and synthetic bodies. A live call is still
-required to confirm the real citation shape and `upstream_*` fields.
+SDK (used only as the HTTP transport) over an `httpx` mock transport and
+synthetic bodies shaped like the live result. Live-validated locally with
+`scripts/live_gateway_search_smoke.py` (one paid call per run; key typed at a
+hidden prompt or read from `AI_GATEWAY_API_KEY`, never written).
 
 ### Validation status and rollback
 

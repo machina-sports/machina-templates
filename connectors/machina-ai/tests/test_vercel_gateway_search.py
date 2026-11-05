@@ -1,14 +1,16 @@
 """Grounded search through the Vercel AI Gateway (`vercel_gateway` + perplexity/*).
 
 Route under test: consumer -> machina-ai invoke_search -> Vercel AI Gateway
-POST /v1/chat/completions -> Perplexity Sonar.
+POST /v3/ai/language-model (AI SDK protocol) -> Perplexity Sonar.
+
+A live call (2026-11-05) showed the gateway's OpenAI-compatible endpoints
+(/v1/chat/completions and /v1/responses) answer Perplexity requests but drop
+the sources: only the AI SDK protocol returns them, as `source` content parts.
+The fixtures below follow the shape of that live result.
 
 Offline only. Wire tests drive the real `openai` SDK through an httpx mock
 transport; no network call, no real credential. Every response body below is a
-SYNTHETIC fixture. The gateway does not document how Perplexity citations come
-back on its chat completions endpoint, so both plausible shapes are covered:
-Perplexity's own top-level `citations`/`search_results` and OpenAI-style
-`url_citation` message annotations. URLs use the reserved `.invalid` TLD.
+SYNTHETIC fixture. URLs use the reserved `.invalid` TLD.
 """
 import functools
 import json
@@ -43,28 +45,27 @@ def gateway_config(zdr=False, models=(MODEL,), profiles=None, **provider_extra):
     return config
 
 
-def completion(**overrides):
-    """SYNTHETIC gateway chat completion for a Perplexity model."""
+def source(index, url, title="Synthetic"):
+    return {"type": "source", "sourceType": "url", "id": str(index), "url": url, "title": title,
+            "providerMetadata": {"perplexity": {"resultId": index, "snippet": "synthetic"}}}
+
+
+def native(content=None, **overrides):
+    """SYNTHETIC gateway AI SDK generate result for a Perplexity model."""
     body = {
-        "id": "gen-synthetic-1",
-        "object": "chat.completion",
-        "created": 0,
-        "model": MODEL,
-        "choices": [{
-            "index": 0,
-            "finish_reason": "stop",
-            "message": {"role": "assistant", "content": "Synthetic answer [1][2]."},
-        }],
-        "usage": {"prompt_tokens": 5, "completion_tokens": 7, "total_tokens": 12},
+        "content": [source(1, A), source(2, B), {"type": "text", "text": "Synthetic answer [1][2]."}]
+        if content is None else content,
+        "finishReason": {"unified": "stop", "raw": "completed"},
+        "usage": {"inputTokens": {"total": 5, "noCache": 5}, "outputTokens": {"total": 7, "text": 7}},
+        "providerMetadata": {"gateway": {"generationId": "gen-synthetic-1", "billableWebSearchCalls": 1}},
+        "warnings": [],
     }
     body.update(overrides)
     return body
 
 
-def with_message(**message):
-    body = completion()
-    body["choices"][0]["message"].update(message)
-    return body
+def text(value):
+    return {"type": "text", "text": value}
 
 
 def run(config, respond, adapters=None, **params):
@@ -93,7 +94,7 @@ def run(config, respond, adapters=None, **params):
 
 def ok(body=None, status=200):
     httpx = pytest.importorskip("httpx")
-    return lambda request: httpx.Response(status, json=completion() if body is None else body)
+    return lambda request: httpx.Response(status, json=native() if body is None else body)
 
 
 def body_of(request):
@@ -141,22 +142,26 @@ class TestExactWireRequest:
         result, [request], vertex = run(gateway_config(), ok(), timeout=180)
         assert result["status"] is True
         assert request.method == "POST"
-        assert str(request.url) == "https://ai-gateway.vercel.sh/v1/chat/completions"
+        assert str(request.url) == "https://ai-gateway.vercel.sh/v3/ai/language-model"
         assert request.headers["authorization"] == f"Bearer {SECRET}"
+        assert request.headers["ai-gateway-protocol-version"] == "0.0.1"
+        assert request.headers["ai-gateway-auth-method"] == "api-key"
+        assert request.headers["ai-language-model-specification-version"] == "3"
+        assert request.headers["ai-language-model-id"] == MODEL
+        assert request.headers["ai-language-model-streaming"] == "false"
         assert body_of(request) == {
-            "model": MODEL,
-            "messages": [{"role": "user", "content": "synthetic question"}],
-            "stream": False,
+            "prompt": [{"role": "user", "content": [{"type": "text", "text": "synthetic question"}]}],
             "providerOptions": {"gateway": {"only": ["perplexity"]}},
         }
         # Router-owned deadline reaches the transport; the SDK never retries.
         assert request.extensions["timeout"]["read"] == pytest.approx(180)
         assert vertex.calls == []
 
-    def test_never_calls_perplexity_directly(self):
+    def test_never_calls_perplexity_directly_or_the_openai_compatible_path(self):
         _, [request], _ = run(gateway_config(), ok())
         assert request.url.host == "ai-gateway.vercel.sh"
         assert "api.perplexity.ai" not in str(request.url)
+        assert "chat/completions" not in str(request.url)
 
     def test_zdr_opt_in_is_sent_with_the_provider_pin(self):
         _, [request], _ = run(gateway_config(zdr=True), ok())
@@ -171,12 +176,30 @@ class TestExactWireRequest:
     def test_caller_temperature_and_max_tokens_are_forwarded(self):
         _, [request], _ = run(gateway_config(), ok(), temperature=0, max_tokens=900)
         body = body_of(request)
-        assert body["temperature"] == 0 and body["max_tokens"] == 900
+        assert body["temperature"] == 0 and body["maxOutputTokens"] == 900
+        assert "max_tokens" not in body
 
-    def test_messages_are_sent_as_given(self):
-        messages = [{"role": "system", "content": "s"}, {"role": "user", "content": "u"}]
+    def test_messages_are_mapped_to_the_ai_sdk_prompt(self):
+        messages = [{"role": "system", "content": "s"}, {"role": "user", "content": "u"},
+                    {"role": "assistant", "content": "a"}, {"role": "user", "content": "u2"}]
         _, [request], _ = run(gateway_config(), ok(), messages=messages, prompt=None)
-        assert body_of(request)["messages"] == messages
+        assert body_of(request)["prompt"] == [
+            {"role": "system", "content": "s"},
+            {"role": "user", "content": [{"type": "text", "text": "u"}]},
+            {"role": "assistant", "content": [{"type": "text", "text": "a"}]},
+            {"role": "user", "content": [{"type": "text", "text": "u2"}]},
+        ]
+
+    @pytest.mark.parametrize("messages", [
+        [{"role": "tool", "content": "x"}],
+        [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": A}}]}],
+        [{"role": "user", "content": None}],
+        ["not a message"],
+    ])
+    def test_unsupported_messages_are_invalid_before_http(self, messages):
+        result, seen, _ = run(gateway_config(), ok(), messages=messages, prompt=None)
+        assert result["metadata"]["error_class"] == "invalid_request"
+        assert seen == []
 
     def test_missing_prompt_is_invalid_before_http(self):
         result, seen, _ = run(gateway_config(), ok(), prompt=None)
@@ -228,67 +251,64 @@ class TestWorkflowCannotChangePolicy:
 
 
 class TestCitations:
-    def test_perplexity_fields_keep_indices_and_exact_url_titles(self):
-        body = completion(
-            citations=[A, "javascript:alert(1)", B, "https://user@c.invalid/x", C],
-            search_results=[
-                {"url": A + "/", "title": "Wrong near-match", "source": "web"},
-                {"url": A, "title": "Synthetic A", "source": "web"},
-                {"url": B, "title": None, "source": "web"},
-            ],
-        )
+    def test_source_parts_become_citations_with_marker_indices(self):
+        body = native([source(1, A, "Synthetic A"), source(2, "javascript:alert(1)"), source(3, B, None),
+                       source(4, "https://user@c.invalid/x"), source(5, C), text("Answer [1][3][5].")])
         result, _, _ = run(gateway_config(), ok(body))
         data = result["data"]
+        assert data["content"] == "Answer [1][3][5]."
         assert data["citations"] == [
             {"url": A, "title": "Synthetic A", "citation_index": 1},
             {"url": B, "title": "", "citation_index": 3},
-            {"url": C, "title": "", "citation_index": 5},
+            {"url": C, "title": "Synthetic", "citation_index": 5},
         ]
-        assert data["provider_extensions"]["citation_source"] == "perplexity_fields"
+        assert data["provider_extensions"]["citation_source"] == "source_parts"
 
-    def test_search_results_without_citations_list_have_no_invented_indices(self):
-        body = completion(search_results=[{"url": B, "title": "Synthetic B", "source": "web"}, {"url": "ftp://x.invalid"}])
-        result, _, _ = run(gateway_config(), ok(body))
-        assert result["data"]["citations"] == [{"url": B, "title": "Synthetic B"}]
+    @pytest.mark.parametrize("marker", [None, "", "0", "-1", "a1", "1.5", "\u0661", 0, True, 2.0, ["1"]])
+    def test_non_positive_integer_ids_get_no_invented_index(self, marker):
+        part = {**source(1, A), "id": marker}
+        result, _, _ = run(gateway_config(), ok(native([part, text("x")])))
+        assert result["data"]["citations"] == [{"url": A, "title": "Synthetic"}]
 
-    @pytest.mark.parametrize("annotation", [
-        {"type": "url_citation", "url_citation": {"url": A, "title": "Synthetic A", "start_index": 0, "end_index": 3}},
-        {"type": "url_citation", "url": A, "title": "Synthetic A"},
-    ])
-    def test_message_annotations_are_used_when_perplexity_fields_are_absent(self, annotation):
-        body = with_message(annotations=[
-            annotation,
-            {"type": "url_citation", "url_citation": {"url": "http://", "title": "no host"}},
-            {"type": "file_citation", "url": B},
-            "garbage",
+    def test_non_url_and_malformed_parts_are_ignored(self):
+        body = native([
+            {"type": "source", "sourceType": "document", "id": "1", "url": A, "title": "doc"},
+            {"type": "reasoning", "text": "hidden"},
+            {"type": "tool-call", "toolName": "search_web"},
+            "garbage", None, 3,
+            source(2, B),
+            text("x"),
         ])
         result, _, _ = run(gateway_config(), ok(body))
-        assert result["data"]["citations"] == [{"url": A, "title": "Synthetic A"}]
-        assert result["data"]["provider_extensions"]["citation_source"] == "message_annotations"
+        assert result["data"]["citations"] == [{"url": B, "title": "Synthetic", "citation_index": 2}]
 
-    def test_no_citations_means_none_never_derived_from_answer_text(self):
-        body = with_message(content=f"See {A} and {B}.")
-        result, _, _ = run(gateway_config(), ok(body))
+    def test_no_sources_means_none_never_derived_from_answer_text(self):
+        result, _, _ = run(gateway_config(), ok(native([text(f"See {A} and {B}.")])))
         assert result["status"] is True
         assert result["data"]["citations"] == []
         assert result["data"]["provider_extensions"]["citation_source"] == "none"
 
-    @pytest.mark.parametrize("malformed", [None, "x", {"a": 1}, [None, 3, {"url": A}]])
-    def test_malformed_citation_payloads_do_not_crash_or_invent(self, malformed):
-        result, _, _ = run(gateway_config(), ok(completion(citations=malformed)))
-        assert result["status"] is True
-        assert all(set(item) <= {"url", "title", "citation_index"} for item in result["data"]["citations"])
-        assert all(item["url"] == A for item in result["data"]["citations"]) or result["data"]["citations"] == []
+    def test_openai_compatible_fields_are_not_read(self):
+        body = native([text("x")], citations=[A], search_results=[{"url": B}],
+                      choices=[{"message": {"annotations": [{"type": "url_citation", "url": C}]}}])
+        result, _, _ = run(gateway_config(), ok(body))
+        assert result["data"]["citations"] == []
+
+    def test_multiple_text_parts_are_joined_in_order(self):
+        result, _, _ = run(gateway_config(), ok(native([text("one "), source(1, A), text("two")])))
+        assert result["data"]["content"] == "one two"
 
 
 class TestAnswerFailures:
     @pytest.mark.parametrize("body", [
-        with_message(content=""),
-        with_message(content="   "),
-        with_message(content=None),
-        with_message(content=[{"type": "text", "text": "array form"}]),
-        completion(choices=[]),
-        {"not": "a completion"},
+        native([text("")]),
+        native([text("   ")]),
+        native([source(1, A)]),
+        native([]),
+        native([{"type": "text", "text": None}]),
+        native(content="not a list"),
+        {"choices": [{"message": {"content": "an OpenAI-shaped body"}, "finish_reason": "stop"}]},
+        {"not": "a result"},
     ])
     def test_empty_or_unusable_answer_is_bad_response(self, body):
         result, _, _ = run(gateway_config(), ok(body))
@@ -296,17 +316,19 @@ class TestAnswerFailures:
         assert result["metadata"]["error_class"] == "provider_bad_response"
         assert result["data"] is None
 
-    def test_truncated_answer_is_bad_response(self):
-        body = completion()
-        body["choices"][0]["finish_reason"] = "length"
-        result, _, _ = run(gateway_config(), ok(body))
+    @pytest.mark.parametrize("finish", [{"unified": "length", "raw": "length"}, "length", {"unified": "error"},
+                                        {"unified": "tool-calls"}, None, {}])
+    def test_non_stop_finish_is_bad_response(self, finish):
+        result, _, _ = run(gateway_config(), ok(native(finishReason=finish)))
         assert result["metadata"]["error_class"] == "provider_bad_response"
 
-    @pytest.mark.parametrize("body", [
-        with_message(refusal="I cannot help with that."),
-        {**completion(), "choices": [{"index": 0, "finish_reason": "content_filter", "message": {"role": "assistant", "content": "x"}}]},
-    ])
-    def test_refusal_is_content_rejected_without_echo(self, body):
+    def test_plain_string_stop_is_accepted(self):
+        result, _, _ = run(gateway_config(), ok(native(finishReason="stop")))
+        assert result["status"] is True
+
+    @pytest.mark.parametrize("finish", [{"unified": "content-filter", "raw": "x"}, "content-filter"])
+    def test_content_filter_is_content_rejected_without_echo(self, finish):
+        body = native([text("I cannot help with that.")], finishReason=finish)
         result, _, _ = run(gateway_config(), ok(body))
         assert result["metadata"]["error_class"] == "provider_content_rejected"
         assert "I cannot help" not in json.dumps(result, default=str)
@@ -368,16 +390,18 @@ class TestNoSilentFallback:
 
 class TestReceipt:
     def test_receipt_separates_gateway_from_reported_upstream(self):
-        body = completion(
-            model="perplexity/sonar-upstream-reported",
-            provider_metadata={"gateway": {"routing": {"finalProvider": "perplexity"}}},
-        )
+        body = native(providerMetadata={"gateway": {
+            "generationId": "gen-synthetic-1",
+            "billableWebSearchCalls": 1,
+            "routing": {"finalProvider": "perplexity", "canonicalSlug": "perplexity/sonar-upstream-reported"},
+        }})
         result, _, _ = run(gateway_config(), ok(body))
         metadata = result["metadata"]
         assert metadata["selected_provider"] == "vercel_gateway"
         assert metadata["selected_model"] == MODEL
         assert metadata["provider_request_id"] == "gen-synthetic-1"
-        assert metadata["usage"] == {"prompt_tokens": 5, "completion_tokens": 7, "total_tokens": 12}
+        assert metadata["usage"] == {"prompt_tokens": 5, "completion_tokens": 7, "total_tokens": 12,
+                                     "web_search_calls": 1}
         assert metadata["gateway"] == {
             "backend": "vercel_ai_gateway",
             "zdr_effective": "unknown",
@@ -391,13 +415,25 @@ class TestReceipt:
         assert receipt["gateway"] == metadata["gateway"]
         assert SECRET not in json.dumps(result, default=str)
 
-    def test_unreported_upstream_and_usage_stay_unknown(self):
-        body = completion(usage=None)
-        del body["model"]
+    def test_response_model_id_wins_over_the_routing_slug(self):
+        body = native(response={"id": "resp-1", "modelId": "perplexity/sonar-2"},
+                      providerMetadata={"gateway": {"routing": {"canonicalSlug": "perplexity/sonar"}}})
+        result, _, _ = run(gateway_config(), ok(body))
+        assert result["metadata"]["gateway"]["upstream_model"] == "perplexity/sonar-2"
+        assert result["metadata"]["provider_request_id"] == "resp-1"
+
+    @pytest.mark.parametrize("usage", [None, "x", {}, {"inputTokens": "5"}, {"inputTokens": {"total": None}}])
+    def test_unreported_upstream_and_usage_stay_unknown(self, usage):
+        body = native(usage=usage, providerMetadata=None)
         result, _, _ = run(gateway_config(), ok(body))
         assert result["metadata"]["usage"] is None
+        assert result["metadata"]["provider_request_id"] is None
         assert result["metadata"]["gateway"]["upstream_provider"] is None
         assert result["metadata"]["gateway"]["upstream_model"] is None
+
+    def test_spec_v2_integer_usage_is_read(self):
+        result, _, _ = run(gateway_config(), ok(native(usage={"inputTokens": 3, "outputTokens": 4})))
+        assert result["metadata"]["usage"]["total_tokens"] == 7
 
 
 class TestUnchangedRoutes:

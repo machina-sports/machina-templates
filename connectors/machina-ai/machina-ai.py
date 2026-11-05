@@ -48,6 +48,16 @@ GATEWAY_ZDR_BODY = {"providerOptions": {"gateway": {"zeroDataRetention": True}}}
 # sources. Listing any other gateway model under `search_answer` would hand back
 # an ungrounded chat answer labelled as search, so the route refuses it.
 GATEWAY_SEARCH_MODEL_PREFIXES = ("perplexity/",)
+# Gateway search goes over the AI SDK protocol, the only gateway surface that
+# returns Perplexity's sources (the OpenAI-compatible endpoints drop them). These
+# are the request headers @ai-sdk/gateway sends for a non-streaming generate.
+GATEWAY_LANGUAGE_MODEL_PATH = "/v3/ai/language-model"
+GATEWAY_LANGUAGE_MODEL_HEADERS = {
+    "ai-gateway-protocol-version": "0.0.1",
+    "ai-gateway-auth-method": "api-key",
+    "ai-language-model-specification-version": "3",
+    "ai-language-model-streaming": "false",
+}
 # Caller options the gateway search route does not implement. They are refused
 # by name instead of being dropped, so a workflow never believes a filter (or a
 # tool, or a schema) was applied when it was not.
@@ -2429,53 +2439,110 @@ def _search_answer_text(body: Any) -> Tuple[str, Any]:
     return content, finish_reason
 
 
-def _annotation_citations(body: Mapping[str, Any]) -> List[Dict[str, Any]]:
-    """OpenAI-style `url_citation` annotations on the answer message.
+def _gateway_native_prompt(messages: Any) -> List[Dict[str, Any]]:
+    """Chat messages -> the gateway's AI SDK (LanguageModelV3) prompt.
 
-    Accepts the nested (`{"type": "url_citation", "url_citation": {...}}`) and
-    the flat form. Only the URL and a string title are kept; no marker index is
-    invented because annotations do not carry one.
+    Only plain-text system/user/assistant turns are accepted; anything else
+    (tool turns, multimodal parts, non-text content) is refused instead of being
+    silently reshaped.
     """
-    choices = body.get("choices")
-    choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], Mapping) else {}
-    annotations = _as_dict(choice.get("message")).get("annotations")
+    prompt: List[Dict[str, Any]] = []
+    for message in messages if isinstance(messages, list) else []:
+        role = message.get("role") if isinstance(message, Mapping) else None
+        content = message.get("content") if isinstance(message, Mapping) else None
+        if role not in ("system", "user", "assistant") or not isinstance(content, str):
+            raise RouterError("invalid_request", "Gateway search accepts only plain-text system, user and assistant messages.")
+        if role == "system":
+            prompt.append({"role": "system", "content": content})
+        else:
+            prompt.append({"role": role, "content": [{"type": "text", "text": content}]})
+    if not prompt:
+        raise RouterError("invalid_request", "Search execution requires messages or a prompt.")
+    return prompt
+
+
+def _gateway_native_answer(body: Any) -> Tuple[str, str]:
+    """Return (content, "stop") from a gateway AI SDK generate result.
+
+    The answer is the concatenated `text` parts. A content-filter finish fails
+    provider_content_rejected without echoing provider text; an empty answer or
+    any other finish (length, error, tool calls) fails provider_bad_response.
+    """
+    if not isinstance(body, Mapping) or not isinstance(body.get("content"), list):
+        raise RouterError("provider_bad_response", "The search provider returned no usable answer.")
+    finish = body.get("finishReason")
+    unified = finish.get("unified") if isinstance(finish, Mapping) else finish
+    if unified == "content-filter":
+        raise RouterError("provider_content_rejected", "The provider declined to answer this request.")
+    texts = [part.get("text") for part in body["content"] if isinstance(part, Mapping) and part.get("type") == "text"]
+    if unified != "stop" or not texts or not all(isinstance(text, str) for text in texts):
+        raise RouterError("provider_bad_response", "The search provider returned no usable answer.")
+    content = "".join(texts)
+    if not content.strip():
+        raise RouterError("provider_bad_response", "The search provider returned no usable answer.")
+    return content, "stop"
+
+
+def _gateway_native_citations(body: Mapping[str, Any]) -> List[Dict[str, Any]]:
+    """URL `source` parts of a gateway AI SDK result, in order.
+
+    Perplexity numbers its sources; that id is the answer's [n] marker and is
+    kept as citation_index only when it is a positive integer. Invalid URLs are
+    dropped. Sources are never derived from answer text.
+    """
     normalized: List[Dict[str, Any]] = []
-    for item in annotations if isinstance(annotations, list) else []:
-        if not isinstance(item, Mapping) or item.get("type") != "url_citation":
+    for part in body.get("content") or []:
+        if not isinstance(part, Mapping) or part.get("type") != "source" or part.get("sourceType") != "url":
             continue
-        detail = item.get("url_citation") if isinstance(item.get("url_citation"), Mapping) else item
-        url = _sonar_url(detail.get("url"))
+        url = _sonar_url(part.get("url"))
         if not url:
             continue
-        title = detail.get("title")
-        normalized.append({"url": url, "title": title if isinstance(title, str) else ""})
+        title = part.get("title")
+        item: Dict[str, Any] = {"url": url, "title": title if isinstance(title, str) else ""}
+        marker = part.get("id")
+        if isinstance(marker, str) and marker.isdigit() and marker.isascii():
+            marker = int(marker)
+        if type(marker) is int and marker > 0:
+            item["citation_index"] = marker
+        normalized.append(item)
     return normalized
 
 
-def _gateway_search_citations(body: Mapping[str, Any]) -> Tuple[List[Dict[str, Any]], str]:
-    """Citations from a gateway search answer, and which response field held them.
+def _gateway_native_usage(body: Mapping[str, Any]) -> Optional[Dict[str, Any]]:
+    """Token usage in the router's prompt/completion/total shape, if reported."""
+    usage = body.get("usage")
+    if not isinstance(usage, Mapping):
+        return None
 
-    Perplexity-native top-level `citations`/`search_results` win when the
-    gateway passes them through (they carry marker indices); otherwise message
-    annotations are used. Neither present means no citations: sources are
-    never derived from answer text.
-    """
-    if isinstance(body.get("citations"), list) or isinstance(body.get("search_results"), list):
-        return _sonar_citations(body), "perplexity_fields"
-    annotations = _annotation_citations(body)
-    if annotations:
-        return annotations, "message_annotations"
-    return [], "none"
+    def total(value: Any) -> Optional[int]:
+        value = value.get("total") if isinstance(value, Mapping) else value
+        return value if type(value) is int else None
+
+    prompt, completion = total(usage.get("inputTokens")), total(usage.get("outputTokens"))
+    if prompt is None and completion is None:
+        return None
+    out: Dict[str, Any] = {"prompt_tokens": prompt, "completion_tokens": completion}
+    out["total_tokens"] = (prompt or 0) + (completion or 0)
+    calls = _as_dict(_as_dict(body.get("providerMetadata")).get("gateway")).get("billableWebSearchCalls")
+    if type(calls) is int:
+        out["web_search_calls"] = calls
+    return out
 
 
-def _gateway_upstream_provider(body: Mapping[str, Any]) -> Optional[str]:
-    """The upstream provider the gateway reports having used, if it says so."""
-    for key in ("provider_metadata", "providerMetadata"):
-        routing = _as_dict(_as_dict(_as_dict(body.get(key)).get("gateway")).get("routing"))
-        value = routing.get("finalProvider") or routing.get("final_provider")
+def _gateway_native_receipt(body: Mapping[str, Any]) -> Dict[str, Any]:
+    """Request id and the upstream provider/model the gateway reports, if any."""
+    gateway = _as_dict(_as_dict(body.get("providerMetadata")).get("gateway"))
+    routing = _as_dict(gateway.get("routing"))
+    response = _as_dict(body.get("response"))
+    found: Dict[str, Any] = {}
+    for key, value in (
+        ("provider_request_id", gateway.get("generationId") or response.get("id")),
+        ("upstream_provider", routing.get("finalProvider")),
+        ("upstream_model", response.get("modelId") or routing.get("canonicalSlug")),
+    ):
         if isinstance(value, str) and value:
-            return value
-    return None
+            found[key] = value
+    return found
 
 
 class PerplexityAdapter(OpenAICompatibleAdapter):
@@ -2582,13 +2649,19 @@ class VercelGatewayAdapter(OpenAICompatibleAdapter):
         return {"upstream_model": model} if isinstance(model, str) and model else {}
 
     def invoke_search(self, route: Route, request: NormalizedRequest) -> AdapterResult:
-        """Grounded web search through the gateway's chat completions endpoint.
+        """Grounded web search through the gateway's AI SDK language-model endpoint.
 
-        Only grounded model families are accepted. The body is fixed: model,
-        messages, stream=false, optional caller temperature/max_tokens, and the
-        operator-owned providerOptions. `only` pins the upstream provider so the
-        gateway cannot fail over to a provider the operator did not choose, and
-        no `models` list is sent, so there is no gateway-side model fallback.
+        The gateway's OpenAI-compatible endpoints (chat completions and
+        responses) answer Perplexity requests but drop the search sources; only
+        the AI SDK protocol returns them, as `source` content parts. This sends
+        the same request @ai-sdk/gateway sends (protocol 0.0.1, spec v3,
+        non-streaming) to POST {gateway origin}/v3/ai/language-model.
+
+        Only grounded model families are accepted. The body is fixed: the prompt,
+        optional caller temperature/max_tokens, and the operator-owned
+        providerOptions. `only` pins the upstream provider so the gateway cannot
+        fail over to a provider the operator did not choose, and no `models` list
+        is sent, so there is no gateway-side model fallback.
         """
         model = str(route.model or "")
         if not model.startswith(GATEWAY_SEARCH_MODEL_PREFIXES):
@@ -2607,40 +2680,36 @@ class VercelGatewayAdapter(OpenAICompatibleAdapter):
         if _as_bool(route.config.get("zero_data_retention")):
             gateway_options.update(GATEWAY_ZDR_BODY["providerOptions"]["gateway"])
         payload: Dict[str, Any] = {
-            "model": model,
-            "messages": messages,
-            "stream": False,
+            "prompt": _gateway_native_prompt(messages),
             "providerOptions": {"gateway": gateway_options},
         }
-        for key in ("temperature", "max_tokens"):
-            if request.options.get(key) is not None:
-                payload[key] = request.options[key]
+        if request.options.get("temperature") is not None:
+            payload["temperature"] = request.options["temperature"]
+        if request.options.get("max_tokens") is not None:
+            payload["maxOutputTokens"] = request.options["max_tokens"]
+        endpoint = urlparse(route.endpoint or FIXED_PROVIDER_ENDPOINTS["vercel_gateway"])
+        url = f"{endpoint.scheme}://{endpoint.netloc}{GATEWAY_LANGUAGE_MODEL_PATH}"
+        headers = {**GATEWAY_LANGUAGE_MODEL_HEADERS, "ai-language-model-id": model}
         try:
-            body = self._client(route).post("/chat/completions", cast_to=Dict[str, Any], body=payload)
+            body = self._client(route).post(url, cast_to=Dict[str, Any], body=payload, options={"headers": headers})
         except RouterError:
             raise
         except Exception as error:
             error_class, message = _safe_exception(error)
             raise RouterError(error_class, message)
-        content, finish_reason = _search_answer_text(body)
-        citations, citation_source = _gateway_search_citations(body)
-        usage = body.get("usage")
-        upstream_model = body.get("model")
-        extensions: Dict[str, Any] = {}
-        if isinstance(upstream_model, str) and upstream_model:
-            extensions["upstream_model"] = upstream_model
-        upstream_provider = _gateway_upstream_provider(body)
-        if upstream_provider:
-            extensions["upstream_provider"] = upstream_provider
+        content, finish_reason = _gateway_native_answer(body)
+        citations = _gateway_native_citations(body)
+        found = _gateway_native_receipt(body)
+        extensions = {key: found[key] for key in ("upstream_model", "upstream_provider") if key in found}
         return AdapterResult(
             _chat_data(
                 content,
                 finish_reason=finish_reason,
                 citations=citations,
-                extensions={"citation_source": citation_source},
+                extensions={"citation_source": "source_parts" if citations else "none"},
             ),
-            provider_request_id=body.get("id") if isinstance(body.get("id"), str) else None,
-            usage=dict(usage) if isinstance(usage, Mapping) else None,
+            provider_request_id=found.get("provider_request_id"),
+            usage=_gateway_native_usage(body),
             extensions=extensions,
         )
 

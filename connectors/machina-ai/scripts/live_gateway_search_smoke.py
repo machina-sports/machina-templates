@@ -12,11 +12,10 @@ file is scrubbed for it before saving, and the script refuses to save if it stil
 What it records (evidence JSON + a short summary on stdout):
   - the router's receipt (selected provider/model, route_reason, fallback_used, gateway
     backend and the upstream model/provider the gateway reported, usage, latency)
-  - the canonical answer data: citations and citation_source (which response shape the
-    gateway actually used for Perplexity sources: perplexity_fields / message_annotations / none)
-  - the wire request the router sent (URL, body without messages content) and the SHAPE of the
-    gateway's raw reply (top-level keys, message keys, counts/types of citation fields), never
-    the raw reply itself
+  - the canonical answer data: citations and citation_source (source_parts / none)
+  - the wire request the router sent (URL, gateway protocol headers, body without the prompt
+    text) and the SHAPE of the gateway's raw reply (keys, types, counts, the content part
+    types), never the raw reply itself
   - router file sha256 and git commit, so the evidence is tied to exact source
 
 Usage (from connectors/machina-ai, with python that has `openai` and `httpx`):
@@ -82,7 +81,7 @@ def load_router(path: Path):
 def shape(value, depth=0):
     """Type/keys/length of a JSON value, never its text."""
     if isinstance(value, dict):
-        if depth >= 3:
+        if depth >= 8:
             return {"type": "object", "keys": sorted(value)}
         return {"type": "object", "keys": {k: shape(v, depth + 1) for k, v in sorted(value.items())}}
     if isinstance(value, list):
@@ -150,19 +149,21 @@ def main(argv=None) -> int:
             body = None
         request = response.request
         sent = json.loads(request.content or b"{}")
-        message = (((body or {}).get("choices") or [{}])[0] or {}).get("message") if isinstance(body, dict) else None
+        parts = (body or {}).get("content") if isinstance(body, dict) else None
         wire.append({
             "request": {
                 "method": request.method, "url": str(request.url),
                 "authorization_scheme": (request.headers.get("authorization") or "").split(" ")[0] or None,
-                "body": {k: v for k, v in sent.items() if k != "messages"},
-                "message_roles": [m.get("role") for m in sent.get("messages") or []],
+                "gateway_headers": {k: v for k, v in request.headers.items() if k.lower().startswith("ai-")},
+                "body": {k: v for k, v in sent.items() if k not in ("prompt", "messages")},
+                "prompt_roles": [m.get("role") for m in sent.get("prompt") or sent.get("messages") or []],
                 "timeout": request.extensions.get("timeout"),
             },
             "response": {
                 "status": response.status_code,
                 "body_shape": shape(body),
-                "message_shape": shape(message) if isinstance(message, dict) else None,
+                "content_part_types": [p.get("type") for p in parts if isinstance(p, dict)]
+                if isinstance(parts, list) else None,
                 "gateway_headers": {k: v for k, v in response.headers.items()
                                     if k.lower().startswith(("x-vercel", "x-ai-gateway", "ai-gateway"))
                                     or k.lower() in ("x-request-id",)},
@@ -225,8 +226,10 @@ def main(argv=None) -> int:
               f"citations={len(result.get('citations') or [])} citation_source={ext.get('citation_source')} "
               f"latency_ms={meta.get('latency_ms')} usage={meta.get('usage')}")
     for item in wire:
+        types = item["response"]["content_part_types"] or []
         print(f"wire: {item['request']['method']} {item['request']['url']} -> HTTP {item['response']['status']}; "
-              f"top-level keys={sorted((item['response']['body_shape'] or {}).get('keys', {}) or [])}")
+              f"top-level keys={sorted((item['response']['body_shape'] or {}).get('keys', {}) or [])}; "
+              f"parts={ {t: types.count(t) for t in dict.fromkeys(types)} }")
     print(f"evidence: {args.out.resolve()}")
     return 0 if ok else 1
 
