@@ -33,7 +33,7 @@ The Machina canonical domain model remains authoritative. IPTC Sport Schema is a
 ## Headline
 
 - **25** emitting mappings across **16** files.
-- **80** files read an IPTC field path or payload key.
+- **87** files read an IPTC field path or payload key.
 
 ### Two conflicting `sport:` namespaces are in use today
 
@@ -434,8 +434,15 @@ Each row is a field path the consumer migration must cover. A consumer here is a
 | `agent-templates/kalshi-market-agent/workflows/market-analysis/executor.yml` | workflow-or-mapping | `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:status` | `iptc-events` |
 | `agent-templates/world-cup-intelligence/mappings/worldcup-iptc-event-to-api-response.yml` | workflow-or-mapping | `schema:startDate`, `sport:competition`, `sport:competitor`, `sport:competitors`, `sport:status`, `sport:venue` | — |
 | `agent-templates/world-cup-intelligence/prompts/worldcup-match-recap.yml` | workflow-or-mapping | `sport:status` | — |
-| `agent-templates/world-cup-intelligence/tests/test_worldcup_market_intelligence.py` | test | `schema:startDate`, `sport:competition`, `sport:competitor`, `sport:competitors`, `sport:qualifier`, `sport:round`, `sport:status`, `sport:venue` | — |
+| `agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py` | test | `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:status` | — |
+| `agent-templates/world-cup-intelligence/tests/test_worldcup_archive_serving.py` | test | `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:qualifier`, `sport:status` | — |
+| `agent-templates/world-cup-intelligence/tests/test_worldcup_bulk.py` | test | `sport:status` | — |
+| `agent-templates/world-cup-intelligence/tests/test_worldcup_endpoint_repairs.py` | test | `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:qualifier`, `sport:status` | — |
+| `agent-templates/world-cup-intelligence/tests/test_worldcup_market_intelligence.py` | test | `schema:startDate`, `sport:competition`, `sport:competitor`, `sport:competitors`, `sport:qualifier`, `sport:round`, `sport:status`, `sport:venue` | `iptc_events` |
+| `agent-templates/world-cup-intelligence/tests/test_worldcup_unserved_contract.py` | test | `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:qualifier` | — |
 | `agent-templates/world-cup-intelligence/tests/test_worldcup_workflow_regressions.py` | test | `schema:startDate`, `sport:awayScore`, `sport:homeScore`, `sport:score`, `sport:status` | — |
+| `agent-templates/world-cup-intelligence/tools/worldcup_bulk.py` | script | `sport:status` | — |
+| `agent-templates/world-cup-intelligence/tools/worldcup_storefront_readiness.py` | script | `sport:competitor`, `sport:competitors` | — |
 | `agent-templates/world-cup-intelligence/workflows/wcbracket-enrich-teams.yml` | workflow-or-mapping | `sport:competitor`, `sport:competitors`, `sport:qualifier` | — |
 | `agent-templates/world-cup-intelligence/workflows/wcbracket-simulate.yml` | workflow-or-mapping | `schema:startDate`, `sport:competitor`, `sport:competitors`, `sport:qualifier`, `sport:status` | — |
 | `agent-templates/world-cup-intelligence/workflows/worldcup-coverage-gateway.yml` | workflow-or-mapping | `sport:status` | — |
@@ -443,7 +450,7 @@ Each row is a field path the consumer migration must cover. A consumer here is a
 | `agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml` | workflow-or-mapping | `sport:competitor`, `sport:competitors`, `sport:qualifier` | — |
 | `agent-templates/world-cup-intelligence/workflows/worldcup-get-standings.yml` | workflow-or-mapping | `schema:startDate` | — |
 | `agent-templates/world-cup-intelligence/workflows/worldcup-ingest-fixtures.yml` | workflow-or-mapping | — | `iptc_events`, `sport_schema_event`, `sport_schema_events` |
-| `agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml` | workflow-or-mapping | `sport:status` | — |
+| `agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml` | workflow-or-mapping | `schema:startDate`, `sport:status` | — |
 | `agent-templates/world-cup-intelligence/workflows/worldcup-sync-market-sources.yml` | workflow-or-mapping | `schema:startDate`, `sport:competitor`, `sport:competitors` | — |
 | `agent-templates/world-cup-intelligence/workflows/worldcup-sync-model-forecasts.yml` | workflow-or-mapping | `sport:status` | — |
 | `agent-templates/world-cup-intelligence/worldcup-market-intelligence.py` | script | `schema:startDate`, `sport:competition`, `sport:competitor`, `sport:competitors`, `sport:qualifier`, `sport:round`, `sport:status`, `sport:venue` | `sport_schema_event`, `sport_schema_events` |
