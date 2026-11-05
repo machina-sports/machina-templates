@@ -9,7 +9,7 @@ setup:
     - assistant
   estimatedTime: 5 minutes
   features:
-    - Conversational agent backed by Vertex AI (gemini-2.5-pro / -flash)
+    - Conversational agent backed by Vertex AI (gemini-3.8-flash)
     - Read-only CLI tools run automatically (project list, workflow search, deploy status, vault list, execution lookup)
     - Mutating CLI tools (workflow run, deploy start, vault rotate) require explicit confirm card
     - Dynamic MCP tool discovery — each project's MCP server adds its custom tools to the catalog

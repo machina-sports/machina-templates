@@ -3,9 +3,9 @@ skill:
   title: "Project Manifest Generator"
   description: |
     Generate a draft project.manifest.yml from a list of workflows.
-    Scales the Pipeline Platform Cleanup manifest pattern across
-    machina-templates so every project gets Project Health visibility
-    without writing manifests by hand.
+    Builds a deterministic workflow dependency inventory so every project
+    gets Project Health visibility without writing manifests by hand, with
+    optional model enrichment.
   version: "1.0.0"
   category:
     - "platform"

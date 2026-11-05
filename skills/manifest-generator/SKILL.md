@@ -4,9 +4,9 @@ Generates a draft `project.manifest.yml` for a Machina template by statically
 scanning a list of workflows and aggregating the credentials, connectors,
 datasets and agents they reference.
 
-Built to scale **Sprint 1A** of the Pipeline Platform Cleanup (the hand-written
-botandwin manifest at `entain-templates`) to every template in
-`machina-templates` without writing each one by hand.
+The result is a deterministic workflow dependency inventory that gives any
+project Project Health visibility without writing a manifest by hand, with
+optional model enrichment for human-readable details.
 
 ## What it does
 
@@ -68,14 +68,6 @@ POST /document/search
   `core/workflow/dependency_graph.py` — `$.get('xxx')` is mostly inferred
   from `type=document` tasks now, not just regex).
 - LLM enrichment is best-effort. Always review the draft before commit.
-
-## Roadmap
-
-- **V2**: clone-from-git input so you can manifest a template without
-  installing it.
-- **V3**: bulk mode — scan an entire repo and emit one PR per template.
-- **V4**: hook into `core/dataset/controller.py:process_install_file`
-  so installing a template auto-generates + offers a draft manifest.
 
 ## Related
 

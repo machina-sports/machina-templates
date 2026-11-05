@@ -29,6 +29,10 @@ prompts:
         backend message verbatim in a code block.
       - If `_3-tool-outputs` is empty: just answer the user's question directly
         using conversational knowledge.
+      - Preserve any explicit clarification question from the reasoning step
+        instead of replacing it with an answer.
+      - Never claim a tool ran unless `_3-tool-outputs` contains successful
+        tool evidence for it.
       - Always offer 2-3 follow-up suggestions tailored to what just happened.
       - Be terse. Don't apologize. Don't restate the user's question.
     schema:

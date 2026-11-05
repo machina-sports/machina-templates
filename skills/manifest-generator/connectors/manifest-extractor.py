@@ -392,7 +392,7 @@ def _ordered_to_dict(o):
 
 
 # -------------------------------------------------------------------------
-# Auto-discovery (Sprint 5 / Nível A)
+# Auto-discovery
 # -------------------------------------------------------------------------
 
 def _infer_template_prefix(workflow_name):
@@ -426,10 +426,6 @@ def _infer_template_prefix(workflow_name):
         ("sportradar", "soccer"),
         ("sportradar", "nba"),
         ("voice", "tts"),
-        ("bwin", "coverage"),
-        ("bwin", "assistant"),
-        ("bwin", "data"),
-        ("botandwin", "coverage"),
         ("personalized", "podcast"),
         ("bundesliga", "podcast"),
         ("event", "podcast"),
