@@ -364,6 +364,49 @@
       "reads_payload_keys": []
     },
     {
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "kind": "test",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_serving.py",
+      "kind": "test",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:qualifier",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_bulk.py",
+      "kind": "test",
+      "reads_field_paths": [
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_endpoint_repairs.py",
+      "kind": "test",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:qualifier",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
       "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_market_intelligence.py",
       "kind": "test",
       "reads_field_paths": [
@@ -376,6 +419,19 @@
         "sport:status",
         "sport:venue"
       ],
+      "reads_payload_keys": [
+        "iptc_events"
+      ]
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_unserved_contract.py",
+      "kind": "test",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:qualifier"
+      ],
       "reads_payload_keys": []
     },
     {
@@ -387,6 +443,23 @@
         "sport:homeScore",
         "sport:score",
         "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/tools/worldcup_bulk.py",
+      "kind": "script",
+      "reads_field_paths": [
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/tools/worldcup_storefront_readiness.py",
+      "kind": "script",
+      "reads_field_paths": [
+        "sport:competitor",
+        "sport:competitors"
       ],
       "reads_payload_keys": []
     },
@@ -462,6 +535,7 @@
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
       "kind": "workflow-or-mapping",
       "reads_field_paths": [
+        "schema:startDate",
         "sport:status"
       ],
       "reads_payload_keys": []
@@ -1341,6 +1415,188 @@
     },
     {
       "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 82,
+      "literal": "worldcup:event",
+      "snippet": "\"name\": \"worldcup:event\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 139,
+      "literal": "worldcup:market-cache",
+      "snippet": "\"name\": \"worldcup:market-cache\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 182,
+      "literal": "worldcup:model-forecast",
+      "snippet": "\"name\": \"worldcup:model-forecast\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 192,
+      "literal": "worldcup:model-forecast",
+      "snippet": "\"name\": \"worldcup:model-forecast\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 220,
+      "literal": "worldcup:model-forecast",
+      "snippet": "\"name\": \"worldcup:model-forecast\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 246,
+      "literal": "worldcup:market-cache",
+      "snippet": "\"name\": \"worldcup:market-cache\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 269,
+      "literal": "worldcup:market-cache",
+      "snippet": "\"name\": \"worldcup:market-cache\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 289,
+      "literal": "worldcup:market-cache",
+      "snippet": "\"name\": \"worldcup:market-cache\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 295,
+      "literal": "worldcup:squads",
+      "snippet": "\"name\": \"worldcup:squads\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 307,
+      "literal": "worldcup:player-performance-context",
+      "snippet": "\"name\": \"worldcup:player-performance-context\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 328,
+      "literal": "worldcup:market-cache",
+      "snippet": "\"name\": \"worldcup:market-cache\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 334,
+      "literal": "worldcup:player-performance-context",
+      "snippet": "\"name\": \"worldcup:player-performance-context\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 339,
+      "literal": "worldcup:player-performance-context",
+      "snippet": "\"name\": \"worldcup:player-performance-context\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 358,
+      "literal": "worldcup:injuries",
+      "snippet": "\"name\": \"worldcup:injuries\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 363,
+      "literal": "worldcup:squads",
+      "snippet": "\"name\": \"worldcup:squads\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 368,
+      "literal": "worldcup:player-performance-context",
+      "snippet": "\"name\": \"worldcup:player-performance-context\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 391,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "\"name\": \"worldcup:identity-crosswalk\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 396,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "\"name\": \"worldcup:identity-crosswalk\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 439,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "\"name\": \"worldcup:identity-crosswalk\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 487,
+      "literal": "worldcup:market-cache",
+      "snippet": "\"name\": \"worldcup:market-cache\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 496,
+      "literal": "worldcup:market-cache",
+      "snippet": "\"name\": \"worldcup:market-cache\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 519,
+      "literal": "worldcup:event",
+      "snippet": "\"name\": \"worldcup:event\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 536,
+      "literal": "worldcup:skill-match-recap",
+      "snippet": "\"name\": \"worldcup:skill-match-recap\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 541,
+      "literal": "worldcup:skill-player-spotlight",
+      "snippet": "\"name\": \"worldcup:skill-player-spotlight\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_repair.py",
+      "line": 617,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "\"name\": \"worldcup:identity-crosswalk\","
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_archive_serving.py",
+      "line": 747,
+      "literal": "worldcup:forecast-audit",
+      "snippet": "\"document_name\": \"worldcup:forecast-audit\","
+    },
+    {
+      "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/wcbracket-enrich-teams.yml",
       "line": 34,
       "literal": "worldcup:bracket-simulation",
@@ -1404,59 +1660,108 @@
     },
     {
       "category": "document-name",
-      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
-      "line": 67,
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-archive-capture-players.yml",
+      "line": 26,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
-      "line": 97,
+      "line": 62,
+      "literal": "worldcup:final-archive-manifest",
+      "snippet": "name: \"'worldcup:final-archive-manifest'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 77,
+      "literal": "worldcup:final-archive",
+      "snippet": "name: \"'worldcup:final-archive'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 152,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 188,
       "literal": "worldcup:model-forecast",
       "snippet": "name: \"'worldcup:model-forecast'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
-      "line": 123,
+      "line": 222,
       "literal": "worldcup:forecast-audit",
       "snippet": "document_name: \"'worldcup:forecast-audit'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
-      "line": 152,
+      "line": 251,
       "literal": "worldcup:forecast-audit",
       "snippet": "document_name: \"'worldcup:forecast-audit'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
-      "line": 168,
+      "line": 268,
       "literal": "worldcup:signal-ledger",
       "snippet": "name: \"'worldcup:signal-ledger'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
-      "line": 181,
+      "line": 281,
       "literal": "worldcup:market-snapshot",
       "snippet": "name: \"'worldcup:market-snapshot'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
-      "line": 208,
+      "line": 308,
       "literal": "worldcup:signal-ledger",
       "snippet": "document_name: \"'worldcup:signal-ledger'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
-      "line": 236,
+      "line": 336,
       "literal": "worldcup:clv-report",
       "snippet": "document_name: \"'worldcup:clv-report'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 354,
+      "literal": "worldcup:calibration-sample",
+      "snippet": "name: \"'worldcup:calibration-sample'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 380,
+      "literal": "worldcup:calibration-sample",
+      "snippet": "document_name: \"'worldcup:calibration-sample'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 395,
+      "literal": "worldcup:calibration-report",
+      "snippet": "name: \"'worldcup:calibration-report'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 432,
+      "literal": "worldcup:calibration-report",
+      "snippet": "document_name: \"'worldcup:calibration-report'\""
     },
     {
       "category": "document-name",
@@ -1475,9 +1780,23 @@
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-explain-market-move.yml",
-      "line": 37,
+      "line": 44,
       "literal": "worldcup:market-cache",
       "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-explain-market-move.yml",
+      "line": 95,
+      "literal": "worldcup:market-snapshot",
+      "snippet": "name: \"'worldcup:market-snapshot'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-explain-market-move.yml",
+      "line": 110,
+      "literal": "worldcup:market-snapshot",
+      "snippet": "name: \"'worldcup:market-snapshot'\""
     },
     {
       "category": "document-name",
@@ -1551,29 +1870,92 @@
     },
     {
       "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-calibration.yml",
+      "line": 32,
+      "literal": "worldcup:calibration-sample",
+      "snippet": "name: \"'worldcup:calibration-sample'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-calibration.yml",
+      "line": 45,
+      "literal": "worldcup:calibration-report",
+      "snippet": "name: \"'worldcup:calibration-report'\""
+    },
+    {
+      "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-event-context.yml",
       "line": 42,
+      "literal": "worldcup:final-archive-manifest",
+      "snippet": "name: \"'worldcup:final-archive-manifest'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-event-context.yml",
+      "line": 53,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-event-context.yml",
-      "line": 74,
+      "line": 84,
+      "literal": "worldcup:final-archive",
+      "snippet": "name: \"'worldcup:final-archive'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-event-context.yml",
+      "line": 102,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-event-context.yml",
+      "line": 137,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml",
-      "line": 36,
+      "line": 41,
+      "literal": "worldcup:final-archive-manifest",
+      "snippet": "name: \"'worldcup:final-archive-manifest'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml",
+      "line": 52,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml",
-      "line": 55,
+      "line": 83,
+      "literal": "worldcup:final-archive",
+      "snippet": "name: \"'worldcup:final-archive'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml",
+      "line": 101,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml",
+      "line": 136,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml",
+      "line": 178,
       "literal": "worldcup:identity-crosswalk",
       "snippet": "name: \"'worldcup:identity-crosswalk'\""
     },
@@ -1601,42 +1983,140 @@
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml",
-      "line": 43,
+      "line": 51,
+      "literal": "worldcup:final-archive-manifest",
+      "snippet": "name: \"'worldcup:final-archive-manifest'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml",
+      "line": 62,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml",
+      "line": 93,
+      "literal": "worldcup:final-archive",
+      "snippet": "name: \"'worldcup:final-archive'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml",
+      "line": 111,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml",
+      "line": 146,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml",
+      "line": 182,
       "literal": "worldcup:model-forecast",
       "snippet": "name: \"'worldcup:model-forecast'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml",
-      "line": 58,
+      "line": 198,
       "literal": "worldcup:market-cache",
       "snippet": "name: \"'worldcup:market-cache'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
-      "line": 40,
+      "line": 50,
+      "literal": "worldcup:final-archive-manifest",
+      "snippet": "name: \"'worldcup:final-archive-manifest'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
+      "line": 61,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
-      "line": 101,
+      "line": 92,
+      "literal": "worldcup:final-archive",
+      "snippet": "name: \"'worldcup:final-archive'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
+      "line": 111,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
+      "line": 128,
       "literal": "worldcup:identity-crosswalk",
       "snippet": "name: \"'worldcup:identity-crosswalk'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
-      "line": 115,
+      "line": 163,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
+      "line": 201,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
+      "line": 282,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
+      "line": 296,
       "literal": "worldcup:final-fifa-player-power-ranking",
       "snippet": "name: \"'worldcup:final-fifa-player-power-ranking'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-schedule.yml",
-      "line": 36,
+      "line": 38,
+      "literal": "worldcup:final-archive-manifest",
+      "snippet": "name: \"'worldcup:final-archive-manifest'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-schedule.yml",
+      "line": 53,
+      "literal": "worldcup:final-archive",
+      "snippet": "name: \"'worldcup:final-archive'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-schedule.yml",
+      "line": 70,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-schedule.yml",
+      "line": 105,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
@@ -1663,15 +2143,64 @@
     },
     {
       "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-signal.yml",
+      "line": 106,
+      "literal": "worldcup:calibration-report",
+      "snippet": "name: \"'worldcup:calibration-report'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-signal.yml",
+      "line": 121,
+      "literal": "worldcup:calibration-report",
+      "snippet": "name: \"'worldcup:calibration-report'\""
+    },
+    {
+      "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml",
-      "line": 36,
+      "line": 39,
+      "literal": "worldcup:final-archive-manifest",
+      "snippet": "name: \"'worldcup:final-archive-manifest'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml",
+      "line": 50,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml",
-      "line": 54,
+      "line": 81,
+      "literal": "worldcup:final-archive",
+      "snippet": "name: \"'worldcup:final-archive'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml",
+      "line": 99,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml",
+      "line": 134,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml",
+      "line": 175,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml",
+      "line": 190,
       "literal": "worldcup:identity-crosswalk",
       "snippet": "name: \"'worldcup:identity-crosswalk'\""
     },
@@ -1679,6 +2208,20 @@
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-standings.yml",
       "line": 36,
+      "literal": "worldcup:final-archive-manifest",
+      "snippet": "name: \"'worldcup:final-archive-manifest'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-standings.yml",
+      "line": 51,
+      "literal": "worldcup:final-archive",
+      "snippet": "name: \"'worldcup:final-archive'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-standings.yml",
+      "line": 88,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
@@ -1706,51 +2249,72 @@
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-ingest-fixtures.yml",
-      "line": 56,
+      "line": 80,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-ingest-fixtures.yml",
-      "line": 83,
+      "line": 107,
       "literal": "worldcup:identity-crosswalk",
       "snippet": "name: \"'worldcup:identity-crosswalk'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-ingest-fixtures.yml",
-      "line": 172,
+      "line": 196,
       "literal": "worldcup:event",
       "snippet": "document_name: \"'worldcup:event'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
-      "line": 29,
+      "line": 37,
       "literal": "worldcup:model-forecast",
       "snippet": "name: \"'worldcup:model-forecast'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
-      "line": 41,
+      "line": 49,
       "literal": "worldcup:market-cache",
       "snippet": "name: \"'worldcup:market-cache'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
-      "line": 53,
+      "line": 61,
       "literal": "worldcup:signal-ledger",
       "snippet": "name: \"'worldcup:signal-ledger'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
-      "line": 80,
+      "line": 73,
+      "literal": "worldcup:calibration-sample",
+      "snippet": "name: \"'worldcup:calibration-sample'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
+      "line": 85,
+      "literal": "worldcup:calibration-report",
+      "snippet": "name: \"'worldcup:calibration-report'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
+      "line": 120,
       "literal": "worldcup:signal-ledger",
       "snippet": "document_name: \"'worldcup:signal-ledger'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
+      "line": 134,
+      "literal": "worldcup:calibration-sample",
+      "snippet": "document_name: \"'worldcup:calibration-sample'\""
     },
     {
       "category": "document-name",
@@ -1846,63 +2410,112 @@
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
-      "line": 47,
+      "line": 48,
+      "literal": "worldcup:final-archive-manifest",
+      "snippet": "name: \"'worldcup:final-archive-manifest'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
+      "line": 59,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
-      "line": 78,
+      "line": 90,
+      "literal": "worldcup:final-archive",
+      "snippet": "name: \"'worldcup:final-archive'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
+      "line": 108,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
+      "line": 143,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
+      "line": 178,
       "literal": "worldcup:skill-match-recap",
       "snippet": "name: \"'worldcup:skill-match-recap'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
-      "line": 93,
+      "line": 194,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
-      "line": 109,
+      "line": 211,
       "literal": "worldcup:model-forecast",
       "snippet": "name: \"'worldcup:model-forecast'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
-      "line": 158,
+      "line": 262,
       "literal": "worldcup:skill-match-recap",
       "snippet": "document_name: \"'worldcup:skill-match-recap'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
-      "line": 47,
+      "line": 52,
+      "literal": "worldcup:final-archive-manifest",
+      "snippet": "name: \"'worldcup:final-archive-manifest'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
+      "line": 79,
+      "literal": "worldcup:final-archive",
+      "snippet": "name: \"'worldcup:final-archive'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
+      "line": 117,
       "literal": "worldcup:identity-crosswalk",
       "snippet": "name: \"'worldcup:identity-crosswalk'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
-      "line": 78,
+      "line": 149,
       "literal": "worldcup:skill-player-spotlight",
       "snippet": "name: \"'worldcup:skill-player-spotlight'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
-      "line": 93,
+      "line": 165,
       "literal": "worldcup:identity-crosswalk",
       "snippet": "name: \"'worldcup:identity-crosswalk'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
-      "line": 135,
+      "line": 180,
+      "literal": "worldcup:final-fifa-player-power-ranking",
+      "snippet": "name: \"'worldcup:final-fifa-player-power-ranking'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
+      "line": 226,
       "literal": "worldcup:skill-player-spotlight",
       "snippet": "document_name: \"'worldcup:skill-player-spotlight'\""
     },
@@ -1937,14 +2550,28 @@
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-resolve.yml",
-      "line": 40,
+      "line": 39,
+      "literal": "worldcup:final-archive-manifest",
+      "snippet": "name: \"'worldcup:final-archive-manifest'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-resolve.yml",
+      "line": 65,
+      "literal": "worldcup:final-archive",
+      "snippet": "name: \"'worldcup:final-archive'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-resolve.yml",
+      "line": 101,
       "literal": "worldcup:identity-crosswalk",
       "snippet": "name: {\"$in\": [\"worldcup:identity-crosswalk\", \"worldcup:event\"]}"
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-resolve.yml",
-      "line": 40,
+      "line": 101,
       "literal": "worldcup:event",
       "snippet": "name: {\"$in\": [\"worldcup:identity-crosswalk\", \"worldcup:event\"]}"
     },
@@ -2014,49 +2641,49 @@
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-market-sources.yml",
-      "line": 84,
+      "line": 108,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-market-sources.yml",
-      "line": 197,
+      "line": 222,
       "literal": "worldcup:identity-crosswalk",
       "snippet": "name: \"'worldcup:identity-crosswalk'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-market-sources.yml",
-      "line": 224,
+      "line": 249,
       "literal": "worldcup:market-cache",
       "snippet": "document_name: \"'worldcup:market-cache'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-market-sources.yml",
-      "line": 250,
+      "line": 275,
       "literal": "worldcup:market-snapshot",
       "snippet": "document_name: \"'worldcup:market-snapshot'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-model-forecasts.yml",
-      "line": 46,
+      "line": 70,
       "literal": "worldcup:fifa-ranking",
       "snippet": "name: \"'worldcup:fifa-ranking'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-model-forecasts.yml",
-      "line": 72,
+      "line": 96,
       "literal": "worldcup:event",
       "snippet": "name: \"'worldcup:event'\""
     },
     {
       "category": "document-name",
       "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-model-forecasts.yml",
-      "line": 97,
+      "line": 121,
       "literal": "worldcup:model-forecast",
       "snippet": "document_name: \"'worldcup:model-forecast'\""
     },
@@ -5448,7 +6075,7 @@
     ]
   },
   "totals": {
-    "consumer_files": 80,
+    "consumer_files": 87,
     "emitting_files": 16,
     "emitting_mappings": 25,
     "sport_namespaces_in_use": {

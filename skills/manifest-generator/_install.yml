@@ -8,7 +8,7 @@ setup:
     - Static extraction (no LLM required for the deterministic skeleton)
     - Optional LLM enrichment of `source_label` / `validation` / `description`
     - Emits a `project_manifest_draft` document for operator review
-    - Designed to scale Sprint 1A (botandwin manifest) to every template in machina-templates
+    - Gives any project Project Health visibility without hand-written manifests
   status: available
   integrations: []
   value: "skills/manifest-generator"
