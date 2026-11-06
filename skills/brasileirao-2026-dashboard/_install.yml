@@ -1,0 +1,19 @@
+setup:
+  title: "Brasileirão 2026 Dashboard"
+  description: "Static HTML dashboard with Chart.js visualizations of mock Brasileirão 2026 data."
+  category:
+    - custom-templates
+  status: available
+  value: "skills/brasileirao-2026-dashboard"
+  version: 1.0.0
+  features:
+    - "Top 10 artilheiros (bar chart)"
+    - "Aproveitamento por time (horizontal bar)"
+    - "Gols pró × gols sofridos (scatter)"
+    - "Gols por rodada (line chart)"
+    - "Dark theme with #fe591f accent"
+    - "Responsive CSS grid layout"
+
+datasets:
+  - type: "skill"
+    path: "skill.yml"
