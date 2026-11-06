@@ -1,0 +1,37 @@
+setup:
+  title: Sportradar Golf v3
+  description: Connect to the SportRadar Golf API to get live and historical golf data.
+  category:
+    - data-acquisition
+    - golf
+  estimatedTime: 1 minute
+  features:
+    - Real-time golf tournament updates
+    - Comprehensive database of golf statistics
+    - Data collected via Sportradar on-venue scouts and in-house operators
+    - Coverage of PGA Tour, European Tour, LPGA, and other major golf tours
+    - Consistent structure, format and behavior with other Sportradar Sport APIs
+    - Primary feeds return tournaments, player data and real-time scores
+    - Additional feeds provide complementary stats, including
+      - Live leaderboard updates
+      - Player rankings and profiles
+      - Hole-by-hole statistics
+      - Tournament schedules and results
+      - Season player statistics
+      - Course information and scoring details
+  integrations:
+    - sportradar
+  status: available
+  value: connectors/sportradar-golf
+  version: 3.0.0
+
+datasets:
+
+  - type: "connector"
+    path: "sportradar-golf.yml"
+
+  - type: "workflow"
+    path: "test-credentials.yml"
+
+  - type: "workflow"
+    path: "sync-golf-tournaments.yml"
