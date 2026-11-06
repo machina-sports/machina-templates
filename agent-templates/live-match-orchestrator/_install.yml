@@ -1,0 +1,58 @@
+setup:
+  title: "Live Match Orchestrator"
+  description: |
+    End-to-end orchestrator for a single soccer fixture. Given an
+    `event_id`, generates the broadcaster-ready pre-game brief,
+    polls the live timeline during the match and emits one card per
+    goal / red card / substitution / big chance, and produces a
+    post-match wrap with 5 social-ready highlight quotes. All
+    content is white-label and editorially neutral — refers to
+    "the broadcaster" / "the production team", never names a
+    specific operator.
+  category:
+    - fan-engagement
+    - content-generation
+  estimatedTime: 2 minutes
+  features:
+    - "Resolves both squads and competition from `event_id` alone via sports-skills.football"
+    - "Pre-game brief: storylines, projected lineups, head-to-head, recent form (markdown + JSON)"
+    - "Live tick: one card per new goal / red / sub / big chance, deduplicated via `since_minute`"
+    - "Post-match recap: 3-paragraph wrap + 5 social-ready highlight quotes"
+    - "Editorial-neutral, white-label voice — no rooting, no predictions outside the data"
+  integrations:
+    - sports-skills
+    - google-genai
+  status: available
+  value: "agent-templates/live-match-orchestrator"
+  version: 1.0.0
+
+datasets:
+
+  # agent
+
+  - type: agent
+    path: agents/live-match-orchestrator-agent.yml
+
+  # prompts — `prompts` (plural) matches each file's root key.
+  # Singular `prompt` trips the importer's import_prompt validator;
+  # see lesson install-yml-type-must-match-root-key.
+
+  - type: prompts
+    path: prompts/pre-game-brief.yml
+
+  - type: prompts
+    path: prompts/live-event-narrative.yml
+
+  - type: prompts
+    path: prompts/post-match-recap.yml
+
+  # workflows
+
+  - type: workflow
+    path: workflows/pre-game-brief.yml
+
+  - type: workflow
+    path: workflows/live-tick.yml
+
+  - type: workflow
+    path: workflows/post-match-recap.yml

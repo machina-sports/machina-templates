@@ -1,0 +1,112 @@
+workflow:
+
+  name: live-match-orchestrator-post-match-recap
+  title: Live Match Orchestrator — Post-Match Recap
+  description: |
+    After the final whistle, pulls the full match envelope (summary,
+    statistics, timeline, optional xG) from `sports-skills.football`
+    and asks Gemini for a broadcaster-neutral wrap: a 3-paragraph
+    recap (markdown for the teleprompter, plain text for captions)
+    PLUS 5 social-ready highlight quotes that the production team
+    can drop into overlays.
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    event_id: "$.get('event_id')"
+    competition_id: "$.get('competition_id')"
+
+  outputs:
+    event_id: "$.get('event_id')"
+    fixture: "$.get('fixture', {})"
+    statistics: "$.get('statistics', {})"
+    timeline: "$.get('timeline', [])"
+    xg: "$.get('xg', {})"
+    recap: "$.get('recap', {})"
+    recap_markdown: "$.get('recap', {}).get('markdown', '')"
+    recap_text: "$.get('recap', {}).get('text', '')"
+    highlight_quotes: "$.get('recap', {}).get('highlight_quotes', [])"
+    workflow-status: "$.get('recap') and 'executed' or 'skipped'"
+
+  tasks:
+
+    # 1. Final fixture envelope
+    - type: connector
+      name: fetch-event-summary
+      description: Final score, teams, competition.
+      condition: "$.get('event_id') is not None"
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_event_summary'"
+        event_id: "$.get('event_id')"
+      outputs:
+        fixture: "$"
+
+    # 2. Match statistics (possession, shots, etc.)
+    - type: connector
+      name: fetch-event-statistics
+      description: Full match statistics for both squads.
+      condition: "$.get('event_id') is not None"
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_event_statistics'"
+        event_id: "$.get('event_id')"
+      outputs:
+        statistics: "$"
+
+    # 3. Full timeline (every event of the match)
+    - type: connector
+      name: fetch-event-timeline
+      description: Full event timeline for the final wrap.
+      condition: "$.get('event_id') is not None"
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_event_timeline'"
+        event_id: "$.get('event_id')"
+      outputs:
+        timeline: "$ if isinstance($, list) else $.get('events', $.get('timeline', []))"
+
+    # 4. xG — only available for top-5 European leagues at the
+    #    current sports-skills version (see ea-football-chat README).
+    - type: connector
+      name: fetch-event-xg
+      description: Expected goals (top-5 European leagues only).
+      condition: "$.get('competition_id') in ['premier-league', 'serie-a', 'la-liga', 'bundesliga', 'ligue-1']"
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_event_xg'"
+        event_id: "$.get('event_id')"
+      outputs:
+        xg: "$"
+
+    # 5. Compose the wrap (3-paragraph recap + 5 highlight quotes)
+    - type: prompt
+      name: live-match-orchestrator-post-match-recap-prompt
+      description: Compose the broadcaster-neutral post-match wrap.
+      condition: "$.get('fixture') is not None and $.get('fixture') != {}"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+      inputs:
+        fixture: "$.get('fixture', {})"
+        statistics: "$.get('statistics', {})"
+        timeline: "$.get('timeline', [])"
+        xg: "$.get('xg', {})"
+      outputs:
+        recap: "$"

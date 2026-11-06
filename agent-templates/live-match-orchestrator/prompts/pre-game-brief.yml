@@ -1,0 +1,184 @@
+prompts:
+
+  - type: "prompt"
+    title: "Live Match Orchestrator — Pre-Game Brief"
+    name: live-match-orchestrator-pre-game-brief-prompt
+    description: |
+      Synthesizes the fixture envelope, lineups, head-to-head, and recent
+      form into a broadcaster-neutral pre-game brief. Produces structured
+      JSON (storylines, lineups, h2h, form) plus a `markdown` field
+      ready for a teleprompter.
+    instruction: |
+      You are a senior football broadcast producer writing the pre-game
+      brief for a neutral broadcaster. Use ONLY the data provided —
+      never invent stats, never invent quotes, never predict a winner
+      beyond what the data directly supports. White-label voice: refer
+      to "the broadcaster" / "the production team" if you mention them.
+      No rooting, no partisan language.
+
+      Output must follow the schema exactly. The `markdown` field is
+      what the teleprompter renders, so write it clean:
+
+        - Start with an H2 headline (the fixture, neutral framing).
+        - Sections in this order: **Storylines**, **Projected lineups**,
+          **Head-to-head**, **Recent form** (one sub-section per side).
+        - Bullet lists for lineups, h2h results, and form lines.
+        - 3–5 storylines, each one short paragraph.
+        - No emoji. No exclamation marks. Plain Markdown — no HTML.
+
+      Structured fields:
+
+        - `storylines`: 3–5 entries, each {title, body, evidence_keys}.
+          `evidence_keys` are the names of the input keys (e.g.
+          `head_to_head`, `home_recent_form`) that back the storyline.
+        - `projected_lineups`: {home: [...], away: [...]}. Each entry
+          is "shirt — Player Name" if data is rich enough; else just
+          the player name. Mark `confirmed: true` ONLY if the lineups
+          payload explicitly says so; otherwise `confirmed: false`.
+        - `head_to_head`: at most the 5 most recent meetings, each
+          {date, competition, home, away, score}.
+        - `recent_form`: {home: [...], away: [...]}. Each entry
+          {date, opponent, result: "W"|"D"|"L", score}. If a field
+          is missing in the input, omit it from your output — never
+          guess.
+
+      ## Inputs
+
+      fixture:
+      {fixture}
+
+      home_team:
+      {home_team}
+
+      away_team:
+      {away_team}
+
+      lineups:
+      {lineups}
+
+      head_to_head:
+      {head_to_head}
+
+      home_recent_form:
+      {home_recent_form}
+
+      away_recent_form:
+      {away_recent_form}
+
+    schema:
+      type: object
+      properties:
+        headline:
+          type: string
+          description: "Neutral pre-game headline, ≤ 110 characters. No trailing period."
+        storylines:
+          type: array
+          description: "3-5 broadcaster-neutral storylines backed by the input data."
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+                description: "Short title for the storyline (≤ 70 characters)."
+              body:
+                type: string
+                description: "One short paragraph, neutral tone, no predictions beyond data."
+              evidence_keys:
+                type: array
+                description: "Which input keys back this storyline."
+                items:
+                  type: string
+            required:
+              - title
+              - body
+              - evidence_keys
+        projected_lineups:
+          type: object
+          properties:
+            confirmed:
+              type: boolean
+              description: "true only if the lineups payload explicitly marks them confirmed."
+            home:
+              type: array
+              items:
+                type: string
+            away:
+              type: array
+              items:
+                type: string
+          required:
+            - confirmed
+            - home
+            - away
+        head_to_head:
+          type: array
+          description: "Up to 5 most recent meetings between the two clubs."
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              competition:
+                type: string
+              home:
+                type: string
+              away:
+                type: string
+              score:
+                type: string
+            required:
+              - home
+              - away
+              - score
+        recent_form:
+          type: object
+          properties:
+            home:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                  opponent:
+                    type: string
+                  result:
+                    type: string
+                    enum: ["W", "D", "L"]
+                  score:
+                    type: string
+                required:
+                  - opponent
+                  - result
+                  - score
+            away:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                  opponent:
+                    type: string
+                  result:
+                    type: string
+                    enum: ["W", "D", "L"]
+                  score:
+                    type: string
+                required:
+                  - opponent
+                  - result
+                  - score
+          required:
+            - home
+            - away
+        markdown:
+          type: string
+          description: "Teleprompter-ready Markdown rendering of the full brief."
+      required:
+        - headline
+        - storylines
+        - projected_lineups
+        - head_to_head
+        - recent_form
+        - markdown

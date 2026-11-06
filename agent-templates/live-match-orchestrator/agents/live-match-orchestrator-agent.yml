@@ -1,0 +1,56 @@
+agent:
+  name: live-match-orchestrator-agent
+  title: Live Match Orchestrator
+  description: |
+    Orchestrates pre-game, live-tick, and post-match content for a
+    single soccer fixture. The caller passes `event_id` plus a
+    `phase` flag (`pre`, `live`, or `post`); the agent dispatches to
+    the right workflow. For `live`, pass `since_minute` (default 0)
+    and call repeatedly from a scheduler — the previous tick's
+    `latest_minute` becomes the next tick's `since_minute`.
+  context-agent:
+    event_id: $.get('event_id')
+    phase: $.get('phase', 'pre')
+    since_minute: $.get('since_minute', 0)
+    competition_id: $.get('competition_id')
+  workflows:
+
+    # Pre-game brief (storylines, lineups, h2h, recent form)
+    - name: live-match-orchestrator-pre-game-brief
+      description: "Generate the broadcaster-ready pre-game brief."
+      condition: "$.get('phase', 'pre') == 'pre'"
+      inputs:
+        event_id: "$.get('event_id')"
+      outputs:
+        brief: "$.get('brief')"
+        markdown: "$.get('markdown')"
+        workflow-status: "$.get('workflow-status')"
+
+    # Live tick (one poll → cards for new events)
+    - name: live-match-orchestrator-live-tick
+      description: "Single live poll. Returns one card per new event since `since_minute`."
+      condition: "$.get('phase') == 'live'"
+      inputs:
+        event_id: "$.get('event_id')"
+        since_minute: "$.get('since_minute', 0)"
+      outputs:
+        cards: "$.get('cards')"
+        new_events: "$.get('new_events')"
+        latest_minute: "$.get('latest_minute')"
+        score: "$.get('score')"
+        status: "$.get('status')"
+        workflow-status: "$.get('workflow-status')"
+
+    # Post-match recap (3-paragraph wrap + 5 highlight quotes)
+    - name: live-match-orchestrator-post-match-recap
+      description: "Generate the post-match wrap + highlight quotes."
+      condition: "$.get('phase') == 'post'"
+      inputs:
+        event_id: "$.get('event_id')"
+        competition_id: "$.get('competition_id')"
+      outputs:
+        recap: "$.get('recap')"
+        recap_markdown: "$.get('recap_markdown')"
+        recap_text: "$.get('recap_text')"
+        highlight_quotes: "$.get('highlight_quotes')"
+        workflow-status: "$.get('workflow-status')"
