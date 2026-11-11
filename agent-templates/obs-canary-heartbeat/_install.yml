@@ -1,0 +1,12 @@
+setup:
+  title: Observability Canary Heartbeat
+  description: Trivial scheduled agent for the critical-path canary (factory-templates-testing). Its runs feed machina_agent_last_success_age_seconds, which the Grafana rule cp-required-agent-stale watches. Install only on the canary project.
+  category:
+    - special-templates
+  version: 1.0.0
+
+datasets:
+  - type: workflow
+    path: workflows/obs-canary-heartbeat.yml
+  - type: agent
+    path: agents/obs-canary-heartbeat.yml

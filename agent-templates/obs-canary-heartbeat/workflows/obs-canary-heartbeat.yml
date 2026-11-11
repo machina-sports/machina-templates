@@ -1,0 +1,23 @@
+workflow:
+  name: obs-canary-heartbeat
+  title: Observability Canary Heartbeat
+  description: |
+    Near no-op workflow: one read-only document search (limit 1), no
+    connector, no prompt, no write. A run of the obs-canary-heartbeat agent
+    that completes this workflow is a full success, which resets
+    machina_agent_last_success_age_seconds for the agent (ClickUp
+    17tpepcrdx0, rule cp-required-agent-stale). A workflow needs at least one
+    task ("Field cannot be empty: tasks").
+  inputs:
+    triggered_at: "$.get('triggered_at')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+    - type: document
+      name: probe-document-store
+      description: "Read-only probe: proves the worker can reach the pod's document store."
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        name: "'obs-canary-heartbeat'"
