@@ -1,0 +1,104 @@
+workflow:
+  name: "prophetx-demo-autofill-handoff"
+  title: "ProphetX Demo - Odds Screen + Auto-Fill Handoff"
+  description: "End-to-end demo: fetch one event's v3 markets (odds + liquidity), pick the first priced selection, and build the official Auto-Fill handoff links. Machina never executes a wager - the handoff ends at the link. Sandbox by default."
+  context-variables:
+    debugger:
+      enabled: true
+    prophetx:
+      api_key: $MACHINA_CONTEXT_VARIABLE_PROPHETX_API_KEY
+      access_key: $MACHINA_CONTEXT_VARIABLE_PROPHETX_ACCESS_KEY
+      secret_key: $MACHINA_CONTEXT_VARIABLE_PROPHETX_SECRET_KEY
+  inputs:
+    environment: "$.get('environment', 'sandbox')"
+    event_id: "$.get('event_id')"
+    partner_id: "$.get('partner_id', 'machina-sports')"
+    market_types: "$.get('market_types', 'moneyline')"
+  outputs:
+    odds_screen: "$.get('odds_screen', [])"
+    selected_line: "$.get('selected_line', {})"
+    autofill_links: "$.get('autofill_links', {})"
+    workflow-status: "$.get('links_ok') is True and 'executed' or 'failed'"
+  tasks:
+
+    # task-get-markets: the odds screen data (v3 = odds + per-level liquidity)
+    - type: connector
+      name: task-get-markets
+      description: Fetch v3 markets for the event (odds screen payload)
+      condition: "$.get('event_id') is not None"
+      connector:
+        name: prophetx
+        command: get_markets
+      inputs:
+        environment: "$.get('environment')"
+        event_id: "$.get('event_id')"
+        api_version: "'v3'"
+        market_types: "$.get('market_types')"
+      outputs:
+        markets_ok: "$.get('status', False)"
+        odds_screen: |
+          [
+            {
+              'market': m.get('name', ''),
+              'type': m.get('type', ''),
+              'selections': [
+                {
+                  'name': level.get('name', ''),
+                  'display_odds': level.get('display_odds', ''),
+                  'implied_probability': level.get('implied_probability'),
+                  'stake_available': level.get('stake'),
+                  'line_id': level.get('line_id', '')
+                }
+                for side in (m.get('selections') or [])
+                for level in (side if isinstance(side, list) else [side])
+                if isinstance(level, dict)
+              ]
+            }
+            for m in $.get('data', {}).get('markets', [])
+          ]
+        selected_line: |
+          next(
+            (
+              {
+                'line_id': level.get('line_id', ''),
+                'name': level.get('name', ''),
+                'display_odds': level.get('display_odds', ''),
+                'odds': level.get('odds')
+              }
+              for m in $.get('data', {}).get('markets', [])
+              for side in (m.get('selections') or [])
+              for level in (side if isinstance(side, list) else [side])
+              if isinstance(level, dict) and level.get('line_id') and level.get('odds') is not None
+            ),
+            next(
+              (
+                {
+                  'line_id': level.get('line_id', ''),
+                  'name': level.get('name', ''),
+                  'display_odds': level.get('display_odds', ''),
+                  'odds': None
+                }
+                for m in $.get('data', {}).get('markets', [])
+                for side in (m.get('selections') or [])
+                for level in (side if isinstance(side, list) else [side])
+                if isinstance(level, dict) and level.get('line_id')
+              ),
+              {}
+            )
+          )
+
+    # task-build-autofill: the handoff — Machina's involvement ends at these links
+    - type: connector
+      name: task-build-autofill
+      description: Build official Auto-Fill deep links for the selected line
+      condition: "$.get('selected_line', {}).get('line_id') not in (None, '')"
+      connector:
+        name: prophetx
+        command: build_autofill_link
+      inputs:
+        line_id: "$.get('selected_line', {}).get('line_id')"
+        partner_id: "$.get('partner_id')"
+        odds: "$.get('selected_line', {}).get('odds')"
+      outputs:
+        links_ok: "$.get('status', False)"
+        autofill_links: "$.get('data', {})"
