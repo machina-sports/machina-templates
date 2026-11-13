@@ -1,0 +1,80 @@
+mappings:
+
+  # iptc-sportradar-event-nhl-mapping
+  #
+  # Sportradar NHL schedule -> IPTC sport:Event, the shape the predictions
+  # pipeline consumes. Cloned from connectors/sportradar-nfl/mappings, with
+  # three deliberate differences, all load-bearing:
+  #
+  # 1. sport:competition.@id is "urn:sportradar:competition:nhl". This is not
+  #    cosmetic — entain-predictions/agents/predictions-scheduler-nhl.yml passes
+  #    exactly that string as league_urn, and predictions-find-upcoming filters
+  #    on `value.sport:competition.@id`. Any other value and the finder returns
+  #    nothing, silently, forever.
+  # 2. The season is derived from season_year instead of hardcoded. The NFL
+  #    mapping pins "2025" in three places, so its docs will misreport the season
+  #    from January onwards. In the NHL the season_year is the OPENING year:
+  #    2025 means the 2025-26 season.
+  # 3. Score reads tolerate both shapes Sportradar has used for this feed —
+  #    top-level home_points/away_points and a nested scoring object. See the
+  #    note in sync-games.yml: no real NHL response was observed when this was
+  #    written.
+  - type: mapping
+    title: "IPTC | Sportradar Event NHL Mapping"
+    name: "iptc-sportradar-event-nhl-mapping"
+    description: "Mapping data from sportradar to sportschema event"
+    outputs:
+      sport_schema_events: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
+            },
+            "@id": f"urn:sportradar:sport_event:{f.get('id')}",
+            "@type": ["sport:Event", "schema:SportsEvent"],
+            "name": f"{f.get('home', {}).get('name', 'TBD')} vs {f.get('away', {}).get('name', 'TBD')}",
+            "schema:startDate": f.get('scheduled') or f.get('start_time'),
+            "schema:sportName": "nhl",
+            "sport:status": (f.get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),
+            "sport:matchStatus": (f.get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),
+            "sport:competition": {
+              "@id": "urn:sportradar:competition:nhl",
+              "@type": "sport:Competition",
+              "name": "NHL",
+              "sport:season": {
+                "@id": f"urn:sportradar:season:{$.get('season_year', '2025')}",
+                "@type": "sport:Season",
+                "name": f"NHL {$.get('season_year', '2025')}-{str(int($.get('season_year', '2025')) + 1)[-2:]}",
+                "sport:year": f"{$.get('season_year', '2025')}-{str(int($.get('season_year', '2025')) + 1)[-2:]}"
+              }
+            },
+            "sport:venue": {
+              "@type": "sport:Venue",
+              "@id": f"urn:sportradar:venue:{f.get('venue', {}).get('id')}",
+              "name": f.get('venue', {}).get('name'),
+              "schema:addressLocality": f.get('venue', {}).get('city')
+            },
+            "sport:competitors": [
+              {
+                "@type": "sport:Team",
+                "@id": f"urn:sportradar:team:{f.get('home', {}).get('id')}",
+                "name": f.get('home', {}).get('name'),
+                "sport:abbreviation": f.get('home', {}).get('alias'),
+                "sport:qualifier": "home"
+              },
+              {
+                "@type": "sport:Team",
+                "@id": f"urn:sportradar:team:{f.get('away', {}).get('id')}",
+                "name": f.get('away', {}).get('name'),
+                "sport:abbreviation": f.get('away', {}).get('alias'),
+                "sport:qualifier": "away"
+              }
+            ],
+            "sport:score": {
+              "sport:homeScore": f.get('home_points') if f.get('home_points') is not None else f.get('scoring', {}).get('home_points'),
+              "sport:awayScore": f.get('away_points') if f.get('away_points') is not None else f.get('scoring', {}).get('away_points')
+            }
+          }
+          for f in $.get('schedules', [])
+        ]
