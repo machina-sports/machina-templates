@@ -1,6 +1,6 @@
 managed_skill_bundle:
   bundle_id: sports-skills-readonly
-  manifest_sha256: c8978a9962cd667442b850f4a5b1352a4cbb5147e77080c47aa569a17b32dbcd
+  manifest_sha256: 7f736d40a4f5463f4ed915a2539d1aa242fd1ca57a38fd94c9348151c0e99b8f
   packages:
   - config:
       description: |-
@@ -244,12 +244,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 5fecf15356fbb32ae83493811596bf610a52d900f8a975b5d1fa655b3aa94536
+      sha256: e98695e6e0d40b3d70bfe6472720cd9ea83c871804de6dce38212a42dbe597c5
       title: MACHINA.md
       value: |
         # betting: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -317,6 +317,7 @@ managed_skill_bundle:
           - get_ncaa_scoreboard
           - get_news
           - get_play_by_play
+          - get_player_game_log
           - get_player_stats
           - get_power_index
           - get_rankings
@@ -340,7 +341,7 @@ managed_skill_bundle:
     - filename: SKILL.md
       filetype: markdown
       name: skill-guide
-      sha256: 30044a78268f3b48afb3ab80da2dd5ba5b0a1085354363d83fe6ca92f4cb9839
+      sha256: ab591e591f2e8421edaec9c2537a2f49cab9ce7ee7ba15d9b9e24fa80c88b349
       title: SKILL.md
       value: |
         ---
@@ -419,10 +420,11 @@ managed_skill_bundle:
         | `get_news` | College basketball news |
         | `get_play_by_play` | Full play-by-play for a game |
         | `get_win_probability` | Win probability chart data |
-        | `get_schedule` | Schedule for a date or season |
+        | `get_schedule` | Schedule for a date (use `get_team_schedule` for a full season) |
         | `get_futures` | Futures/odds markets (National Championship, etc.) |
         | `get_team_stats` | Team statistical profile |
         | `get_player_stats` | Player statistical profile |
+        | `get_player_game_log` | One player's games in a season (opponent, home/away, result, stat line) |
         | `get_ncaa_scoreboard` | Official NCAA scoreboard — D1, D2, and D3 |
         | `get_ncaa_schedule` | Which dates have games (official index) |
         | `get_ncaa_game` | Official NCAA game information |
@@ -560,7 +562,7 @@ managed_skill_bundle:
     - filename: references/api-reference.md
       filetype: markdown
       name: skill-reference
-      sha256: a1483eccce6ee173068afdaf21d95a7c409602a7942f04e7a563c5387c031a94
+      sha256: 8c2c550f1a2ca720071caeaa67d8157efa4d4d9b8819718b724df0dbc3f73d24
       title: references/api-reference.md
       value: |
         # College Basketball (CBB) — API Reference
@@ -662,6 +664,15 @@ managed_skill_bundle:
         - `season_type` (int, optional): 2=regular (default), 3=postseason.
 
         Returns `categories[]` with detailed stats including value, rank, and per-game averages.
+
+        ### get_player_game_log
+        Get one player's games in a season via ESPN's athlete gamelog (`site.web.api.espn.com/apis/common/v3/sports/.../athletes/{id}/gamelog`, one request).
+        - `player_id` (str, required): ESPN athlete ID. Find it with `get_team_roster`.
+        - `season` (int, optional): Year the season ends (`2025` = 2024-25). Defaults to current.
+        - `season_type` (str, optional): `regular` (default), `postseason`, `preseason` or `all`.
+        - `sort_by`, `descending`, `limit`, `fields` (optional): Row shaping (`sort_by` then `limit`; `fields` always keeps `game_id`, `game_date`, `team_abbreviation`, `opponent`). Stat keys are addressable directly. With any set, the response adds `total_rows` and `returned_rows`.
+
+        Returns `games[]`, oldest first: `game_id`, `game_date`, `team_abbreviation`, `opponent` (abbreviation), `opponent_id`, `opponent_name`, `home_away`, `result` (`W`/`L`), `team_score`, `opponent_score`, `season_type`, `note` (e.g. a bowl or tournament round), and `stats` keyed by ESPN's stat names (`points`, `totalRebounds`, `fieldGoalsMade-fieldGoalsAttempted`, ...). The stat columns are the ones ESPN keeps for that player, so they differ by position. An unknown `player_id` returns an error. Cooper Flagg (5041939) has 32 regular-season rows and 5 postseason rows in 2025 (2024-25).
 
         ### get_power_index
         Get BPI (Basketball Power Index) ratings for D1 teams.
@@ -831,12 +842,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 8c3ef41a5f4b5b71be91cae357c8afd3e653036afee68fa6bb60a40eb20c33de
+      sha256: 8dcf4762569b237d8dea51213c1a3da61f83d4e6f3f2d2589f0b9c5632ee5f92
       title: MACHINA.md
       value: |
         # cbb-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -871,7 +882,7 @@ managed_skill_bundle:
 
         ## Allowed commands
 
-        - `cbb`: `compare_teams`, `find_upset_candidates`, `get_futures`, `get_game_summary`, `get_ncaa_boxscore`, `get_ncaa_bracket`, `get_ncaa_game`, `get_ncaa_play_by_play`, `get_ncaa_schedule`, `get_ncaa_schools`, `get_ncaa_scoreboard`, `get_news`, `get_play_by_play`, `get_player_stats`, `get_power_index`, `get_rankings`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_tournament_projections`, `get_win_probability`
+        - `cbb`: `compare_teams`, `find_upset_candidates`, `get_futures`, `get_game_summary`, `get_ncaa_boxscore`, `get_ncaa_bracket`, `get_ncaa_game`, `get_ncaa_play_by_play`, `get_ncaa_schedule`, `get_ncaa_schools`, `get_ncaa_scoreboard`, `get_news`, `get_play_by_play`, `get_player_game_log`, `get_player_stats`, `get_power_index`, `get_rankings`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_tournament_projections`, `get_win_probability`
 
         ## Limitations
 
@@ -903,6 +914,7 @@ managed_skill_bundle:
           - get_ncaa_scoring_summary
           - get_news
           - get_play_by_play
+          - get_player_game_log
           - get_player_stats
           - get_rankings
           - get_schedule
@@ -924,7 +936,7 @@ managed_skill_bundle:
     - filename: SKILL.md
       filetype: markdown
       name: skill-guide
-      sha256: 43200307729164e5f0c0d293868c3c66bc5a13147d4232e4a3ad17d4d714a459
+      sha256: f64397b5d68d21f2eddd2b248fa7e1120f7c244e9d9cb21f13a4327f422ad3a6
       title: SKILL.md
       value: |
         ---
@@ -1002,6 +1014,9 @@ managed_skill_bundle:
               - name: get_player_stats
                 summary: Player statistical profile.
                 returns: stats[]
+              - name: get_player_game_log
+                summary: One player's games in a season — opponent, home/away, result, stat line.
+                returns: games[]
             # The agent in the customer build sandbox can call `machina sports
             # cfb <command> --json` directly to capture a live sample output —
             # we don't ship static fixtures here so the public repo stays
@@ -1083,6 +1098,7 @@ managed_skill_bundle:
         | `get_futures` | Futures/odds markets (National Championship, Heisman, etc.) |
         | `get_team_stats` | Team statistical profile |
         | `get_player_stats` | Player statistical profile |
+        | `get_player_game_log` | One player's games in a season (opponent, home/away, result, stat line) |
         | `get_ncaa_scoreboard` | Official NCAA scoreboard — FBS and FCS |
         | `get_ncaa_schedule` | Which weeks have games (official index) |
         | `get_ncaa_game` | Official NCAA game information |
@@ -1212,7 +1228,7 @@ managed_skill_bundle:
     - filename: references/api-reference.md
       filetype: markdown
       name: skill-reference
-      sha256: fa02aae07d674b1e0cd564866854c6d63da9e04d0af118d2885d1bffe1264511
+      sha256: e1f92e8080dfa604c918130a866dc1d08ee90ee8994d2fa2927aef404f619698
       title: references/api-reference.md
       value: |
         # College Football (CFB) — API Reference
@@ -1344,6 +1360,15 @@ managed_skill_bundle:
         - `season_type` (int, optional): 2=regular (default), 3=postseason.
 
         Returns `categories[]` with detailed stats including value, rank, and per-game averages.
+
+        ### get_player_game_log
+        Get one player's games in a season via ESPN's athlete gamelog (`site.web.api.espn.com/apis/common/v3/sports/.../athletes/{id}/gamelog`, one request).
+        - `player_id` (str, required): ESPN athlete ID. Find it with `get_team_roster`.
+        - `season` (int, optional): Season year (e.g. `2025`). Defaults to current.
+        - `season_type` (str, optional): `regular` (default), `postseason`, `preseason` or `all`.
+        - `sort_by`, `descending`, `limit`, `fields` (optional): Row shaping (`sort_by` then `limit`; `fields` always keeps `game_id`, `game_date`, `team_abbreviation`, `opponent`). Stat keys are addressable directly. With any set, the response adds `total_rows` and `returned_rows`.
+
+        Returns `games[]`, oldest first: `game_id`, `game_date`, `team_abbreviation`, `opponent` (abbreviation), `opponent_id`, `opponent_name`, `home_away`, `result` (`W`/`L`), `team_score`, `opponent_score`, `season_type`, `note` (e.g. a bowl or tournament round), and `stats` keyed by ESPN's stat names (a quarterback's `passingYards`, `passingTouchdowns`, `rushingYards`, ...). The stat columns are the ones ESPN keeps for that player, so they differ by position. An unknown `player_id` returns an error. C.J. Stroud (4432577) has 12 regular-season rows and 1 postseason row in 2022.
 
         ## Conference IDs (group parameter)
 
@@ -1494,12 +1519,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 16e31062a82dbdd89ece7fcbe9d886f05a647389699ad9c2ceedd81238f508cc
+      sha256: 8dedc1885589fc88fe4179d54c045ae4318dc8aaa654078ea4869d7947592b2f
       title: MACHINA.md
       value: |
         # cfb-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -1534,7 +1559,7 @@ managed_skill_bundle:
 
         ## Allowed commands
 
-        - `cfb`: `get_futures`, `get_game_summary`, `get_injuries`, `get_ncaa_boxscore`, `get_ncaa_game`, `get_ncaa_play_by_play`, `get_ncaa_schedule`, `get_ncaa_schools`, `get_ncaa_scoreboard`, `get_ncaa_scoring_summary`, `get_news`, `get_play_by_play`, `get_player_stats`, `get_rankings`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_win_probability`
+        - `cfb`: `get_futures`, `get_game_summary`, `get_injuries`, `get_ncaa_boxscore`, `get_ncaa_game`, `get_ncaa_play_by_play`, `get_ncaa_schedule`, `get_ncaa_schools`, `get_ncaa_scoreboard`, `get_ncaa_scoring_summary`, `get_news`, `get_play_by_play`, `get_player_game_log`, `get_player_stats`, `get_rankings`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_win_probability`
 
         ## Limitations
 
@@ -1916,12 +1941,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 7ae2f0e93708d5b531b47821c72b9d3678f59e9be0ac5bf0e2cfb0768406fd28
+      sha256: 9736634f75c4c6cc903d6c1ab59cd14cd58df40855de3b1eb58115172f88b342
       title: MACHINA.md
       value: |
         # cricket-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -2110,12 +2135,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: c29d9e08080f814ffefc6393a97aa4dd39d2a1ec69251a342201b8f1482d53e3
+      sha256: afca07b643635f5318aafb69cc016699afdc60c2baf6797fe2f4c37373a50c2d
       title: MACHINA.md
       value: |
         # esports: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -2587,12 +2612,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 4cb652b7b30bc195136b14444a9df43ac9a64a328e727a0a936ea693fbb23c0c
+      sha256: d5bf2f77c8136df0578d4e59b5eb96a734798f588eacd454e9997808ad3e55c3
       title: MACHINA.md
       value: |
         # fastf1: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -2640,10 +2665,10 @@ managed_skill_bundle:
     name: fastf1
   - config:
       description: |-
-        Football (soccer) data across the world's major leagues — standings, schedules, match stats, xG, transfers, player profiles, head-to-head history, team strength (Elo), and match forecasts. Zero config, no API keys. Covers Premier League, La Liga, Bundesliga, Serie A, Ligue 1, MLS, Champions League, World Cup, Championship, Serie B, Eredivisie, Primeira Liga, Serie A Brazil, Russian Premier League, Scottish/Belgian/Turkish top flights, European Championship, and more (call get_competitions for the live list).
+        Football (soccer) data — standings, schedules, match stats, xG, transfers, player profiles, head-to-head, Elo, and forecasts. No API keys. Covers Premier League, La Liga, Bundesliga, Serie A, Ligue 1, MLS, Champions League, World Cup, and more (see get_competitions).
 
-        Use when: user asks about football/soccer standings, fixtures, match stats, xG, lineups, player values, transfers, injury news, league tables, daily fixtures, player profiles, head-to-head records, team strength/Elo ratings, or match odds/forecasts.
-        Don't use when: user asks about American football/NFL (use nfl-data), college football (use cfb-data), NBA (use nba-data), WNBA (use wnba-data), college basketball (use cbb-data), NHL (use nhl-data), MLB (use mlb-data), tennis (use tennis-data), golf (use golf-data), cricket (use cricket-data), Formula 1 (use fastf1), or betting odds (use polymarket or kalshi). Don't use for live/real-time scores — data updates post-match. Don't use get_season_leaders or get_missing_players for non-Premier League leagues (they return empty). Don't use get_event_xg for leagues outside the top 5 (EPL, La Liga, Bundesliga, Serie A, Ligue 1).
+        Use when: user asks about soccer standings, fixtures, match stats, xG, lineups, transfers, player values or profiles, injuries, head-to-head, Elo ratings, or match forecasts.
+        Don't use when: user asks about American football/NFL (use nfl-data), college football (cfb-data), NBA (nba-data), WNBA (wnba-data), college basketball (cbb-data), NHL (nhl-data), MLB (mlb-data), tennis (tennis-data), golf (golf-data), cricket (cricket-data), Formula 1 (fastf1), or betting odds (polymarket or kalshi). Don't use for live/real-time scores — data updates post-match. get_season_leaders and get_missing_players are Premier League only (empty elsewhere); get_event_xg is top-5 leagues only (EPL, La Liga, Bundesliga, Serie A, Ligue 1).
       execution:
         commands:
           football: &id004
@@ -2683,16 +2708,16 @@ managed_skill_bundle:
     - filename: SKILL.md
       filetype: markdown
       name: skill-guide
-      sha256: f7b4ed1ab22288bece9aa9478ab19b8a615f438b15fa519224ab56b8e9bccb3b
+      sha256: abab4c0dd86132a1a8b69394c06f324ef7c72b27974107667bc8bd8e39b9b481
       title: SKILL.md
       value: |
         ---
         name: football-data
         description: |
-          Football (soccer) data across the world's major leagues — standings, schedules, match stats, xG, transfers, player profiles, head-to-head history, team strength (Elo), and match forecasts. Zero config, no API keys. Covers Premier League, La Liga, Bundesliga, Serie A, Ligue 1, MLS, Champions League, World Cup, Championship, Serie B, Eredivisie, Primeira Liga, Serie A Brazil, Russian Premier League, Scottish/Belgian/Turkish top flights, European Championship, and more (call get_competitions for the live list).
+          Football (soccer) data — standings, schedules, match stats, xG, transfers, player profiles, head-to-head, Elo, and forecasts. No API keys. Covers Premier League, La Liga, Bundesliga, Serie A, Ligue 1, MLS, Champions League, World Cup, and more (see get_competitions).
 
-          Use when: user asks about football/soccer standings, fixtures, match stats, xG, lineups, player values, transfers, injury news, league tables, daily fixtures, player profiles, head-to-head records, team strength/Elo ratings, or match odds/forecasts.
-          Don't use when: user asks about American football/NFL (use nfl-data), college football (use cfb-data), NBA (use nba-data), WNBA (use wnba-data), college basketball (use cbb-data), NHL (use nhl-data), MLB (use mlb-data), tennis (use tennis-data), golf (use golf-data), cricket (use cricket-data), Formula 1 (use fastf1), or betting odds (use polymarket or kalshi). Don't use for live/real-time scores — data updates post-match. Don't use get_season_leaders or get_missing_players for non-Premier League leagues (they return empty). Don't use get_event_xg for leagues outside the top 5 (EPL, La Liga, Bundesliga, Serie A, Ligue 1).
+          Use when: user asks about soccer standings, fixtures, match stats, xG, lineups, transfers, player values or profiles, injuries, head-to-head, Elo ratings, or match forecasts.
+          Don't use when: user asks about American football/NFL (use nfl-data), college football (cfb-data), NBA (nba-data), WNBA (wnba-data), college basketball (cbb-data), NHL (nhl-data), MLB (mlb-data), tennis (tennis-data), golf (golf-data), cricket (cricket-data), Formula 1 (fastf1), or betting odds (polymarket or kalshi). Don't use for live/real-time scores — data updates post-match. get_season_leaders and get_missing_players are Premier League only (empty elsewhere); get_event_xg is top-5 leagues only (EPL, La Liga, Bundesliga, Serie A, Ligue 1).
         license: MIT
         metadata:
           author: machina-sports
@@ -2765,9 +2790,9 @@ managed_skill_bundle:
         | `get_event_xg`, `get_event_players_statistics` (xG fields) | Understat | **Top 5 only** (EPL, La Liga, Bundesliga, Serie A, Ligue 1). *Not RFPL — Understat dropped it. No Serie B or Championship either.* |
         | `get_season_leaders`, `get_missing_players` | FPL | **Premier League only** |
         | `get_player_profile`, `get_season_transfers` (market value) | Transfermarkt | Any player with a `tm_player_id` |
-        | `get_head_to_head` | football-data.co.uk | **12 European domestic leagues** (EPL, Championship, La Liga, Serie A, Serie B, Bundesliga, Ligue 1, Eredivisie, Primeira Liga, Scottish, Belgian, Turkish). Same-division meetings only. |
-        | `get_team_strength` | ClubElo, falling back to local Elo | **European clubs** (incl. Russia). Falls back to ratings computed from football-data.co.uk when ClubElo is down. |
-        | `get_match_forecast` | ClubElo | **European clubs** (incl. Russia). No fallback — needs ClubElo's fixture feed. |
+        | `get_head_to_head` | football-data.co.uk | **12 European domestic leagues** (EPL, Championship, La Liga, Serie A, Serie B, Bundesliga, Ligue 1, Eredivisie, Primeira Liga, Scottish, Belgian, Turkish) **+ Liga MX** (2012+). Same-division meetings only. |
+        | `get_team_strength` | ClubElo, falling back to local Elo | **European clubs** (incl. Russia). Falls back to ratings computed from football-data.co.uk when ClubElo is down. **Liga MX**: always local Elo (`source: "local-elo"`), since ClubElo has no Mexican data. |
+        | `get_match_forecast` | ClubElo | **European clubs** (incl. Russia). No fallback — needs ClubElo's fixture feed. For Liga MX use `get_team_strength(home, away)` → `outcome_probabilities`. |
 
         Rule of thumb: **ESPN answers "what happened" everywhere; the enrichment sources ( Understat/FPL/ClubElo/football-data.co.uk ) add depth only in their coverage zone.** ESPN is always the fixture/score authority — never let an enrichment source override an ESPN score.
 
@@ -2780,6 +2805,7 @@ managed_skill_bundle:
         - **ClubElo off-season gaps**: current-date `get_team_strength` can miss clubs in the summer break (a club's weekly Elo period may not span today). If a well-known club returns unresolved, pass an in-season `date` (e.g. `date="2026-03-01"`).
         - **ClubElo outages**: `get_team_strength` falls back to locally computed Elo and sets `source: "local-elo"`. Check that field before comparing numbers across calls — the local scale is division-local, so a rating means nothing outside its own division and cross-division comparisons are refused. The fallback honours `date` (it rates the division as of that date, and each entry's `as_of` is the last match counted). `get_match_forecast` has no fallback and stays empty.
         - **`get_match_forecast` is short-horizon**: ClubElo only forecasts ~a week ahead — empty between matchdays / off-season. That's expected, not a failure.
+        - **Liga MX H2H/Elo** come from football-data.co.uk's all-seasons file (`new/MEX.csv`, 2012+); Apertura and Clausura of one season are one season there (`2026/2027`), turning over in July. Local Elo is a rough second opinion: in a walk-forward test over 1,492 Liga MX matches (2022–2026) it picked 50.8% of results vs 51.7% for closing odds (log-loss 1.022 vs 0.994). Treat odds as the stronger baseline; Elo is useful to spot disagreements.
         - **H2H is same-division only**: two clubs that met in a cup or across tiers won't show; it counts league meetings in the resolved division.
         - **H2H tells "unresolved" apart from "never met"**: football-data.co.uk uses short exonyms/abbreviations ("FC Koln", "M'gladbach", "Sp Lisbon"). Each club in `teams[]` reports `resolved` + `matched_as`; if a club is `resolved: false`, zero meetings means the lookup failed, not that the clubs never played.
 
@@ -2815,8 +2841,8 @@ managed_skill_bundle:
         | `get_event_statistics` | Match team statistics |
         | `get_event_timeline` | Match timeline (goals, cards, subs) |
         | `get_team_schedule` | Schedule for a specific team |
-        | `get_head_to_head` | Historical H2H results + stats (European domestic leagues) |
-        | `get_team_strength` | Elo rating / two-team comparison (European clubs); local-Elo fallback if ClubElo is down |
+        | `get_head_to_head` | Historical H2H results + stats (European domestic leagues, Liga MX) |
+        | `get_team_strength` | Elo rating / two-team comparison (European clubs, Liga MX via local Elo); local-Elo fallback if ClubElo is down |
         | `get_match_forecast` | ClubElo win/draw/loss + scoreline forecast (~week ahead) |
         | `get_event_xg` | xG data (top 5 leagues only) |
         | `get_event_players_statistics` | Player-level match stats with optional xG |
@@ -2951,7 +2977,7 @@ managed_skill_bundle:
     - filename: references/api-reference.md
       filetype: markdown
       name: skill-reference
-      sha256: 670d294b4b8f4209824dbac2596c595e16542ce6d5f34808c9ecaa2c9bb484da
+      sha256: c5d0b36f74193f61b5378ca822c73ddd17866104529d83cf309df8f032080c4e
       title: references/api-reference.md
       value: |
         # Football Data — API Reference
@@ -3000,7 +3026,7 @@ managed_skill_bundle:
         | Understat | xG per match, xG per shot, player xG/xA | Top 5 (EPL, La Liga, Bundesliga, Serie A, Ligue 1) |
         | FPL | Top scorers, injuries, player stats, ownership | Premier League only |
         | Transfermarkt | Market values, transfer history | Any player (requires tm_player_id) |
-        | football-data.co.uk | Head-to-head history, historical results + match stats | 11 European domestic leagues, 1993+ |
+        | football-data.co.uk | Head-to-head history, historical results + match stats | 12 European domestic leagues, 1993+; Liga MX, 2012+ |
         | ClubElo | Team strength (Elo rating), fixture-difficulty control, match forecasts | European clubs |
 
         ## Commands (Detailed)
@@ -3122,7 +3148,7 @@ managed_skill_bundle:
 
         ### get_head_to_head
         Head-to-head history between two teams via football-data.co.uk (free CSV).
-        **European domestic leagues only** (see coverage below). Returns an informative
+        **European domestic leagues and Liga MX** (see coverage below). Returns an informative
         message for other leagues (MLS, Brazil, Champions League, Euros, World Cup).
         - `team_id` (str, required): First team ESPN ID
         - `team_id_2` (str, required): Second team ESPN ID
@@ -3141,7 +3167,10 @@ managed_skill_bundle:
         unresolved club means "we could not look this pair up", not "they never met".
 
         Coverage: Premier League, Championship, La Liga, Serie A, Serie B, Bundesliga, Ligue 1,
-        Eredivisie, Primeira Liga, Scottish Premiership, Belgian Pro League, Turkish Super Lig.
+        Eredivisie, Primeira Liga, Scottish Premiership, Belgian Pro League, Turkish Super Lig,
+        Liga MX. Liga MX is read from football-data.co.uk's all-seasons "extra leagues" file
+        (`new/MEX.csv`, 2012/2013 onward; results only, no shots/corners), where one season
+        (`2026/2027`) spans that year's Apertura and Clausura and turns over in July.
 
         ### get_team_strength
         Team strength via ClubElo Elo rating (free CSV). **European clubs only** — a
@@ -3157,7 +3186,9 @@ managed_skill_bundle:
         and a `resolved` flag. With two teams also returns `elo_difference` (team1 − team2)
         and `favorite`. Team names are matched to ClubElo's labels (country-scoped, reserve
         teams excluded); teams that cannot be confidently matched are reported, not guessed.
-        Coverage: the same 11 European domestic leagues as `get_head_to_head`.
+        Coverage: the same European domestic leagues as `get_head_to_head`. **Liga MX** clubs
+        are rated by local Elo directly (ClubElo has no Mexican data), with
+        `fallback_reason` saying so rather than reporting an outage.
 
         **Local-Elo fallback.** When ClubElo is unreachable the command does not fail: it
         returns ratings computed here from the football-data.co.uk result CSVs (the same
@@ -3186,7 +3217,9 @@ managed_skill_bundle:
         ### get_match_forecast
         ClubElo win/draw/loss + scoreline forecast for a team's upcoming fixtures (free CSV).
         **ClubElo forecasts only ~a week ahead** — empty between matchdays or off-season.
-        European clubs only.
+        European clubs only; for a Liga MX team the message points to `get_team_strength`
+        (home as `team_id`, away as `team_id_2`), whose `outcome_probabilities` is the
+        equivalent W/D/L.
         - `team_id` (str, required): Team ESPN ID
         - `team_id_2` (str, optional): Opponent ESPN ID → filters to fixtures against that team
         - `league_slug` (str, optional): League hint; inferred from the team when omitted
@@ -3239,7 +3272,7 @@ managed_skill_bundle:
     - filename: references/commands.md
       filetype: markdown
       name: skill-reference
-      sha256: 4a94da197784687d36b111503a8de3c3b77f6d4d80d2cd11ba255e6f091fcf6b
+      sha256: 553bd958632d555b408ed5ecc9ad4fc29457215ac3dab608a54e475b5206e426
       title: references/commands.md
       value: |
         # Football Data — Valid Commands & Common Mistakes
@@ -3345,7 +3378,8 @@ managed_skill_bundle:
         Head-to-head history between two teams via football-data.co.uk (free CSV).
         **European domestic leagues only** (Premier League, Championship, La Liga, Serie A,
         Serie B, Bundesliga, Ligue 1, Eredivisie, Primeira Liga, Scottish Premiership, Belgian Pro
-        League, Turkish Super Lig). Returns an informative message for other leagues.
+        League, Turkish Super Lig) **and Liga MX** (2012+). Returns an informative message for
+        other leagues.
         - `team_id` (str, required): First team ESPN ID
         - `team_id_2` (str, required): Second team ESPN ID
         - `league_slug` (str, optional): League hint; inferred from the teams when omitted
@@ -3368,7 +3402,8 @@ managed_skill_bundle:
 
         Returns `data.teams[]` (per team: `elo`, `rank`, `country`, `level`, `as_of`,
         `matched_as`). With two teams also returns `elo_difference` (team1 − team2) and
-        `favorite`. Covers the same 11 European domestic leagues as `get_head_to_head`.
+        `favorite`. Covers the same leagues as `get_head_to_head`; Liga MX is always rated by
+        local Elo (ClubElo has no Mexican data).
 
         `max_seasons` (int, optional) additionally tunes the local-Elo fallback used when
         ClubElo is unreachable (default 10, max 34). The fallback sets `source: "local-elo"`
@@ -3377,7 +3412,7 @@ managed_skill_bundle:
         ### get_match_forecast
         ClubElo win/draw/loss + scoreline forecast for a team's upcoming fixtures (free CSV).
         **ClubElo only forecasts ~a week ahead**, so this is empty between matchdays or in the
-        off-season. European clubs only.
+        off-season. European clubs only (for Liga MX use `get_team_strength`).
         - `team_id` (str, required): Team ESPN ID
         - `team_id_2` (str, optional): Opponent ESPN ID → filters to fixtures against that team
         - `league_slug` (str, optional): League hint; inferred from the team when omitted
@@ -3417,7 +3452,7 @@ managed_skill_bundle:
     - filename: references/data-coverage.md
       filetype: markdown
       name: skill-reference
-      sha256: 168711840002e964fa35c4781ddc8f988815a29ec453106a035b38b9893dafd0
+      sha256: 299aa8d55b54410182160a840c69889e20f934d2709cf2e8b4c8efdabd7ebc5e
       title: references/data-coverage.md
       value: |
         # Football Data — Data Coverage by League
@@ -3450,6 +3485,7 @@ managed_skill_bundle:
         **PL only** (FPL): Premier League — injury news, player stats, ownership, ICT index.
         **All leagues**: via ESPN — scores, standings, schedules, match summaries, lineups, team stats.
         **Serie B** (`serie-b`, ESPN `ita.2`): ESPN data, head-to-head (football-data.co.uk `I2`), ClubElo strength/forecasts, openfootball fallback. No xG (Understat has no Serie B) and no FPL.
+        **Liga MX** (`liga-mx`, ESPN `mex.1`): ESPN data (standings per Apertura/Clausura, schedules, odds), head-to-head and local-Elo strength from football-data.co.uk `new/MEX.csv` (2012+). No xG, no ClubElo forecasts.
         **Transfermarkt**: Works for any player with a `tm_player_id` — market values and transfer history.
 
         **Note**: MLS uses a different season structure (spring-fall calendar). Use `get_current_season(competition_id="mls")` to detect the right season_id.
@@ -3463,7 +3499,7 @@ managed_skill_bundle:
         | Understat | xG per match, xG per shot, player xG/xA | Top 5 (EPL, La Liga, Bundesliga, Serie A, Ligue 1) |
         | FPL | Top scorers, injuries, player stats, ownership | Premier League only |
         | Transfermarkt | Market values, transfer history | Any player (requires tm_player_id) |
-        | football-data.co.uk | Head-to-head history, historical results + match stats | 12 European domestic leagues (incl. Serie B), 1993+ |
+        | football-data.co.uk | Head-to-head history, historical results + match stats | 12 European domestic leagues (incl. Serie B), 1993+; Liga MX, 2012+ |
         | ClubElo | Team strength (Elo rating), fixture-difficulty control, match forecasts | European clubs |
 
         For licensed data with full coverage across all sports (Sportradar, Opta, Genius Sports), see [Machina Sports](https://machina.gg).
@@ -3646,12 +3682,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: d55c8c273878c7e2259e016cb08c876f4a30f7cef6593db6bb2d6e3b4cda4476
+      sha256: 2c5fe92af6494f6ddc70dde334cf74b3dd01e9c2b2b5bc64b50a3074c2cba45d
       title: MACHINA.md
       value: |
         # football-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -4052,12 +4088,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 42b4a2c242468f2ad00595e838f73a6f3c086f093f0c4895b346b963b18efdba
+      sha256: 34d67ad37fdff12fcba44048b5787de45fe65b931e87aceb0b6b79f8d2fa98ff
       title: MACHINA.md
       value: |
         # golf-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -4560,12 +4596,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 8458417250946f1be4c4742fb83ff939774957c75a9e6c0b873ba46600371643
+      sha256: de9d7457f046760c884c3a08d73969fbfa74078073a5553818787c93b9149101
       title: MACHINA.md
       value: |
         # kalshi: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -4985,12 +5021,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 4b528ae33c63802daf65e00d1c19a4cf012f4b001d9c7af66011e6822dc4bb24
+      sha256: 7ea4a5c5aae2a55d60786a21cd06739df2dc6e01679098565f6bbce4be2ee288
       title: MACHINA.md
       value: |
         # markets: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -5234,12 +5270,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 043b006572ed1938d54238d272889b95706fb2522f7d82623df0eed5e1d742b6
+      sha256: b9a16e987f0969c2c7fe730caec871257b3124a3df3d12537dd262ea852a4b3e
       title: MACHINA.md
       value: |
         # metadata: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -5781,12 +5817,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 9aaf44841f948836bf3027d154ed378b61877b522aa1ebf6eb65d248148bdcf7
+      sha256: 21d5ad652d39b3d155afe199801bfea2b441bfb630e23bb38d06d4fbf3d57606
       title: MACHINA.md
       value: |
         # mlb-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -5843,6 +5879,7 @@ managed_skill_bundle:
           nba: &id007
           - find_nba_player
           - get_depth_chart
+          - get_event_summary
           - get_futures
           - get_game_summary
           - get_injuries
@@ -5880,7 +5917,7 @@ managed_skill_bundle:
     - filename: SKILL.md
       filetype: markdown
       name: skill-guide
-      sha256: 6fe24a860cf01975279dad14c3bf62c2ff17e29741bbbd936e5c3cad864def39
+      sha256: 79e67128138874cbb9cb4cdc75dd476babf350221825c2a43c19fa0324278174
       title: SKILL.md
       value: |
         ---
@@ -5951,6 +5988,7 @@ managed_skill_bundle:
         | `get_leaders` | NBA statistical leaders |
         | `get_news` | NBA news articles |
         | `get_play_by_play` | Full play-by-play for a game |
+        | `get_event_summary` | One game as its scoreboard event plus its play-by-play, in one read |
         | `get_win_probability` | Win probability chart data |
         | `get_schedule` | Games on a specific date (no season filter; see `get_team_schedule`) |
         | `get_injuries` | Injury reports across all teams |
@@ -6123,7 +6161,7 @@ managed_skill_bundle:
     - filename: references/api-reference.md
       filetype: markdown
       name: skill-reference
-      sha256: fbfafb492696221b26351117744e52707b7d9c8268632b8561a38410a34233e8
+      sha256: 1e7de4811b66d435d47d379d6dde16fb08467e7314a550b49f0dec1c223fc9bf
       title: references/api-reference.md
       value: |
         # NBA Data — API Reference
@@ -6134,7 +6172,7 @@ managed_skill_bundle:
         Get live/recent NBA scores.
         - `date` (str, optional): Date in YYYY-MM-DD format. Defaults to today.
 
-        Returns `events[]` with game info, scores, status, and competitors.
+        Returns `events[]` with game info, scores, status, and competitors, plus `day` (the slate's date). `start_time` is UTC, so an evening game carries the next day's date there; each event's `game_date` (YYYY-MM-DD) is its date on the league's US Eastern calendar, the date to match against `date`.
 
         ### get_standings
         Get NBA standings by conference.
@@ -6183,7 +6221,13 @@ managed_skill_bundle:
         Get full play-by-play data for a game.
         - `event_id` (str, required): ESPN event ID
 
-        Returns play-by-play detail including period, clock, team, play description, and scoring plays.
+        Returns play-by-play detail including period, clock, team, play description, and scoring plays. `teams` names the `home` and `away` sides (`id`, `abbreviation`, `name`) that `home_score` and `away_score` refer to, and each play's `team` is the acting team's abbreviation (empty when no team acted). A live game served from the NBA CDN keeps its own `actions[]` shape.
+
+        ### get_event_summary
+        Get one game as its scoreboard event plus its play-by-play, from one ESPN read.
+        - `event_id` (str, required): ESPN event ID
+
+        Returns `event`, the game exactly as `get_scoreboard` states one, and `plays`, what `get_play_by_play` returns on the ESPN path (omitted for a game with no plays yet). It never reads the NBA CDN, so the shape is the same before, during and after the game. This is the command `--format=machina-canonical` accepts for the NBA; that mode also requires `--observed-at` and `--start-time-precision`.
 
         ### get_win_probability
         Get win probability chart data for a game.
@@ -6366,12 +6410,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 15053815ba04eb00f7c3a0323a3b7056d385500daae14031479b6e4e7ded2067
+      sha256: e3fcbb61c5e0cc88e1b6f805b158ad02298e01e34ea7f36a6dedb12751f0ae40
       title: MACHINA.md
       value: |
         # nba-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -6406,7 +6450,7 @@ managed_skill_bundle:
 
         ## Allowed commands
 
-        - `nba`: `find_nba_player`, `get_depth_chart`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_live_boxscore`, `get_live_playbyplay`, `get_live_scoreboard`, `get_nbastats_advanced_boxscore`, `get_nbastats_game_log`, `get_nbastats_play_by_play`, `get_nbastats_player_career`, `get_nbastats_shot_chart`, `get_nbastats_team_stats`, `get_news`, `get_play_by_play`, `get_player_live_stats`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
+        - `nba`: `find_nba_player`, `get_depth_chart`, `get_event_summary`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_live_boxscore`, `get_live_playbyplay`, `get_live_scoreboard`, `get_nbastats_advanced_boxscore`, `get_nbastats_game_log`, `get_nbastats_play_by_play`, `get_nbastats_player_career`, `get_nbastats_shot_chart`, `get_nbastats_team_stats`, `get_news`, `get_play_by_play`, `get_player_live_stats`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
 
         ## Limitations
 
@@ -7116,12 +7160,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 60cccead5d5cf7e5f28d432036fd83549d3cfa51108f24e87054e6fe134c6cbc
+      sha256: 8a67f0f81134c0fc55e5b995348a630b076b279fee2c16bab857671fc8b87765
       title: MACHINA.md
       value: |
         # nfl-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -7613,12 +7657,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: e5f8ac04a6958619fdaadb666eb33e4bde27e7d29cbfb076e5dc319b295302a3
+      sha256: fc297ae8f017c99fa794743f3360ab2537e07ca79cc0bbb1cb2ee6f799541795
       title: MACHINA.md
       value: |
         # nhl-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -7698,7 +7742,7 @@ managed_skill_bundle:
     - filename: SKILL.md
       filetype: markdown
       name: skill-guide
-      sha256: 2fb8e36c388b122a45aa76be623ce0542494947c0a13c5903758f71c5c1c1b94
+      sha256: 7557e3fa738e88eaa51c3a9a91100c567486bb0a6db731c0db3af2d689f8ce7a
       title: SKILL.md
       value: |
         ---
@@ -7774,9 +7818,11 @@ managed_skill_bundle:
         3. For detailed prices, use `get_market_prices --token_id=<clob_token_id>`.
 
         ### Today's Events for a League
-        1. `get_todays_events --sport=epl` — returns events sorted by start date.
-        2. Each event includes nested markets (moneyline, spreads, totals, props).
-        3. Pick a market, get `clob_token_id` from outcomes, then `get_market_prices`.
+        1. `get_todays_events --sport=epl` — games kicking off today (UTC); pass `--date=YYYY-MM-DD --timezone=<IANA zone>` for the user's local day. Kickoff is `game_start_time`, not the listing `start_date`.
+        2. It reads ONE page. If `complete` is false (`truncated`/`next_offset`, `unknown_start`, `unknown_market_state`, or `offset>0`), say coverage is partial — never "no games". Page on with `--offset=<next_offset>`.
+        3. Each event includes nested markets; known closed/inactive/not-accepting markets are dropped, `accepting_orders: null` means unknown. Add `--sports_market_types=moneyline --compact=true` for a short summary.
+        4. Outcome prices are indicative. For executable bid/ask, take `clob_token_id` and call `get_order_book` / `get_market_prices`.
+        5. For upcoming fixtures on any date, use `get_sports_events --sport=epl`.
 
         ### Live Odds Check
         1. `search_markets --sport=nba --query="Lakers" --sports_market_types=moneyline`
@@ -7794,10 +7840,10 @@ managed_skill_bundle:
         | Command | Description |
         |---|---|
         | `get_sports_config` | Available sport codes |
-        | `get_todays_events` | Today's events for a league |
+        | `get_todays_events` | A league's games on a date (default today, UTC), one page with coverage fields |
         | `search_markets` | Find markets by sport, keyword, and type |
         | `get_sports_markets` | Browse all sports markets |
-        | `get_sports_events` | Browse sports events |
+        | `get_sports_events` | Browse sports events (`sport` for one league, any date) |
         | `get_series` | List series (leagues) |
         | `get_market_details` | Single market details |
         | `get_event_details` | Single event details |
@@ -7827,7 +7873,7 @@ managed_skill_bundle:
         User says: "What EPL matches are on today?"
         Actions:
         1. Call `get_todays_events(sport='epl')`
-        Result: Today's events with nested markets (moneyline, spreads, totals, props)
+        Result: Today's events with open nested markets; if `complete` is false, say the list may be partial
 
         Example 4: League winner futures
         User says: "Who will win the Premier League?"
@@ -7883,7 +7929,7 @@ managed_skill_bundle:
     - filename: references/api-reference.md
       filetype: markdown
       name: skill-reference
-      sha256: ada873a1aaad691ee37145cc11e0c2c8dbebdc1cf236dcb632d5d601b4f57111
+      sha256: 7d9b6c6d4924ec862a64091dff04f3ddac46ca1d1ab15fa63ba5e0fc502394a9
       title: references/api-reference.md
       value: |
         # Polymarket — API Reference (Read-Only)
@@ -7893,10 +7939,10 @@ managed_skill_bundle:
         | Command | Required | Optional | Description |
         |---|---|---|---|
         | `get_sports_config` | | | Available sport codes (nba, epl, nfl, bun, etc.) |
-        | `get_todays_events` | sport | limit | Today's events for a league — sorted by start date |
+        | `get_todays_events` | sport | limit, offset, date, timezone, sports_market_types, compact | One league's games kicking off on `date` (default today) in `timezone` (default UTC), from ONE volume-sorted page — see coverage fields below |
         | `search_markets` | | query, sport, sports_market_types, tag_id, limit | Find markets by sport, keyword, and type |
         | `get_sports_markets` | | limit, offset, sports_market_types, game_id, active, closed, order, ascending | Browse all sports markets |
-        | `get_sports_events` | | limit, offset, active, closed, order, ascending, series_id | Browse sports events |
+        | `get_sports_events` | | limit, offset, active, closed, order, ascending, series_id, sport | Browse sports events; `sport` resolves to the league series (unknown codes error), no date filter |
         | `get_series` | | limit, offset | List series (leagues) |
         | `get_market_details` | | market_id, slug | Single market details |
         | `get_event_details` | | event_id, slug | Single event details |
@@ -7906,6 +7952,17 @@ managed_skill_bundle:
         | `get_price_history` | token_id | interval, fidelity | Historical prices |
         | `get_last_trade_price` | token_id | | Most recent trade |
         | `get_esports_events` | | query, limit, closed | Esports prediction markets (implied probabilities via outcome prices) |
+
+        ### `get_todays_events` coverage
+
+        - Kickoff is the event `startTime` (else the nested markets' `gameStartTime` when they all agree), exposed as `game_start_time`. The listing `start_date`, `end_date` and a bare `eventDate` are never used as the game time.
+        - Events with no usable kickoff are listed in `unknown_start`, not guessed onto a date.
+        - `scanned` is the rows read from the one provider page; when the page was full, `truncated` is true and `next_offset` is the offset for the next call. No hidden paging.
+        - `complete` is true only for a short first page with every kickoff and required market state known. `unknown_market_state` lists market IDs with missing or non-boolean active/closed/order-acceptance/order-book flags or event IDs whose markets were not supplied. An empty `events` list with `complete: false` is NOT proof that no games exist.
+        - Markets the provider marks closed, inactive or not accepting orders are dropped. `accepting_orders` / `enable_order_book` are the provider's booleans, or `null` when not reported — `null` is unknown, not tradable.
+        - `sports_market_types` keeps one exact type (e.g. `moneyline`). `compact=true` returns identity, kickoff, status, order flags, outcomes and token IDs without descriptions.
+        - Outcome `price` values are Gamma indicative prices, not executable quotes. Use `get_order_book` / `get_market_prices` (CLOB) for actual bid/ask.
+        - A malformed provider response or API error returns `status: false`, never an empty success.
 
         Financial execution commands are intentionally omitted from this read-only reference. If a user explicitly asks to place/cancel orders, load the separate `polymarket-trading` skill and require explicit confirmation.
 
@@ -7948,7 +8005,7 @@ managed_skill_bundle:
     - filename: references/commands.md
       filetype: markdown
       name: skill-reference
-      sha256: 4b2b0f1b9a0221c96c41ab0d8edb1ab7bf4c53343e3f78d1b03b25fb5eb266bd
+      sha256: 8b09c8483c464216aa21376abbd484c7b77c0cefc98a7e43a828953a4aac5847
       title: references/commands.md
       value: |
         # Valid Commands & Common Mistakes
@@ -7966,10 +8023,10 @@ managed_skill_bundle:
 
         These work out of the box:
         - `get_sports_config` — list all available sport codes (nba, epl, nfl, bun, etc.)
-        - `get_todays_events` — today's events for a specific sport (requires `sport` param)
+        - `get_todays_events` — one sport's games kicking off on a date (requires `sport`; optional `date`, `timezone`, `offset`, `sports_market_types`, `compact`). Reads one page; check `complete`/`next_offset` before saying "no games"
         - `search_markets` — find markets by sport, keyword, and type (use `sport` param for single-game markets)
         - `get_sports_markets` — browse all sports markets (sorted by volume)
-        - `get_sports_events` — browse sports events (sorted by volume)
+        - `get_sports_events` — browse sports events (sorted by volume); `sport` limits to one league with upcoming fixtures on any date
         - `get_series` — list series (leagues)
         - `get_market_details` — single market details (by market_id or slug)
         - `get_event_details` — single event details with nested markets
@@ -7989,6 +8046,7 @@ managed_skill_bundle:
         sports-skills polymarket search_markets --sport=nba --sports_market_types=moneyline
         sports-skills polymarket search_markets --sport=epl --query="Leeds"
         sports-skills polymarket get_todays_events --sport=nba
+        sports-skills polymarket get_todays_events --sport=nba --date=2026-10-29 --timezone=America/New_York --sports_market_types=moneyline --compact=true
         ```
 
         ### Discovering sport codes
@@ -8050,12 +8108,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 465d9e5a2db00a9ada171c5a3efc0793f8b73db273de4661b9a11afa1d193e71
+      sha256: 42465222649ac7ee81b45bd9591b96143857bb66a22e87fab69a2c903bd4b167
       title: MACHINA.md
       value: |
         # polymarket: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -8103,10 +8161,10 @@ managed_skill_bundle:
     name: polymarket
   - config:
       description: |-
-        ProphetX betting exchange — public tournaments, events, markets, and exchange odds. No API key, read-only. Covers soccer, tennis, basketball, baseball (MLB), NFL, NHL. IMPORTANT: odds are per-market optional — they appear only when a public order book exists (check `selections_available`); empty/suspended books return market structure and matched stake only. Full guaranteed odds coverage requires the authenticated ProphetX Affiliate API (separate Machina connector).
+        ProphetX betting exchange — public tournaments, events, markets, and exchange odds. No API key, read-only. Covers soccer, tennis, basketball, MLB, NFL, NHL. IMPORTANT: odds are optional per market — shown only when a public order book exists (check `selections_available`); empty/suspended books return market structure and matched stake only. Guaranteed odds coverage requires the authenticated ProphetX Affiliate API (separate Machina connector).
 
-        Use when: user asks what markets/lines ProphetX offers for a game, ProphetX exchange odds and order-book prices (when exposed), event/tournament discovery, market structure (spreads, totals, alt lines, player props), or matched-stake activity.
-        Don't use when: user needs guaranteed odds on every market or in-play liquidity — that requires the authenticated Affiliate connector (Machina platform). For prediction-market prices use polymarket or kalshi. For scores/stats use the sport-specific skill (nfl-data, mlb-data, football-data, ...). For news use sports-news.
+        Use when: user asks what markets/lines ProphetX offers for a game, exchange odds and order-book prices (when exposed), event/tournament discovery, market structure (spreads, totals, alt lines, player props), or matched-stake activity.
+        Don't use when: user needs guaranteed odds on every market or in-play liquidity — that needs the authenticated Affiliate connector (Machina platform). For prediction-market prices use polymarket or kalshi. For scores/stats use the sport-specific skill (nfl-data, mlb-data, football-data, ...). For news use sports-news.
       execution:
         commands:
           prophetx:
@@ -8128,16 +8186,16 @@ managed_skill_bundle:
     - filename: SKILL.md
       filetype: markdown
       name: skill-guide
-      sha256: 285d87296bfe5fc7dddecc64cffbc55960445fedc052413da5d5f24733d6b5a8
+      sha256: 024a7e2a298557b06b4bb15e01923abae4c5885db929154e10c5124a0df58dbc
       title: SKILL.md
       value: |
         ---
         name: prophetx
         description: |
-          ProphetX betting exchange — public tournaments, events, markets, and exchange odds. No API key, read-only. Covers soccer, tennis, basketball, baseball (MLB), NFL, NHL. IMPORTANT: odds are per-market optional — they appear only when a public order book exists (check `selections_available`); empty/suspended books return market structure and matched stake only. Full guaranteed odds coverage requires the authenticated ProphetX Affiliate API (separate Machina connector).
+          ProphetX betting exchange — public tournaments, events, markets, and exchange odds. No API key, read-only. Covers soccer, tennis, basketball, MLB, NFL, NHL. IMPORTANT: odds are optional per market — shown only when a public order book exists (check `selections_available`); empty/suspended books return market structure and matched stake only. Guaranteed odds coverage requires the authenticated ProphetX Affiliate API (separate Machina connector).
 
-          Use when: user asks what markets/lines ProphetX offers for a game, ProphetX exchange odds and order-book prices (when exposed), event/tournament discovery, market structure (spreads, totals, alt lines, player props), or matched-stake activity.
-          Don't use when: user needs guaranteed odds on every market or in-play liquidity — that requires the authenticated Affiliate connector (Machina platform). For prediction-market prices use polymarket or kalshi. For scores/stats use the sport-specific skill (nfl-data, mlb-data, football-data, ...). For news use sports-news.
+          Use when: user asks what markets/lines ProphetX offers for a game, exchange odds and order-book prices (when exposed), event/tournament discovery, market structure (spreads, totals, alt lines, player props), or matched-stake activity.
+          Don't use when: user needs guaranteed odds on every market or in-play liquidity — that needs the authenticated Affiliate connector (Machina platform). For prediction-market prices use polymarket or kalshi. For scores/stats use the sport-specific skill (nfl-data, mlb-data, football-data, ...). For news use sports-news.
         license: MIT
         metadata:
           author: machina-sports
@@ -8328,12 +8386,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 6641256100402be3e7b5e31851be0d77d27bdaae379599cd775d89ab09d6aef4
+      sha256: f5269d89f5aa75fb0f540d17032fb6c2ead7a160734ee5e9dd5e11b15a469b21
       title: MACHINA.md
       value: |
         # prophetx: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -8623,12 +8681,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 4be5424ca07267435a753f93e4dd4344f9eff70e8487c912d87cc54fd87b0aea
+      sha256: 287a445f882f3b4c512b299f57ead46c78e382940a501c8a9a91b8aca533c9b8
       title: MACHINA.md
       value: |
         # sports-news: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -8712,6 +8770,7 @@ managed_skill_bundle:
           - get_leaders
           - get_news
           - get_play_by_play
+          - get_player_game_log
           - get_player_stats
           - get_schedule
           - get_scoreboard
@@ -9779,12 +9838,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 94d56083678e4f9e9192e292c3f5ba8d0aadefd4cd838f8cc9c60bb62ea79afe
+      sha256: b47972b54dcbf3e129d939bc568da90b66626246506d733c7e90bbd60fe5e1e6
       title: MACHINA.md
       value: |
         # sports-reporter: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -9821,12 +9880,12 @@ managed_skill_bundle:
 
         - `football`: `get_competition_seasons`, `get_competitions`, `get_current_season`, `get_daily_schedule`, `get_event_lineups`, `get_event_players_statistics`, `get_event_statistics`, `get_event_summary`, `get_event_timeline`, `get_event_xg`, `get_head_to_head`, `get_match_forecast`, `get_missing_players`, `get_player_profile`, `get_player_season_stats`, `get_season_leaders`, `get_season_schedule`, `get_season_standings`, `get_season_teams`, `get_season_transfers`, `get_team_profile`, `get_team_schedule`, `get_team_strength`, `search_player`, `search_team`
         - `nfl`: `get_depth_chart`, `get_fantasy_trending`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_news`, `get_nflverse_play_by_play`, `get_nflverse_player_stats`, `get_nflverse_schedule`, `get_nflverse_team_stats`, `get_nflverse_weekly_rosters`, `get_play_by_play`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
-        - `nba`: `find_nba_player`, `get_depth_chart`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_live_boxscore`, `get_live_playbyplay`, `get_live_scoreboard`, `get_nbastats_advanced_boxscore`, `get_nbastats_game_log`, `get_nbastats_play_by_play`, `get_nbastats_player_career`, `get_nbastats_shot_chart`, `get_nbastats_team_stats`, `get_news`, `get_play_by_play`, `get_player_live_stats`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
-        - `wnba`: `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_news`, `get_play_by_play`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
+        - `nba`: `find_nba_player`, `get_depth_chart`, `get_event_summary`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_live_boxscore`, `get_live_playbyplay`, `get_live_scoreboard`, `get_nbastats_advanced_boxscore`, `get_nbastats_game_log`, `get_nbastats_play_by_play`, `get_nbastats_player_career`, `get_nbastats_shot_chart`, `get_nbastats_team_stats`, `get_news`, `get_play_by_play`, `get_player_live_stats`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
+        - `wnba`: `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_news`, `get_play_by_play`, `get_player_game_log`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
         - `nhl`: `find_nhl_player`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_news`, `get_nhlstats_boxscore`, `get_nhlstats_leaders`, `get_nhlstats_play_by_play`, `get_nhlstats_player_game_log`, `get_nhlstats_player_stats`, `get_nhlstats_schedule`, `get_nhlstats_standings`, `get_play_by_play`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`
         - `mlb`: `find_mlb_player`, `get_depth_chart`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_mlbstats_boxscore`, `get_mlbstats_leaders`, `get_mlbstats_play_by_play`, `get_mlbstats_player_stats`, `get_mlbstats_schedule`, `get_mlbstats_standings`, `get_news`, `get_play_by_play`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
-        - `cfb`: `get_futures`, `get_game_summary`, `get_injuries`, `get_ncaa_boxscore`, `get_ncaa_game`, `get_ncaa_play_by_play`, `get_ncaa_schedule`, `get_ncaa_schools`, `get_ncaa_scoreboard`, `get_ncaa_scoring_summary`, `get_news`, `get_play_by_play`, `get_player_stats`, `get_rankings`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_win_probability`
-        - `cbb`: `compare_teams`, `find_upset_candidates`, `get_futures`, `get_game_summary`, `get_ncaa_boxscore`, `get_ncaa_bracket`, `get_ncaa_game`, `get_ncaa_play_by_play`, `get_ncaa_schedule`, `get_ncaa_schools`, `get_ncaa_scoreboard`, `get_news`, `get_play_by_play`, `get_player_stats`, `get_power_index`, `get_rankings`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_tournament_projections`, `get_win_probability`
+        - `cfb`: `get_futures`, `get_game_summary`, `get_injuries`, `get_ncaa_boxscore`, `get_ncaa_game`, `get_ncaa_play_by_play`, `get_ncaa_schedule`, `get_ncaa_schools`, `get_ncaa_scoreboard`, `get_ncaa_scoring_summary`, `get_news`, `get_play_by_play`, `get_player_game_log`, `get_player_stats`, `get_rankings`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_win_probability`
+        - `cbb`: `compare_teams`, `find_upset_candidates`, `get_futures`, `get_game_summary`, `get_ncaa_boxscore`, `get_ncaa_bracket`, `get_ncaa_game`, `get_ncaa_play_by_play`, `get_ncaa_schedule`, `get_ncaa_schools`, `get_ncaa_scoreboard`, `get_news`, `get_play_by_play`, `get_player_game_log`, `get_player_stats`, `get_power_index`, `get_rankings`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_tournament_projections`, `get_win_probability`
         - `tennis`: `get_calendar`, `get_news`, `get_player_info`, `get_rankings`, `get_scoreboard`, `get_wta_entry_list`, `get_wta_player_results`
         - `golf`: `get_leaderboard`, `get_news`, `get_player_info`, `get_player_overview`, `get_schedule`, `get_scorecard`
         - `f1`: `get_championship_standings`, `get_driver_comparison`, `get_driver_info`, `get_lap_data`, `get_pit_stops`, `get_race_results`, `get_race_schedule`, `get_season_stats`, `get_session_data`, `get_speed_data`, `get_team_comparison`, `get_team_info`, `get_tire_analysis`
@@ -10242,12 +10301,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: deb5fce49e502d0b5aac5829f7da09529eaf76f1f17e3a9aa8f18c8c6ec59ff5
+      sha256: 4e864a09ee55071d2a8a84f6a4c7bd984da061693dc9283408b3862edf250e83
       title: MACHINA.md
       value: |
         # tennis-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -10680,12 +10739,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 700719358c4eb46bf8946f9f19dc516a8c3c87c0b553b1009d4e5c4577ef96c3
+      sha256: 3464e8a6c880a2c798d841463f4561e3d47dd412b5af4eaed116051380d1c75c
       title: MACHINA.md
       value: |
         # volleyball-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -10751,7 +10810,7 @@ managed_skill_bundle:
     - filename: SKILL.md
       filetype: markdown
       name: skill-guide
-      sha256: f559a84b15c358e479918c37e0d6a6c6e69b21b9cc2ccbf70eb78db881273e95
+      sha256: 9df9cdb0db5874b590a5dfd141f95cbc39e58d3c672f7f641639db3f18e58cc1
       title: SKILL.md
       value: |
         ---
@@ -10827,6 +10886,7 @@ managed_skill_bundle:
         | `get_futures` | Futures/odds markets |
         | `get_team_stats` | Team statistical profile |
         | `get_player_stats` | Player statistical profile |
+        | `get_player_game_log` | One player's games in a season (opponent, home/away, result, stat line) |
 
         See `references/api-reference.md` for full parameter lists and return shapes.
 
@@ -10926,7 +10986,7 @@ managed_skill_bundle:
     - filename: references/api-reference.md
       filetype: markdown
       name: skill-reference
-      sha256: 2a6c5e76ca42d36684d1d771964ade4c817384492814de318cbb9613363ca4c1
+      sha256: 068f2d7ee55f15ff5b95b97f2bf30d00652bbccc208f6ba5eab73790c997da34
       title: references/api-reference.md
       value: |
         # WNBA Data — API Reference
@@ -11035,6 +11095,15 @@ managed_skill_bundle:
 
         Returns `categories[]` with detailed stats including value, rank, and per-game averages.
 
+        ### get_player_game_log
+        Get one player's games in a season via ESPN's athlete gamelog (`site.web.api.espn.com/apis/common/v3/sports/.../athletes/{id}/gamelog`, one request).
+        - `player_id` (str, required): ESPN athlete ID. Find it with `get_team_roster`.
+        - `season` (int, optional): Season year (e.g. `2025`). Defaults to current.
+        - `season_type` (str, optional): `regular` (default), `postseason`, `preseason` or `all`.
+        - `sort_by`, `descending`, `limit`, `fields` (optional): Row shaping (`sort_by` then `limit`; `fields` always keeps `game_id`, `game_date`, `team_abbreviation`, `opponent`). Stat keys are addressable directly. With any set, the response adds `total_rows` and `returned_rows`.
+
+        Returns `games[]`, oldest first: `game_id`, `game_date`, `team_abbreviation`, `opponent` (abbreviation), `opponent_id`, `opponent_name`, `home_away`, `result` (`W`/`L`), `team_score`, `opponent_score`, `season_type`, `note` (e.g. a bowl or tournament round), and `stats` keyed by ESPN's stat names (`points`, `totalRebounds`, `assists`, `minutes`, ...). The stat columns are the ones ESPN keeps for that player, so they differ by position. An unknown `player_id` returns an error. Jonquel Jones (2999101) has 31 regular-season rows in 2025.
+
         ## Team IDs
 
         | Team | ID |
@@ -11117,12 +11186,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: bd4fe66c0369ca614ad576fd08c2c48ccaa66f69dffa38e8ce3c0e4f87891de7
+      sha256: 6f4eb6342f293cd3cb823e301d6142d1c11a794ebe0c422fb3b897a3258db0d4
       title: MACHINA.md
       value: |
         # wnba-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -11157,7 +11226,7 @@ managed_skill_bundle:
 
         ## Allowed commands
 
-        - `wnba`: `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_news`, `get_play_by_play`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
+        - `wnba`: `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_news`, `get_play_by_play`, `get_player_game_log`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
 
         ## Limitations
 
@@ -11693,12 +11762,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: fc5373ceb76251c9d2b0eb5984ead27e296744b110c2ad66f91a069507c5968d
+      sha256: cfc1c6eced047b4516b96be9ff14fce6827029e6ba10da51886881f3b706f0f4
       title: MACHINA.md
       value: |
         # xctf-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1` for runtime package sports-skills 0.40.0. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -11746,9 +11815,9 @@ managed_skill_bundle:
     name: xctf-data
   runtime:
     package: sports-skills
-    version: 0.40.0
+    version: 0.40.7
   schema_version: 1
   source:
     repository: https://github.com/machina-sports/sports-skills
-    revision: ee30e2539f2f6d6d036cf97c39efbc6e8efb8ac1
+    revision: 992a4f3bac2bf12b715e658f39cfe7c2f96ad782
   version: 1.0.0

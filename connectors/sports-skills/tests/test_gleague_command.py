@@ -26,8 +26,8 @@ def _read(name):
 
 
 def test_gleague_requires_the_release_that_added_the_module():
-    assert _MODULE._PINNED_VERSION == "0.40.0"
-    assert _MODULE._PIP_PACKAGE == "sports-skills==0.40.0"
+    assert _MODULE._PINNED_VERSION == "0.40.7"
+    assert _MODULE._PIP_PACKAGE == "sports-skills==0.40.7"
 
 
 def test_invoke_gleague_dispatches_only_to_the_gleague_module(monkeypatch):

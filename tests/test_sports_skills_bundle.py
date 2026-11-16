@@ -59,8 +59,8 @@ def _skill_md(name):
 
 
 def make_source(root):
-    _write(root / "pyproject.toml", '[project]\nname = "sports-skills"\nversion = "0.40.0"\n')
-    _write(root / "src/sports_skills/__init__.py", '"""SDK."""\n\n__version__ = "0.40.0"\n')
+    _write(root / "pyproject.toml", '[project]\nname = "sports-skills"\nversion = "0.40.7"\n')
+    _write(root / "src/sports_skills/__init__.py", '"""SDK."""\n\n__version__ = "0.40.7"\n')
     registry = {}
     for module in ALL_MODULES:
         registry[module] = {c: {} for c, _, _ in _functions(module)}
@@ -109,7 +109,7 @@ def test_exact_inventory_and_byte_identical_documents(source):
     assert payload["schema_version"] == 1
     assert payload["bundle_id"] == "sports-skills-readonly"
     assert payload["version"] == "1.0.0"
-    assert payload["runtime"] == {"package": "sports-skills", "version": "0.40.0"}
+    assert payload["runtime"] == {"package": "sports-skills", "version": "0.40.7"}
     assert payload["source"] == {"repository": "https://github.com/machina-sports/sports-skills", "revision": REVISION}
 
     names = [p["name"] for p in payload["packages"]]
@@ -225,9 +225,9 @@ def test_no_tenant_ids_or_credentials_in_config(source):
 @pytest.mark.parametrize("target", ["pyproject.toml", "src/sports_skills/__init__.py"])
 def test_version_mismatch_is_reported_not_rewritten(source, target):
     path = source / target
-    original = path.read_text().replace("0.40.0", "0.34.0")
+    original = path.read_text().replace("0.40.7", "0.34.0")
     _write(path, original)
-    with pytest.raises(exporter.ExportError, match=r"expected 0\.40\.0.*0\.34\.0"):
+    with pytest.raises(exporter.ExportError, match=r"expected 0\.40\.7.*0\.34\.0"):
         build(source)
     assert path.read_text() == original
 
@@ -305,7 +305,7 @@ def test_real_upstream_source():
     payload, dropped = build(Path(os.environ["SPORTS_SKILLS_SOURCE"]))
     files = exporter.render(payload, dropped)
     assert len(payload["packages"]) == 23
-    assert payload["runtime"]["version"] == "0.40.0"
+    assert payload["runtime"]["version"] == "0.40.7"
     commands = {}
     for package in payload["packages"]:
         commands.update(package["config"]["execution"]["commands"])
