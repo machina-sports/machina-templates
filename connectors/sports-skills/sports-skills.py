@@ -16,11 +16,11 @@ Design:
   package (below) and reports the copy actually imported.
 
 Runtime requirement:
-- The pod's Python env must have exactly `sports-skills==0.40.7`
-  importable. The preferred path is pinning `sports-skills==0.40.7` in
+- The pod's Python env must have exactly `sports-skills==0.40.8`
+  importable. The preferred path is pinning `sports-skills==0.40.8` in
   `machina-client-api/requirements.txt` and rebuilding the pod image.
 - As a fallback this module attempts a one-time `pip install
-  sports-skills==0.40.7` when the imported version is missing or differs
+  sports-skills==0.40.8` when the imported version is missing or differs
   from the pin, so customers can use the connector without waiting on a
   pod-image rebuild. The first call is then ~15-30s slower; subsequent
   calls are instant. If that install fails, the connector returns
@@ -34,7 +34,7 @@ import subprocess
 import sys
 
 
-_PINNED_VERSION = "0.40.7"
+_PINNED_VERSION = "0.40.8"
 _PIP_PACKAGE = f"sports-skills=={_PINNED_VERSION}"
 _PIP_TIMEOUT_SECONDS = 180
 # Writable install target for in-place upgrades. The pod runs as a non-root

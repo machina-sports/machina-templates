@@ -1,6 +1,6 @@
 managed_skill_bundle:
   bundle_id: sports-skills-readonly
-  manifest_sha256: 7f736d40a4f5463f4ed915a2539d1aa242fd1ca57a38fd94c9348151c0e99b8f
+  manifest_sha256: c891b9a4ced9f7e7021fbcdd5e516e78d329f6ef3fec72dcc21d7183e71a5beb
   packages:
   - config:
       description: |-
@@ -244,12 +244,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: e98695e6e0d40b3d70bfe6472720cd9ea83c871804de6dce38212a42dbe597c5
+      sha256: 985597b3011178dd10671e426c5a52dab701c2222c81bdeed87277881fbaff56
       title: MACHINA.md
       value: |
         # betting: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -842,12 +842,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 8dcf4762569b237d8dea51213c1a3da61f83d4e6f3f2d2589f0b9c5632ee5f92
+      sha256: efcd73c544c108a63d38cecb04b1a507180e8915738529bbe77f508433843459
       title: MACHINA.md
       value: |
         # cbb-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -1519,12 +1519,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 8dedc1885589fc88fe4179d54c045ae4318dc8aaa654078ea4869d7947592b2f
+      sha256: f2f42a917264d7f207846302f436847972ca7d45382362febe00d0ac14469f56
       title: MACHINA.md
       value: |
         # cfb-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -1941,12 +1941,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 9736634f75c4c6cc903d6c1ab59cd14cd58df40855de3b1eb58115172f88b342
+      sha256: 0e94417ccb03de6a0b0bac56cb5bdf0d077a523f131b256b2380ecfccf896038
       title: MACHINA.md
       value: |
         # cricket-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -2135,12 +2135,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: afca07b643635f5318aafb69cc016699afdc60c2baf6797fe2f4c37373a50c2d
+      sha256: f684f574e1a3fbe9384bc8bf538c9bdbd3c16935eee330c522dc95e765385b53
       title: MACHINA.md
       value: |
         # esports: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -2612,12 +2612,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: d5bf2f77c8136df0578d4e59b5eb96a734798f588eacd454e9997808ad3e55c3
+      sha256: de8cdc0f125e89e962fbf89e560f4c8e3ff5a724bab667aa547756cfc6c8b513
       title: MACHINA.md
       value: |
         # fastf1: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -2685,6 +2685,7 @@ managed_skill_bundle:
           - get_head_to_head
           - get_match_forecast
           - get_missing_players
+          - get_player_game_log
           - get_player_profile
           - get_player_season_stats
           - get_season_leaders
@@ -2708,7 +2709,7 @@ managed_skill_bundle:
     - filename: SKILL.md
       filetype: markdown
       name: skill-guide
-      sha256: abab4c0dd86132a1a8b69394c06f324ef7c72b27974107667bc8bd8e39b9b481
+      sha256: 7b67f7f693edd369b53a143ae35d6bbe554dd2eba969475f1728597eb55e1f18
       title: SKILL.md
       value: |
         ---
@@ -2849,6 +2850,7 @@ managed_skill_bundle:
         | `get_missing_players` | Injured/doubtful players (Premier League only) |
         | `get_season_transfers` | Transfer history via Transfermarkt |
         | `get_player_season_stats` | Player season stats via ESPN |
+        | `get_player_game_log` | One player's dated matches in one league and season via ESPN (`league_slug` required) |
         | `get_player_profile` | Player profile (FPL and/or Transfermarkt) |
 
         See `references/api-reference.md` for full parameter lists, return shapes, and data coverage table.
@@ -2977,7 +2979,7 @@ managed_skill_bundle:
     - filename: references/api-reference.md
       filetype: markdown
       name: skill-reference
-      sha256: c5d0b36f74193f61b5378ca822c73ddd17866104529d83cf309df8f032080c4e
+      sha256: 38420eb7c9437cb587ada1b35a976a1605654ee8ed02c2ff994227b9159bbe26
       title: references/api-reference.md
       value: |
         # Football Data — API Reference
@@ -3258,6 +3260,16 @@ managed_skill_bundle:
         - `league_slug` (str, optional): sports-skills league slug (`serie-a-brazil`, `premier-league`, …) or ESPN code (`bra.1`, `eng.1`). Defaults to the Premier League.
 
         The gamelog only carries the player's most recent matches (about five), across competitions; filter by `event_id` against a schedule when you need one competition.
+
+        ### get_player_game_log
+        Get one player's matches in one league and season via ESPN's athlete gamelog (`site.web.api.espn.com/apis/common/v3/sports/soccer/{league}/athletes/{id}/gamelog`). Unlike `get_player_season_stats`, every row is dated and only the named league's matches are returned.
+        - `player_id` (str, required): ESPN athlete ID
+        - `league_slug` (str, required): sports-skills league slug (`premier-league`, …) or ESPN code (`usa.1`, `usa.nwsl`, `eng.w.1`). There is no default league.
+        - `season` (int, optional): Season year as ESPN files it (`2026` for MLS 2026, `2026` for the 2026-27 WSL). Without it, ESPN's season for that player is read first and then requested explicitly (two requests), because ESPN's unseasoned answer can be partial.
+        - `season_type` (str, optional): `regular` (default), `postseason` (conference or league playoffs), `preseason` or `all`. A cup inside a league's log (e.g. `2026 NWSL Challenge Cup`) has `season_type` `other` and appears only with `all`.
+        - `sort_by`, `descending`, `limit`, `fields` (optional): Row shaping, as in the other game logs.
+
+        Returns `games[]`, oldest first: `game_id`, `game_date`, `team_abbreviation`, `opponent`, `opponent_id`, `opponent_name`, `home_away`, `result` (`W`/`D`/`L`), `team_score`, `opponent_score`, `season_type`, `note`, and `stats` keyed by ESPN's stat names (`totalGoals`, `goalAssists`, `totalShots`, `shotsOnTarget`, `foulsCommitted`, `foulsSuffered`, `offsides`, `yellowCards`, `redCards`). Cavan Sullivan (384397) has 31 regular-season and 3 playoff rows in MLS 2025.
 
         ### get_player_profile
         Get player profile via FPL and/or Transfermarkt.
@@ -3682,12 +3694,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 2c5fe92af6494f6ddc70dde334cf74b3dd01e9c2b2b5bc64b50a3074c2cba45d
+      sha256: 687e610497cbe9855db8f232d4f289a4e40cc916f0c38ad83364e04bf4850c50
       title: MACHINA.md
       value: |
         # football-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -3722,7 +3734,7 @@ managed_skill_bundle:
 
         ## Allowed commands
 
-        - `football`: `get_competition_seasons`, `get_competitions`, `get_current_season`, `get_daily_schedule`, `get_event_lineups`, `get_event_players_statistics`, `get_event_statistics`, `get_event_summary`, `get_event_timeline`, `get_event_xg`, `get_head_to_head`, `get_match_forecast`, `get_missing_players`, `get_player_profile`, `get_player_season_stats`, `get_season_leaders`, `get_season_schedule`, `get_season_standings`, `get_season_teams`, `get_season_transfers`, `get_team_profile`, `get_team_schedule`, `get_team_strength`, `search_player`, `search_team`
+        - `football`: `get_competition_seasons`, `get_competitions`, `get_current_season`, `get_daily_schedule`, `get_event_lineups`, `get_event_players_statistics`, `get_event_statistics`, `get_event_summary`, `get_event_timeline`, `get_event_xg`, `get_head_to_head`, `get_match_forecast`, `get_missing_players`, `get_player_game_log`, `get_player_profile`, `get_player_season_stats`, `get_season_leaders`, `get_season_schedule`, `get_season_standings`, `get_season_teams`, `get_season_transfers`, `get_team_profile`, `get_team_schedule`, `get_team_strength`, `search_player`, `search_team`
 
         ## Limitations
 
@@ -4088,12 +4100,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 34d67ad37fdff12fcba44048b5787de45fe65b931e87aceb0b6b79f8d2fa98ff
+      sha256: 5c960a6df2ebd47ed9fb85ba900d63ca726fc70c12e44f18a8008a1266d1fe0b
       title: MACHINA.md
       value: |
         # golf-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -4596,12 +4608,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: de9d7457f046760c884c3a08d73969fbfa74078073a5553818787c93b9149101
+      sha256: e88a78e61d787c6485003c139e64630c05a989811c78ef0bef7fb821471d652b
       title: MACHINA.md
       value: |
         # kalshi: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -5021,12 +5033,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 7ea4a5c5aae2a55d60786a21cd06739df2dc6e01679098565f6bbce4be2ee288
+      sha256: baee788b49c82fa915b61c6466d118e87755d0cd78e6511efc6525141dd0f54d
       title: MACHINA.md
       value: |
         # markets: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -5270,12 +5282,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: b9a16e987f0969c2c7fe730caec871257b3124a3df3d12537dd262ea852a4b3e
+      sha256: 5a2d21dc0fd560abc4c11cff01e12ac63e8f589c5b45115c2a3d7384e74bd9ed
       title: MACHINA.md
       value: |
         # metadata: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -5817,12 +5829,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 21d5ad652d39b3d155afe199801bfea2b441bfb630e23bb38d06d4fbf3d57606
+      sha256: c1413eb0ccbcdb2eaf779ecafd0cc00592703474423ec90e66e6ce30203bec5e
       title: MACHINA.md
       value: |
         # mlb-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -5895,6 +5907,7 @@ managed_skill_bundle:
           - get_nbastats_team_stats
           - get_news
           - get_play_by_play
+          - get_player_game_log
           - get_player_live_stats
           - get_player_stats
           - get_schedule
@@ -5917,7 +5930,7 @@ managed_skill_bundle:
     - filename: SKILL.md
       filetype: markdown
       name: skill-guide
-      sha256: 79e67128138874cbb9cb4cdc75dd476babf350221825c2a43c19fa0324278174
+      sha256: 7543fb7d87ca279682fbc1fae344618840455e105849680b75baf8993a663996
       title: SKILL.md
       value: |
         ---
@@ -5997,6 +6010,7 @@ managed_skill_bundle:
         | `get_depth_chart` | Depth chart for a team |
         | `get_team_stats` | Team statistical profile |
         | `get_player_stats` | Player statistical profile |
+        | `get_player_game_log` | One player's games in a season via ESPN, by ESPN athlete id (opponent, home/away, result, stat line) |
         | `find_nba_player` | Search the NBA Stats player registry (all eras) |
         | `get_nbastats_game_log` | League game log via NBA Stats — history to 1946, carries NBA game ids. `player_or_team="player"` or `player=<name or id>` for player game logs |
         | `get_nbastats_player_career` | Career stats season by season via NBA Stats |
@@ -6161,7 +6175,7 @@ managed_skill_bundle:
     - filename: references/api-reference.md
       filetype: markdown
       name: skill-reference
-      sha256: 1e7de4811b66d435d47d379d6dde16fb08467e7314a550b49f0dec1c223fc9bf
+      sha256: bb06d0e928e70dfd1f235fe7c5869ddc6c2aec3eb89d2f586e32a3d31ede25d9
       title: references/api-reference.md
       value: |
         # NBA Data — API Reference
@@ -6281,6 +6295,15 @@ managed_skill_bundle:
         - `season_type` (int, optional): 1=preseason, 2=regular (default), 3=postseason.
 
         Returns `categories[]` with detailed stats including value, rank, and per-game averages.
+
+        ### get_player_game_log
+        Get one player's games in a season via ESPN's athlete gamelog (`site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/{id}/gamelog`, one request). Unlike `get_nbastats_game_log`, it takes the ESPN athlete id and does not read stats.nba.com.
+        - `player_id` (str, required): ESPN athlete ID. Find it with `get_team_roster`.
+        - `season` (int, optional): The year the season ends (`2025` for 2024-25). Defaults to current.
+        - `season_type` (str, optional): `regular` (default), `postseason`, `playin`, `preseason` or `all`. Play-in games are their own type, not regular-season games.
+        - `sort_by`, `descending`, `limit`, `fields` (optional): Row shaping (`sort_by` then `limit`; `fields` always keeps `game_id`, `game_date`, `team_abbreviation`, `opponent`). Stat keys are addressable directly. With any set, the response adds `total_rows` and `returned_rows`.
+
+        Returns `games[]`, oldest first: `game_id`, `game_date`, `team_abbreviation`, `opponent` (abbreviation), `opponent_id`, `opponent_name`, `home_away`, `result` (`W`/`L`), `team_score`, `opponent_score`, `season_type`, `note` (e.g. a playoff round), and `stats` keyed by ESPN's stat names (`points`, `totalRebounds`, `assists`, `minutes`, ...). An unknown `player_id` returns an error. Dyson Daniels (4869342) has 76 regular-season and 2 play-in rows in 2024-25.
 
         ### get_live_scoreboard
         Get real-time NBA scores from NBA CDN, with ESPN as a fallback. No parameters.
@@ -6410,12 +6433,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: e3fcbb61c5e0cc88e1b6f805b158ad02298e01e34ea7f36a6dedb12751f0ae40
+      sha256: 8837df0bcd2cafd3154e8f556d40e63812468015d17ffde26d8e9b8da2b69781
       title: MACHINA.md
       value: |
         # nba-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -6450,7 +6473,7 @@ managed_skill_bundle:
 
         ## Allowed commands
 
-        - `nba`: `find_nba_player`, `get_depth_chart`, `get_event_summary`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_live_boxscore`, `get_live_playbyplay`, `get_live_scoreboard`, `get_nbastats_advanced_boxscore`, `get_nbastats_game_log`, `get_nbastats_play_by_play`, `get_nbastats_player_career`, `get_nbastats_shot_chart`, `get_nbastats_team_stats`, `get_news`, `get_play_by_play`, `get_player_live_stats`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
+        - `nba`: `find_nba_player`, `get_depth_chart`, `get_event_summary`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_live_boxscore`, `get_live_playbyplay`, `get_live_scoreboard`, `get_nbastats_advanced_boxscore`, `get_nbastats_game_log`, `get_nbastats_play_by_play`, `get_nbastats_player_career`, `get_nbastats_shot_chart`, `get_nbastats_team_stats`, `get_news`, `get_play_by_play`, `get_player_game_log`, `get_player_live_stats`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
 
         ## Limitations
 
@@ -6483,6 +6506,7 @@ managed_skill_bundle:
           - get_nflverse_team_stats
           - get_nflverse_weekly_rosters
           - get_play_by_play
+          - get_player_game_log
           - get_player_stats
           - get_schedule
           - get_scoreboard
@@ -6504,7 +6528,7 @@ managed_skill_bundle:
     - filename: SKILL.md
       filetype: markdown
       name: skill-guide
-      sha256: cd4e9b336e7c071679e7270e8ad6b742e52657fd05dc4b8ee268fdca0b3fc6cf
+      sha256: 6dfec1f5d7f34b61c4e2235ab387f5212f8e0561aa21b573688f1d4790c24b9d
       title: SKILL.md
       value: |
         ---
@@ -6601,6 +6625,7 @@ managed_skill_bundle:
         | `get_depth_chart` | Depth chart for a team |
         | `get_team_stats` | Team statistical profile |
         | `get_player_stats` | Player statistical profile |
+        | `get_player_game_log` | One player's games in a season via ESPN, by ESPN athlete id (opponent, home/away, result, stat line) |
         | `get_nflverse_schedule` | nflverse-backed schedules/results table (carries `espn_event_id`) |
         | `get_nflverse_weekly_rosters` | nflverse-backed weekly rosters |
         | `get_nflverse_player_stats` | nflverse-backed player stats — season totals by default |
@@ -6806,7 +6831,7 @@ managed_skill_bundle:
     - filename: references/api-reference.md
       filetype: markdown
       name: skill-reference
-      sha256: 59a8e2350f56d2aa3a1bdaf4f8fc7cb9cf2773faa2436b60261023876da45989
+      sha256: 3b04198afb1453df584affd23b31108a56acf8fa5f40d6fb673362ca373470e2
       title: references/api-reference.md
       value: |
         # NFL Data — API Reference
@@ -6945,6 +6970,15 @@ managed_skill_bundle:
         - `season_type` (int, optional): 1=preseason, 2=regular (default), 3=postseason.
 
         Returns `categories[]` with detailed stats including value, rank, and per-game averages.
+
+        ### get_player_game_log
+        Get one player's games in a season via ESPN's athlete gamelog (`site.web.api.espn.com/apis/common/v3/sports/football/nfl/athletes/{id}/gamelog`, one request).
+        - `player_id` (str, required): ESPN athlete ID. Find it with `get_team_roster`.
+        - `season` (int, optional): Season year (`2024` for the 2024 season and its playoffs). Defaults to current.
+        - `season_type` (str, optional): `regular` (default), `postseason`, `preseason` or `all`.
+        - `sort_by`, `descending`, `limit`, `fields` (optional): Row shaping (`sort_by` then `limit`; `fields` always keeps `game_id`, `game_date`, `team_abbreviation`, `opponent`). Stat keys are addressable directly. With any set, the response adds `total_rows` and `returned_rows`.
+
+        Returns `games[]`, oldest first: `game_id`, `game_date`, `team_abbreviation`, `opponent`, `opponent_id`, `opponent_name`, `home_away`, `result`, `team_score`, `opponent_score`, `season_type`, `note` (e.g. `Super Bowl LIX`), and `stats` keyed by ESPN's stat names (`passingYards`, `rushingYards`, `receivingYards`, ...), which differ by position. Patrick Mahomes (3139477) has 16 regular-season and 3 playoff rows in 2024.
 
         ### get_nflverse_schedule
         Get schedules/results through the nflverse backend.
@@ -7160,12 +7194,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 8a67f0f81134c0fc55e5b995348a630b076b279fee2c16bab857671fc8b87765
+      sha256: f9c58a954b846ae8adee21806da863d3271984d6562dc125e3147bd7e08a64c0
       title: MACHINA.md
       value: |
         # nfl-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -7200,7 +7234,7 @@ managed_skill_bundle:
 
         ## Allowed commands
 
-        - `nfl`: `get_depth_chart`, `get_fantasy_trending`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_news`, `get_nflverse_play_by_play`, `get_nflverse_player_stats`, `get_nflverse_schedule`, `get_nflverse_team_stats`, `get_nflverse_weekly_rosters`, `get_play_by_play`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
+        - `nfl`: `get_depth_chart`, `get_fantasy_trending`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_news`, `get_nflverse_play_by_play`, `get_nflverse_player_stats`, `get_nflverse_schedule`, `get_nflverse_team_stats`, `get_nflverse_weekly_rosters`, `get_play_by_play`, `get_player_game_log`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
 
         ## Limitations
 
@@ -7657,12 +7691,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: fc297ae8f017c99fa794743f3360ab2537e07ca79cc0bbb1cb2ee6f799541795
+      sha256: 4a61f0f65a506a61fe5fd595ddeab3889bf59b433fb72efe00887f669934e587
       title: MACHINA.md
       value: |
         # nhl-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -8108,12 +8142,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 42465222649ac7ee81b45bd9591b96143857bb66a22e87fab69a2c903bd4b167
+      sha256: ecf612226fe8a3cbd3f643a8a6afddf2aa367301c61c5f542a5930f8c101fc26
       title: MACHINA.md
       value: |
         # polymarket: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -8386,12 +8420,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: f5269d89f5aa75fb0f540d17032fb6c2ead7a160734ee5e9dd5e11b15a469b21
+      sha256: b52a0fd954aa97a89969365d667766f51f4064b716bd3eabf0062a1ac577f9e5
       title: MACHINA.md
       value: |
         # prophetx: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -8681,12 +8715,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 287a445f882f3b4c512b299f57ead46c78e382940a501c8a9a91b8aca533c9b8
+      sha256: 5c8d101bef671e4161d8f1c0a08a6b9ca786374404a703d6bed1c2c029fba2a5
       title: MACHINA.md
       value: |
         # sports-news: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -9838,12 +9872,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: b47972b54dcbf3e129d939bc568da90b66626246506d733c7e90bbd60fe5e1e6
+      sha256: a7d42cfb1af8d463c580d66073bc5891f6aa1dc229e558748cbba71f8398c600
       title: MACHINA.md
       value: |
         # sports-reporter: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -9878,9 +9912,9 @@ managed_skill_bundle:
 
         ## Allowed commands
 
-        - `football`: `get_competition_seasons`, `get_competitions`, `get_current_season`, `get_daily_schedule`, `get_event_lineups`, `get_event_players_statistics`, `get_event_statistics`, `get_event_summary`, `get_event_timeline`, `get_event_xg`, `get_head_to_head`, `get_match_forecast`, `get_missing_players`, `get_player_profile`, `get_player_season_stats`, `get_season_leaders`, `get_season_schedule`, `get_season_standings`, `get_season_teams`, `get_season_transfers`, `get_team_profile`, `get_team_schedule`, `get_team_strength`, `search_player`, `search_team`
-        - `nfl`: `get_depth_chart`, `get_fantasy_trending`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_news`, `get_nflverse_play_by_play`, `get_nflverse_player_stats`, `get_nflverse_schedule`, `get_nflverse_team_stats`, `get_nflverse_weekly_rosters`, `get_play_by_play`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
-        - `nba`: `find_nba_player`, `get_depth_chart`, `get_event_summary`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_live_boxscore`, `get_live_playbyplay`, `get_live_scoreboard`, `get_nbastats_advanced_boxscore`, `get_nbastats_game_log`, `get_nbastats_play_by_play`, `get_nbastats_player_career`, `get_nbastats_shot_chart`, `get_nbastats_team_stats`, `get_news`, `get_play_by_play`, `get_player_live_stats`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
+        - `football`: `get_competition_seasons`, `get_competitions`, `get_current_season`, `get_daily_schedule`, `get_event_lineups`, `get_event_players_statistics`, `get_event_statistics`, `get_event_summary`, `get_event_timeline`, `get_event_xg`, `get_head_to_head`, `get_match_forecast`, `get_missing_players`, `get_player_game_log`, `get_player_profile`, `get_player_season_stats`, `get_season_leaders`, `get_season_schedule`, `get_season_standings`, `get_season_teams`, `get_season_transfers`, `get_team_profile`, `get_team_schedule`, `get_team_strength`, `search_player`, `search_team`
+        - `nfl`: `get_depth_chart`, `get_fantasy_trending`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_news`, `get_nflverse_play_by_play`, `get_nflverse_player_stats`, `get_nflverse_schedule`, `get_nflverse_team_stats`, `get_nflverse_weekly_rosters`, `get_play_by_play`, `get_player_game_log`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
+        - `nba`: `find_nba_player`, `get_depth_chart`, `get_event_summary`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_live_boxscore`, `get_live_playbyplay`, `get_live_scoreboard`, `get_nbastats_advanced_boxscore`, `get_nbastats_game_log`, `get_nbastats_play_by_play`, `get_nbastats_player_career`, `get_nbastats_shot_chart`, `get_nbastats_team_stats`, `get_news`, `get_play_by_play`, `get_player_game_log`, `get_player_live_stats`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
         - `wnba`: `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_news`, `get_play_by_play`, `get_player_game_log`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
         - `nhl`: `find_nhl_player`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_news`, `get_nhlstats_boxscore`, `get_nhlstats_leaders`, `get_nhlstats_play_by_play`, `get_nhlstats_player_game_log`, `get_nhlstats_player_stats`, `get_nhlstats_schedule`, `get_nhlstats_standings`, `get_play_by_play`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`
         - `mlb`: `find_mlb_player`, `get_depth_chart`, `get_futures`, `get_game_summary`, `get_injuries`, `get_leaders`, `get_mlbstats_boxscore`, `get_mlbstats_leaders`, `get_mlbstats_play_by_play`, `get_mlbstats_player_stats`, `get_mlbstats_schedule`, `get_mlbstats_standings`, `get_news`, `get_play_by_play`, `get_player_stats`, `get_schedule`, `get_scoreboard`, `get_standings`, `get_team_roster`, `get_team_schedule`, `get_team_stats`, `get_teams`, `get_transactions`, `get_win_probability`
@@ -10301,12 +10335,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 4e864a09ee55071d2a8a84f6a4c7bd984da061693dc9283408b3862edf250e83
+      sha256: f2b32104ab876b023abda895bf29ca74e5320a7741a3f7b8bbe3820840d4c0e8
       title: MACHINA.md
       value: |
         # tennis-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -10739,12 +10773,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 3464e8a6c880a2c798d841463f4561e3d47dd412b5af4eaed116051380d1c75c
+      sha256: aca4286c3c14deab5c332dc947c5d3ddb101773031c6dd012c4af0f1dc259074
       title: MACHINA.md
       value: |
         # volleyball-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -11186,12 +11220,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: 6f4eb6342f293cd3cb823e301d6142d1c11a794ebe0c422fb3b897a3258db0d4
+      sha256: 1045d5a70f680c8729ee0a66e66c0bf41a83591defe9c58fb3890e7a9739e3e2
       title: MACHINA.md
       value: |
         # wnba-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -11762,12 +11796,12 @@ managed_skill_bundle:
     - filename: MACHINA.md
       filetype: markdown
       name: machina-runtime-notes
-      sha256: cfc1c6eced047b4516b96be9ff14fce6827029e6ba10da51886881f3b706f0f4
+      sha256: 50e761a434f46dc2b52711a693622b917b85c9683fafc8df8238de5f0b050e0c
       title: MACHINA.md
       value: |
         # xctf-data: Machina runtime notes
 
-        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `992a4f3bac2bf12b715e658f39cfe7c2f96ad782` for runtime package sports-skills 0.40.7. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
+        Managed instruction package from bundle `sports-skills-readonly` 1.0.0, imported from machina-sports/sports-skills at `cfbba14789593d1af586596bce90f43c910d3105` for runtime package sports-skills 0.40.8. Read SKILL.md and its references first; they are documents of this skill, not files in the container.
 
         ## Requesting data
 
@@ -11815,9 +11849,9 @@ managed_skill_bundle:
     name: xctf-data
   runtime:
     package: sports-skills
-    version: 0.40.7
+    version: 0.40.8
   schema_version: 1
   source:
     repository: https://github.com/machina-sports/sports-skills
-    revision: 992a4f3bac2bf12b715e658f39cfe7c2f96ad782
+    revision: cfbba14789593d1af586596bce90f43c910d3105
   version: 1.0.0

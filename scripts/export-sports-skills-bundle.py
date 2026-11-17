@@ -30,7 +30,7 @@ BUNDLE_ID = "sports-skills-readonly"
 BUNDLE_VERSION = "1.0.0"
 SOURCE_REPOSITORY = "https://github.com/machina-sports/sports-skills"
 RUNTIME_PACKAGE = "sports-skills"
-RUNTIME_VERSION = "0.40.7"
+RUNTIME_VERSION = "0.40.8"
 MAX_REQUESTS = 4
 
 ALLOWED_CATALOG_MODES = {"read_only", "compute"}
