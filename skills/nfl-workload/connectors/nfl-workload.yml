@@ -29,9 +29,11 @@ connector:
     player on one team, taking team + player_name plus OPTIONAL season + week; resolves the team through
     get_teams() first (abbreviation/id/name/nickname, plus nflverse aliases LA/WAS/OAK/SD/STL), then narrows
     the league-wide get_injuries() feed to that team before matching any name, so a same-surname player
-    on another roster cannot answer for this one. The injury feed is partial coverage, not injured-only
-    - players appear on it carrying status ''Active'' - so injury_listed and on_depth_chart flags say
-    which source actually spoke and a null status is never a claim of health. TEMPORAL SCOPE: ESPN serves
+    on another roster cannot answer for this one. The injury feed lists reported injuries only
+    (sports-skills 0.40.6 and later leave out players ESPN lists as ''Active''; older versions passed
+    them through), so injury_listed and on_depth_chart say which source actually spoke, injury_report
+    {team_listed, entries} says whether the feed covered the team at all, and a null status means no
+    injury is reported - never a claim of health. TEMPORAL SCOPE: ESPN serves
     present state only, so when season and week are supplied get_player_context checks them against the
     live coordinate from get_scoreboard() (season.type 2 is the regular season and carries a fantasy week;
     type 1 preseason and 3+ postseason carry none) and returns a soft miss with reason ''historical''
