@@ -173,3 +173,97 @@ def test_traded_player_result_enforces_every_advertised_assertion(case, changes)
     }
     assert not all(advertised.values()), case
     assert evaluate_output(workflow, "result", state) == "FAIL", case
+
+
+# ---------------------------------------------------------------------------
+# get_player_context against a fake sports_skills.nfl (no network, no install)
+# ---------------------------------------------------------------------------
+
+import importlib.util  # noqa: E402
+import sys  # noqa: E402
+import types  # noqa: E402
+
+_CONNECTOR_SPEC = importlib.util.spec_from_file_location(
+    "nfl_workload_connector", PACKAGE / "connectors" / "nfl-workload.py"
+)
+CONNECTOR = importlib.util.module_from_spec(_CONNECTOR_SPEC)
+_CONNECTOR_SPEC.loader.exec_module(CONNECTOR)
+
+TEAMS = {"teams": [
+    {"id": "8", "name": "Synthetic Lions", "abbreviation": "SYL", "nickname": "Lions", "location": "Synthetic"},
+    {"id": "9", "name": "Synthetic Bears", "abbreviation": "SYB", "nickname": "Bears", "location": "Synthetic"},
+]}
+DEPTH = {"charts": [{"name": "3WR 1TE", "positions": [{"abbreviation": "QB", "name": "Quarterback", "athletes": [
+    {"id": "100", "name": "Healthy Starter", "depth": 1}, {"id": "101", "name": "Hurt Backup", "depth": 2}]}]}]}
+# sports-skills 0.40.6+ shape: reported injuries only, no "Active" rows, `type` is the injury.
+INJURED_ONLY = {"teams": [{"team_id": "8", "team": "Synthetic Lions", "injuries": [
+    {"name": "Hurt Backup", "status": "Out", "type": "Wrist", "detail": "Not Specified", "side": "Left",
+     "return_date": "2026-12-20"}]}]}
+
+
+def player_context(monkeypatch, injuries, player="Healthy Starter", team="SYL"):
+    ok = lambda data: {"status": True, "data": data, "message": ""}  # noqa: E731
+    nfl = types.SimpleNamespace(
+        get_teams=lambda: ok(TEAMS),
+        get_depth_chart=lambda team_id: ok(DEPTH),
+        get_injuries=lambda: injuries if "status" in injuries else ok(injuries),
+    )
+    package = types.ModuleType("sports_skills")
+    package.nfl = nfl
+    monkeypatch.setitem(sys.modules, "sports_skills", package)
+    monkeypatch.setitem(sys.modules, "sports_skills.nfl", nfl)
+    reply = CONNECTOR.get_player_context({"params": {"team": team, "player_name": player}})
+    assert reply["status"] is True, reply
+    return reply["data"]
+
+
+def test_player_missing_from_an_injured_only_report_is_not_listed_on_a_covered_team(monkeypatch):
+    data = player_context(monkeypatch, INJURED_ONLY)
+    assert (data["reason"], data["on_depth_chart"], data["injury_listed"]) == ("matched", True, False)
+    assert data["injury_status"] is None, "absence is never turned into an Active status"
+    assert data["injury_report"] == {"team_listed": True, "entries": 1}
+
+
+def test_reported_injury_passes_through_with_the_report_scope(monkeypatch):
+    data = player_context(monkeypatch, INJURED_ONLY, player="Hurt Backup")
+    assert data["injury_listed"] is True
+    assert (data["injury_status"]["status"], data["injury_status"]["type"]) == ("Out", "Wrist")
+    assert data["injury_report"] == {"team_listed": True, "entries": 1}
+
+
+def test_team_without_a_block_in_the_feed_is_reported_as_not_covered(monkeypatch):
+    other_team_only = {"teams": [{"team_id": "9", "team": "Synthetic Bears", "injuries": [
+        {"name": "Healthy Starter", "status": "Out", "type": "Knee"}]}]}
+    data = player_context(monkeypatch, other_team_only)
+    assert data["injury_listed"] is False, "another team's entry never answers for this one"
+    assert data["injury_report"] == {"team_listed": False, "entries": 0}
+
+
+def test_older_feed_with_active_rows_still_reports_the_explicit_status(monkeypatch):
+    legacy = {"teams": [{"team_id": "8", "team": "Synthetic Lions", "injuries": [
+        {"name": "Healthy Starter", "status": "Active", "type": "active"}]}]}
+    data = player_context(monkeypatch, legacy)
+    assert (data["injury_listed"], data["injury_status"]["status"]) == (True, "Active")
+    assert data["injury_report"] == {"team_listed": True, "entries": 1}
+
+
+def test_failed_injury_feed_carries_no_report_scope(monkeypatch):
+    data = player_context(monkeypatch, {"status": False, "data": None, "message": "HTTP 503"})
+    assert "injury_report" not in data
+    assert "HTTP 503" in data["degraded"]["injury_error"]
+    assert (data["on_depth_chart"], data["injury_listed"]) == (True, False)
+
+
+def test_player_not_found_still_reports_the_report_scope(monkeypatch):
+    data = player_context(monkeypatch, INJURED_ONLY, player="Nobody Atall")
+    assert data["reason"] == "not_found"
+    assert data["injury_report"] == {"team_listed": True, "entries": 1}
+
+
+def test_fantasy_prompt_reads_the_report_scope_and_never_requires_an_explicit_active():
+    prompt = load_yaml(PACKAGE / "prompts" / "fantasy-explain-prompt.yml")
+    text = yaml.safe_dump(prompt)
+    assert text.count("injury_report.team_listed") >= 4
+    assert "not on the injury report" in text
+    assert "the other an explicit Active, use" not in text
+    assert "other's carries an explicit Active" not in text

@@ -1282,20 +1282,31 @@ def _depth_chart_entries(nfl, team):
 def _team_injuries(nfl, team):
     """The resolved team's injury block out of the league-wide feed.
 
-    Returns (injuries, error). team_id is authoritative; the normalized team
-    name is the fallback for a block that arrives without one.
+    Returns (injuries, error, team_listed). team_id is authoritative; the
+    normalized team name is the fallback for a block that arrives without one.
+    team_listed says whether the feed carried a block for this team at all.
 
-    Coverage is PARTIAL, not injured-only. Measured 2026-08-06 against CIN
-    (97 depth-chart entries, 25 injury entries): Chase, Higgins, Iosivas and
-    Charlie Jones all appear carrying status "Active", while Tinsley does not
-    appear at all. Presence here therefore does not mean a player is hurt,
-    and absence does not mean he is healthy - it means the feed does not
-    cover him. An empty list likewise means this team has no block in the
-    feed, not that the roster is fully fit. The caller reports it as such.
+    What the feed holds depends on the sports-skills version behind it:
+
+      - Up to 0.40.5 it passed ESPN's feed through, cleared players included.
+        Measured 2026-08-06 against CIN (97 depth-chart entries, 25 injury
+        entries): Chase, Higgins, Iosivas and Charlie Jones all appeared
+        carrying status "Active", while Tinsley did not appear at all.
+      - From 0.40.6 it leaves out every player ESPN lists as "Active".
+        Measured 2026-11-16 on 0.40.7: 195 league-wide entries against 800 on
+        0.40.0, of which 605 were "Active"; Detroit went from 25 entries to 6.
+        `type` also changed, from a copy of the status ("out") to the injury
+        itself ("Wrist").
+
+    So on a current library the block is the team's reported injuries and
+    nothing else, and a player missing from it has no injury reported - which
+    is still not a statement that he will play. A team with no block
+    (team_listed False) was not covered by the feed at all: that says nothing
+    about its players. The caller reports both as such.
     """
     data, err = _espn_data(nfl.get_injuries(), "get_injuries")
     if err:
-        return None, err
+        return None, err, False
 
     blocks = data.get("teams") or []
     team_id = str(team.get("id") or "")
@@ -1313,9 +1324,9 @@ def _team_injuries(nfl, team):
                 block = candidate
                 break
     if block is None:
-        return [], None
+        return [], None, False
 
-    return block.get("injuries") or [], None
+    return block.get("injuries") or [], None, True
 
 
 def _depth_label(entry):
@@ -1337,7 +1348,9 @@ def _shallowest(row):
     return -depth if isinstance(depth, int) else -999
 
 
-def _context_envelope(team, stopgap_note, depth_err, injury_err, week_check=None):
+def _context_envelope(
+    team, stopgap_note, depth_err, injury_err, week_check=None, injury_report=None
+):
     """Fields every get_player_context response carries, hit or miss.
 
     Held in one place so a soft miss reports the same team, provenance and
@@ -1348,6 +1361,11 @@ def _context_envelope(team, stopgap_note, depth_err, injury_err, week_check=None
     in verbatim when the caller supplied season/week. Omitted entirely
     otherwise, so a caller who does not ask for a temporal check sees exactly
     the payload this command has always returned.
+
+    `injury_report` says what the injury feed held for this team -
+    {"team_listed": bool, "entries": int} - and is present whenever the feed
+    answered. It is what lets a reader tell "not on this team's injury report"
+    (team_listed True) from "the feed did not cover this team" (False).
     """
     envelope = {
         "team": {
@@ -1384,6 +1402,9 @@ def _context_envelope(team, stopgap_note, depth_err, injury_err, week_check=None
 
     if week_check:
         envelope.update(week_check)
+
+    if injury_report is not None:
+        envelope["injury_report"] = injury_report
 
     return envelope
 
@@ -2522,7 +2543,12 @@ def get_player_context(request_data):
             week_check = None
 
         depth_entries, depth_err = _depth_chart_entries(nfl, team)
-        injuries, injury_err = _team_injuries(nfl, team)
+        injuries, injury_err, team_listed = _team_injuries(nfl, team)
+        injury_report = (
+            None
+            if injuries is None
+            else {"team_listed": team_listed, "entries": len(injuries)}
+        )
 
         # Both upstreams failing is an outage, not a missing player. Reporting
         # "not found" here would assert an absence never actually observed.
@@ -2562,7 +2588,12 @@ def get_player_context(request_data):
                     "status": True,
                     "data": dict(
                         _context_envelope(
-                            team, stopgap_note, depth_err, injury_err, week_check
+                            team,
+                            stopgap_note,
+                            depth_err,
+                            injury_err,
+                            week_check,
+                            injury_report,
                         ),
                         depth_chart_role=None,
                         injury_status=None,
@@ -2591,7 +2622,12 @@ def get_player_context(request_data):
                 "status": True,
                 "data": dict(
                     _context_envelope(
-                        team, stopgap_note, depth_err, injury_err, week_check
+                        team,
+                        stopgap_note,
+                        depth_err,
+                        injury_err,
+                        week_check,
+                        injury_report,
                     ),
                     depth_chart_role=None,
                     injury_status=None,
@@ -2616,7 +2652,7 @@ def get_player_context(request_data):
 
         data = dict(
             _context_envelope(
-                team, stopgap_note, depth_err, injury_err, week_check
+                team, stopgap_note, depth_err, injury_err, week_check, injury_report
             ),
             depth_chart_role=(
                 {
@@ -2645,10 +2681,11 @@ def get_player_context(request_data):
             ),
             query=player_name,
             # A player absent from the injury feed is not an affirmatively
-            # healthy one: coverage is partial rather than injured-only (see
-            # _team_injuries), so absence means the feed does not cover him.
-            # These flags say which source actually spoke, so a null above is
-            # never read as a fact.
+            # healthy one. On a current sports-skills the feed lists reported
+            # injuries only (see _team_injuries), so absence means no injury is
+            # reported for him - and only when injury_report.team_listed says
+            # the feed covered his team. These flags say which source actually
+            # spoke, so a null above is never read as a fact.
             on_depth_chart=depth_row is not None,
             injury_listed=injury_row is not None,
             reason="matched",
