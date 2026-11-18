@@ -1,0 +1,123 @@
+workflow:
+
+  # arquibancada-player-dossier
+  name: "arquibancada-player-dossier"
+  title: "Arquibancada - Player Dossier"
+  description: "Season stats per competition, the club's last matches with the player's minutes and rating, trophies and sidelined history for one API-Football player."
+  context-variables:
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    player: "$.get('player')"
+    season: "$.get('season')"
+    last: "$.get('last') or 12"
+  outputs:
+    player: "$.get('player-info', {})"
+    statistics: "$.get('statistics', [])"
+    club_team_id: "$.get('club-team-id')"
+    fixtures: "$.get('fixture-list', [])"
+    match_stats: "$.get('match-stats', [])"
+    trophies: "$.get('trophies', [])"
+    sidelined: "$.get('sidelined', [])"
+    errors: "$.get('provider-errors', [])"
+    workflow-status: "'executed' if $.get('player-info') else 'failed'"
+  tasks:
+
+    # season statistics (all competitions, club and national team)
+    - type: "connector"
+      name: "api-football-get-player"
+      description: "Player profile and season statistics."
+      connector:
+        name: "api-football"
+        command: "get-players"
+      inputs:
+        id: "$.get('player')"
+        season: "$.get('season')"
+      outputs:
+        player-info: "(($.get('response') or [{}])[0] or {}).get('player', {}) if isinstance($.get('response'), list) and $.get('response') else {}"
+        statistics: "(($.get('response') or [{}])[0] or {}).get('statistics', []) if isinstance($.get('response'), list) and $.get('response') else []"
+        club-team-id: |
+          (sorted(
+            [s for s in ((($.get('response') or [{}])[0] or {}).get('statistics') or [])
+             if (s.get('team') or {}).get('id')
+             and (s.get('team') or {}).get('name') != ((($.get('response') or [{}])[0] or {}).get('player') or {}).get('nationality')],
+            key=lambda s: -((s.get('games') or {}).get('minutes') or 0)
+          ) or [{}])[0].get('team', {}).get('id') if isinstance($.get('response'), list) and $.get('response') else None
+        provider-errors: "{str(key)[:100]: str(value)[:500] for key, value in list($.get('errors', {}).items())[:20]} if isinstance($.get('errors'), dict) else []"
+
+    # the club's last matches
+    - type: "connector"
+      name: "api-football-get-club-fixtures"
+      description: "Last fixtures of the player's club."
+      condition: "$.get('club-team-id') is not None"
+      connector:
+        name: "api-football"
+        command: "get-fixtures"
+      inputs:
+        team: "$.get('club-team-id')"
+        last: "$.get('last')"
+      outputs:
+        fixture-list: |
+          [
+            {
+              'id': (f.get('fixture') or {}).get('id'),
+              'date': (f.get('fixture') or {}).get('date'),
+              'league': (f.get('league') or {}).get('name'),
+              'home': ((f.get('teams') or {}).get('home') or {}).get('name'),
+              'away': ((f.get('teams') or {}).get('away') or {}).get('name'),
+              'goals_home': (f.get('goals') or {}).get('home'),
+              'goals_away': (f.get('goals') or {}).get('away')
+            }
+            for f in ($.get('response') or [])
+          ] if isinstance($.get('response'), list) else []
+
+    # the player's line in each of those matches
+    - type: "connector"
+      name: "api-football-get-fixture-players"
+      description: "Player statistics in each of the club's last fixtures."
+      condition: "len($.get('fixture-list', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: "api-football"
+        command: "get-fixtures/players"
+      foreach:
+        name: fixture_item
+        expr: $
+        value: $.get('fixture-list', [])
+      inputs:
+        fixture: "$.get('fixture_item', {}).get('id')"
+        team: "$.get('club-team-id')"
+      outputs:
+        match-stats: |
+          [
+            {
+              'fixture': $.get('fixture_item', {}).get('id'),
+              'games': (p.get('statistics') or [{}])[0].get('games', {})
+            }
+            for b in ($.get('response') or []) for p in (b.get('players') or [])
+            if (p.get('player') or {}).get('id') == $.get('player')
+          ]
+
+    - type: "connector"
+      name: "api-football-get-trophies"
+      description: "Trophies won by the player."
+      continue_on_error: true
+      connector:
+        name: "api-football"
+        command: "get-trophies"
+      inputs:
+        player: "$.get('player')"
+      outputs:
+        trophies: "[{'league': t.get('league'), 'country': t.get('country'), 'season': t.get('season'), 'place': t.get('place')} for t in ($.get('response') or [])] if isinstance($.get('response'), list) else []"
+
+    - type: "connector"
+      name: "api-football-get-sidelined"
+      description: "Sidelined (injury/suspension) history of the player."
+      continue_on_error: true
+      connector:
+        name: "api-football"
+        command: "get-sidelined"
+      inputs:
+        player: "$.get('player')"
+      outputs:
+        sidelined: "[{'type': s.get('type'), 'start': s.get('start'), 'end': s.get('end')} for s in ($.get('response') or [])] if isinstance($.get('response'), list) else []"

@@ -1,0 +1,23 @@
+setup:
+  title: "Arquibancada - Player Dossier"
+  description: "API-Football player search and player dossier (season stats, match-by-match ratings, trophies and sidelined history) for the Arquibancada fan magazine."
+  category:
+    - custom-templates
+    - football
+  estimatedTime: 1 minute
+  features:
+    - "Search API-Football player profiles by name."
+    - "One call returns season stats per competition, the club's last matches with the player's minutes and rating, trophies and sidelined history."
+  integrations:
+    - api-football
+  status: available
+  value: "agent-templates/arquibancada"
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "../../connectors/api-football/api-football.yml"
+  - type: "workflow"
+    path: "workflows/player-search.yml"
+  - type: "workflow"
+    path: "workflows/player-dossier.yml"
