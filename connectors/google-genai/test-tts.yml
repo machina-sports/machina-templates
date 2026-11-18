@@ -1,7 +1,7 @@
 workflow:
   name: "google-genai-test-tts"
   title: "Google Gemini Test TTS"
-  description: "Workflow to test Gemini Text-to-Speech. Generates audio from text using Gemini TTS models."
+  description: "Workflow to test Gemini Text-to-Speech. Generates audio from text using Gemini TTS models (gemini-2.5-flash-tts by default; also gemini-3.8-flash-tts and gemini-3.8-flash-lite-tts)."
   context-variables:
     debugger:
       enabled: true
@@ -18,6 +18,7 @@ workflow:
     model_id: "$.get('model_id', 'gemini-2.5-flash-tts')"
     language_code: "$.get('language_code', 'en-us')"
     prompt: "$.get('prompt')"
+    provider: "$.get('provider', 'vertex_ai')"
   outputs:
     audio_url: "$.get('uploaded_audio_url')"
     workflow-status: "$.get('workflow-status', 'skipped')"
@@ -36,6 +37,7 @@ workflow:
         model_id: "$.get('model_id', 'gemini-2.5-flash-tts')"
         language_code: "$.get('language_code', 'en-us')"
         prompt: "$.get('prompt')"
+        provider: "$.get('provider', 'vertex_ai')"
       outputs:
         data: "$"
         full_filepath: "$.get('file_path')"
