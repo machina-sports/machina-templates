@@ -450,6 +450,122 @@
   }
  },
  "paths": {
+  "/trophies": {
+   "get": {
+    "summary": "Get trophies",
+    "description": "Trophies won by a player or coach (filter by player/players or coach/coachs).",
+    "operationId": "get-trophies",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "player",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "players",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "coach",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "coachs",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApiResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/sidelined": {
+   "get": {
+    "summary": "Get sidelined history",
+    "description": "Injury and suspension history (sidelined periods) of a player or coach.",
+    "operationId": "get-sidelined",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "player",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "players",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "coach",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "coachs",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApiResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/leagues": {
    "get": {
     "summary": "Get leagues",

@@ -1,0 +1,41 @@
+workflow:
+
+  # arquibancada-player-search
+  name: "arquibancada-player-search"
+  title: "Arquibancada - Player Search"
+  description: "Search API-Football player profiles by name (letters, digits and spaces only; at least 3 characters)."
+  context-variables:
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    search: "$.get('search')"
+  outputs:
+    players: "$.get('players', [])"
+    errors: "$.get('provider-errors', [])"
+    workflow-status: "'executed' if not $.get('provider-errors', []) else 'failed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-football-players-profiles"
+      description: "Search player profiles."
+      connector:
+        name: "api-football"
+        command: "get-players/profiles"
+      inputs:
+        search: "$.get('search')"
+      outputs:
+        players: |
+          [
+            {
+              'id': (r.get('player') or {}).get('id'),
+              'name': (r.get('player') or {}).get('name'),
+              'firstname': (r.get('player') or {}).get('firstname'),
+              'lastname': (r.get('player') or {}).get('lastname'),
+              'nationality': (r.get('player') or {}).get('nationality'),
+              'age': (r.get('player') or {}).get('age'),
+              'position': (r.get('player') or {}).get('position'),
+              'photo': (r.get('player') or {}).get('photo')
+            }
+            for r in ($.get('response') or [])[:25]
+          ] if isinstance($.get('response'), list) else []
+        provider-errors: "{str(key)[:100]: str(value)[:500] for key, value in list($.get('errors', {}).items())[:20]} if isinstance($.get('errors'), dict) else [str(item)[:500] for item in $.get('errors', [])[:20]] if isinstance($.get('errors'), list) else []"
