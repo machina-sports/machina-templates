@@ -16,11 +16,15 @@ workflow:
     statistics: "$.get('statistics', [])"
     club_team_id: "$.get('club-team-id')"
     fixtures: "$.get('fixture-list', [])"
-    match_stats: "$.get('match-stats', [])"
+    match_stats: |
+      [
+        {'fixture': int(x.get('fixture')) if str(x.get('fixture') or '').isdigit() else x.get('fixture'), 'games': pl.get('games', {})}
+        for x in ($.get('fixture-players') or []) for pl in (x.get('players') or [])
+        if str(pl.get('id')) == str($.get('player'))
+      ]
     trophies: "$.get('trophies', [])"
     sidelined: "$.get('sidelined', [])"
     errors: "$.get('provider-errors', [])"
-    debug_fp: "$.get('debug-fp')"
     workflow-status: "'executed' if $.get('player-info') else 'failed'"
   tasks:
 
@@ -89,15 +93,17 @@ workflow:
         fixture: "$.get('fixture_item', {}).get('id')"
         team: "$.get('club-team-id')"
       outputs:
-        debug-fp: "[{'fixture': $.get('fixture_item', {}).get('id'), 'blocks': len($.get('response') or []), 'player_ctx': $.get('player'), 'ids': [(p.get('player') or {}).get('id') for b in ($.get('response') or []) for p in (b.get('players') or [])][:3]}]"
-        match-stats: |
+        # Task outputs only see the connector response, so keep a compact list per fixture
+        # (API-Football echoes the fixture id in `parameters`) and filter by player in the workflow outputs.
+        fixture-players: |
           [
             {
-              'fixture': $.get('fixture_item', {}).get('id'),
-              'games': (p.get('statistics') or [{}])[0].get('games', {})
+              'fixture': ($.get('parameters') or {}).get('fixture'),
+              'players': [
+                {'id': (p.get('player') or {}).get('id'), 'games': (p.get('statistics') or [{}])[0].get('games', {})}
+                for b in ($.get('response') or []) for p in (b.get('players') or [])
+              ]
             }
-            for b in ($.get('response') or []) for p in (b.get('players') or [])
-            if (p.get('player') or {}).get('id') == $.get('player')
           ]
 
     - type: "connector"
