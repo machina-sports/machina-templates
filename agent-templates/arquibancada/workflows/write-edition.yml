@@ -1,0 +1,38 @@
+workflow:
+
+  # arquibancada-write-edition
+  name: "arquibancada-write-edition"
+  title: "Arquibancada - Write Edition"
+  description: "Writes the copy of one magazine edition on this project's model allowance. The caller sends the editorial brief with the collected facts and gets the edition JSON back as text."
+  context-variables:
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+  inputs:
+    brief: "$.get('brief')"
+  outputs:
+    copy: "$.get('copy') if isinstance($.get('copy'), str) else ''"
+    workflow-status: "'executed' if isinstance($.get('copy'), str) and len($.get('copy')) > 0 else 'failed'"
+  tasks:
+
+    # A prompt task, so the tokens are metered on the project like any other
+    # prompt. Direct Vertex connector rather than the machina-ai router: pods
+    # provisioned before the router allowed this model would reject it.
+    - type: "prompt"
+      name: "write-edition"
+      description: "Write the edition copy from the brief."
+      condition: "isinstance($.get('brief'), str) and len($.get('brief')) > 0"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-3.8-flash"
+        location: "global"
+        provider: "vertex_ai"
+        temperature: 0.5
+        timeout: 120
+      prompt:
+        name: "arquibancada-write-edition-prompt"
+      inputs:
+        question: "$.get('brief')"
+      outputs:
+        copy: "$"
