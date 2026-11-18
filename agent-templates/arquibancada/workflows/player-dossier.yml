@@ -20,6 +20,7 @@ workflow:
     trophies: "$.get('trophies', [])"
     sidelined: "$.get('sidelined', [])"
     errors: "$.get('provider-errors', [])"
+    debug_fp: "$.get('debug-fp')"
     workflow-status: "'executed' if $.get('player-info') else 'failed'"
   tasks:
 
@@ -88,6 +89,7 @@ workflow:
         fixture: "$.get('fixture_item', {}).get('id')"
         team: "$.get('club-team-id')"
       outputs:
+        debug-fp: "[{'fixture': $.get('fixture_item', {}).get('id'), 'blocks': len($.get('response') or []), 'player_ctx': $.get('player'), 'ids': [(p.get('player') or {}).get('id') for b in ($.get('response') or []) for p in (b.get('players') or [])][:3]}]"
         match-stats: |
           [
             {
