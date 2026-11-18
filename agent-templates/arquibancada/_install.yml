@@ -1,6 +1,6 @@
 setup:
-  title: "Arquibancada - Player Dossier"
-  description: "API-Football player search and player dossier (season stats, match-by-match ratings, trophies and sidelined history) for the Arquibancada fan magazine."
+  title: "Arquibancada - Fan Magazine"
+  description: "Workflows behind the Arquibancada fan magazine: API-Football player search and player dossier (season stats, match-by-match ratings, trophies and sidelined history), plus the edition writer that runs on the project's own model allowance."
   category:
     - custom-templates
     - football
@@ -8,16 +8,22 @@ setup:
   features:
     - "Search API-Football player profiles by name."
     - "One call returns season stats per competition, the club's last matches with the player's minutes and rating, trophies and sidelined history."
+    - "Write the edition copy through the machina-ai router, metered on the project like any other prompt."
   integrations:
     - api-football
+    - machina-ai
   status: available
   value: "agent-templates/arquibancada"
-  version: 1.0.0
+  version: 1.1.0
 
 datasets:
   - type: "connector"
     path: "../../connectors/api-football/api-football.yml"
+  - type: "prompt"
+    path: "prompts/write-edition.yml"
   - type: "workflow"
     path: "workflows/player-search.yml"
   - type: "workflow"
     path: "workflows/player-dossier.yml"
+  - type: "workflow"
+    path: "workflows/write-edition.yml"
