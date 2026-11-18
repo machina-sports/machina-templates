@@ -8,10 +8,10 @@ setup:
   features:
     - "Search API-Football player profiles by name."
     - "One call returns season stats per competition, the club's last matches with the player's minutes and rating, trophies and sidelined history."
-    - "Write the edition copy through the machina-ai router, metered on the project like any other prompt."
+    - "Write the edition copy with Gemini on Vertex AI, metered on the project like any other prompt."
   integrations:
     - api-football
-    - machina-ai
+    - google-genai
   status: available
   value: "agent-templates/arquibancada"
   version: 1.1.0

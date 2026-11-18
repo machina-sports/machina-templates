@@ -4,23 +4,30 @@ workflow:
   name: "arquibancada-write-edition"
   title: "Arquibancada - Write Edition"
   description: "Writes the copy of one magazine edition on this project's model allowance. The caller sends the editorial brief with the collected facts and gets the edition JSON back as text."
+  context-variables:
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
   inputs:
     brief: "$.get('brief')"
   outputs:
-    copy: "$.get('copy', '')"
-    workflow-status: "'executed' if $.get('copy') else 'failed'"
+    copy: "$.get('copy') if isinstance($.get('copy'), str) else ''"
+    workflow-status: "'executed' if isinstance($.get('copy'), str) and len($.get('copy')) > 0 else 'failed'"
   tasks:
 
+    # A prompt task, so the tokens are metered on the project like any other
+    # prompt. Direct Vertex connector rather than the machina-ai router: pods
+    # provisioned before the router allowed this model would reject it.
     - type: "prompt"
       name: "write-edition"
       description: "Write the edition copy from the brief."
       condition: "isinstance($.get('brief'), str) and len($.get('brief')) > 0"
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_prompt"
-        provider: "vertex_ai"
         model: "gemini-3.8-flash"
-        profile: "balanced"
+        location: "global"
+        provider: "vertex_ai"
         temperature: 0.5
         timeout: 120
       prompt:
@@ -28,4 +35,4 @@ workflow:
       inputs:
         question: "$.get('brief')"
       outputs:
-        copy: "$ if isinstance($, str) else ''"
+        copy: "$"
